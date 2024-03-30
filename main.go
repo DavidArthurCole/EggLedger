@@ -1043,12 +1043,13 @@ func main() {
 		ids, err := db.RetrievePlayerCompleteMissionIds(playerId)
 		if err != nil {
 			log.Error(err)
+			return "{}"
 		}
 		//Return a JSON string of the mission IDs
 		jsonData, err := json.Marshal(ids)
 		if err != nil {
 			log.Error(err)
-			return ""
+			return "{}"
 		}
 		return string(jsonData)
 	})

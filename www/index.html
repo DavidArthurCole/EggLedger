@@ -479,7 +479,7 @@
             id="viewAccountForm" name="viewAccountForm" class="select-form"
             v-on:submit="event => {
               event.preventDefault();
-              for(let i = 0; i < topLevelFilterOptions.length; i++) removeAndShift(i);
+              for(let i = 0; i < topLevelFilterOptions.length; i++) removeAndShift(0);
               viewMissionsOfEid();
             }">
             <div ref="viewMissionAccountSelectRef" class="relative flex-grow focus-within:z-10">
@@ -897,7 +897,9 @@
 
           <div v-if="doesDataExist" class="flex-1 px-2 py-1 overflow-auto shadow-sm block text-xs font-mono text-gray-300 bg-darkest rounded-md text-center">
             <div class="mt-4" v-if="(doesDataExist && lifetimeDrops != null && !lifetimeDropsBeingLoaded) || lifetimeDataBeingFiltered">
-              <span class="ledger-underline text-base text-gray-400">Data Coalesced from {{ lifetimeDrops.missionCount }} Missions <span v-if="lifetimeDropsExcludedCount != 0">({{lifetimeDropsExcludedCount}} Filtered Out)</span></span>
+              <span v-if="!lifetimeDataBeingFiltered && lifetimeDrops != null" class="ledger-underline text-base text-gray-400">
+                Data Coalesced from {{ lifetimeDrops.missionCount }} Missions <span v-if="lifetimeDropsExcludedCount != 0">({{lifetimeDropsExcludedCount}} Filtered Out)</span>
+              </span>
               <div class="mb-05rem">
                 <span>Options</span>
                 <br/>
@@ -1418,7 +1420,7 @@
                 case LifetimeLoadState.FilteringIds:
                   return "Filtering mission IDs... " + lifetimeDropsLoadedProgress.value.loadedCount + "/" + lifetimeDropsLoadedProgress.value.totalCount;
                 case LifetimeLoadState.LoadingMissionData:
-                  return "Loading missions... " + lifetimeDropsLoadedProgress.value.loadedCount + "/" + lifetimeDropsLoadedProgress.value.totalCount;
+                  return "Loading missions... ";
                 case LifetimeLoadState.Success:
                   return "Succeeded" + (lifetimeSuccessTime.value != null ? ` in ${lifetimeSuccessTime.value}` : "");
                 case LifetimeLoadState.Failed:
@@ -1429,6 +1431,7 @@
             const lifetimeSuccessTime = Vue.ref(null);
             const lifetimeDropsBeingLoaded = Vue.computed(() => lifetimeState.value == LifetimeLoadState.FetchingIds || lifetimeState.value == LifetimeLoadState.LoadingMissionData);
             const lifetimeDropsLoadedProgress = Vue.ref({});
+            const resetLifetimeDropsLoadedProgress = (npd, nlc, ntc) => {lifetimeDropsLoadedProgress.value = {percentageDone: npd ?? '0%', loadedCount: nlc ?? 0,totalCount: ntc ?? 0,};};
             const lifetimeDropsExcludedCount = Vue.ref(0);
             const lifetimeMennoMissionData = Vue.ref(null);
             const viewLifetimeDropsOfEid = async (filterLoad) => {
@@ -1440,114 +1443,75 @@
 
               const start = performance.now();
               lifetimeState.value = LifetimeLoadState.FetchingIds;
-              const idsJson = await window.getMissionIds(selectedLifetimeAccount.value);
-              if(idsJson == null || idsJson == ''){
+              const idsJson = JSON.parse(await window.getMissionIds(selectedLifetimeAccount.value));
+              if(idsJson == {} || idsJson == null || idsJson.length == 0){
                 lifetimeState.value = LifetimeLoadState.Failed;
                 return;
               }
-              var ids = JSON.parse(idsJson);
-              if(lifetimeDataFilter.value != null && lifetimeDataFilter.value.length > 0){
-                lifetimeDropsLoadedProgress.value = {
-                  percentageDone: '0%',
-                  loadedCount: 0,
-                  totalCount: ids.length,
-                };
-                const newIds = [];
+              const shouldFilter = (lifetimeDataFilter.value != null && lifetimeDataFilter.value.length > 0 && filterLoad);
+              if(shouldFilter){
+                resetLifetimeDropsLoadedProgress(null, null, idsJson.length);
                 lifetimeState.value = LifetimeLoadState.FilteringIds;
-                const missionsJSON = JSON.parse(await window.viewMissionsOfEid(selectedLifetimeAccount.value));
-                for(const id of ids){
-                  const mission = missionsJSON.find(mission => mission.missionId == id);
-                  if(await missionMatchesFilter(mission, lifetimeDataFilter.value, lifetimeOrDataFilter.value)){
-                    newIds.push(id);
-                  }
-                  lifetimeDropsLoadedProgress.value.percentageDone = `${((ids.indexOf(id) + 1) / ids.length) * 100}%`;
+              }
+              const missionsJSON = shouldFilter ? JSON.parse(await window.viewMissionsOfEid(selectedLifetimeAccount.value)) : [];
+              const idFilter = async (arr, predicate) => {
+                return arr.reduce(async (memo, e) => {
+                  return await predicate(e) ? [...await memo, e] : await memo;
+                }, Promise.resolve([]));
+              }
+              const ids = shouldFilter ? await idFilter(idsJson, async (id) => {
+                  lifetimeDropsLoadedProgress.value.percentageDone = `${((idsJson.indexOf(id) + 1) / idsJson.length) * 100}%`;
                   lifetimeDropsLoadedProgress.value.loadedCount++;
-                  //Wait 0.1 ms every 100 missions to prevent lag spikes
-                  if((ids.indexOf(id) + 1) % 100 == 0) await new Promise(r => setTimeout(r, 1));
+                  return (await missionMatchesFilter(missionsJSON.find(mission => mission.missionId == id), lifetimeDataFilter.value, lifetimeOrDataFilter.value));
                 }
-                lifetimeDropsExcludedCount.value = ids.length - newIds.length;
-                ids = newIds;
-              } else lifetimeDropsExcludedCount.value = 0; 
-              lifetimeDrops.value = null;
-              lifetimeDropsLoadedProgress.value = {
-                percentageDone: '0%',
-                loadedCount: 0,
-                totalCount: 0,
-              };
-              lifetimeState.value = LifetimeLoadState.LoadingMissionData;
-              lifetimeDropsLoadedProgress.value.totalCount = ids.length;
+              ) : idsJson;
+              lifetimeDropsExcludedCount.value = idsJson.length - ids.length;
+              
               lifetimeDrops.value = {
-                artifacts: [],
-                stones: [],
-                stoneFragments: [],
-                ingredients: [],
+                artifacts: [], artifactCount: 0,
+                stones: [], stoneCount: 0,
+                stoneFragments: [], stoneFragmentCount: 0,
+                ingredients: [], ingredientCount: 0,
                 missionCount: ids.length,
               };
-              var firstMatchesCalced = false;
-              var firstMatches = [];
+              lifetimeState.value = LifetimeLoadState.LoadingMissionData;
+              resetLifetimeDropsLoadedProgress(null, null, ids.length);
+              var firstMatches = null;
               var nonMatch = false;
-              for (const id of ids) {
-                const mission = await getSpecificMissionData(selectedLifetimeAccount.value, id, false);
+              const missions = await Promise.all(ids.map(id => getSpecificMissionData(selectedLifetimeAccount.value, id, false)));
+              missions.forEach((mission, index) => {
+                if(mission == null) return;
                 const missionShipInfo = mission.shipInfo;
-                if (mission != null) {
-                  if(!firstMatchesCalced){
-                    firstMatches = [
-                      missionShipInfo.ship,
-                      missionShipInfo.durationType,
-                      missionShipInfo.level,
-                      missionShipInfo.targetArtifact
-                    ];
-                    firstMatchesCalced = true;
-                  } else if(!nonMatch) {
-                    if(firstMatches[0] != missionShipInfo.ship) firstMatches[0] = -1;
-                    if(firstMatches[1] != missionShipInfo.durationType) firstMatches[1] = -1;
-                    if(firstMatches[2] != missionShipInfo.level) firstMatches[2] = -1;
-                    if(firstMatches[3] != missionShipInfo.targetArtifact) firstMatches[3] = -1;
-                    if(firstMatches[0] == -1 && firstMatches[1] == -1 
-                      && firstMatches[2] == -1 && firstMatches[3] == -1){
-                      nonMatch = true;
-                    }
-                  }
-                  mission.artifacts.forEach(artifact => mergeItems(lifetimeDrops.value.artifacts, artifact));
-                  mission.stones.forEach(stone => mergeItems(lifetimeDrops.value.stones, stone));
-                  mission.stoneFragments.forEach(stoneFragment => mergeItems(lifetimeDrops.value.stoneFragments, stoneFragment));
-                  mission.ingredients.forEach(ingredient => mergeItems(lifetimeDrops.value.ingredients, ingredient));
+                firstMatches = firstMatches ?? [missionShipInfo.ship, missionShipInfo.durationType, missionShipInfo.level, missionShipInfo.targetArtifact];
+                if (!nonMatch) {
+                    if (firstMatches[0] != missionShipInfo.ship) firstMatches[0] = -1;
+                    if (firstMatches[1] != missionShipInfo.durationType) firstMatches[1] = -1;
+                    if (firstMatches[2] != missionShipInfo.level) firstMatches[2] = -1;
+                    if (firstMatches[3] != missionShipInfo.targetArtifact) firstMatches[3] = -1;
+                    nonMatch = (firstMatches.indexOf(-1) != -1);
                 }
-                lifetimeDropsLoadedProgress.value.percentageDone = `${((ids.indexOf(id) + 1) / ids.length) * 100}%`;
-                lifetimeDropsLoadedProgress.value.loadedCount++;
-              }
+                mission.artifacts.forEach(artifact => {mergeItems(lifetimeDrops.value.artifacts, artifact); lifetimeDrops.value.artifactCount += artifact.count;});
+                mission.stones.forEach(stone => {mergeItems(lifetimeDrops.value.stones, stone); lifetimeDrops.value.stoneCount += stone.count;});
+                mission.stoneFragments.forEach(stoneFragment => {mergeItems(lifetimeDrops.value.stoneFragments, stoneFragment); lifetimeDrops.value.stoneFragmentCount += stoneFragment.count;});
+                mission.ingredients.forEach(ingredient => {mergeItems(lifetimeDrops.value.ingredients, ingredient); lifetimeDrops.value.ingredientCount += ingredient.count;});
+              });
+              lifetimeDropsLoadedProgress.value.percentageDone = '100%';
+              lifetimeDropsLoadedProgress.value.loadedCount = ids.length;
               reSortLifetime();
-              lifetimeDrops.value.artifactCount = lifetimeDrops.value.artifacts.map(artifact => artifact.count).reduce((acc, cur) => acc + cur, 0);
-              lifetimeDrops.value.stoneCount = lifetimeDrops.value.stones.map(stone => stone.count).reduce((acc, cur) => acc + cur, 0);
-              lifetimeDrops.value.stoneFragmentCount = lifetimeDrops.value.stoneFragments.map(fragment => fragment.count).reduce((acc, cur) => acc + cur, 0);
-              lifetimeDrops.value.ingredientCount = lifetimeDrops.value.ingredients.map(ingredient => ingredient.count).reduce((acc, cur) => acc + cur, 0);
 
-              if(
-                (lifetimeHasExactlyOneShip.value || firstMatches[0] != -1) &&
-                (lifetimeHasExactlyOneDuration.value || firstMatches[1] != -1) &&
-                (lifetimeHasExactlyOneLevel.value || firstMatches[2] != -1) &&
-                (lifetimeHasExactlyOneTarget.value || firstMatches[3] != -1)
-              ){
-
-                var targetUniqueValue = lifetimeOneTargetInt.value;
-                if(targetUniqueValue == null) targetUniqueValue = firstMatches[3];
-                if(targetUniqueValue == -1) targetUniqueValue = 1000; //Accounting for "Unknown" targets
-
-                const shipUniqueValue = lifetimeOneShipInt.value != null ? lifetimeOneShipInt.value : firstMatches[0];
-                const durationUniqueValue = lifetimeOneDurationInt.value != null ? lifetimeOneDurationInt.value : firstMatches[1];
-                const levelUniqueValue = lifetimeOneLevelInt.value != null ? lifetimeOneLevelInt.value : firstMatches[2];
-
-                const rawMennoData = await window.getMennoData(parseInt(shipUniqueValue), parseInt(durationUniqueValue), parseInt(levelUniqueValue), parseInt(targetUniqueValue))
-                const totalDropsCount = rawMennoData.configurationItems.reduce((acc, cur) => acc + cur.totalDrops, 0);
+              lifetimeMennoMissionData.value = null;
+              lifetimeAllowExpectedTotals.value = lifetimeHasExactlyOneConfiguration(firstMatches);
+              if(lifetimeAllowExpectedTotals.value){
+                const mennoConfigurationItems = await window.getMennoData(
+                  parseInt(lifetimeOneShipInt.value != null ? lifetimeOneShipInt.value : firstMatches[0]), 
+                  parseInt(lifetimeOneDurationInt.value != null ? lifetimeOneDurationInt.value : firstMatches[1]), 
+                  parseInt(lifetimeOneLevelInt.value != null ? lifetimeOneLevelInt.value : firstMatches[2]),
+                  parseInt(lifetimeOneTargetInt.value ?? firstMatches[3]) != -1 ? parseInt(lifetimeOneTargetInt.value ?? firstMatches[3]) : 1000
+                );
                 lifetimeMennoMissionData.value = {
-                  totalDropsCount: totalDropsCount,
-                  configs: rawMennoData.configurationItems
+                  totalDropsCount: mennoConfigurationItems.reduce((acc, cur) => acc + cur.totalDrops, 0),
+                  configs: mennoConfigurationItems
                 };
-
-                lifetimeAllowExpectedTotals.value = true;
-              } else {
-                lifetimeMennoMissionData.value = null;
-                lifetimeAllowExpectedTotals.value = false;
               }
 
               const end = performance.now();
@@ -1557,15 +1521,20 @@
               lifetimeState.value = LifetimeLoadState.Success;
             };
 
-            const mergeItems = (targetArray, item) => {
-              const existingItem = targetArray.find(existingItem =>
-                existingItem.id === item.id &&
-                existingItem.level === item.level &&
-                existingItem.rarity === item.rarity
-              );
-              if (existingItem) existingItem.count += item.count;
-              else targetArray.push(item);
+            const lifetimeHasExactlyOneConfiguration = (firstMatches) => {
+              return (lifetimeHasExactlyOneShip.value || firstMatches[0] != -1) &&
+                (lifetimeHasExactlyOneDuration.value || firstMatches[1] != -1) &&
+                (lifetimeHasExactlyOneLevel.value || firstMatches[2] != -1) &&
+                (lifetimeHasExactlyOneTarget.value || firstMatches[3] != -1);
             }
+            const mergeItems = (targetArray, item) => {
+              const existingItem = targetArray[`${item.id}_${item.level}_${item.rarity}`];
+              if (existingItem) existingItem.count += item.count;
+              else {
+                targetArray[`${item.id}_${item.level}_${item.rarity}`] = item;
+                targetArray.push(item);
+              }
+            };
 
             const viewMissionAccountSelectRef = Vue.ref(null);
             const viewMissionAccountInputRef = Vue.ref(null);
@@ -2067,7 +2036,7 @@
             );
             //When orFilterValues changes, keep dOrFilterValues in sync in terms of array size
             Vue.watch(orFilterValues, () => {
-                dOrFilterValues.value = orFilterValues.value.map((orFilter, index) => {return(dOrFilterValues.value[index] == undefined ? [] : dOrFilterValues.value[index].slice(0, orFilter.length));});
+                dOrFilterValues.value = orFilterValues.value.map((orFilter, index) => {return(dOrFilterValues.value[index] == undefined ? [] : dOrFilterValues.value[index].slice(0, orFilterValues.value.length));});
               }, { deep: true }
             );
 
@@ -2107,7 +2076,9 @@
               lastMennoUpdateString.value = new Date(Date.now() - (secondsSinceLastMennoUpdate.value * 1000)).toLocaleString();
             });
 
+            const mennoModalOpen = Vue.ref(false);
             const openMennoModal = () => {
+              mennoModalOpen.value = true;
               const el = document.querySelector('.overlay-menno');
               el.style.display = 'flex';
               el.classList.remove('hidden');
@@ -2116,6 +2087,7 @@
               const el = document.querySelector('.overlay-menno');
               el.style.display = 'none';
               el.classList.add('hidden');
+              mennoModalOpen.value = false;
             };
 
             Vue.onMounted(async () => {
@@ -2489,11 +2461,11 @@
               dataBeingFiltered.value = true;
               filterHasChanged.value = false;
               const newFilteredMissions = [];
-              for(const loadedMission of allLoadedMissions.value){
+              _ = await Promise.all(allLoadedMissions.value.map(async (loadedMission) => {
                 if(await missionMatchesFilter(loadedMission, dataFilter.value, orDataFilter.value)){
                   newFilteredMissions.push(loadedMission);
                 }
-              }
+              }));
               const endTime = performance.now();
               filterApplyTime.value = Math.floor((endTime - startTime) / 1000) + "." + Math.floor((endTime - startTime) % 1000) + "s";
               filteredMissions.value = newFilteredMissions;
@@ -2688,6 +2660,15 @@
                     innerEl.querySelector('.detect-trigger').click();
                 });
               });
+              //Listen for the ESC key to close the overlays
+              document.addEventListener('keydown', function(event){
+                if(event.key == 'Escape'){
+                  if(mennoModalOpen.value) return; //Don't close the Menno modal
+                  document.querySelectorAll('.inner-click-detect').forEach(innerClickDetect => {
+                    if(!innerClickDetect.classList.contains('hidden')) innerClickDetect.querySelector('.detect-trigger').click();
+                  });
+                }
+              });
             });
 
             const isLifetime = Vue.computed(() => activeTab.value == UITab.LifetimeDrops);
@@ -2825,6 +2806,7 @@
               missionBeingViewed,
               hideOptions,
               hideMenno,
+              mennoModalOpen,
               toggleOptions,
               toggleMenno,
               viewMissionsOfEid,

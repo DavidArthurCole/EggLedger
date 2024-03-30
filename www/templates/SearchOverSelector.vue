@@ -111,9 +111,9 @@
                 const innerEl = topElement.querySelector('.inner-click-detect');
                 if(innerEl === null) return;
                 if(innerEl?.classList?.contains('hidden')) return;
-                  const divRect = innerEl.getBoundingClientRect();
-                  if(e.clientX < divRect.left || e.clientX > divRect.right || e.clientY < divRect.top || e.clientY > divRect.bottom)
-                    innerEl.querySelector('.detect-trigger').click();
+                const divRect = innerEl.getBoundingClientRect();
+                if(e.clientX < divRect.left || e.clientX > divRect.right || e.clientY < divRect.top || e.clientY > divRect.bottom)
+                innerEl.querySelector('.detect-trigger').click();
             }
         }
     }

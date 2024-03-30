@@ -5,7 +5,7 @@ package api
 import (
 	"context"
 	"encoding/base64"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
@@ -83,7 +83,7 @@ func doRequestRawPayloadWithContext(ctx context.Context, endpoint string, reqMsg
 		return nil, errors.Wrapf(err, "POST %s", apiUrl)
 	}
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.Wrapf(err, "POST %s", apiUrl)
 	}

@@ -17,7 +17,7 @@ func LoadConfig() error {
 	Config = &ei.ArtifactsConfigurationResponse{}
 	err := protojson.Unmarshal(_eiafxConfigJSON, Config)
 	if err != nil {
-		return errors.Wrap(err, "error unmarshalling eiafx-config.json")
+		return errors.Wrap(err, "error unmarshalling eiafx-config-min.json")
 	}
 	return nil
 }

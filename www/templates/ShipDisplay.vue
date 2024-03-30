@@ -86,10 +86,7 @@
         ></drop-display-container>
         
         <!-- Shamelessly stolen straight from MK2's source code, with mobile note removed -->
-        <div 
-            v-if="!isMulti"
-            class="mt-2 text-xs text-gray-300 text-center"
-        >
+        <div v-if="!isMulti" class="mt-2 text-xs text-gray-300 text-center">
             Hover mouse over an item to show details.<br />
             Click to open the relevant <a target="_blank" v-external-link href="https://wasmegg-carpet.netlify.app/artifact-explorer/" class="ledger-underline">
             artifact explorer
