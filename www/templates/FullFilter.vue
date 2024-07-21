@@ -244,7 +244,7 @@
                     { text: 'Double Cap', value: 'dubcap' },
                     { text: 'Bugged Cap', value: 'buggedcap'}
                 ];
-                if (this.isLifetime) return commonOptions;
+                if (this.isLifetime) return commonOptions.concat({ text: 'Drop Date', value: 'returnDT'});
                 return commonOptions.concat({ text: 'Drops/Loot', value: 'drops' }, { text: 'Launch Date', value: 'launchDT' }, { text: 'Return Date', value: 'returnDT' });
             },
             getFilterOpOptions(topLevel) {

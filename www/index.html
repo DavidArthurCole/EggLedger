@@ -2467,6 +2467,11 @@
               }
             }
 
+            const ledgerDateObj = (date) => {
+              const dateArr = date.split("-");
+              return new Date(dateArr[0], dateArr[1] - 1, dateArr[2]);
+            };
+
             const testMissionAgainstFilter = async(mission, filter) => {
               var filterPassed = true;
               if(filter.topLevel != null && filter.op != null && filter.val != null){
@@ -2477,8 +2482,8 @@
                   case 'duration': filterPassed = commonFilterLogic(mission.durationType, filter.val, filter.op, filterPassed); break;
                   case 'level': filterPassed = commonFilterLogic(mission.level, filter.val, filter.op, filterPassed); break;
                   case 'target': filterPassed = commonFilterLogic(mission.targetInt, filter.val, filter.op, filterPassed); break;
-                  case 'launchDT': filterPassed = commonFilterLogic(LedgerDate(mission.launchDT), new Date(filter.val), filter.op, filterPassed); break;
-                  case 'returnDT': filterPassed = commonFilterLogic(LedgerDate(mission.returnDT), new Date(filter.val), filter.op, filterPassed); break;
+                  case 'launchDT': filterPassed = commonFilterLogic(LedgerDate(mission.launchDT), ledgerDateObj(filter.val), filter.op, filterPassed); break;
+                  case 'returnDT': filterPassed = commonFilterLogic(LedgerDate(mission.returnDT), ledgerDateObj(filter.val), filter.op, filterPassed); break;
                   case 'drops': {
                     const durConfig = durationConfigs.value[mission.ship].durations[mission.durationType];
                     const maxQuality = durConfig.maxQuality + (durConfig.levelQualityBump * mission.level);
