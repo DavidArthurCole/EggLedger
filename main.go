@@ -70,14 +70,14 @@ type UI struct {
 func (u UI) MustLoad(url string) {
 	err := u.Load(url)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("MustLoad err: ", err)
 	}
 }
 
 func (u UI) MustBind(name string, f interface{}) {
 	err := u.Bind(name, f)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("MustBind err: ", err)
 	}
 }
 
@@ -196,11 +196,11 @@ func init() {
 
 	path, err := os.Executable()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("os.Executable() err: ", err)
 	}
 	path, err = filepath.EvalSymlinks(path)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("filepath.EvalSymlinks() err: ", err)
 	}
 	_rootDir = filepath.Dir(path)
 	if runtime.GOOS == "darwin" {
@@ -251,7 +251,7 @@ func init() {
 	}
 
 	if err := os.MkdirAll(_internalDir, 0755); err != nil {
-		log.Fatal(err)
+		log.Fatal("MkdirAll err: ", err)
 	}
 	if err := hide(_internalDir); err != nil {
 		log.Errorf("error hiding internal directory: %s", err)
@@ -277,7 +277,7 @@ func init() {
 	}
 
 	if _eiAfxConfigErr != nil {
-		log.Fatal(_eiAfxConfigErr)
+		log.Fatal("_eiAfxConfigErr: ", _eiAfxConfigErr)
 	} else {
 		_eiAfxConfigMissions = eiafx.Config.MissionParameters
 		_eiAfxConfigArtis = eiafx.Config.ArtifactParameters
@@ -471,7 +471,7 @@ func main() {
 	}()
 	u, err := lorca.New("", "", chrome, widthPreference, heightPreference, args...)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("lorca err: ", err)
 	}
 	ui := UI{u}
 	defer ui.Close()
@@ -1142,7 +1142,7 @@ func main() {
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("tcp err: ", err)
 	}
 	defer ln.Close()
 	go func() {
@@ -1152,13 +1152,13 @@ func main() {
 		} else {
 			wwwfs, err := fs.Sub(_fs, "www")
 			if err != nil {
-				log.Fatal(err)
+				log.Fatal("wwwfs err: ", err)
 			}
 			httpfs = http.FS(wwwfs)
 		}
 		err := http.Serve(ln, http.FileServer(httpfs))
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal("httpServe err: ", err)
 		}
 	}()
 	ui.MustLoad(fmt.Sprintf("http://%s/", ln.Addr()))

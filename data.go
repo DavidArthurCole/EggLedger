@@ -19,7 +19,7 @@ var _dbPath string
 func dataInit() {
 	_dbPath = filepath.Join(_internalDir, "data.db")
 	if err := db.InitDB(_dbPath); err != nil {
-		log.Fatal(err)
+		log.Fatal("dataInit() err: ", err)
 	}
 }
 
