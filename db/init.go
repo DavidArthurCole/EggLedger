@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"os"
 	"path/filepath"
@@ -14,6 +15,9 @@ import (
 var (
 	_db         *sql.DB
 	_initDBOnce sync.Once
+	_dbWg       sync.WaitGroup
+	_dbCtx      context.Context
+	_dbCancel   context.CancelFunc
 )
 
 func InitDB(path string) error {
@@ -39,7 +43,31 @@ func InitDB(path string) error {
 			err = errors.Wrapf(err, "failed to open SQLite3 database %#v", path)
 			return
 		}
+
+		_dbCtx, _dbCancel = context.WithCancel(context.Background())
 		err = nil
 	})
 	return err
+}
+
+func CloseDB() error {
+	if _db != nil {
+		_dbCancel()  // cancel all ongoing operations
+		_dbWg.Wait() // wait for all operations to complete
+		return _db.Close()
+	}
+	return nil
+}
+
+// A function to perform a database operation with context and wait group
+func DoDBOperation(ctx context.Context, operation func(ctx context.Context, db *sql.DB) error) error {
+	_dbWg.Add(1)
+	defer _dbWg.Done()
+
+	// Create a child context that will be canceled if the parent context is canceled
+	childCtx, cancel := context.WithCancel(_dbCtx)
+	defer cancel()
+
+	// Run the operation
+	return operation(childCtx, _db)
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"time"
 
 	"github.com/DavidArthurCole/EggLedger/db"
@@ -25,9 +26,9 @@ type DatabaseMission struct {
 	TargetInt      int32                        `json:"targetInt"`
 }
 
-func getMissionInformation(playerId string, missionId string) DatabaseMission {
+func getMissionInformation(ctx context.Context, playerId string, missionId string) DatabaseMission {
 	//Get the mission from the database
-	completeMission, err := db.RetrieveCompleteMission(playerId, missionId)
+	completeMission, err := db.RetrieveCompleteMission(ctx, playerId, missionId)
 	if err != nil {
 		log.Error(err)
 		return DatabaseMission{}

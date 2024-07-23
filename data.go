@@ -41,7 +41,7 @@ func fetchFirstContactWithContext(ctx context.Context, playerId string) (*ei.Egg
 	}
 	timestamp := fc.GetBackup().GetSettings().GetLastBackupTime()
 	if timestamp != 0 {
-		if err := db.InsertBackup(playerId, timestamp, payload, 12*time.Hour); err != nil {
+		if err := db.InsertBackup(ctx, playerId, timestamp, payload, 12*time.Hour); err != nil {
 			// Treat as non-fatal error for now.
 			log.Error(err)
 		}
@@ -56,7 +56,7 @@ func fetchCompleteMissionWithContext(ctx context.Context, playerId string, missi
 	wrap := func(err error) error {
 		return errors.Wrap(err, "error "+action)
 	}
-	resp, err := db.RetrieveCompleteMission(playerId, missionId)
+	resp, err := db.RetrieveCompleteMission(ctx, playerId, missionId)
 	if err != nil {
 		return nil, wrap(err)
 	}
@@ -77,6 +77,6 @@ func fetchCompleteMissionWithContext(ctx context.Context, playerId string, missi
 	if len(resp.GetArtifacts()) == 0 {
 		return nil, wrap(errors.New("no artifact found in server response"))
 	}
-	err = db.InsertCompleteMission(playerId, missionId, startTimestamp, payload)
+	err = db.InsertCompleteMission(ctx, playerId, missionId, startTimestamp, payload)
 	return resp, err
 }

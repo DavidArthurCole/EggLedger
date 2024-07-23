@@ -308,14 +308,14 @@ func initNominalShipCapacities() {
 	}
 }
 
-func viewMissionsOfId(eid string) ([]DatabaseMission, error) {
+func viewMissionsOfId(ctx context.Context, eid string) ([]DatabaseMission, error) {
 
 	if len(_nominalShipCapacities) == 0 {
 		initNominalShipCapacities()
 	}
 
 	//Get list of complete missions from the DB
-	completeMissions, err := db.RetrievePlayerCompleteMissions(eid)
+	completeMissions, err := db.RetrievePlayerCompleteMissions(ctx, eid)
 	if err != nil {
 		log.Error(err)
 		return nil, err
@@ -722,7 +722,7 @@ func main() {
 
 			missions := fc.GetCompletedMissions()
 			inProgressMissions := fc.GetInProgressMissions()
-			existingMissionIds, err := db.RetrievePlayerCompleteMissionIds(playerId)
+			existingMissionIds, err := db.RetrievePlayerCompleteMissionIds(context.Background(), playerId)
 			if err != nil {
 				perror(err)
 				updateState(AppState_FAILED)
@@ -802,7 +802,7 @@ func main() {
 			}
 
 			updateState(AppState_EXPORTING_DATA)
-			completeMissions, err := db.RetrievePlayerCompleteMissions(playerId)
+			completeMissions, err := db.RetrievePlayerCompleteMissions(context.Background(), playerId)
 			if err != nil {
 				perror(err)
 				updateState(AppState_FAILED)
@@ -917,7 +917,7 @@ func main() {
 	ui.MustBind("getExistingData", func() []DatabaseAccount {
 		knownAccounts := []DatabaseAccount{}
 		for _, knownAccount := range _storage.KnownAccounts {
-			ids, err := db.RetrievePlayerCompleteMissionIds(knownAccount.Id)
+			ids, err := db.RetrievePlayerCompleteMissionIds(context.Background(), knownAccount.Id)
 			if err != nil {
 				log.Error(err)
 			} else if len(ids) > 0 {
@@ -936,7 +936,7 @@ func main() {
 	})
 
 	ui.MustBind("getMissionIds", func(playerId string) []string {
-		ids, err := db.RetrievePlayerCompleteMissionIds(playerId)
+		ids, err := db.RetrievePlayerCompleteMissionIds(context.Background(), playerId)
 		if err != nil {
 			log.Error(err)
 			return nil
@@ -945,7 +945,7 @@ func main() {
 	})
 
 	ui.MustBind("viewMissionsOfEid", func(eid string) []DatabaseMission {
-		if dbMissions, err := viewMissionsOfId(eid); err != nil {
+		if dbMissions, err := viewMissionsOfId(context.Background(), eid); err != nil {
 			log.Error(err)
 			return nil
 		} else {
@@ -981,7 +981,7 @@ func main() {
 
 	ui.MustBind("getShipDrops", func(playerId string, shipId string) []MissionDrop {
 		//Get the mission from the database
-		completeMission, err := db.RetrieveCompleteMission(playerId, shipId)
+		completeMission, err := db.RetrieveCompleteMission(context.Background(), playerId, shipId)
 		if err != nil {
 			log.Error(err)
 			return nil
@@ -1030,7 +1030,7 @@ func main() {
 	})
 
 	ui.MustBind("getMissionInfo", func(playerId string, missionId string) DatabaseMission {
-		return getMissionInformation(playerId, missionId)
+		return getMissionInformation(context.Background(), playerId, missionId)
 	})
 
 	ui.MustBind("openFile", func(file string) {
@@ -1169,5 +1169,10 @@ func main() {
 	select {
 	case <-sigc:
 	case <-ui.Done():
+	}
+
+	// Make sure to cleanly close the database before exiting
+	if err := db.CloseDB(); err != nil {
+		log.Fatalf("Failed to close database: %v", err)
 	}
 }
