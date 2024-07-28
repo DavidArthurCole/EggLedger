@@ -27,6 +27,7 @@ type AppStorage struct {
 	DefaultResolutionY      int       `json:"default_resolution_y"`
 	DefaultScalingFactor    float64   `json:"default_scaling_factor"`
 	StartInFullscreen       bool      `json:"start_in_fullscreen"`
+	RetryFailedMissions     bool      `json:"retry_failed_missions"`
 }
 
 type Account struct {
@@ -191,4 +192,17 @@ func (s *AppStorage) SetStartInFullscreen(flag bool) {
 	s.StartInFullscreen = flag
 	s.Unlock()
 	go s.Persist()
+}
+
+func (s *AppStorage) SetRetryFailedMissions(flag bool) {
+	s.Lock()
+	s.RetryFailedMissions = flag
+	s.Unlock()
+	go s.Persist()
+}
+
+func (s *AppStorage) GetRetryFailedMissions() bool {
+	s.Lock()
+	defer s.Unlock()
+	return s.RetryFailedMissions
 }

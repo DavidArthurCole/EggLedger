@@ -129,6 +129,16 @@
                   <input id="dvmIv" type="radio" v-model="defaultViewMode" value="iv" class="ext-opt-check"></input>
                 </span>
               </div>
+              <div class="mt-0_5rem">
+                <span class="font-bold text-base text-gray-400">Auto-Retry Failed Missions</span><br />
+                <input
+                  id="autoRetryCheckbox"
+                  type="checkbox"
+                  class="ext-opt-check mr-0_5rem"
+                  v-model="autoRetryPreference"
+                >
+                <label for="autoRetryCheckbox" class="ext-opt-label">Automatically retry pulling missions that fail while fetching</label>
+              </div>
             </div>
           </div>
         </div>
@@ -2605,6 +2615,11 @@
               await window.setDefaultViewMode(defaultViewMode.value);
             });
 
+            const autoRetryPreference = Vue.ref(false);
+            Vue.watch(autoRetryPreference, async () => {
+              await window.setAutoRetryPreference(autoRetryPreference.value);
+            });
+
             const viewSpecificMission = async (missionId, returnValues = false) => {
               //Do not allow viewing a mission while data is being fetched - prevent collisions
               if(isFetching.value) return false;
@@ -2770,6 +2785,7 @@
               if(['default', 'iv'].indexOf(defaultViewMode.value) > -1){
                 lifetimeSortMethod.value = defaultViewMode.value;
               }
+              autoRetryPreference.value = await window.getAutoRetryPreference();
 
               // Check for updates and destructure the response
               const [hasUpdate, releaseNotes] = await window.checkForUpdates();
@@ -2885,6 +2901,7 @@
 
               //Prefs
               defaultViewMode,
+              autoRetryPreference,
               allBrowsers,
               preferredBrowser,
               browserDisplayName,

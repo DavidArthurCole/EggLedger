@@ -5,7 +5,7 @@
         </div>
         <inner-drop-display
             :item-array="itemArray" :menno-data="mennoData"
-            :ledger-type="ledgerType" :total-drops-count="totalDropsCount"
+            :ledger-type="ledgerType" :total-drops-count="totalDropsCount" :mission-count="missionCount"
             :lifetime-show-per-ship="lifetimeShowPerShip" :show-expected-drops="showExpectedDrops"
             :options="options"
         ></inner-drop-display>
@@ -27,6 +27,7 @@
             lifetimeShowPerShip: Boolean,
             showExpectedDrops: Boolean,
             totalDropsCount: Number,
+            missionCount: Number,
             mennoData: Array,
             options: Object,
         },

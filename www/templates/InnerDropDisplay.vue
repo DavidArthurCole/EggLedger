@@ -24,8 +24,8 @@
 
                     <hr v-if="ledgerType == 'lifetime' && lifetimeShowPerShip" class="mt-0_5rem mb-0_5rem w-full">
                     <span v-if="ledgerType == 'lifetime' && lifetimeShowPerShip">
-                        (<span class="text-green-500">{{ (item.count / data.missionCount).toFixed(5) }}</span> per ship - 
-                        <span class="text-green-500">1</span>:<span class="text-green-500">{{ (1 / (item.count / data.missionCount)).toFixed(2) }}</span>)
+                        (<span class="text-green-500">{{ (item.count / missionCount).toFixed(5) }}</span> per ship - 
+                        <span class="text-green-500">1</span>:<span class="text-green-500">{{ (1 / (item.count / missionCount)).toFixed(2) }}</span>)
                     </span>
 
                     <hr v-if="ledgerType == 'lifetime' && showExpectedDrops" class="mt-0_5rem mb-0_5rem w-full">
@@ -65,6 +65,7 @@
             lifetimeShowPerShip: Boolean,
             showExpectedDrops: Boolean,
             totalDropsCount: Number,
+            missionCount: Number,
             mennoData: Array,
             options: Object,
         },

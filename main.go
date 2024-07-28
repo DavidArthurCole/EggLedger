@@ -620,6 +620,14 @@ func main() {
 		return maxQuality
 	})
 
+	ui.MustBind("getAutoRetryPreference", func() bool {
+		return _storage.GetRetryFailedMissions()
+	})
+
+	ui.MustBind("setAutoRetryPreference", func(flag bool) {
+		_storage.SetRetryFailedMissions(flag)
+	})
+
 	ui.MustBind("getAfxConfigs", func() []PossibleArtifact {
 		if len(_possibleArtifacts) == 0 {
 			initPossibleArtifacts()
@@ -766,6 +774,8 @@ func main() {
 				}()
 				errored := 0
 				var wg sync.WaitGroup
+				failedMissions := []string{}
+				tryFailedAgain := _storage.GetRetryFailedMissions()
 			MissionsLoop:
 				for i := 0; i < total; i++ {
 					if i != 0 {
@@ -782,6 +792,9 @@ func main() {
 						if err != nil {
 							perror(err)
 							errored++
+							if tryFailedAgain {
+								failedMissions = append(failedMissions, missionId)
+							}
 						}
 						finishedCh <- struct{}{}
 					}(newMissionIds[i], newMissionStartTimestamps[i])
@@ -793,9 +806,38 @@ func main() {
 				}
 				if errored > 0 {
 					perror(fmt.Sprintf("%d of %d missions failed to fetch", errored, total))
-					pinfo("(performing another &7a7a7a<fetch> will fetch the failed missions most of the time)")
-					updateState(AppState_FAILED)
-					return
+					if tryFailedAgain {
+						errored = 0
+						pinfo("retrying failed missions")
+						for _, missionId := range failedMissions {
+							wg.Add(1)
+							go func(missionId string) {
+								defer wg.Done()
+								_, err := fetchCompleteMissionWithContext(w.ctx, playerId, missionId, 0) // Adjust startTimestamp if needed
+								if err != nil {
+									perror(err)
+									errored++
+								}
+								finishedCh <- struct{}{}
+							}(missionId)
+						}
+						wg.Wait()
+						close(finishedCh)
+						if checkInterrupt() {
+							return
+						}
+						if errored > 0 {
+							perror(fmt.Sprintf("%d of %d mission retry fetches failed", errored, len(failedMissions)))
+							updateState(AppState_FAILED)
+							return
+						} else {
+							pinfo(fmt.Sprintf("successfully fetched &148c32<%d previously failed missions>", len(failedMissions)))
+						}
+					} else {
+						pinfo("(performing another &7a7a7a<fetch> will fetch the failed missions most of the time)")
+						updateState(AppState_FAILED)
+						return
+					}
 				} else {
 					pinfo(fmt.Sprintf("successfully fetched &148c32<%d missions>", total))
 				}
