@@ -753,8 +753,10 @@ func main() {
 				len(missions), len(inProgressMissions), len(newMissionIds)))
 
 			total := len(newMissionIds)
+			finished := 0
 			if total > 0 {
 				updateState(AppState_FETCHING_MISSIONS)
+
 				reportProgress := func(finished int) {
 					updateMissionProgress(MissionProgress{
 						Total:                   total,
@@ -763,19 +765,26 @@ func main() {
 						ExpectedFinishTimestamp: timeToUnix(time.Now().Add(time.Duration(total-finished) * _requestInterval)),
 					})
 				}
-				reportProgress(0)
+
+				reportProgress(finished)
+
 				finishedCh := make(chan struct{}, total)
 				go func() {
-					finished := 0
 					for range finishedCh {
 						finished++
 						reportProgress(finished)
 					}
 				}()
+
 				errored := 0
 				var wg sync.WaitGroup
-				failedMissions := []string{}
+				type FailedMission struct {
+					missionId      string
+					startTimestamp float64
+				}
+				failedMissions := []FailedMission{}
 				tryFailedAgain := _storage.GetRetryFailedMissions()
+
 			MissionsLoop:
 				for i := 0; i < total; i++ {
 					if i != 0 {
@@ -793,39 +802,46 @@ func main() {
 							perror(err)
 							errored++
 							if tryFailedAgain {
-								failedMissions = append(failedMissions, missionId)
+								failedMissions = append(failedMissions, FailedMission{missionId, startTimestamp})
 							}
 						}
 						finishedCh <- struct{}{}
 					}(newMissionIds[i], newMissionStartTimestamps[i])
 				}
 				wg.Wait()
-				close(finishedCh)
+
 				if checkInterrupt() {
 					return
 				}
+
 				if errored > 0 {
 					perror(fmt.Sprintf("%d of %d missions failed to fetch", errored, total))
+
 					if tryFailedAgain {
 						errored = 0
 						pinfo("retrying failed missions")
-						for _, missionId := range failedMissions {
+
+						// Update the total to include the number of failed missions
+						total += len(failedMissions)
+
+						for _, failedMission := range failedMissions {
 							wg.Add(1)
-							go func(missionId string) {
+							go func(missionId string, startTimestamp float64) {
 								defer wg.Done()
-								_, err := fetchCompleteMissionWithContext(w.ctx, playerId, missionId, 0) // Adjust startTimestamp if needed
+								_, err := fetchCompleteMissionWithContext(w.ctx, playerId, missionId, startTimestamp)
 								if err != nil {
 									perror(err)
 									errored++
 								}
 								finishedCh <- struct{}{}
-							}(missionId)
+							}(failedMission.missionId, failedMission.startTimestamp)
 						}
 						wg.Wait()
-						close(finishedCh)
+
 						if checkInterrupt() {
 							return
 						}
+
 						if errored > 0 {
 							perror(fmt.Sprintf("%d of %d mission retry fetches failed", errored, len(failedMissions)))
 							updateState(AppState_FAILED)

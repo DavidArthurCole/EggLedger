@@ -3,8 +3,8 @@ github.com/andybrewer/mack v0.0.0-20220307193339-22e922cc18af/go.mod h1:oUO968BJ
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/davidarthurcole/lorca v0.2.1 h1:p2OTnBHmXDsTEB39qHIa6BbOvM0UP3eG8W5z0/BBGDY=
-github.com/davidarthurcole/lorca v0.2.1/go.mod h1:67DqHxxyx5f3ku+SWr51vzVne2+g/5lb1S6tgDqA6XU=
+github.com/davidarthurcole/lorca v0.2.3 h1:ViMqYDKWkRh/jDrVrkD4s5m/VfdQXa6bJpSnZ73tgpI=
+github.com/davidarthurcole/lorca v0.2.3/go.mod h1:67DqHxxyx5f3ku+SWr51vzVne2+g/5lb1S6tgDqA6XU=
 github.com/dustin/go-humanize v1.0.1 h1:GzkhY7T5VNhEkwH0PVJgjz+fX1rhBrR7pRT3mDkpeCY=
 github.com/dustin/go-humanize v1.0.1/go.mod h1:Mu1zIs6XwVuF/gI1OepvI0qD18qycQx+mFykh5fBlto=
 github.com/golang-migrate/migrate/v4 v4.17.0 h1:rd40H3QXU0AA4IoLllFcEAEo9dYKRHYND2gB4p7xcaU=

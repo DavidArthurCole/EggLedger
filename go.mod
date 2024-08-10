@@ -4,7 +4,7 @@ go 1.22.1
 
 require (
 	github.com/andybrewer/mack v0.0.0-20220307193339-22e922cc18af
-	github.com/davidarthurcole/lorca v0.2.1
+	github.com/davidarthurcole/lorca v0.2.3
 	github.com/dustin/go-humanize v1.0.1
 	github.com/golang-migrate/migrate/v4 v4.17.0
 	github.com/hashicorp/go-version v1.6.0
