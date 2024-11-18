@@ -2675,7 +2675,7 @@
             const multiViewFreeSelectIds = Vue.ref([]);
             const handleMultiViewSelection = (event, missionId) => {
               //Determine if checkbox is checked or not
-              if(event.target ?? document.getElementById(event).checked) multiViewFreeSelectIds.value.push(missionId);
+              if(event?.target?.checked ?? document.getElementById(event).checked) multiViewFreeSelectIds.value.push(missionId);
               else multiViewFreeSelectIds.value = multiViewFreeSelectIds.value.filter(id => id != missionId);
             };
 
