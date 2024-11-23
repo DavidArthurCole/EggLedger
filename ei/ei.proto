@@ -795,6 +795,7 @@ message ContractCoopStatusRequest {
     optional string coop_identifier = 2;
     optional string user_id = 3;
     optional uint32 client_version = 4;
+    optional double client_timestamp = 6;
 }
 
 message FarmProductionParams {
@@ -903,8 +904,8 @@ message ContractCoopStatusResponse {
         optional uint64 amount = 2;
     }
     
-    optional double local_timestamp = 12;
-    optional double last_sync = 18;
+    optional double client_timestamp = 12;
+    optional double last_sync_DEP = 18;
     
     enum MemberStatus {
         VALID = 0;
@@ -1127,6 +1128,7 @@ message KickPlayerCoopRequest {
 }
 
 message IdleSessionSummary {
+    optional bool success = 11;
     optional double time_away = 1;
     optional double time_simulated = 2;
     optional uint32 silos_owned = 3;
@@ -1134,6 +1136,17 @@ message IdleSessionSummary {
     optional double average_msr = 5;
     optional double average_egg_delivery_rate = 6;
     optional double last_egg_delivery_rate = 8;
+    optional double eggs_delivered = 9;
+    
+    repeated Stat stats = 10;
+    message Stat {
+        optional string name = 1;
+        optional double min = 2;
+        optional double max = 3;
+        optional double avg = 4;
+        optional double total_time = 5;
+    }
+    
     optional uint32 farm_index = 7;
 }
 
