@@ -1,7 +1,7 @@
 <template>
     <input
-        type="date" min="2021-01-20" :max="new Date().toISOString().split('T')[0]" :id="internalId"
-        :value="modelValue" class="filter-select border-gray-300 text-gray-400"
+        type="date" :id="internalId" :value="modelValue" 
+        class="filter-select border-gray-300 text-gray-400"
         v-on:change="handleDateChange" required>
 </template>
 

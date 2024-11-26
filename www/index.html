@@ -1411,7 +1411,7 @@
             );
             //When lifetimeOrFilterValues changes, keep dLifetimeOrFilterValues in sync in terms of array size
             Vue.watch(lifetimeOrFilterValues, () => { 
-                dLifetimeOrFilterValues.value = lifetimeOrFilterValues.value.map((orFilter, index) => {return(dLifetimeOrFilterValues.value[index] == undefined ? [] : dLifetimeOrFilterValues.value[index].slice(0, orFilter.length))});
+                dLifetimeOrFilterValues.value = lifetimeOrFilterValues.value.map((orFilter, index) => {return(dLifetimeOrFilterValues.value[index] == undefined ? [] : dLifetimeOrFilterValues.value[index].slice(0, orFilter?.length ?? 0))});
               }, { deep: true }
             );
 
@@ -2337,6 +2337,9 @@
                   condCountRef().value += 1;
                   set = true;
                 }
+              }
+              if (maxIndex == 0) {
+                maxIndex = topLevRef().value.filter(filter => filter != null && filter != "").length;
               }
 
               if(!set) condCountRef().value = maxIndex + 1;

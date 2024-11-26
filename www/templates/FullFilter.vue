@@ -46,6 +46,7 @@
                     @remove-and-shift="removeAndShift"></filter-clear-button>
                 <!-- Show a warning div if the filter is incomplete -->
                 <span v-if="isFilterIncomplete(index, null)" class="filter-incomplete">(!) Incomplete, will not apply</span>
+                <span v-else-if="isDateFilterBadFormat(index, null)" class="filter-warning">(!) Date should be between {{ getDateRange() }}</span>
             </div>
             <div v-if="modVals.orCount[index] != null && modVals.orCount[index] > 0"
                 class="ml-2rem filter-container focus-within:z-10"
@@ -80,16 +81,16 @@
                     @open-modal="openTargetFilterMenu"></filter-modal-input>
 
                 <!-- Drop Selectors - opens a custom modal -->
-                <filter-modal-input v-if="!isLifetime && filterLevelIf(index, orIndex, 'value', 'drops')" :index="index"
+                <filter-modal-input v-if="filterLevelIf(index, orIndex, 'value', 'drops')" :index="index"
                     :or-index="orIndex" :model-value="modVals.orDValue[index][orIndex]"
                     :internal-id="getIdHeader() + 'value-' + index + '-' + orIndex"
                     @open-modal="openDropFilterMenu"></filter-modal-input>
 
                 <!-- Value options - Launch/Return Date Selectors - Min: 20 January 2021 - Max: Today-->
-                <filter-date-input v-if="!isLifetime && filterLevelIf(index, orIndex, 'value', 'date')" :index="index"
+                <filter-date-input v-if="filterLevelIf(index, orIndex, 'value', 'date')" :index="index"
                     :or-index="orIndex" :model-value="modVals.orValue[index][orIndex]"
-                    :internal-id="getIdHeader() + 'value-' + index + '-' + orIndex" @change-filter-value="changeFilterValue"
-                    @handle-filter-change="handleOrFilterChange"></filter-date-input>
+                    :internal-id="getIdHeader() + 'value-' + index + '-' + orIndex"
+                    @change-filter-value="changeFilterValue" @handle-filter-change="handleOrFilterChange"></filter-date-input>
 
                 <!-- Clear button-->
                 <filter-clear-button :index="index" :or-index="orIndex" :internal-id="getIdHeader() + 'clear-' + index + '-' + orIndex"
@@ -97,6 +98,7 @@
 
                 <!-- Show a warning if the filter is incomplete -->
                 <span v-if="isFilterIncomplete(index, orIndex)" class="filter-incomplete">(!) Incomplete, will not apply</span>
+                <span v-else-if="isDateFilterBadFormat(index, orIndex)" class="filter-warning">(!) Date should be between {{ getDateRange() }}</span>
             </div>
         </div>
     </div>
@@ -234,6 +236,35 @@
                     isOr ? topLevelRef[index][orIndex] != null && (operatorRef[index][orIndex] == null || valueRef[index][orIndex] == null || ((topLevelRef[index][orIndex] == 'returnDT' || topLevelRef[index][orIndex] == 'launchDT') && valueRef[index][orIndex] == '')) :
                         topLevelRef[index] != null && (operatorRef[index] == null || valueRef[index] == null || ((topLevelRef[index] == 'returnDT' || topLevelRef[index] == 'launchDT') && valueRef[index] == ''))
                 );
+            },
+            isDateFilterBadFormat(index, orIndex) {
+                const isOr = orIndex != null;
+                const topLevelRef = isOr ? this.modVals.orTop : this.modVals.top;
+                const operatorRef = isOr ? this.modVals.orOperator : this.modVals.operator;
+                const valueRef = isOr ? this.modVals.orValue : this.modVals.value;
+
+                const topLevelRefValue = isOr ? topLevelRef[index][orIndex] : topLevelRef[index];
+                const isDateInput = topLevelRefValue == 'launchDT' || topLevelRefValue == 'returnDT';
+                if (!isDateInput) return false;
+                const operatorRefValue = isOr ? operatorRef[index][orIndex] : operatorRef[index];
+                // Operator not being set is not a bad format
+                if (operatorRefValue == null || operatorRefValue == '') return false;
+                const valueRefValue = isOr ? valueRef[index][orIndex] : valueRef[index];
+
+                // Valid date range is 2021-01-20 to tomorrow
+                const minDate = new Date('2021-01-20');
+                const maxDate = new Date();
+                maxDate.setDate(maxDate.getDate() + 1);
+                const dateValue = new Date(valueRefValue);
+
+                const returnVal = dateValue < minDate || dateValue > maxDate;
+                return returnVal;
+            },
+            getDateRange() {
+                const minDate = new Date('2021-01-20');
+                const maxDate = new Date();
+                maxDate.setDate(maxDate.getDate() + 1);
+                return minDate.toLocaleDateString() + ' and ' + maxDate.toLocaleDateString();
             },
             getTopLevelFilterOptions() {
                 const commonOptions = [
