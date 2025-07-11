@@ -88,7 +88,7 @@
             },
             afExplorerName(drop, addend) {
               return 'https://wasmegg-carpet.netlify.app/artifact-explorer/#/artifact/' + 
-                drop.name.replace('_FRAGMENT', '').toLowerCase().replace("_", "-") + '-' + (parseInt(drop.level) + parseInt(addend));
+                drop.name.replace('_FRAGMENT', '').toLowerCase().replaceAll("_", "-") + '-' + (parseInt(drop.level) + parseInt(addend));
             },
             specPath(spec, addend) {
               const fixedName = spec.name.replaceAll("_FRAGMENT", "").replaceAll("ORNATE_GUSSET", "GUSSET").replaceAll("VIAL_MARTIAN_DUST", "VIAL_OF_MARTIAN_DUST");
