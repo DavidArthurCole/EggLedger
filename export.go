@@ -15,6 +15,7 @@ import (
 	"github.com/xuri/excelize/v2"
 
 	"github.com/DavidArthurCole/EggLedger/ei"
+	"github.com/DavidArthurCole/EggLedger/utils"
 )
 
 type mission struct {
@@ -60,7 +61,7 @@ func newMission(r *ei.CompleteMissionResponse) *mission {
 	info := r.GetInfo()
 	ship := info.GetShip()
 	durationType := info.GetDurationType()
-	launchedAt := unixToTime(info.GetStartTimeDerived()).Truncate(time.Second)
+	launchedAt := utils.UnixToTime(info.GetStartTimeDerived()).Truncate(time.Second)
 	durationSeconds := info.GetDurationSeconds()
 	duration := time.Duration(durationSeconds) * time.Second
 	returnedAt := launchedAt.Add(duration)

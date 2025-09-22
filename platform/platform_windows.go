@@ -1,4 +1,4 @@
-package main
+package platform
 
 import (
 	"os/exec"
@@ -8,7 +8,7 @@ import (
 )
 
 // hide hides a file or directory using SetFileAttributes.
-func hide(path string) error {
+func Hide(path string) error {
 	u16ptr, err := windows.UTF16PtrFromString(path)
 	if err != nil {
 		return err
@@ -16,7 +16,7 @@ func hide(path string) error {
 	return windows.SetFileAttributes(u16ptr, windows.FILE_ATTRIBUTE_HIDDEN)
 }
 
-func openFolderAndSelect(path string) error {
+func OpenFolderAndSelect(path string) error {
 	abspath, err := filepath.Abs(path)
 	if err != nil {
 		return err

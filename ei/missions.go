@@ -49,6 +49,14 @@ func (d *MissionInfo) GetDurationString() string {
 	}
 }
 
+func (d *MissionInfo) GetTypeString() string {
+	if d.Type == nil || *d.Type == MissionInfo_STANDARD {
+		return "Standard"
+	} else {
+		return "Virtue"
+	}
+}
+
 func (d MissionInfo_DurationType) Display() string {
 	switch d {
 	case MissionInfo_TUTORIAL:

@@ -50,7 +50,7 @@ func InsertBackup(ctx context.Context, playerId string, timestamp float64, paylo
 	})
 }
 
-func InsertCompleteMission(ctx context.Context, playerId string, missionId string, startTimestamp float64, completePayload []byte) error {
+func InsertCompleteMission(ctx context.Context, playerId string, missionType int32, missionId string, startTimestamp float64, completePayload []byte) error {
 	action := fmt.Sprintf("insert mission %s for player %s into database", missionId, playerId)
 	compressedPayload, err := compress(completePayload)
 	if err != nil {
@@ -61,6 +61,21 @@ func InsertCompleteMission(ctx context.Context, playerId string, missionId strin
 			_, err := tx.ExecContext(ctx, `INSERT INTO
 				mission(player_id, mission_id, start_timestamp, complete_payload)
 				VALUES (?, ?, ?, ?);`, playerId, missionId, startTimestamp, compressedPayload)
+			if err != nil {
+				return err
+			}
+			return nil
+		})
+	})
+}
+
+func InsertOrUpdateCompleteMissionType(ctx context.Context, playerId string, missionId string, missionType int32) error {
+	action := fmt.Sprintf("insert or update mission type for mission %s for player %s into database", missionId, playerId)
+	return DoDBOperation(ctx, func(ctx context.Context, db *sql.DB) error {
+		return transact(ctx, action, func(tx *sql.Tx) error {
+			_, err := tx.ExecContext(ctx, `UPDATE mission
+				SET mission_type = ?
+				WHERE player_id = ? AND mission_id = ?;`, missionType, playerId, missionId)
 			if err != nil {
 				return err
 			}
@@ -183,6 +198,45 @@ func RetrievePlayerCompleteMissionIds(ctx context.Context, playerId string) ([]s
 		return nil, err
 	}
 	return missionIds, nil
+}
+
+type MissionMetadata struct {
+	MissionId      string  `json:"missionId"`
+	StartTimestamp float64 `json:"startTimestamp"`
+}
+
+func RetrievePlayerMissionsToRefreshType(ctx context.Context, playerId string) ([]MissionMetadata, error) {
+	action := fmt.Sprintf("retrieve missions to refresh for player %s from database", playerId)
+	var missions []MissionMetadata
+	err := DoDBOperation(ctx, func(ctx context.Context, db *sql.DB) error {
+		return transact(ctx, action, func(tx *sql.Tx) error {
+			// See the SQL migration files for an explanation of the timestamp cutoff used here.
+			rows, err := tx.QueryContext(ctx, `SELECT mission_id, start_timestamp 
+				FROM mission
+				WHERE player_id = ? AND start_timestamp < 1758067200 AND mission_type = -1
+				ORDER BY start_timestamp;`, playerId)
+			if err != nil {
+				return err
+			}
+			defer rows.Close()
+
+			for rows.Next() {
+				var m MissionMetadata
+				if err := rows.Scan(&m.MissionId, &m.StartTimestamp); err != nil {
+					return err
+				}
+				missions = append(missions, m)
+			}
+			if err := rows.Err(); err != nil {
+				return err
+			}
+			return nil
+		})
+	})
+	if err != nil {
+		return nil, err
+	}
+	return missions, nil
 }
 
 func transact(ctx context.Context, description string, txFunc func(*sql.Tx) error) (err error) {

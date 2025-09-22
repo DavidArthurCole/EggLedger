@@ -24,6 +24,8 @@ type DatabaseMission struct {
 	IsBuggedCap    bool                         `json:"isBuggedCap"`
 	Target         string                       `json:"target"`
 	TargetInt      int32                        `json:"targetInt"`
+	Type           *ei.MissionInfo_MissionType  `json:"missionType"`
+	TypeString     string                       `json:"missionTypeString"`
 }
 
 func getMissionInformation(ctx context.Context, playerId string, missionId string) DatabaseMission {
@@ -57,11 +59,16 @@ func compileMissionInformation(completeMissionResponse *ei.CompleteMissionRespon
 		IsDubCap:       isDubCap(completeMissionResponse),
 		IsBuggedCap:    isBuggedCap(completeMissionResponse),
 		Target:         properTargetName(info.TargetArtifact),
+		Type:           info.Type,
+		TypeString:     info.GetTypeString(),
 	}
 	if missionInst.Target == "" {
 		missionInst.TargetInt = -1
 	} else {
 		missionInst.TargetInt = int32(info.GetTargetArtifact())
+	}
+	if missionInst.Type == nil || *missionInst.Type == ei.MissionInfo_STANDARD {
+		missionInst.Type = ei.MissionInfo_STANDARD.Enum()
 	}
 
 	return missionInst

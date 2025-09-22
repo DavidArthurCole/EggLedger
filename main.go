@@ -21,6 +21,8 @@ import (
 	"github.com/DavidArthurCole/EggLedger/db"
 	"github.com/DavidArthurCole/EggLedger/ei"
 	"github.com/DavidArthurCole/EggLedger/eiafx"
+	"github.com/DavidArthurCole/EggLedger/platform"
+	"github.com/DavidArthurCole/EggLedger/utils"
 	"github.com/davidarthurcole/lorca"
 	humanize "github.com/dustin/go-humanize"
 	"github.com/pkg/errors"
@@ -107,13 +109,6 @@ type worker struct {
 	ctxlock sync.Mutex
 }
 
-type ExportedFile struct {
-	File     string `json:"file"`
-	Count    int    `json:"count"`
-	DateTime string `json:"datetime"`
-	EID      string `json:"eid"`
-}
-
 type MissionDrop struct {
 	Id           int32   `json:"id"`
 	SpecType     string  `json:"specType"`
@@ -166,18 +161,6 @@ type PossibleArtifact struct {
 	Level       int32                `json:"level"`
 	Rarity      int32                `json:"rarity"`
 	BaseQuality float64              `json:"baseQuality"`
-}
-
-type FilterValueOption struct {
-	Text       string `json:"text"`
-	Value      string `json:"value"`
-	StyleClass string `json:"styleClass"`
-	ImagePath  string `json:"imagePath"`
-	Rarity     int32  `json:"rarity"`
-}
-
-type ReleaseInfo struct {
-	Body string `json:"body"`
 }
 
 func init() {
@@ -253,7 +236,7 @@ func init() {
 	if err := os.MkdirAll(_internalDir, 0755); err != nil {
 		log.Fatal("MkdirAll err: ", err)
 	}
-	if err := hide(_internalDir); err != nil {
+	if err := platform.Hide(_internalDir); err != nil {
 		log.Errorf("error hiding internal directory: %s", err)
 	}
 
@@ -644,10 +627,170 @@ func main() {
 		return _possibleTargets
 	})
 
+	type LoadType int
+	const (
+		LoadType_Normal        LoadType = 0
+		LoadType_RetryFailed   LoadType = 1
+		LoadType_FixVirtueType LoadType = 2
+	)
+
 	w := &worker{
 		Weighted: semaphore.NewWeighted(1),
 	}
 	ui.MustBind("fetchPlayerData", func(playerId string) {
+		getSuccessMessage := func(loadType LoadType, totalMissions int) string {
+			switch loadType {
+			case LoadType_Normal:
+				return fmt.Sprintf("successfully fetched &148c32<%d missions>", totalMissions)
+			case LoadType_RetryFailed:
+				return fmt.Sprintf("successfully fetched &148c32<%d previously failed missions>", totalMissions)
+			case LoadType_FixVirtueType:
+				return fmt.Sprintf("successfully fixed virtue typing for &148c32<%d ambiguous missions>", totalMissions)
+			}
+			return ""
+		}
+
+		getFailureMessage := func(loadType LoadType, erroredMissions int, totalMissions int) string {
+			switch loadType {
+			case LoadType_Normal:
+				return fmt.Sprintf("%d of %d missions failed to fetch", erroredMissions, totalMissions)
+			case LoadType_RetryFailed:
+				return fmt.Sprintf("%d of %d mission retry fetches failed", erroredMissions, totalMissions)
+			case LoadType_FixVirtueType:
+				return fmt.Sprintf("%d of %d virtue type fixes failed", erroredMissions, totalMissions)
+			}
+			return ""
+		}
+
+		getRunMessage := func(loadType LoadType, totalMissions int) string {
+			timeEstimate := int(math.Ceil(float64(totalMissions) * float64(_requestInterval) / float64(time.Minute)))
+			switch loadType {
+			case LoadType_Normal:
+				return fmt.Sprintf("fetching &168ea6<%d missions> (this will take around &7a7a7a<%d minutes>)", totalMissions, timeEstimate)
+			case LoadType_RetryFailed:
+				return fmt.Sprintf("retrying &168ea6<%d previously failed missions> (this will take around &7a7a7a<%d minutes>)", totalMissions, timeEstimate)
+			case LoadType_FixVirtueType:
+				return fmt.Sprintf("fixing virtue typing for &168ea6<%d ambiguous missions> (this will take around &7a7a7a<%d minutes>)", totalMissions, timeEstimate)
+			}
+			return ""
+		}
+
+		var loadMissions func(ctx context.Context, missions []db.MissionMetadata, loadType LoadType) bool
+		loadMissions = func(ctx context.Context, missions []db.MissionMetadata, loadType LoadType) bool {
+			total := len(missions)
+			finished := 0
+			runMessage := getRunMessage(loadType, total)
+			if runMessage != "" {
+				pinfo(runMessage)
+			}
+
+			checkInterrupt := func() bool {
+				select {
+				case <-ctx.Done():
+					perror("interrupted")
+					updateState(AppState_INTERRUPTED)
+					return true
+				default:
+					return false
+				}
+			}
+
+			reportProgress := func(finished int) {
+				updateMissionProgress(MissionProgress{
+					Total:                   total,
+					Finished:                finished,
+					FinishedPercentage:      fmt.Sprintf("%.1f%%", float64(finished)/float64(total)*100),
+					ExpectedFinishTimestamp: utils.TimeToUnix(time.Now().Add(time.Duration(total-finished) * _requestInterval)),
+				})
+			}
+
+			if total <= 0 {
+				return true
+			}
+
+			updateState(AppState_FETCHING_MISSIONS)
+			reportProgress(finished)
+
+			finishedCh := make(chan struct{}, total)
+			go func() {
+				for range finishedCh {
+					finished++
+					reportProgress(finished)
+				}
+			}()
+
+			errored := 0
+			var wg sync.WaitGroup
+			type FailedMission struct {
+				missionId      string
+				startTimestamp float64
+			}
+			failedMissions := []FailedMission{}
+			tryFailedAgain := _storage.GetRetryFailedMissions() && loadType != LoadType_RetryFailed
+
+			fetchMission := func(missionId string, startTimestamp float64) {
+				defer wg.Done()
+
+				handleError := func(err error) {
+					perror(err)
+					errored++
+					if tryFailedAgain {
+						failedMissions = append(failedMissions, FailedMission{missionId, startTimestamp})
+					}
+				}
+
+				resp, err := fetchCompleteMissionWithContext(w.ctx, playerId, missionId, startTimestamp)
+				if err != nil {
+					handleError(fmt.Errorf("error fetching mission %s: %w", missionId, err))
+				}
+				if loadType == LoadType_FixVirtueType && err == nil {
+					err := db.InsertOrUpdateCompleteMissionType(w.ctx, playerId, missionId, int32(*resp.Info.Type))
+					if err != nil {
+						handleError(fmt.Errorf("error fixing virtue type for mission %s: %w", missionId, err))
+					}
+				}
+				finishedCh <- struct{}{}
+			}
+
+		MissionsLoop:
+			for i := range total {
+				if i != 0 {
+					select {
+					case <-ctx.Done():
+						break MissionsLoop
+					case <-time.After(_requestInterval):
+					}
+				}
+				wg.Add(1)
+				fetchMission(missions[i].MissionId, missions[i].StartTimestamp)
+			}
+			wg.Wait()
+
+			if checkInterrupt() {
+				return false
+			}
+
+			if errored == 0 {
+				pinfo(getSuccessMessage(loadType, total))
+				return true
+			}
+
+			pinfo(getFailureMessage(loadType, errored, total))
+			if !tryFailedAgain {
+				if loadType == LoadType_Normal {
+					pinfo("(performing another &7a7a7a<fetch> will fetch the failed missions most of the time)")
+				}
+				updateState(AppState_FAILED)
+				return false
+			}
+
+			loadMissionsRetry := []db.MissionMetadata{}
+			for _, fm := range failedMissions {
+				loadMissionsRetry = append(loadMissionsRetry, db.MissionMetadata{MissionId: fm.missionId, StartTimestamp: fm.startTimestamp})
+			}
+			return loadMissions(ctx, loadMissionsRetry, LoadType_RetryFailed)
+		}
+
 		go func() {
 			if !w.TryAcquire(1) {
 				perror("already fetching player data, cannot accept new work")
@@ -683,20 +826,9 @@ func main() {
 			}
 
 			backup := fc.GetBackup()
-			game := backup.GetGame()
 			nickname := backup.GetUserName()
-			//EB calculations
-			soulEggBonus := 10.0
-			prophecyEggBonus := 1.05
-			for _, er := range game.GetEpicResearch() {
-				if strings.ToLower(er.GetId()) == "soul_eggs" {
-					soulEggBonus = float64(er.GetLevel()) + 10
-				} else if strings.ToLower(er.GetId()) == "prophecy_bonus" {
-					prophecyEggBonus = (float64(er.GetLevel())+5)/100 + 1
-				}
-			}
-			eb := float64(game.GetSoulEggsD() * soulEggBonus * math.Pow(float64(prophecyEggBonus), float64(game.GetEggsOfProphecy())))
-			roleColor, roleString, ebAddendum, eb, precision := RoleFromEB(eb)
+			eb := backup.GetEarningsBonus()
+			roleColor, roleString, ebAddendum, eb, precision := utils.RoleFromEB(eb)
 			ebString := fmt.Sprintf(fmt.Sprintf("%%.%df", precision), eb) + ebAddendum
 
 			msg := fmt.Sprintf("successfully fetched backup for &7a7a7a<%s>", playerId)
@@ -710,7 +842,7 @@ func main() {
 
 			lastBackupTime := backup.GetSettings().GetLastBackupTime()
 			if lastBackupTime != 0 {
-				t := unixToTime(lastBackupTime)
+				t := utils.UnixToTime(lastBackupTime)
 				now := time.Now()
 				if t.After(now) {
 					t = now
@@ -728,6 +860,22 @@ func main() {
 				return
 			}
 
+			missionsToReFetch, err := db.RetrievePlayerMissionsToRefreshType(context.Background(), playerId)
+			if err != nil {
+				perror(err)
+				updateState(AppState_FAILED)
+				return
+			}
+			totalMissionsToReFetch := len(missionsToReFetch)
+			if totalMissionsToReFetch > 0 {
+				pinfo(fmt.Sprintf("found &168ea6<%d missions> to refresh", totalMissionsToReFetch))
+				pinfo("this will &323536<(ideally)> only happen once, right now,")
+				pinfo("as a one-time fix after the virtue update.")
+				if !loadMissions(ctx, missionsToReFetch, LoadType_FixVirtueType) {
+					return
+				}
+			}
+
 			missions := fc.GetCompletedMissions()
 			inProgressMissions := fc.GetInProgressMissions()
 			existingMissionIds, err := db.RetrievePlayerCompleteMissionIds(context.Background(), playerId)
@@ -740,123 +888,21 @@ func main() {
 			for _, id := range existingMissionIds {
 				seen[id] = struct{}{}
 			}
-			var newMissionIds []string
-			var newMissionStartTimestamps []float64
+			var missionsToLoad = []db.MissionMetadata{}
 			for _, mission := range missions {
 				id := mission.GetIdentifier()
 				if _, exists := seen[id]; !exists {
-					newMissionIds = append(newMissionIds, id)
-					newMissionStartTimestamps = append(newMissionStartTimestamps, mission.GetStartTimeDerived())
+					missionsToLoad = append(missionsToLoad, db.MissionMetadata{MissionId: id, StartTimestamp: mission.GetStartTimeDerived()})
 				}
 			}
-			pinfo(fmt.Sprintf("found &148c32<%d completed> missions, &148c32<%d in-progress> missions, &148c32<%d to fetch>",
-				len(missions), len(inProgressMissions), len(newMissionIds)))
 
-			total := len(newMissionIds)
-			finished := 0
-			if total > 0 {
-				updateState(AppState_FETCHING_MISSIONS)
-
-				reportProgress := func(finished int) {
-					updateMissionProgress(MissionProgress{
-						Total:                   total,
-						Finished:                finished,
-						FinishedPercentage:      fmt.Sprintf("%.1f%%", float64(finished)/float64(total)*100),
-						ExpectedFinishTimestamp: timeToUnix(time.Now().Add(time.Duration(total-finished) * _requestInterval)),
-					})
-				}
-
-				reportProgress(finished)
-
-				finishedCh := make(chan struct{}, total)
-				go func() {
-					for range finishedCh {
-						finished++
-						reportProgress(finished)
-					}
-				}()
-
-				errored := 0
-				var wg sync.WaitGroup
-				type FailedMission struct {
-					missionId      string
-					startTimestamp float64
-				}
-				failedMissions := []FailedMission{}
-				tryFailedAgain := _storage.GetRetryFailedMissions()
-
-			MissionsLoop:
-				for i := 0; i < total; i++ {
-					if i != 0 {
-						select {
-						case <-ctx.Done():
-							break MissionsLoop
-						case <-time.After(_requestInterval):
-						}
-					}
-					wg.Add(1)
-					go func(missionId string, startTimestamp float64) {
-						defer wg.Done()
-						_, err := fetchCompleteMissionWithContext(w.ctx, playerId, missionId, startTimestamp)
-						if err != nil {
-							perror(err)
-							errored++
-							if tryFailedAgain {
-								failedMissions = append(failedMissions, FailedMission{missionId, startTimestamp})
-							}
-						}
-						finishedCh <- struct{}{}
-					}(newMissionIds[i], newMissionStartTimestamps[i])
-				}
-				wg.Wait()
-
-				if checkInterrupt() {
-					return
-				}
-
-				if errored > 0 {
-					perror(fmt.Sprintf("%d of %d missions failed to fetch", errored, total))
-
-					if tryFailedAgain {
-						errored = 0
-						pinfo("retrying failed missions")
-
-						// Update the total to include the number of failed missions
-						total += len(failedMissions)
-
-						for _, failedMission := range failedMissions {
-							wg.Add(1)
-							go func(missionId string, startTimestamp float64) {
-								defer wg.Done()
-								_, err := fetchCompleteMissionWithContext(w.ctx, playerId, missionId, startTimestamp)
-								if err != nil {
-									perror(err)
-									errored++
-								}
-								finishedCh <- struct{}{}
-							}(failedMission.missionId, failedMission.startTimestamp)
-						}
-						wg.Wait()
-
-						if checkInterrupt() {
-							return
-						}
-
-						if errored > 0 {
-							perror(fmt.Sprintf("%d of %d mission retry fetches failed", errored, len(failedMissions)))
-							updateState(AppState_FAILED)
-							return
-						} else {
-							pinfo(fmt.Sprintf("successfully fetched &148c32<%d previously failed missions>", len(failedMissions)))
-						}
-					} else {
-						pinfo("(performing another &7a7a7a<fetch> will fetch the failed missions most of the time)")
-						updateState(AppState_FAILED)
-						return
-					}
-				} else {
-					pinfo(fmt.Sprintf("successfully fetched &148c32<%d missions>", total))
-				}
+			missionsCount := len(missionsToLoad)
+			pinfo(fmt.Sprintf(
+				"found &148c32<%d completed> missions, &148c32<%d in-progress> missions, &148c32<%d to fetch>",
+				len(missions), len(inProgressMissions), missionsCount,
+			))
+			if !loadMissions(ctx, missionsToLoad, LoadType_Normal) {
+				return
 			}
 
 			updateState(AppState_EXPORTING_DATA)
@@ -1100,7 +1146,7 @@ func main() {
 
 	ui.MustBind("openFileInFolder", func(file string) {
 		path := filepath.Join(_rootDir, file)
-		if err := openFolderAndSelect(path); err != nil {
+		if err := platform.OpenFolderAndSelect(path); err != nil {
 			log.Errorf("opening %s in folder: %s", path, err)
 		}
 	})
@@ -1118,12 +1164,13 @@ func main() {
 			log.Error(err)
 			return []string{"", ""}
 		}
-		if newVersion == "" {
+		switch newVersion {
+		case "":
 			log.Infof("no new version found")
 			return []string{"", ""}
-		} else if newVersion == "skip" {
+		case "skip":
 			return []string{"", ""}
-		} else {
+		default:
 			log.Infof("new version found: %s", newVersion)
 			return []string{newVersion, newReleaseNotes}
 		}
