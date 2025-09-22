@@ -11,7 +11,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-const _schemaVersion = 3
+const _schemaVersion = 4
 
 //go:embed migrations/*.sql
 var _fs embed.FS
