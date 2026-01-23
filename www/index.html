@@ -117,9 +117,26 @@
             </div>
             <hr class="mt-1rem mb-1rem w-full">
             <div class="px-2 py-2 text-sm text-gray-400 bg-darker rounded-md tabular-nums overflow-auto">
+              <span class="mr-0_5rem font-bold text-lg text-gray-400 ledger-underline">Virtue Display</span><br /> 
+              <div>
+                <span class="font-bold text-base text-gray-400">Virtue Display Type</span><br />
+                <span class="italic text-sm">How to separate virtue vs. non-virtue ships.</span>
+                <span class="opt-span">
+                  <label for="dvmDefault" class="ext-opt-label">Tab separation</label>
+                  <input id="dvmDefault" type="radio" v-model="virtueDisplayType" value="tabs" class="ext-opt-check"></input>
+                </span>
+                <span class="opt-span">
+                  <label for="dvmIv" class="ext-opt-label"></label>
+                  <input id="dvmIv" type="radio" v-model="virtueDisplayType" value="iv" class="ext-opt-check"></input>
+                </span>
+              </div>
+            </div>
+            <hr class="mt-1rem mb-1rem w-full">
+            <div class="px-2 py-2 text-sm text-gray-400 bg-darker rounded-md tabular-nums overflow-auto">
               <span class="mr-0_5rem font-bold text-lg text-gray-400 ledger-underline">Other Globals</span><br />
               <div>
                 <span class="font-bold text-base text-gray-400">Default Drop-Sort Method</span><br />
+                <span class="italic text-sm">The default method for sorting drops in Ship UIs.</span><br />
                 <span class="opt-span">
                   <label for="dvmDefault" class="ext-opt-label">Default</label>
                   <input id="dvmDefault" type="radio" v-model="defaultViewMode" value="default" class="ext-opt-check"></input>
@@ -1814,6 +1831,7 @@
               currentState.value = newState;
             };
             window.updateMissionProgress = newProgress => {
+              console.log('Updating mission progress', newProgress);
               missionProgress.value = {
                 ...newProgress,
                 eta: getEta(newProgress.expectedFinishTimestamp),

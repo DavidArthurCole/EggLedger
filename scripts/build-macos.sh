@@ -25,7 +25,7 @@ cat > $app/Contents/Info.plist <<EOF
 </dict>
 </plist>
 EOF
-cp icons/icon.icns $app/Contents/Resources/icon.icns
+cp assets/icons/icon.icns $app/Contents/Resources/icon.icns
 echo "generated $app"
 
 cd dist

@@ -47,5 +47,6 @@ func (b *Backup) GetEarningsBonus() float64 {
 	totalEoTEarned := utils.Sum(virtue.EovEarned, func(v uint32) float64 { return float64(v) })
 	eotFactor := math.Pow(1.01, totalEoTEarned)
 
-	return float64(peBonus * seBonus * eotFactor)
+	result := peBonus * seBonus * eotFactor
+	return float64(result)
 }
