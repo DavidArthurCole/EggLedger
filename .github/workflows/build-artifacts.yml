@@ -1,0 +1,79 @@
+name: Build artifacts
+
+on:
+  push:
+    branches:
+      - '**'   # any branch
+
+jobs:
+  build:
+    name: Build (${{ matrix.target }})
+    strategy:
+      matrix:
+        target: [linux, mac, mac-arm64, windows]
+        include:
+          - target: linux
+            os: ubuntu-latest
+          - target: mac
+            os: macos-latest
+          - target: mac-arm64
+            os: macos-latest
+          - target: windows
+            os: ubuntu-latest
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 'stable'
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Linux build dependencies
+        if: matrix.target == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler protoc-gen-go dos2unix
+
+      - name: Install macOS build dependencies
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew update
+          brew install protobuf protoc-gen-go dos2unix
+
+      - name: Install Windows build dependencies
+        if: matrix.target == 'windows'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler protoc-gen-go gcc-mingw-w64 dos2unix
+
+      - name: Run Linux build
+        if: matrix.target == 'linux'
+        run: make dist-linux
+
+      - name: Run macOS x86 build
+        if: matrix.target == 'mac'
+        run: make dist-mac
+
+      - name: Run macOS ARM build
+        if: matrix.target == 'mac-arm64'
+        run: make dist-mac-arm
+
+      - name: Run Windows build
+        if: matrix.target == 'windows'
+        run: make dist-windows
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: EggLedger-${{ matrix.target }}
+          path: |
+            dist/*
