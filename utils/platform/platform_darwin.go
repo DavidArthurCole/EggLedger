@@ -1,10 +1,10 @@
 package platform
 
 import (
+	"os/exec"
 	"path/filepath"
 	"strings"
 
-	"github.com/andybrewer/mack"
 	"golang.org/x/sys/unix"
 )
 
@@ -47,10 +47,15 @@ func OpenFolderAndSelect(path string) error {
 	if err != nil {
 		return err
 	}
-	_, err = mack.Tell("Finder",
-		"activate",
-		`select file (`+quoteStringForAppleScript(abspath)+` as POSIX file)`)
-	return err
+	cmd := exec.Command("osascript", "-e",
+		`tell application "Finder" to activate
+		tell application "Finder" to select file POSIX file `+quoteStringForAppleScript(abspath))
+	return cmd.Run()
+}
+
+// Open opens a file or URL using the default application on macOS.
+func Open(target string) error {
+	return exec.Command("open", target).Start()
 }
 
 // quoteStringForAppleScript quotes backslashes and double quotes.

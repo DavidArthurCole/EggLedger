@@ -10,6 +10,5 @@
   "scripts": {
     "build:css": "node scripts/build-css.js",
     "dev:css": "node scripts/dev-css.js"
-  },
-  "dependencies": {}
+  }
 }

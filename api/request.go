@@ -14,18 +14,16 @@ import (
 
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/net/context/ctxhttp"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/DavidArthurCole/EggLedger/ei"
 )
 
 const (
-	AppVersion     = "1.35"
-	AppBuild       = "111313"
-	ClientVersion  = 70
-	PlatformString = "IOS"
-	Platform       = ei.Platform_IOS
+	AppVersion    = "1.35"
+	AppBuild      = "111313"
+	ClientVersion = 70
+	Platform      = ei.Platform_IOS
 )
 
 const _apiPrefix = "https://ctx-dot-auxbrainhome.appspot.com"
@@ -73,6 +71,51 @@ func doRequestRawPayloadWithContext(ctx context.Context, endpoint string, reqMsg
 	reqDataEncoded := enc.EncodeToString(reqBin)
 	log.Infof("POST %s: %+v", apiUrl, reqMsg)
 	log.Debugf("POST %s data=%s", apiUrl, reqDataEncoded)
+
+	form := url.Values{"data": {reqDataEncoded}}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, apiUrl, strings.NewReader(form.Encode()))
+	if err != nil {
+		return nil, errors.Wrapf(err, "creating POST request for %s", apiUrl)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := _client.Do(req)
+	if err != nil {
+		if e, ok := err.(net.Error); ok && e.Timeout() {
+			err = errors.Errorf("timeout after %s", _client.Timeout.String())
+		} else if errors.Is(err, context.Canceled) {
+			err = errors.New("interrupted")
+		}
+		return nil, errors.Wrapf(err, "POST %s", apiUrl)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, errors.Wrapf(err, "POST %s", apiUrl)
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, errors.Errorf("POST %s: HTTP %d: %#v", apiUrl, resp.StatusCode, string(body))
+	}
+
+	decoded := make([]byte, base64.StdEncoding.DecodedLen(len(body)))
+	n, err := base64.StdEncoding.Decode(decoded, body)
+	if err != nil {
+		return nil, errors.Wrapf(err, "POST %s: %#v: base64 decode error", apiUrl, string(body))
+	}
+	return decoded[:n], nil
+}
+
+/*func doRequestRawPayloadWithContext(ctx context.Context, endpoint string, reqMsg proto.Message) ([]byte, error) {
+	apiUrl := _apiPrefix + endpoint
+	reqBin, err := proto.Marshal(reqMsg)
+	if err != nil {
+		return nil, errors.Wrapf(err, "marshaling payload %+v for %s", reqMsg, apiUrl)
+	}
+	enc := base64.StdEncoding
+	reqDataEncoded := enc.EncodeToString(reqBin)
+	log.Infof("POST %s: %+v", apiUrl, reqMsg)
+	log.Debugf("POST %s data=%s", apiUrl, reqDataEncoded)
 	resp, err := ctxhttp.PostForm(ctx, _client, apiUrl, url.Values{"data": {reqDataEncoded}})
 	if err != nil {
 		if e, ok := err.(net.Error); ok && e.Timeout() {
@@ -96,7 +139,7 @@ func doRequestRawPayloadWithContext(ctx context.Context, endpoint string, reqMsg
 		return nil, errors.Wrapf(err, "POST %s: %#v: base64 decode error", apiUrl, string(body))
 	}
 	return buf[:n], nil
-}
+}*/
 
 func doRequestWithContext(ctx context.Context, endpoint string, reqMsg proto.Message, respMsg proto.Message, authenticated bool) error {
 	apiUrl := _apiPrefix + endpoint
@@ -145,7 +188,7 @@ func NewBasicRequestInfo(userId string) *ei.BasicRequestInfo {
 		ClientVersion: u32ptr(ClientVersion),
 		Version:       sptr(AppVersion),
 		Build:         sptr(AppBuild),
-		Platform:      sptr(PlatformString),
+		Platform:      sptr(Platform.String()),
 	}
 }
 

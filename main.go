@@ -28,7 +28,6 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/writer"
-	"github.com/skratchdot/open-golang/open"
 	"golang.org/x/sync/semaphore"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
@@ -1084,7 +1083,7 @@ func main() {
 
 	ui.MustBind("openFile", func(file string) {
 		path := filepath.Join(_rootDir, file)
-		if err := open.Start(path); err != nil {
+		if err := platform.Open(path); err != nil {
 			log.Errorf("opening %s: %s", path, err)
 		}
 	})
@@ -1097,7 +1096,7 @@ func main() {
 	})
 
 	ui.MustBind("openURL", func(url string) {
-		if err := open.Start(url); err != nil {
+		if err := platform.Open(url); err != nil {
 			log.Errorf("opening %s: %s", url, err)
 		}
 	})

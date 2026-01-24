@@ -1,7 +1,6 @@
 package platform
 
 import (
-	"os/exec"
 	"path/filepath"
 
 	"golang.org/x/sys/windows"
@@ -17,10 +16,20 @@ func Hide(path string) error {
 }
 
 func OpenFolderAndSelect(path string) error {
-	abspath, err := filepath.Abs(path)
+	abspath, _ := filepath.Abs(path)
+	verb, _ := windows.UTF16PtrFromString("open")
+	lpFile, _ := windows.UTF16PtrFromString("explorer.exe")
+	lpParameters, _ := windows.UTF16PtrFromString("/select," + abspath)
+	return windows.ShellExecute(0, verb, lpFile, lpParameters, nil, windows.SW_SHOW)
+}
+
+// Open opens a file or URL in the default application on Windows.
+func Open(target string) error {
+	abspath, err := filepath.Abs(target)
 	if err != nil {
 		return err
 	}
-	cmd := exec.Command("explorer.exe", "/select,", abspath)
-	return cmd.Start()
+	verb, _ := windows.UTF16PtrFromString("open")
+	lpFile, _ := windows.UTF16PtrFromString(abspath)
+	return windows.ShellExecute(0, verb, lpFile, nil, nil, windows.SW_SHOW)
 }

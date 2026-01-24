@@ -3,9 +3,8 @@
 package platform
 
 import (
+	"os/exec"
 	"path/filepath"
-
-	"github.com/skratchdot/open-golang/open"
 )
 
 // Hide is a noop on Linux. I don't think there's a unified way to hide files
@@ -17,5 +16,9 @@ func Hide(path string) error {
 // OpenFolderAndSelect opens the folder, since file selection depends on the
 // file explorer and can't be implemented in the general case.
 func OpenFolderAndSelect(path string) error {
-	return open.Start(filepath.Dir(path))
+	return exec.Command("xdg-open", filepath.Dir(path)).Start()
+}
+
+func Open(target string) error {
+	return exec.Command("xdg-open", target).Start()
 }
