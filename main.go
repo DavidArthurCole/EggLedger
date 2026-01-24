@@ -1109,12 +1109,13 @@ func main() {
 			log.Error(err)
 			return []string{"", ""}
 		}
-		if newVersion == "" {
+		switch newVersion {
+		case "":
 			log.Infof("no new version found")
 			return []string{"", ""}
-		} else if newVersion == "skip" {
+		case "skip":
 			return []string{"", ""}
-		} else {
+		default:
 			log.Infof("new version found: %s", newVersion)
 			return []string{newVersion, newReleaseNotes}
 		}
