@@ -3,11 +3,11 @@ name: Build artifacts
 on:
   push:
     branches:
-      - '**'   # any branch
+      - '**'
 
 jobs:
   build:
-    name: Build (${{ matrix.target }})
+    name: Build
     strategy:
       matrix:
         target: [linux, mac, mac-arm64, windows]
@@ -53,7 +53,7 @@ jobs:
         if: matrix.target == 'windows'
         run: |
           sudo apt-get update
-          sudo apt-get install -y protobuf-compiler protoc-gen-go gcc-mingw-w64 dos2unix
+          sudo apt-get install -y protobuf-compiler zip protoc-gen-go gcc-mingw-w64 dos2unix
 
       - name: Run Linux build
         if: matrix.target == 'linux'

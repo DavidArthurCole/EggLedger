@@ -1,6 +1,6 @@
-const fs = require('fs');
-const crypto = require('crypto');
-const execSync = require('child_process').execSync;
+const fs = require('node:fs');
+const crypto = require('node:crypto');
+const execSync = require('node:child_process').execSync;
 
 const configPath = 'tailwind.config.js';
 const configHashPath = 'tailwind.config.hash';
