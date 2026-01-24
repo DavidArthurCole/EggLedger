@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/xuri/excelize/v2"
+	"github.com/tealeg/xlsx"
 
 	"github.com/DavidArthurCole/EggLedger/ei"
 	"github.com/DavidArthurCole/EggLedger/utils"
@@ -187,67 +187,39 @@ func exportMissionsToXlsx(missions []*mission, path string) error {
 		}
 	}
 
-	f := excelize.NewFile()
-	f.SetDefaultFont("Consolas")
-
-	datetimeStyle, err := f.NewStyle(&excelize.Style{CustomNumFmt: sptr("yyyy-mm-dd hh:MM:ss")})
-	if err != nil {
-		return wrap(err)
-	}
-	durationStyle, err := f.NewStyle(&excelize.Style{CustomNumFmt: sptr("d\\dh\\hm\\m")})
+	file := xlsx.NewFile()
+	sheet, err := file.AddSheet("Sheet1")
 	if err != nil {
 		return wrap(err)
 	}
 
-	sw, err := f.NewStreamWriter("Sheet1")
-	if err != nil {
-		return wrap(err)
-	}
-	// Width of each column is set to max number of characters plus 5.
-	colWidths := []float64{56, 25, 13, 8, 24, 24, 13, 8}
-	for i := 1; i <= maxArtifactCount; i++ {
-		colWidths = append(colWidths, float64(maxArtifactNameLength+5))
-	}
-	for i, width := range colWidths {
-		if err := sw.SetColWidth(i+1, i+1, width); err != nil {
-			return wrap(err)
-		}
-	}
-
-	header := []interface{}{"ID", "Ship", "Type", "Level", "Launched at", "Returned at", "Duration", "Capacity", "Target"}
+	header := []string{"ID", "Ship", "Type", "Level", "Launched at", "Returned at", "Duration", "Capacity", "Target"}
 	for i := 1; i <= maxArtifactCount; i++ {
 		header = append(header, fmt.Sprintf("Artifact %d", i))
 	}
-	if err = sw.SetRow("A1", header); err != nil {
-		return wrap(err)
+	headerRow := sheet.AddRow()
+	for _, h := range header {
+		cell := headerRow.AddCell()
+		cell.Value = h
 	}
-	rowId := 1
+
 	for _, m := range missions {
-		rowId++
-		row := []interface{}{
-			m.Id,
-			m.ShipName,
-			m.DurationTypeName,
-			m.Level,
-			&excelize.Cell{Value: m.LaunchedAt, StyleID: datetimeStyle},
-			&excelize.Cell{Value: m.ReturnedAt, StyleID: datetimeStyle},
-			&excelize.Cell{Value: m.DurationDays, StyleID: durationStyle},
-			m.Capacity,
-			GetNamedTarget(&m.TargetArtifact),
-		}
+		row := sheet.AddRow()
+		row.AddCell().Value = m.Id
+		row.AddCell().Value = m.ShipName
+		row.AddCell().Value = m.DurationTypeName
+		row.AddCell().SetInt(int(m.Level))
+		cell := row.AddCell()
+		cell.SetDateTime(m.LaunchedAt)
+		cell = row.AddCell()
+		cell.SetDateTime(m.ReturnedAt)
+		cell = row.AddCell()
+		cell.SetFloatWithFormat(m.DurationDays, "0.00")
+		row.AddCell().SetInt(int(m.Capacity))
+		row.AddCell().Value = GetNamedTarget(&m.TargetArtifact)
 		for _, name := range m.ArtifactNames {
-			row = append(row, name)
+			row.AddCell().Value = name
 		}
-		cell, err := excelize.CoordinatesToCellName(1, rowId)
-		if err != nil {
-			return wrap(err)
-		}
-		if err := sw.SetRow(cell, row); err != nil {
-			return wrap(err)
-		}
-	}
-	if err := sw.Flush(); err != nil {
-		return wrap(err)
 	}
 
 	temp, err := os.CreateTemp(filepath.Dir(path), tempfilePattern(path))
@@ -258,10 +230,7 @@ func exportMissionsToXlsx(missions []*mission, path string) error {
 		return wrap(err)
 	}
 	_ = os.Chmod(temp.Name(), 0644)
-	if err := f.SaveAs(temp.Name()); err != nil {
-		return wrap(err)
-	}
-	if err := f.Close(); err != nil {
+	if err := file.Save(temp.Name()); err != nil {
 		return wrap(err)
 	}
 
