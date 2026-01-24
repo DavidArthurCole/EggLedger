@@ -93,6 +93,4 @@ jobs:
             dist/EggLedger-mac.zip
             dist/EggLedger-mac-arm64.zip
             dist/EggLedger-linux.tar.gz
-            dist/EggLedger-windows.zip
             dist/EggLedger.exe
-
