@@ -1,13 +1,9 @@
 #!/bin/bash -eu
 bin=dist/eggledger-linux
-GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build -o $bin
+GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build -buildvcs=false -ldflags '-s -w' -o $bin
 echo "generated $bin"
 
 cd dist
-rm -rf EggLedger-linux.tar.gz EggLedger
-mkdir EggLedger
-cp eggledger-linux EggLedger/
-tar -czf EggLedger-linux.tar.gz EggLedger/
-rm -rf EggLedger
-echo "generated dist/EggLedger-linux.tar.gz"
+rm -f EggLedger-linux.tar.gz
+tar -czf EggLedger-linux.tar.gz eggledger-linux
 cd ..

@@ -4,8 +4,9 @@ version=$(<VERSION)
 echo "generating $app v${version}..."
 rm -rf $app
 mkdir -p $app/Contents/{MacOS,Resources}
+export MACOSX_DEPLOYMENT_TARGET=13.0
 GOOS=darwin GOARCH=amd64 \
-  CGO_ENABLED=1 CGO_FLAGS='-mmacosx-version-min=10.13' CGO_LDFLAGS='-mmacosx-version-min=10.13' \
+  CGO_ENABLED=1 \
   go build -o $app/Contents/MacOS/EggLedger
 cat > $app/Contents/Info.plist <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
