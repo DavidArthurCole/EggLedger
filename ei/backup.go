@@ -1,25 +1,25 @@
 package ei
 
 import (
+	"fmt"
 	"math"
 	"strings"
 
 	"github.com/DavidArthurCole/EggLedger/utils"
-	"github.com/pkg/errors"
 )
 
 func (fc *EggIncFirstContactResponse) Validate() error {
 	if fc.GetErrorCode() > 0 {
-		return errors.Errorf("/ei/first_contact: error_code %d", fc.GetErrorCode())
+		return fmt.Errorf("/ei/first_contact: error_code %d", fc.GetErrorCode())
 	}
 	if fc.Backup == nil || fc.GetBackup().Game == nil {
-		return errors.New("backup is empty")
+		return fmt.Errorf("backup is empty")
 	}
 	if fc.GetBackup().Settings == nil {
-		return errors.New("backup settings is empty")
+		return fmt.Errorf("backup settings is empty")
 	}
 	if fc.GetBackup().ArtifactsDb == nil {
-		return errors.New("backup has empty artifacts database")
+		return fmt.Errorf("backup has empty artifacts database")
 	}
 	return nil
 }
@@ -42,7 +42,7 @@ func (b *Backup) GetEarningsBonus() float64 {
 	peBonus := math.Pow(float64(prophecyEggBonus), float64(totalPE))
 
 	totalSE := float64(game.GetSoulEggsD())
-	seBonus := math.Pow(soulEggBonus, float64(totalSE))
+	seBonus := soulEggBonus * totalSE
 
 	totalEoTEarned := utils.Sum(virtue.EovEarned, func(v uint32) float64 { return float64(v) })
 	eotFactor := math.Pow(1.01, totalEoTEarned)

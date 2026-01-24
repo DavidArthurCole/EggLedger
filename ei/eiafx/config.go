@@ -2,9 +2,9 @@ package eiafx
 
 import (
 	_ "embed"
+	"fmt"
 
 	"github.com/DavidArthurCole/EggLedger/ei"
-	"github.com/pkg/errors"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -17,7 +17,7 @@ func LoadConfig() error {
 	Config = &ei.ArtifactsConfigurationResponse{}
 	err := protojson.Unmarshal(_eiafxConfigJSON, Config)
 	if err != nil {
-		return errors.Wrap(err, "error unmarshalling eiafx-config-min.json")
+		return fmt.Errorf("error unmarshalling eiafx-config-min.json: %w", err)
 	}
 	return nil
 }

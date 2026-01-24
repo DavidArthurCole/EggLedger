@@ -6,9 +6,6 @@ package ei
 import (
 	"fmt"
 	"strings"
-
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 )
 
 // GameName is in all caps. Use CasedName for cased version.
@@ -903,9 +900,18 @@ func (a *ArtifactSpec) TierName() string {
 	return "?"
 }
 
+func titleCaseWords(s string) string {
+	words := strings.Fields(s)
+	for i, w := range words {
+		if len(w) > 0 {
+			words[i] = strings.ToUpper(w[:1]) + w[1:]
+		}
+	}
+	return strings.Join(words, " ")
+}
+
 func (a *ArtifactSpec) CasedTierName() string {
-	caser := cases.Title(language.English)
-	return caser.String(strings.ToLower(a.TierName()))
+	return titleCaseWords(strings.ToLower(a.TierName()))
 }
 
 func (a *ArtifactSpec) Display() string {

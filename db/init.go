@@ -3,12 +3,12 @@ package db
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
 
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -28,19 +28,19 @@ func InitDB(path string) error {
 		parentDir := filepath.Dir(path)
 		err = os.MkdirAll(parentDir, 0o755)
 		if err != nil {
-			err = errors.Wrapf(err, "failed to create parent directory %#v for database", parentDir)
+			err = fmt.Errorf("failed to create parent directory %#v for database: %w", parentDir, err)
 			return
 		}
 
 		err = runMigrations(path)
 		if err != nil {
-			err = errors.Wrapf(err, "error occurred during schema migrations")
+			err = fmt.Errorf("error occurred during schema migrations: %w", err)
 			return
 		}
 
 		_db, err = sql.Open("sqlite3", path+"?_foreign_keys=on&_journal_mode=WAL&_busy_timeout=10")
 		if err != nil {
-			err = errors.Wrapf(err, "failed to open SQLite3 database %#v", path)
+			err = fmt.Errorf("failed to open SQLite3 database %#v: %w", path, err)
 			return
 		}
 

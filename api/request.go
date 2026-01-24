@@ -5,6 +5,7 @@ package api
 import (
 	"context"
 	"encoding/base64"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -65,7 +66,7 @@ func doRequestRawPayloadWithContext(ctx context.Context, endpoint string, reqMsg
 	apiUrl := _apiPrefix + endpoint
 	reqBin, err := proto.Marshal(reqMsg)
 	if err != nil {
-		return nil, errors.Wrapf(err, "marshaling payload %+v for %s", reqMsg, apiUrl)
+		return nil, fmt.Errorf("marshaling payload %#v for %s: %w", reqMsg, apiUrl, err)
 	}
 	enc := base64.StdEncoding
 	reqDataEncoded := enc.EncodeToString(reqBin)
@@ -75,71 +76,36 @@ func doRequestRawPayloadWithContext(ctx context.Context, endpoint string, reqMsg
 	form := url.Values{"data": {reqDataEncoded}}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, apiUrl, strings.NewReader(form.Encode()))
 	if err != nil {
-		return nil, errors.Wrapf(err, "creating POST request for %s", apiUrl)
+		return nil, fmt.Errorf("creating POST request for %s: %w", apiUrl, err)
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	resp, err := _client.Do(req)
 	if err != nil {
 		if e, ok := err.(net.Error); ok && e.Timeout() {
-			err = errors.Errorf("timeout after %s", _client.Timeout.String())
+			err = fmt.Errorf("timeout after %s", _client.Timeout.String())
 		} else if errors.Is(err, context.Canceled) {
-			err = errors.New("interrupted")
+			err = fmt.Errorf("interrupted")
 		}
-		return nil, errors.Wrapf(err, "POST %s", apiUrl)
+		return nil, fmt.Errorf("POST %s: %w", apiUrl, err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, errors.Wrapf(err, "POST %s", apiUrl)
+		return nil, fmt.Errorf("POST %s: %w", apiUrl, err)
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, errors.Errorf("POST %s: HTTP %d: %#v", apiUrl, resp.StatusCode, string(body))
+		return nil, fmt.Errorf("POST %s: HTTP %d: %#v", apiUrl, resp.StatusCode, string(body))
 	}
 
 	decoded := make([]byte, base64.StdEncoding.DecodedLen(len(body)))
 	n, err := base64.StdEncoding.Decode(decoded, body)
 	if err != nil {
-		return nil, errors.Wrapf(err, "POST %s: %#v: base64 decode error", apiUrl, string(body))
+		return nil, fmt.Errorf("POST %s: %#v: base64 decode error: %w", apiUrl, string(body), err)
 	}
 	return decoded[:n], nil
 }
-
-/*func doRequestRawPayloadWithContext(ctx context.Context, endpoint string, reqMsg proto.Message) ([]byte, error) {
-	apiUrl := _apiPrefix + endpoint
-	reqBin, err := proto.Marshal(reqMsg)
-	if err != nil {
-		return nil, errors.Wrapf(err, "marshaling payload %+v for %s", reqMsg, apiUrl)
-	}
-	enc := base64.StdEncoding
-	reqDataEncoded := enc.EncodeToString(reqBin)
-	log.Infof("POST %s: %+v", apiUrl, reqMsg)
-	log.Debugf("POST %s data=%s", apiUrl, reqDataEncoded)
-	resp, err := ctxhttp.PostForm(ctx, _client, apiUrl, url.Values{"data": {reqDataEncoded}})
-	if err != nil {
-		if e, ok := err.(net.Error); ok && e.Timeout() {
-			err = errors.Errorf("timeout after %s", _client.Timeout.String())
-		} else if errors.Is(err, context.Canceled) {
-			err = errors.New("interrupted")
-		}
-		return nil, errors.Wrapf(err, "POST %s", apiUrl)
-	}
-	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, errors.Wrapf(err, "POST %s", apiUrl)
-	}
-	if !(resp.StatusCode >= 200 && resp.StatusCode < 300) {
-		return nil, errors.Errorf("POST %s: HTTP %d: %#v", apiUrl, resp.StatusCode, string(body))
-	}
-	buf := make([]byte, enc.DecodedLen(len(body)))
-	n, err := enc.Decode(buf, body)
-	if err != nil {
-		return nil, errors.Wrapf(err, "POST %s: %#v: base64 decode error", apiUrl, string(body))
-	}
-	return buf[:n], nil
-}*/
 
 func doRequestWithContext(ctx context.Context, endpoint string, reqMsg proto.Message, respMsg proto.Message, authenticated bool) error {
 	apiUrl := _apiPrefix + endpoint
@@ -156,18 +122,18 @@ func DecodeAPIResponse(apiUrl string, payload []byte, msg proto.Message, authent
 		authMsg := &ei.AuthenticatedMessage{}
 		err = proto.Unmarshal(payload, authMsg)
 		if err != nil {
-			err = errors.Wrapf(err, "unmarshaling %s response as AuthenticatedMessage (%#v)", apiUrl, string(payload))
+			err = fmt.Errorf("unmarshaling %s response as AuthenticatedMessage (%#v): %w", apiUrl, string(payload), err)
 			return interpretUnmarshalError(err)
 		}
 		err = proto.Unmarshal(authMsg.Message, msg)
 		if err != nil {
-			err = errors.Wrapf(err, "unmarshaling AuthenticatedMessage payload in %s response (%#v)", apiUrl, string(payload))
+			err = fmt.Errorf("unmarshaling AuthenticatedMessage payload in %s response (%#v): %w", apiUrl, string(payload), err)
 			return interpretUnmarshalError(err)
 		}
 	} else {
 		err = proto.Unmarshal(payload, msg)
 		if err != nil {
-			err = errors.Wrapf(err, "unmarshaling %s response (%#v)", apiUrl, string(payload))
+			err = fmt.Errorf("unmarshaling %s response (%#v): %w", apiUrl, string(payload), err)
 			return interpretUnmarshalError(err)
 		}
 	}
@@ -176,7 +142,7 @@ func DecodeAPIResponse(apiUrl string, payload []byte, msg proto.Message, authent
 
 func interpretUnmarshalError(err error) error {
 	if strings.Contains(err.Error(), "contains invalid UTF-8") {
-		return errors.Wrap(err, "API returned corrupted data (invalid UTF-8 in one or more string fields); "+
+		return fmt.Errorf("API returned corrupted data (invalid UTF-8 in one or more string fields); " +
 			"this is a known issue affecting some players, and it can only be resolved when Auxbrain fixes their server bug")
 	}
 	return err

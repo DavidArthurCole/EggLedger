@@ -4,7 +4,6 @@ go 1.25.0
 
 require (
 	github.com/davidarthurcole/lorca v0.2.4
-	github.com/dustin/go-humanize v1.0.1
 	github.com/golang-migrate/migrate/v4 v4.19.1
 	github.com/hashicorp/go-version v1.8.0
 	github.com/mattn/go-sqlite3 v1.14.33
@@ -18,5 +17,3 @@ require (
 )
 
 require golang.org/x/net v0.49.0 // indirect
-
-require golang.org/x/text v0.33.0

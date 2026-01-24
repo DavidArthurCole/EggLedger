@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/DavidArthurCole/EggLedger/api"
@@ -26,7 +25,7 @@ func dataInit() {
 func fetchFirstContactWithContext(ctx context.Context, playerId string) (*ei.EggIncFirstContactResponse, error) {
 	action := fmt.Sprintf("fetching backup for player %s", playerId)
 	wrap := func(err error) error {
-		return errors.Wrap(err, "error "+action)
+		return fmt.Errorf("error %s: %w", action, err)
 	}
 	payload, err := api.RequestFirstContactRawPayloadWithContext(ctx, playerId)
 	if err != nil {
@@ -37,7 +36,7 @@ func fetchFirstContactWithContext(ctx context.Context, playerId string) (*ei.Egg
 		return nil, wrap(err)
 	}
 	if err := fc.Validate(); err != nil {
-		return nil, errors.Wrap(wrap(err), "please double check your ID")
+		return nil, fmt.Errorf("error %s: please double check your ID: %w", action, err)
 	}
 	timestamp := fc.GetBackup().GetSettings().GetLastBackupTime()
 	if timestamp != 0 {
@@ -54,7 +53,7 @@ func fetchFirstContactWithContext(ctx context.Context, playerId string) (*ei.Egg
 func fetchCompleteMissionWithContext(ctx context.Context, playerId string, missionId string, startTimestamp float64) (*ei.CompleteMissionResponse, error) {
 	action := fmt.Sprintf("fetching mission %s for player %s", missionId, playerId)
 	wrap := func(err error) error {
-		return errors.Wrap(err, "error "+action)
+		return fmt.Errorf("error %s: %w", action, err)
 	}
 	resp, err := db.RetrieveCompleteMission(ctx, playerId, missionId)
 	if err != nil {
@@ -72,10 +71,10 @@ func fetchCompleteMissionWithContext(ctx context.Context, playerId string, missi
 		return nil, wrap(err)
 	}
 	if !resp.GetSuccess() {
-		return nil, wrap(errors.New("success is false"))
+		return nil, fmt.Errorf("error %s: success is false", action)
 	}
 	if len(resp.GetArtifacts()) == 0 {
-		return nil, wrap(errors.New("no artifact found in server response"))
+		return nil, fmt.Errorf("error %s: no artifact found in server response", action)
 	}
 	err = db.InsertCompleteMission(ctx, playerId, int32(*resp.Info.Type), missionId, startTimestamp, payload)
 	return resp, err

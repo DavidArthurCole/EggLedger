@@ -11,7 +11,6 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/tealeg/xlsx"
 
 	"github.com/DavidArthurCole/EggLedger/ei"
@@ -95,7 +94,7 @@ func newMission(r *ei.CompleteMissionResponse) *mission {
 func exportMissionsToCsv(missions []*mission, path string) error {
 	action := fmt.Sprintf("exporting missions to %s", path)
 	wrap := func(err error) error {
-		return errors.Wrap(err, "error "+action)
+		return fmt.Errorf("error %s: %w", action, err)
 	}
 
 	var maxArtifactCount int
@@ -170,7 +169,7 @@ func writeCsvToTempfile(records [][]string, dir, pattern string) (temp string, e
 func exportMissionsToXlsx(missions []*mission, path string) error {
 	action := fmt.Sprintf("exporting missions to %s", path)
 	wrap := func(err error) error {
-		return errors.Wrap(err, "error "+action)
+		return fmt.Errorf("error %s: %w", action, err)
 	}
 
 	var maxArtifactCount int
@@ -273,7 +272,7 @@ func findLastMatchingFile(directory, pattern string) (string, error) {
 // Both files can be fully read into memory; only suitable for small files.
 func cmpFiles(path1, path2 string) (bool, error) {
 	wrap := func(err error) error {
-		return errors.Wrapf(err, "error comparing files %s and %s", path1, path2)
+		return fmt.Errorf("error comparing files %s and %s: %w", path1, path2, err)
 	}
 	s1, err := os.Stat(path1)
 	if err != nil {
@@ -288,11 +287,11 @@ func cmpFiles(path1, path2 string) (bool, error) {
 	}
 	b1, err := os.ReadFile(path1)
 	if err != nil {
-		return false, wrap(err)
+		return false, fmt.Errorf("error reading file %s: %w", path1, err)
 	}
 	b2, err := os.ReadFile(path2)
 	if err != nil {
-		return false, wrap(err)
+		return false, fmt.Errorf("error reading file %s: %w", path2, err)
 	}
 	return bytes.Equal(b1, b2), nil
 }
@@ -302,7 +301,7 @@ func cmpFiles(path1, path2 string) (bool, error) {
 // source files.
 func cmpZipFiles(path1, path2 string) (bool, error) {
 	wrap := func(err error) error {
-		return errors.Wrapf(err, "error comparing zip files %s and %s", path1, path2)
+		return fmt.Errorf("error comparing zip files %s and %s: %w", path1, path2, err)
 	}
 	files1, err := readZipContent(path1)
 	if err != nil {
@@ -363,8 +362,4 @@ func tempfilePattern(f string) string {
 	f = filepath.Base(f)
 	ext := filepath.Ext(f)
 	return f[:len(f)-len(ext)] + ".*" + ext
-}
-
-func sptr(s string) *string {
-	return &s
 }

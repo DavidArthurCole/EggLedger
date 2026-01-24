@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/DavidArthurCole/EggLedger/api"
@@ -17,7 +16,7 @@ func InsertBackup(ctx context.Context, playerId string, timestamp float64, paylo
 	action := fmt.Sprintf("insert backup for player %s into database", playerId)
 	compressedPayload, err := compress(payload)
 	if err != nil {
-		return errors.Wrap(err, action)
+		return fmt.Errorf("error %s: %w", action, err)
 	}
 	return DoDBOperation(ctx, func(ctx context.Context, db *sql.DB) error {
 		return transact(ctx, action, func(tx *sql.Tx) error {
@@ -54,7 +53,7 @@ func InsertCompleteMission(ctx context.Context, playerId string, missionType int
 	action := fmt.Sprintf("insert mission %s for player %s into database", missionId, playerId)
 	compressedPayload, err := compress(completePayload)
 	if err != nil {
-		return errors.Wrap(err, action)
+		return fmt.Errorf("error %s: %w", action, err)
 	}
 	return DoDBOperation(ctx, func(ctx context.Context, db *sql.DB) error {
 		return transact(ctx, action, func(tx *sql.Tx) error {
@@ -110,11 +109,11 @@ func RetrieveCompleteMission(ctx context.Context, playerId string, missionId str
 	}
 	completePayload, err := decompress(compressedPayload)
 	if err != nil {
-		return nil, errors.Wrap(err, action)
+		return nil, fmt.Errorf("error %s: %w", action, err)
 	}
 	m, err := api.DecodeCompleteMissionPayload(completePayload)
 	if err != nil {
-		return nil, errors.Wrap(err, action)
+		return nil, fmt.Errorf("error %s: %w", action, err)
 	}
 	m.Info.StartTimeDerived = &startTimestamp
 	return m, nil
@@ -157,11 +156,11 @@ func RetrievePlayerCompleteMissions(ctx context.Context, playerId string) ([]*ei
 	for i := 0; i < count; i++ {
 		completePayload, cperr := decompress(compressedPayloads[i])
 		if cperr != nil {
-			return nil, errors.Wrap(cperr, action)
+			return nil, fmt.Errorf("error %s: %w", action, cperr)
 		}
 		m, derr := api.DecodeCompleteMissionPayload(completePayload)
 		if derr != nil {
-			return nil, errors.Wrap(derr, action)
+			return nil, fmt.Errorf("error %s: %w", action, derr)
 		}
 		m.Info.StartTimeDerived = &startTimestamps[i]
 		missions = append(missions, m)
@@ -242,7 +241,7 @@ func RetrievePlayerMissionsToRefreshType(ctx context.Context, playerId string) (
 func transact(ctx context.Context, description string, txFunc func(*sql.Tx) error) (err error) {
 	tx, err := _db.BeginTx(ctx, nil)
 	if err != nil {
-		return errors.Wrap(err, description)
+		return fmt.Errorf("error %s: %w", description, err)
 	}
 	defer func() {
 		if p := recover(); p != nil {
@@ -250,11 +249,11 @@ func transact(ctx context.Context, description string, txFunc func(*sql.Tx) erro
 			panic(p)
 		} else if err != nil {
 			_ = tx.Rollback()
-			err = errors.Wrap(err, description)
+			err = fmt.Errorf("error %s: %w", description, err)
 		} else {
 			err = tx.Commit()
 			if err != nil {
-				err = errors.Wrap(err, description)
+				err = fmt.Errorf("error %s: %w", description, err)
 			}
 		}
 	}()

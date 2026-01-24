@@ -5,7 +5,8 @@
 /www/index.css
 node_modules/
 *.hash
-/vendor/
+vendor/
+/vendor/*
 # Ignore custom-tailored files
 daveedbuild.sh
 daveedbuild.sh~

@@ -24,8 +24,9 @@ import (
 	"github.com/DavidArthurCole/EggLedger/utils"
 	"github.com/DavidArthurCole/EggLedger/utils/platform"
 	"github.com/davidarthurcole/lorca"
-	humanize "github.com/dustin/go-humanize"
-	"github.com/pkg/errors"
+
+	// humanize "github.com/dustin/go-humanize"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/writer"
 	"golang.org/x/sync/semaphore"
@@ -705,7 +706,7 @@ func main() {
 				if t.After(now) {
 					t = now
 				}
-				msg := fmt.Sprintf("backup is from &7a7a7a<%s>", humanize.Time(t))
+				msg := fmt.Sprintf("backup is from &7a7a7a<%s>", utils.HumanizeTime(t))
 				pinfo(msg)
 			} else {
 				perror("backup is from unknown time")
@@ -866,7 +867,7 @@ func main() {
 
 			exportDir := filepath.Join(_rootDir, "exports", "missions")
 			if err := os.MkdirAll(exportDir, 0755); err != nil {
-				perror(errors.Wrap(err, "failed to create export directory"))
+				perror(fmt.Errorf("failed to create export directory: %w", err))
 				updateState(AppState_FAILED)
 				return
 			}
