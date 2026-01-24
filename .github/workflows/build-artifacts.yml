@@ -14,12 +14,21 @@ jobs:
         include:
           - target: linux
             os: ubuntu-latest
+            artifacts:
+              - dist/EggLedger-linux.tar.gz
           - target: mac
             os: macos-latest
+            artifacts:
+              - dist/EggLedger-mac.zip
           - target: mac-arm64
             os: macos-latest
+            artifacts:
+              - dist/EggLedger-mac-arm64.zip
           - target: windows
             os: ubuntu-latest
+            artifacts:
+              - dist/EggLedger-windows.zip
+              - dist/EggLedger.exe
 
     runs-on: ${{ matrix.os }}
 
@@ -75,5 +84,4 @@ jobs:
         uses: christopherHX/gitea-upload-artifact@v4
         with:
           name: EggLedger-${{ matrix.target }}
-          path: |
-            dist/*
+          path: ${{ join(matrix.artifacts, '\n') }}
