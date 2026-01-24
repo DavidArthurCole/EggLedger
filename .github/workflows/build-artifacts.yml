@@ -30,6 +30,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          show-progress: false
+          persist-credentials: false
 
       - name: Setup Go
         uses: actions/setup-go@v4
@@ -71,6 +75,15 @@ jobs:
       - name: Run macOS ARM build
         if: matrix.target == 'mac-arm64'
         run: make dist-mac-arm
+
+      - name: Cache npm
+        if: matrix.target == 'windows' || matrix.target == 'linux'
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            npm-${{ runner.os }}-
 
       - name: Run Windows build
         if: matrix.target == 'windows'
