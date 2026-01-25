@@ -1,5 +1,8 @@
 name: Build artifacts
 
+# This is designed to work with my personal gitea server, but in _theory_ it should work for 
+# forks as well? Dunno.
+
 on:
   push:
     branches:
@@ -41,27 +44,21 @@ jobs:
           go-version: 'stable'
           cache: false
 
-      #- name: Setup Node
-      #  uses: actions/setup-node@v4
-      #  with:
-      #    node-version: '20'
-
       - name: Install Linux build dependencies
         if: matrix.target == 'linux'
         run: |
-          sudo apt-get update
+          sudo apt-get update -qq || true
           sudo apt-get install -y protobuf-compiler protoc-gen-go dos2unix
 
       - name: Install macOS build dependencies
         if: matrix.os == 'macos-latest'
         run: |
-          brew update
-          brew install protobuf protoc-gen-go dos2unix
+          brew install protobuf protoc-gen-go dos2unix || true
 
       - name: Install Windows build dependencies
         if: matrix.target == 'windows'
         run: |
-          sudo apt-get update
+          sudo apt-get update -qq || true
           sudo apt-get install -y protobuf-compiler zip protoc-gen-go gcc-mingw-w64 dos2unix
 
       - name: Run Linux build
@@ -76,15 +73,6 @@ jobs:
         if: matrix.target == 'mac-arm64'
         run: make dist-mac-arm
 
-      - name: Cache npm
-        if: matrix.target == 'windows' || matrix.target == 'linux'
-        uses: actions/cache@v4
-        with:
-          path: ~/.npm
-          key: npm-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            npm-${{ runner.os }}-
-
       - name: Run Windows build
         if: matrix.target == 'windows'
         run: make dist-windows
@@ -92,5 +80,5 @@ jobs:
       - name: Upload artifacts
         uses: christopherHX/gitea-upload-artifact@v4
         with:
-          name: EggLedger-${{ matrix.target }}
+          name: EggLedger
           path: ${{ matrix.artifact }}

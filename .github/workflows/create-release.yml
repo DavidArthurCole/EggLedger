@@ -23,6 +23,7 @@ jobs:
           generate_release_notes: false
     outputs:
       release_tag: ${{ github.ref_name }}
+
   build_release:
     name: Build Release
     needs: create_release
@@ -38,18 +39,20 @@ jobs:
             os: macos-latest
           - target: windows
             os: ubuntu-latest
+
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          show-progress: false
+          persist-credentials: false
       - name: Setup go
         uses: actions/setup-go@v4
         with:
           go-version: 'stable'
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+          cache: false
 
       - name: Install Linux build dependencies
         if: matrix.target == 'linux'
@@ -64,8 +67,7 @@ jobs:
       - name: Install Macos build dependencies
         if: matrix.os == 'macos-latest'
         run: |
-          brew update
-          brew install protobuf protoc-gen-go dos2unix
+          brew install protobuf protoc-gen-go dos2unix || true
       
       - name: Run Mac x86 Build
         if: matrix.target == 'mac'
@@ -78,8 +80,8 @@ jobs:
       - name: Install Windows build dependencies
         if: matrix.target == 'windows'
         run: |
-          sudo apt-get update
-          sudo apt-get install -y protobuf-compiler protoc-gen-go gcc-mingw-w64 dos2unix
+          sudo apt-get update -qq || true
+          sudo apt-get install -y protobuf-compiler zip protoc-gen-go gcc-mingw-w64 dos2unix
 
       - name: Run Windows Build
         if: matrix.target == 'windows'
