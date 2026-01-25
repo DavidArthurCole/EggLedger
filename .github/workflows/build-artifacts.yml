@@ -1,6 +1,6 @@
 name: Build artifacts
 
-# This is designed to work with my personal gitea server, but in _theory_ it should work for 
+# This is designed to work with my personal gitea server, but in _theory_ it should work for
 # forks as well? Dunno.
 
 on:
@@ -38,44 +38,9 @@ jobs:
           show-progress: false
           persist-credentials: false
 
-      - name: Setup Go
-        uses: actions/setup-go@v4
+      - uses: ./.github/actions/setup-ledger-buildspace
         with:
-          go-version: 'stable'
-          cache: false
-
-      - name: Install Linux build dependencies
-        if: matrix.target == 'linux'
-        run: |
-          sudo apt-get update -qq || true
-          sudo apt-get install -y protobuf-compiler protoc-gen-go dos2unix
-
-      - name: Install macOS build dependencies
-        if: matrix.os == 'macos-latest'
-        run: |
-          brew install protobuf protoc-gen-go dos2unix || true
-
-      - name: Install Windows build dependencies
-        if: matrix.target == 'windows'
-        run: |
-          sudo apt-get update -qq || true
-          sudo apt-get install -y protobuf-compiler zip protoc-gen-go gcc-mingw-w64 dos2unix
-
-      - name: Run Linux build
-        if: matrix.target == 'linux'
-        run: make dist-linux
-
-      - name: Run macOS x86 build
-        if: matrix.target == 'mac'
-        run: make dist-mac
-
-      - name: Run macOS ARM build
-        if: matrix.target == 'mac-arm64'
-        run: make dist-mac-arm
-
-      - name: Run Windows build
-        if: matrix.target == 'windows'
-        run: make dist-windows
+          target: ${{ matrix.target }}
 
       - name: Upload artifacts
         uses: christopherHX/gitea-upload-artifact@v4

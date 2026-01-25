@@ -48,44 +48,10 @@ jobs:
           fetch-depth: 1
           show-progress: false
           persist-credentials: false
-      - name: Setup go
-        uses: actions/setup-go@v4
+
+      - uses: ./.github/actions/setup-ledger-buildspace
         with:
-          go-version: 'stable'
-          cache: false
-
-      - name: Install Linux build dependencies
-        if: matrix.target == 'linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y protobuf-compiler protoc-gen-go dos2unix
-
-      - name: Run Linux Build
-        if: matrix.target == 'linux'
-        run: make dist-linux
-
-      - name: Install Macos build dependencies
-        if: matrix.os == 'macos-latest'
-        run: |
-          brew install protobuf protoc-gen-go dos2unix || true
-      
-      - name: Run Mac x86 Build
-        if: matrix.target == 'mac'
-        run: make dist-mac
-
-      - name: Run Mac ARM Build
-        if: matrix.target == 'mac-arm64'
-        run: make dist-mac-arm
-
-      - name: Install Windows build dependencies
-        if: matrix.target == 'windows'
-        run: |
-          sudo apt-get update -qq || true
-          sudo apt-get install -y protobuf-compiler zip protoc-gen-go gcc-mingw-w64 dos2unix
-
-      - name: Run Windows Build
-        if: matrix.target == 'windows'
-        run: make dist-windows
+          target: ${{ matrix.target }}
 
       - name: Release
         uses: softprops/action-gh-release@v2
