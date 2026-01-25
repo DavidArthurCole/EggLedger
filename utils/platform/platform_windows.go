@@ -25,11 +25,16 @@ func OpenFolderAndSelect(path string) error {
 
 // Open opens a file or URL in the default application on Windows.
 func Open(target string) error {
-	abspath, err := filepath.Abs(target)
-	if err != nil {
-		return err
-	}
 	verb, _ := windows.UTF16PtrFromString("open")
-	lpFile, _ := windows.UTF16PtrFromString(abspath)
+	var lpFile *uint16
+	if len(target) > 0 && (len(target) >= 7 && (target[:7] == "http://" || (len(target) >= 8 && target[:8] == "https://"))) {
+		lpFile, _ = windows.UTF16PtrFromString(target)
+	} else {
+		abspath, err := filepath.Abs(target)
+		if err != nil {
+			return err
+		}
+		lpFile, _ = windows.UTF16PtrFromString(abspath)
+	}
 	return windows.ShellExecute(0, verb, lpFile, nil, nil, windows.SW_SHOW)
 }
