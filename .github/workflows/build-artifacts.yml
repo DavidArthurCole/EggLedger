@@ -45,5 +45,5 @@ jobs:
       - name: Upload artifacts
         uses: christopherHX/gitea-upload-artifact@v4
         with:
-          name: EggLedger
+          name: EggLedger-${{ matrix.target }}
           path: ${{ matrix.artifact }}
