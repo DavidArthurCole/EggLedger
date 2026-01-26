@@ -4,8 +4,9 @@ version=$(<VERSION)
 echo "generating $app v${version}..."
 rm -rf $app
 mkdir -p $app/Contents/{MacOS,Resources}
-GOOS=darwin GOARCH=arm64 \
-  CGO_ENABLED=1 CGO_FLAGS='-mmacosx-version-min=13.0' CGO_LDFLAGS='-mmacosx-version-min=13.0' \
+export MACOSX_DEPLOYMENT_TARGET=13.0
+GOOS=darwin GOARCH=amd64 \
+  CGO_ENABLED=1 \
   go build -o $app/Contents/MacOS/EggLedger
 cat > $app/Contents/Info.plist <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -25,7 +26,7 @@ cat > $app/Contents/Info.plist <<EOF
 </dict>
 </plist>
 EOF
-cp icons/icon.icns $app/Contents/Resources/icon.icns
+cp assets/icons/icon.icns $app/Contents/Resources/icon.icns
 echo "generated $app"
 
 cd dist
@@ -48,7 +49,7 @@ success "Success! You can now launch EggLedger.app normally."
 promptexit
 EOF
 chmod +x EggLedger/preflight
-zip -r EggLedger-mac-arm64.zip EggLedger
+zip -r EggLedger-mac.zip EggLedger
 rm -rf EggLedger
-echo "generated dist/EggLedger-mac-arm64.zip"
+echo "generated dist/EggLedger-mac.zip"
 cd ..

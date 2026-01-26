@@ -3,12 +3,8 @@
 /exports/
 /internal/
 /www/index.css
-/ei/ei.proto.OLD
-/ei/ei.pb.go.OLD
 node_modules/
 *.hash
-
-# Ignore custom-tailored files
-daveedbuild.sh
-daveedbuild.sh~
+vendor/
+/vendor/*
 .vscode/
