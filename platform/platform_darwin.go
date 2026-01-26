@@ -1,10 +1,10 @@
-package main
+package platform
 
 import (
+	"os/exec"
 	"path/filepath"
 	"strings"
 
-	"github.com/andybrewer/mack"
 	"golang.org/x/sys/unix"
 )
 
@@ -12,8 +12,8 @@ import (
 // thus copied from $(xcrun --show-sdk-path)/usr/include/sys/stat.h.
 const UF_HIDDEN = 0x00008000
 
-// hide hides a file or directory using chflags(2).
-func hide(path string) error {
+// Hide hides a file or directory using chflags(2).
+func Hide(path string) error {
 	return unix.Chflags(path, UF_HIDDEN)
 }
 
@@ -40,17 +40,22 @@ func hide(path string) error {
 // 	C.selectFile(C.CString(path))
 // }
 
-// openFolderAndSelect selects the file in Finder using AppleScript.
+// OpenFolderAndSelect selects the file in Finder using AppleScript.
 // This will lead to a permission prompt on first use.
-func openFolderAndSelect(path string) error {
+func OpenFolderAndSelect(path string) error {
 	abspath, err := filepath.Abs(path)
 	if err != nil {
 		return err
 	}
-	_, err = mack.Tell("Finder",
-		"activate",
-		`select file (`+quoteStringForAppleScript(abspath)+` as POSIX file)`)
-	return err
+	cmd := exec.Command("osascript", "-e",
+		`tell application "Finder" to activate
+		tell application "Finder" to select file POSIX file `+quoteStringForAppleScript(abspath))
+	return cmd.Run()
+}
+
+// Open opens a file or URL using the default application on macOS.
+func Open(target string) error {
+	return exec.Command("open", target).Start()
 }
 
 // quoteStringForAppleScript quotes backslashes and double quotes.

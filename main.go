@@ -21,6 +21,7 @@ import (
 	"github.com/DavidArthurCole/EggLedger/db"
 	"github.com/DavidArthurCole/EggLedger/ei"
 	"github.com/DavidArthurCole/EggLedger/eiafx"
+	"github.com/DavidArthurCole/EggLedger/platform"
 	"github.com/davidarthurcole/lorca"
 	humanize "github.com/dustin/go-humanize"
 	"github.com/pkg/errors"
@@ -253,7 +254,7 @@ func init() {
 	if err := os.MkdirAll(_internalDir, 0755); err != nil {
 		log.Fatal("MkdirAll err: ", err)
 	}
-	if err := hide(_internalDir); err != nil {
+	if err := platform.Hide(_internalDir); err != nil {
 		log.Errorf("error hiding internal directory: %s", err)
 	}
 
@@ -1100,7 +1101,7 @@ func main() {
 
 	ui.MustBind("openFileInFolder", func(file string) {
 		path := filepath.Join(_rootDir, file)
-		if err := openFolderAndSelect(path); err != nil {
+		if err := platform.OpenFolderAndSelect(path); err != nil {
 			log.Errorf("opening %s in folder: %s", path, err)
 		}
 	})
@@ -1118,12 +1119,13 @@ func main() {
 			log.Error(err)
 			return []string{"", ""}
 		}
-		if newVersion == "" {
+		switch newVersion {
+		case "":
 			log.Infof("no new version found")
 			return []string{"", ""}
-		} else if newVersion == "skip" {
+		case "skip":
 			return []string{"", ""}
-		} else {
+		default:
 			log.Infof("new version found: %s", newVersion)
 			return []string{newVersion, newReleaseNotes}
 		}
