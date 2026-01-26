@@ -3,7 +3,6 @@ module github.com/DavidArthurCole/EggLedger
 go 1.25.0
 
 require (
-	github.com/andybrewer/mack v0.0.0-20220307193339-22e922cc18af
 	github.com/davidarthurcole/lorca v0.2.4
 	github.com/dustin/go-humanize v1.0.1
 	github.com/golang-migrate/migrate/v4 v4.17.0
@@ -13,12 +12,13 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
 	github.com/xuri/excelize/v2 v2.8.1
-	golang.org/x/net v0.49.0
 	golang.org/x/sync v0.19.0
 	golang.org/x/sys v0.40.0
 	google.golang.org/protobuf v1.33.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )
+
+require golang.org/x/net v0.49.0 // indirect
 
 require (
 	github.com/hashicorp/errwrap v1.1.0 // indirect
