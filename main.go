@@ -36,7 +36,7 @@ var (
 	//go:embed VERSION
 	_appVersion string
 
-	//go:embed www
+	//go:embed www/dist
 	_fs embed.FS
 
 	_rootDir     string
@@ -1197,9 +1197,9 @@ func main() {
 	go func() {
 		var httpfs http.FileSystem
 		if _devMode {
-			httpfs = http.Dir("www")
+			httpfs = http.Dir("www/dist")
 		} else {
-			wwwfs, err := fs.Sub(_fs, "www")
+			wwwfs, err := fs.Sub(_fs, "www/dist")
 			if err != nil {
 				log.Fatal("wwwfs err: ", err)
 			}

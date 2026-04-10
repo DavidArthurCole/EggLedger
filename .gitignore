@@ -2,6 +2,7 @@
 /exports/
 /internal/
 /www/index.css
+/www/dist/
 node_modules/
 *.hash
 vendor/
