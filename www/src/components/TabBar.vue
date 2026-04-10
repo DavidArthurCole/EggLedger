@@ -4,7 +4,7 @@
       <div
         v-for="tab in tabs"
         :key="tab"
-        class="relative -bottom-px px-4 pt-1.5 pb-1 text-sm font-medium text-gray-400 border border-darker_tab border-300 rounded-t-md"
+        class="relative -bottom-px px-3 pt-1.5 pb-1 text-sm font-medium text-gray-400 border border-darker_tab border-300 rounded-t-md whitespace-nowrap"
         :class="tab === activeTab ? 'bg-dark_tab border-b-transparent' : 'bg-darker_tab hover:bg-dark_tab_hover cursor-pointer'"
         @click="$emit('update:activeTab', tab)"
       >

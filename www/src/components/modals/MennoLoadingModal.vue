@@ -18,15 +18,39 @@
           This window will automatically close when the task has completed.
         </span>
         <hr class="mt-1rem mb-1rem w-full">
-        <img :src="'images/loading.gif'" alt="Loading..." class="xl-ico" />
+        <div v-if="progress" class="text-sm text-gray-400 tabular-nums">
+          <div class="mb-1">
+            <span>{{ formatBytes(progress.bytesRead) }}</span>
+            <span v-if="progress.totalBytes > 0"> / {{ formatBytes(progress.totalBytes) }}</span>
+            <span v-if="progress.speedBps > 0">  ({{ formatBytes(progress.speedBps) }}/s)</span>
+            <span v-if="progress.etaSeconds >= 0">  ETA {{ Math.ceil(progress.etaSeconds) }}s</span>
+          </div>
+          <div class="h-3 relative rounded-full overflow-hidden">
+            <div class="w-full h-full bg-darker absolute"></div>
+            <div
+              class="h-full absolute rounded-full bg-green-500 transition-all"
+              :style="{ width: progress.totalBytes > 0 ? (progress.bytesRead / progress.totalBytes * 100).toFixed(1) + '%' : '100%' }"
+            ></div>
+          </div>
+        </div>
+        <img v-else :src="'images/loading.gif'" alt="Loading..." class="xl-ico" />
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import type { MennoDownloadProgress } from '../../types/bridge'
+
 defineProps<{
   visible: boolean
   isAutoRefresh: boolean
+  progress: MennoDownloadProgress | null
 }>()
+
+function formatBytes(bytes: number): string {
+  if (bytes >= 1_000_000) return (bytes / 1_000_000).toFixed(1) + ' MB'
+  if (bytes >= 1_000) return (bytes / 1_000).toFixed(0) + ' KB'
+  return bytes.toFixed(0) + ' B'
+}
 </script>

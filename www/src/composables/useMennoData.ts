@@ -1,10 +1,11 @@
 import { ref, computed } from 'vue'
-import type { ConfigurationItem } from '../types/bridge'
+import type { ConfigurationItem, MennoDownloadProgress } from '../types/bridge'
 
 const secondsSinceLastUpdate = ref(Number.MAX_SAFE_INTEGER)
 const mennoDataLoaded = ref(false)
 const mennoRefreshing = ref(false)
 const mennoIsAutoRefresh = ref(false)
+const mennoProgress = ref<MennoDownloadProgress | null>(null)
 
 async function getMennoData(ship: number, duration: number, level: number, target: number): Promise<ConfigurationItem[]> {
   return globalThis.getMennoData(ship, duration, level, target)
@@ -25,7 +26,10 @@ export function useMennoData() {
   async function refresh(isAuto = false): Promise<boolean> {
     mennoIsAutoRefresh.value = isAuto
     mennoRefreshing.value = true
+    globalThis.updateMennoDownloadProgress = (p) => { mennoProgress.value = p }
     const ok = await globalThis.updateMennoData()
+    mennoProgress.value = null
+    globalThis.updateMennoDownloadProgress = () => {}
     mennoRefreshing.value = false
     mennoIsAutoRefresh.value = false
     if (ok) secondsSinceLastUpdate.value = 0
@@ -39,7 +43,7 @@ export function useMennoData() {
   }
 
   return {
-    secondsSinceLastUpdate, mennoDataLoaded, mennoRefreshing, mennoIsAutoRefresh,
+    secondsSinceLastUpdate, mennoDataLoaded, mennoRefreshing, mennoIsAutoRefresh, mennoProgress,
     lastUpdateString,
     checkRefreshNeeded, refresh, load, getMennoData,
   }

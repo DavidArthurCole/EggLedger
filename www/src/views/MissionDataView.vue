@@ -469,18 +469,7 @@
     </div>
 
     <!-- No data fallback -->
-    <div
-      v-if="!doesDataExist"
-      class="text-center mt-1rem rounded-md border border-red-700 py-2"
-    >
-      <span class="text-red-700">
-        No mission data has been loaded yet.<br />Please <b>Fetch</b> from the
-      </span>
-      <button type="button" class="btn-link" @click="activeTab = 'Ledger'">
-        <span class="text-blue-500 ledger-underline font-bold">Ledger tab</span>
-      </button>
-      <span class="text-red-700"> and then come back here.</span>
-    </div>
+    <NoDataFallback v-if="!doesDataExist" @navigate="activeTab = $event" />
   </div>
 </template>
 
@@ -500,6 +489,7 @@ import FullFilter from '../components/FullFilter.vue'
 import SearchOverSelector from '../components/SearchOverSelector.vue'
 import ShipDisplay from '../components/ShipDisplay.vue'
 import TargetDisplay from '../components/TargetDisplay.vue'
+import NoDataFallback from '../components/NoDataFallback.vue'
 
 // ───────────────────────────────────────────────────────────────────────────────
 // Shared state

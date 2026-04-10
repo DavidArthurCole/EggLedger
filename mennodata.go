@@ -95,7 +95,7 @@ func checkIfRefreshMennoDataIsNeeded() bool {
 	return (time.Since(lastMennoRefesh) > time.Hour*24*5)
 }
 
-func refreshMennoData() (err error) {
+func refreshMennoData(onProgress func(MennoDownloadProgress)) (err error) {
 
 	// Fetch the data from the Menno server.
 	resp, err := http.Get("https://eggincdatacollection.azurewebsites.net/api/GetAllData")
@@ -106,13 +106,41 @@ func refreshMennoData() (err error) {
 	}
 	defer resp.Body.Close()
 
-	// Read the data from the response body.
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		_storage.SetLastMennoDataRefreshAt(time.Time{}) // Reset time to allow for a new refresh.
-		fmt.Println(err)
-		return err
+	// Read response in chunks, emitting progress after each chunk.
+	startTime := time.Now()
+	totalBytes := resp.ContentLength // -1 if unknown
+	var buf []byte
+	chunk := make([]byte, 32*1024)
+	for {
+		n, readErr := resp.Body.Read(chunk)
+		if n > 0 {
+			buf = append(buf, chunk[:n]...)
+			elapsed := time.Since(startTime).Seconds()
+			var speedBps float64
+			if elapsed > 0 {
+				speedBps = float64(len(buf)) / elapsed
+			}
+			etaSeconds := -1.0
+			if totalBytes > 0 && speedBps > 0 {
+				etaSeconds = float64(totalBytes-int64(len(buf))) / speedBps
+			}
+			onProgress(MennoDownloadProgress{
+				BytesRead:  int64(len(buf)),
+				TotalBytes: totalBytes,
+				SpeedBps:   speedBps,
+				ETASeconds: etaSeconds,
+			})
+		}
+		if readErr == io.EOF {
+			break
+		}
+		if readErr != nil {
+			_storage.SetLastMennoDataRefreshAt(time.Time{})
+			fmt.Println(readErr)
+			return readErr
+		}
 	}
+	body := buf
 
 	// Unmarshal
 	var result interface{}

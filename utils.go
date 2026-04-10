@@ -123,6 +123,28 @@ func Addendum(oom int) string {
 	}[oom]
 }
 
+// AbbreviateFloat formats a large float64 as a short human-readable string,
+// e.g. 1234567890 -> "1.23B". Uses the same suffix table as Addendum.
+func AbbreviateFloat(v float64) string {
+	vCopy := v
+	ooms := 0
+	for vCopy >= 1e3 && ooms < 20 {
+		vCopy /= 1e3
+		ooms++
+	}
+	var precision int
+	switch {
+	case vCopy < 10.0:
+		precision = 2
+	case vCopy < 100.0:
+		precision = 1
+	default:
+		precision = 0
+	}
+	format := fmt.Sprintf("%%.%df", precision)
+	return fmt.Sprintf(format, vCopy) + Addendum(ooms)
+}
+
 func RoleFromEB(earningsBonus float64) (string, string, string, float64, int) {
 
 	earningsBonusCopy := earningsBonus

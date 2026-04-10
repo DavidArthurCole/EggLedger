@@ -17,6 +17,7 @@
     <MennoLoadingModal
       :visible="mennoRefreshing"
       :is-auto-refresh="mennoIsAutoRefresh"
+      :progress="mennoProgress"
     />
   </div>
 </template>
@@ -42,7 +43,7 @@ const {
   initAppState,
 } = useAppState()
 
-const { mennoRefreshing, mennoIsAutoRefresh, checkRefreshNeeded, refresh, load } = useMennoData()
+const { mennoRefreshing, mennoIsAutoRefresh, mennoProgress, checkRefreshNeeded, refresh, load } = useMennoData()
 
 const tabList = ['Ledger', 'Mission Data', 'Lifetime Data', 'Settings', 'About']
 const mounted = ref(false)

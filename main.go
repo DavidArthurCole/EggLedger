@@ -97,8 +97,18 @@ const (
 type MissionProgress struct {
 	Total                   int     `json:"total"`
 	Finished                int     `json:"finished"`
+	Failed                  int     `json:"failed"`
+	Retried                 int     `json:"retried"`
 	FinishedPercentage      string  `json:"finishedPercentage"`
 	ExpectedFinishTimestamp float64 `json:"expectedFinishTimestamp"`
+	CurrentMission          string  `json:"currentMission"`
+}
+
+type MennoDownloadProgress struct {
+	BytesRead  int64   `json:"bytesRead"`
+	TotalBytes int64   `json:"totalBytes"`
+	SpeedBps   float64 `json:"speedBps"`
+	ETASeconds float64 `json:"etaSeconds"`
 }
 
 type worker struct {
@@ -496,6 +506,14 @@ func main() {
 		}
 		ui.Eval(fmt.Sprintf("window.updateMissionProgress(%s)", encoded))
 	}
+	updateMennoDownloadProgress := func(progress MennoDownloadProgress) {
+		encoded, err := json.Marshal(progress)
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		ui.Eval(fmt.Sprintf("window.updateMennoDownloadProgress(%s)", encoded))
+	}
 	updateExportedFiles := func(files []string) {
 		encoded, err := json.Marshal(files)
 		if err != nil {
@@ -695,6 +713,21 @@ func main() {
 			}
 			pinfo(msg)
 
+			game := backup.GetGame()
+			seSuffix := AbbreviateFloat(game.GetSoulEggsD())
+			peCount := int(game.GetEggsOfProphecy())
+			breakdownMsg := fmt.Sprintf("[img:soul_egg.png] %s SE   [img:prophecy_egg.png] %d PE", seSuffix, peCount)
+			if virtue := backup.GetVirtue(); virtue != nil {
+				totalEoT := 0
+				for _, v := range virtue.GetEovEarned() {
+					totalEoT += int(v)
+				}
+				if totalEoT > 0 {
+					breakdownMsg += fmt.Sprintf("   [img:truth_egg.png] %d EoT", totalEoT)
+				}
+			}
+			pinfo(breakdownMsg)
+
 			ebMsg := fmt.Sprintf("updated local database EB to &%s<%s>, role to &%s<%s>", roleColor, ebString, roleColor, roleString)
 			pinfo(ebMsg)
 
@@ -742,17 +775,34 @@ func main() {
 			pinfo(fmt.Sprintf("found &148c32<%d completed> missions, &148c32<%d in-progress> missions, &148c32<%d to fetch>",
 				len(missions), len(inProgressMissions), len(newMissionIds)))
 
+			// Build label lookup for progress display: identifier -> "Ship · Duration"
+			missionLabelByID := make(map[string]string)
+			for _, mission := range missions {
+				label := mission.GetShip().Name() + " · " + mission.GetDurationType().Display()
+				missionLabelByID[mission.GetIdentifier()] = label
+			}
+
 			total := len(newMissionIds)
 			finished := 0
+			failed := 0
+			retried := 0
+			currentMission := ""
+			var currentMissionMu sync.Mutex
 			if total > 0 {
 				updateState(AppState_FETCHING_MISSIONS)
 
 				reportProgress := func(finished int) {
+					currentMissionMu.Lock()
+					label := currentMission
+					currentMissionMu.Unlock()
 					updateMissionProgress(MissionProgress{
 						Total:                   total,
 						Finished:                finished,
+						Failed:                  failed,
+						Retried:                 retried,
 						FinishedPercentage:      fmt.Sprintf("%.1f%%", float64(finished)/float64(total)*100),
 						ExpectedFinishTimestamp: timeToUnix(time.Now().Add(time.Duration(total-finished) * _requestInterval)),
+						CurrentMission:          label,
 					})
 				}
 
@@ -784,6 +834,9 @@ func main() {
 						case <-time.After(_requestInterval):
 						}
 					}
+					currentMissionMu.Lock()
+					currentMission = missionLabelByID[newMissionIds[i]]
+					currentMissionMu.Unlock()
 					wg.Add(1)
 					go func(missionId string, startTimestamp float64) {
 						defer wg.Done()
@@ -791,6 +844,7 @@ func main() {
 						if err != nil {
 							perror(err)
 							errored++
+							failed++
 							if tryFailedAgain {
 								failedMissions = append(failedMissions, FailedMission{missionId, startTimestamp})
 							}
@@ -809,6 +863,7 @@ func main() {
 
 					if tryFailedAgain {
 						errored = 0
+						retried = len(failedMissions)
 						pinfo("retrying failed missions")
 
 						// Update the total to include the number of failed missions
@@ -1125,7 +1180,7 @@ func main() {
 	})
 
 	ui.MustBind("updateMennoData", func() bool {
-		err := refreshMennoData()
+		err := refreshMennoData(updateMennoDownloadProgress)
 		if err != nil {
 			return false
 		} else {

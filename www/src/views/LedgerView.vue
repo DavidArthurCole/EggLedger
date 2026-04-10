@@ -1,13 +1,14 @@
 <template>
-  <!-- Forbidden/translocated warnings -->
-  <TranslocationModal :visible="appIsTranslocated" />
-  <ForbiddenDirModal :visible="appIsInForbiddenDirectory && !appIsTranslocated" />
+  <div class="flex-1 flex flex-col overflow-hidden">
+    <!-- Forbidden/translocated warnings -->
+    <TranslocationModal :visible="appIsTranslocated" />
+    <ForbiddenDirModal :visible="appIsInForbiddenDirectory && !appIsTranslocated" />
 
-  <!-- Main ledger UI -->
-  <div
-    v-if="!appIsInForbiddenDirectory && !appIsTranslocated"
-    class="flex-1 flex flex-col w-full mx-auto px-4 space-y-3 overflow-hidden bg-darker"
-  >
+    <!-- Main ledger UI -->
+    <div
+      v-if="!appIsInForbiddenDirectory && !appIsTranslocated"
+      class="flex-1 flex flex-col w-full mx-auto px-4 space-y-3 overflow-hidden bg-darker"
+    >
     <div>
       <form
         id="ledgerForm"
@@ -74,13 +75,20 @@
       </form>
     </div>
 
-    <div class="h-14 px-2 py-1 text-xs text-gray-500 bg-darkest rounded-md tabular-nums">
+    <div class="min-h-14 px-2 py-1 text-xs text-gray-500 bg-darkest rounded-md tabular-nums">
       <template v-if="appState === AppState.FetchingSave">Fetching save...</template>
       <template v-else-if="appState === AppState.FetchingMissions">
+        <div class="text-yellow-400">Fetching missions...</div>
         <div>
-          Fetching missions...<br />
-          {{ progress?.finished ?? 0 }}/{{ progress?.total ?? 0 }}, ETA {{ etaStr }}
+          <span class="text-green-400">{{ progress?.finished ?? 0 }}</span>
+          <span class="text-gray-400"> / {{ progress?.total ?? 0 }}  ETA {{ etaStr }}</span>
         </div>
+        <div v-if="(progress?.failed ?? 0) > 0 || (progress?.retried ?? 0) > 0">
+          <span v-if="(progress?.failed ?? 0) > 0" class="text-red-500">{{ progress?.failed }} failed</span>
+          <span v-if="(progress?.failed ?? 0) > 0 && (progress?.retried ?? 0) > 0" class="text-gray-400"> · </span>
+          <span v-if="(progress?.retried ?? 0) > 0" class="text-yellow-400">{{ progress?.retried }} retried</span>
+        </div>
+        <div v-if="progress?.currentMission" class="text-gray-400 italic">{{ progress.currentMission }}</div>
         <div class="h-3 relative rounded-full overflow-hidden mt-1">
           <div class="w-full h-full bg-dark absolute"></div>
           <div
@@ -111,12 +119,25 @@
     >
       <div v-for="(message, i) in logMessages" :key="i" class="whitespace-pre">
         <span :class="message.isError ? 'text-red-700' : 'text-green-700'">{{ hhmmss(new Date()) }}|</span>
-        <template v-for="(segment, j) in extractColorSegments(message.message)" :key="j">
-          <span v-if="segment.color" :style="'color: #' + segment.color">{{ segment.text }}</span>
-          <span v-else :class="message.isError ? 'text-red-700' : ''">{{ segment.text }}</span>
+        <template v-for="(segment, j) in parseLogSegments(message.message)" :key="j">
+          <img
+            v-if="segment.type === 'image'"
+            :src="segment.src"
+            style="height: 1em; vertical-align: middle"
+            alt=""
+          />
+          <span
+            v-else-if="segment.type === 'text' && segment.color"
+            :style="'color: ' + segment.color"
+          >{{ segment.text }}</span>
+          <span
+            v-else-if="segment.type === 'text'"
+            :class="message.isError ? 'text-red-700' : ''"
+          >{{ segment.text }}</span>
         </template>
       </div>
     </div>
+  </div>
   </div>
 </template>
 
@@ -124,6 +145,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useAppState } from '../composables/useAppState'
 import { useFetch } from '../composables/useFetch'
+import { parseLogSegments } from '../composables/useLogRenderer'
 import { AppState } from '../types/bridge'
 import ForbiddenDirModal from '../components/modals/ForbiddenDirModal.vue'
 import TranslocationModal from '../components/modals/TranslocationModal.vue'
@@ -200,23 +222,6 @@ function hhmmss(date: Date): string {
     .padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`
 }
 
-interface ColorSegment {
-  text: string
-  color?: string
-}
-function extractColorSegments(content: string): ColorSegment[] {
-  const regex = /&([a-fA-F0-9]{6})<([^>]+)>/g
-  const segments: ColorSegment[] = []
-  let lastIndex = 0
-  let match: RegExpExecArray | null
-  while ((match = regex.exec(content)) !== null) {
-    if (match.index > lastIndex) segments.push({ text: content.substring(lastIndex, match.index) })
-    segments.push({ text: match[2], color: match[1] })
-    lastIndex = regex.lastIndex
-  }
-  if (lastIndex < content.length) segments.push({ text: content.substring(lastIndex) })
-  return segments
-}
 
 function getEta(finish: number): string {
   const eta = Math.round(Math.max(finish - Date.now() / 1000, 0))

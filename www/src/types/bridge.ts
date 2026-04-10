@@ -114,8 +114,22 @@ export interface ConfigurationItem {
 export interface MissionProgress {
   total: number
   finished: number
+  failed: number
+  retried: number
   finishedPercentage: string
   expectedFinishTimestamp: number
+  currentMission: string
+}
+
+export interface MennoDownloadProgress {
+  /** bytes downloaded so far */
+  bytesRead: number
+  /** total bytes; -1 if Content-Length was not provided */
+  totalBytes: number
+  /** download speed in bytes per second */
+  speedBps: number
+  /** estimated seconds remaining; -1 if totalBytes is unknown */
+  etaSeconds: number
 }
 
 export enum AppState {
@@ -196,6 +210,7 @@ declare global {
   var updateKnownAccounts: (accounts: Account[]) => void
   var updateState: (state: string) => void
   var updateMissionProgress: (progress: MissionProgress) => void
+  var updateMennoDownloadProgress: (p: MennoDownloadProgress) => void
   var updateExportedFiles: (files: string[]) => void
   var emitMessage: (message: string, isError: boolean) => void
 }
