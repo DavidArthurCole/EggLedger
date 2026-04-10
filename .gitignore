@@ -9,3 +9,6 @@ vendor/
 /vendor/*
 .vscode/
 EggLedger.exe
+EggLedger
+/build-*.ps1
+/build-*.sh
