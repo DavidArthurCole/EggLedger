@@ -684,19 +684,8 @@ func main() {
 			}
 
 			backup := fc.GetBackup()
-			game := backup.GetGame()
 			nickname := backup.GetUserName()
-			//EB calculations
-			soulEggBonus := 10.0
-			prophecyEggBonus := 1.05
-			for _, er := range game.GetEpicResearch() {
-				if strings.ToLower(er.GetId()) == "soul_eggs" {
-					soulEggBonus = float64(er.GetLevel()) + 10
-				} else if strings.ToLower(er.GetId()) == "prophecy_bonus" {
-					prophecyEggBonus = (float64(er.GetLevel())+5)/100 + 1
-				}
-			}
-			eb := float64(game.GetSoulEggsD() * soulEggBonus * math.Pow(float64(prophecyEggBonus), float64(game.GetEggsOfProphecy())))
+			eb := backup.GetEarningsBonus()
 			roleColor, roleString, ebAddendum, eb, precision := RoleFromEB(eb)
 			ebString := fmt.Sprintf(fmt.Sprintf("%%.%df", precision), eb) + ebAddendum
 

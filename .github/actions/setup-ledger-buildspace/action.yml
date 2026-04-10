@@ -33,7 +33,7 @@ runs:
       shell: bash
       run: |
         sudo apt-get update -qq || true
-        sudo apt-get install -y protobuf-compiler zip protoc-gen-go gcc-mingw-w64 dos2unix
+        sudo apt-get install -y protobuf-compiler protoc-gen-go dos2unix
 
     - name: Build
       shell: bash

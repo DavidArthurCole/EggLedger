@@ -4,10 +4,7 @@ version=$(<VERSION)
 echo "generating $app v${version}..."
 rm -rf $app
 mkdir -p $app/Contents/{MacOS,Resources}
-export MACOSX_DEPLOYMENT_TARGET=13.0
-GOOS=darwin GOARCH=arm64 \
-  CGO_ENABLED=1 \
-  go build -o $app/Contents/MacOS/EggLedger
+GOOS=darwin GOARCH=arm64 go build -o $app/Contents/MacOS/EggLedger
 cat > $app/Contents/Info.plist <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

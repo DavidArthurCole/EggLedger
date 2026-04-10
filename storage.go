@@ -52,7 +52,9 @@ func (s *AppStorage) Load() {
 	defer s.Unlock()
 	encoded, err := os.ReadFile(_storageFile)
 	if err != nil {
-		log.Errorf("error loading storage.json: %s", err)
+		if !os.IsNotExist(err) {
+			log.Errorf("error loading storage.json: %s", err)
+		}
 		return
 	}
 	if err := json.Unmarshal(encoded, &s); err != nil {

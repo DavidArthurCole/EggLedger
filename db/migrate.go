@@ -5,21 +5,21 @@ import (
 	"embed"
 
 	"github.com/golang-migrate/migrate/v4"
-	sqlite3driver "github.com/golang-migrate/migrate/v4/database/sqlite3"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
+	sqlitedriver "github.com/golang-migrate/migrate/v4/database/sqlite"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/pkg/errors"
+	_ "modernc.org/sqlite"
 )
 
-const _schemaVersion = 3
+const _schemaVersion = 4
 
 //go:embed migrations/*.sql
 var _fs embed.FS
 
 func runMigrations(dbPath string) (err error) {
-	db, err := sql.Open("sqlite3", dbPath+"?_foreign_keys=on&_journal_mode=WAL")
+	db, err := sql.Open("sqlite", dbPath+"?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)")
 	if err != nil {
-		return errors.Wrapf(err, "failed to open SQLite3 database %#v for migrations", dbPath)
+		return errors.Wrapf(err, "failed to open SQLite database %#v for migrations", dbPath)
 	}
 	defer func() {
 		closeErr := db.Close()
@@ -33,12 +33,12 @@ func runMigrations(dbPath string) (err error) {
 		err = errors.Wrap(err, "failed to initialize migrations iofs driver")
 		return
 	}
-	databaseDriver, err := sqlite3driver.WithInstance(db, &sqlite3driver.Config{})
+	databaseDriver, err := sqlitedriver.WithInstance(db, &sqlitedriver.Config{})
 	if err != nil {
-		err = errors.Wrap(err, "failed to initialize migrations sqlite3 driver")
+		err = errors.Wrap(err, "failed to initialize migrations sqlite driver")
 		return
 	}
-	m, err := migrate.NewWithInstance("iofs", sourceDriver, "sqlite3", databaseDriver)
+	m, err := migrate.NewWithInstance("iofs", sourceDriver, "sqlite", databaseDriver)
 	if err != nil {
 		err = errors.Wrap(err, "failed to initialize schema migrator")
 		return

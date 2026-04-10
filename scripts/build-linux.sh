@@ -1,6 +1,6 @@
 #!/bin/bash -eu
 bin=dist/eggledger-linux
-GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build -buildvcs=false -ldflags '-s -w' -o $bin
+GOOS=linux GOARCH=amd64 go build -buildvcs=false -ldflags '-s -w' -o $bin
 echo "generated $bin"
 
 cd dist

@@ -19,6 +19,8 @@ import (
 
 type mission struct {
 	Id               string
+	Type             ei.MissionInfo_MissionType
+	TypeName         string
 	Ship             ei.MissionInfo_Spaceship
 	ShipName         string
 	DurationType     ei.MissionInfo_DurationType
@@ -73,6 +75,8 @@ func newMission(r *ei.CompleteMissionResponse) *mission {
 	}
 	return &mission{
 		Id:               info.GetIdentifier(),
+		Type:             info.GetType(),
+		TypeName:         info.GetType().Display(),
 		Ship:             ship,
 		ShipName:         ship.Name(),
 		DurationType:     durationType,
@@ -104,7 +108,7 @@ func exportMissionsToCsv(missions []*mission, path string) error {
 			maxArtifactCount = count
 		}
 	}
-	header := []string{"ID", "Ship", "Type", "Level", "Launched at", "Returned at", "Duration days", "Capacity", "Target"}
+	header := []string{"ID", "Type", "Ship", "Duration Type", "Level", "Launched at", "Returned at", "Duration days", "Capacity", "Target"}
 	for i := 1; i <= maxArtifactCount; i++ {
 		header = append(header, fmt.Sprintf("Artifact %d", i))
 	}
@@ -112,6 +116,7 @@ func exportMissionsToCsv(missions []*mission, path string) error {
 	for _, m := range missions {
 		record := []string{
 			m.Id,
+			m.TypeName,
 			m.ShipName,
 			m.DurationTypeName,
 			fmt.Sprint(m.Level),
@@ -213,7 +218,7 @@ func exportMissionsToXlsx(missions []*mission, path string) error {
 		}
 	}
 
-	header := []interface{}{"ID", "Ship", "Type", "Level", "Launched at", "Returned at", "Duration", "Capacity", "Target"}
+	header := []any{"ID", "Type", "Ship", "Duration Type", "Level", "Launched at", "Returned at", "Duration days", "Capacity", "Target"}
 	for i := 1; i <= maxArtifactCount; i++ {
 		header = append(header, fmt.Sprintf("Artifact %d", i))
 	}
@@ -223,8 +228,9 @@ func exportMissionsToXlsx(missions []*mission, path string) error {
 	rowId := 1
 	for _, m := range missions {
 		rowId++
-		row := []interface{}{
+		row := []any{
 			m.Id,
+			m.TypeName,
 			m.ShipName,
 			m.DurationTypeName,
 			m.Level,

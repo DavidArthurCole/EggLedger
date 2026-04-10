@@ -1,7 +1,10 @@
-.PHONY: build css protobuf dev-app dev-css dist
+.PHONY: check build css protobuf dev-app dev-css dist
+
+check:
+	bash scripts/check-deps.sh
 
 build:
-	go build .
+	go build -o dist/EggLedger .
 
 init:
 	npm ci
@@ -13,7 +16,7 @@ protobuf:
 	protoc --proto_path=. --go_out=paths=source_relative:. ei/ei.proto
 
 dev-app: build
-	echo EggLedger | DEV_MODE=1 entr -r ./EggLedger
+	echo EggLedger | DEV_MODE=1 entr -r ./dist/EggLedger
 
 dev-css:
 	npm run dev:css

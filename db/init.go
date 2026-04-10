@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
@@ -38,9 +38,9 @@ func InitDB(path string) error {
 			return
 		}
 
-		_db, err = sql.Open("sqlite3", path+"?_foreign_keys=on&_journal_mode=WAL&_busy_timeout=10")
+		_db, err = sql.Open("sqlite", path+"?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=busy_timeout(10000)")
 		if err != nil {
-			err = errors.Wrapf(err, "failed to open SQLite3 database %#v", path)
+			err = errors.Wrapf(err, "failed to open SQLite database %#v", path)
 			return
 		}
 
