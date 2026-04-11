@@ -8,6 +8,15 @@
     <LifetimeDataView v-show="activeTab === 'Lifetime Data'" />
     <AboutView v-show="activeTab === 'About'" />
 
+    <footer class="flex-shrink-0 text-center text-sm text-gray-500">
+      <a v-external-link href="https://github.com/DavidArthurCole/EggLedger" target="_blank" class="url-link">EggLedger</a>
+      v{{ appVersion }} by @<a v-external-link href="https://github.com/fanaticscripter" target="_blank" class="url-link">mk2</a>
+      &amp; @<a v-external-link href="https://github.com/DavidArthurCole" target="_blank" class="url-link">DavidArthurCole</a>
+      <span v-if="appHasUpdate" class="text-red-700">
+        (<button class="text-red-700 hover:text-red-800 ledger-underline" @click="updateModalDismissed = false">New version available!</button>)
+      </span>
+    </footer>
+
     <UpdateModal
       :visible="!!appHasUpdate && !updateModalDismissed"
       :release-tag="appHasUpdate"
@@ -40,6 +49,7 @@ const {
   activeTab,
   appHasUpdate,
   appReleaseNotes,
+  appVersion,
   initAppState,
 } = useAppState()
 

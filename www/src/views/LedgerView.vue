@@ -123,7 +123,7 @@
           <img
             v-if="segment.type === 'image'"
             :src="segment.src"
-            style="height: 1em; vertical-align: middle"
+            style="display: inline; height: 1em; vertical-align: middle"
             alt=""
           />
           <span

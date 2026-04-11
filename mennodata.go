@@ -38,9 +38,6 @@ type IdNamePair struct {
 	Name string `json:"name"`
 }
 
-const _mennoDateFormat = "2006-01-02-15-04-05"
-const _mennoFileFormat = "menno-data-%s.json"
-
 func loadLatestMennoData() (data MennoData, err error) {
 	_storage.Lock()
 	latestRefresh := _storage.LastMennoDataRefreshAt
@@ -52,7 +49,7 @@ func loadLatestMennoData() (data MennoData, err error) {
 	}
 
 	// Get the file name for the latest data.
-	filename := fmt.Sprintf(_mennoFileFormat, latestRefresh.Format(_mennoDateFormat))
+	filename := "menno-data.json"
 	filePath := filepath.Join(_internalDir, filename)
 
 	returnData := []ConfigurationItem{}
@@ -155,9 +152,9 @@ func refreshMennoData(onProgress func(MennoDownloadProgress)) (err error) {
 	oldDataTime := _storage.LastMennoDataRefreshAt
 	_storage.Unlock()
 
-	// Save the JSON to a file with a date-time stamp.
+	// Save the JSON to a temp new file.
 	newTime := time.Now()
-	filename := fmt.Sprintf(_mennoFileFormat, newTime.Format(_mennoDateFormat))
+	filename := "menno-data-new.json"
 	filePath := filepath.Join(_internalDir, filename)
 
 	err = os.WriteFile(filePath, body, 0644)
@@ -172,12 +169,19 @@ func refreshMennoData(onProgress func(MennoDownloadProgress)) (err error) {
 
 	//Remove old file - as long as it's not the default time (0001-01-01-00-00-00)
 	if !oldDataTime.IsZero() {
-		oldFileName := fmt.Sprintf(_mennoFileFormat, oldDataTime.Format(_mennoDateFormat))
+		oldFileName := "menno-data.json"
 		oldFilePath := filepath.Join(_internalDir, oldFileName)
 		err = os.Remove(oldFilePath)
 		if err != nil {
 			fmt.Println(err)
 		}
+	}
+
+	// Rename new file to the standard name.
+	err = os.Rename(filePath, filepath.Join(_internalDir, "menno-data.json"))
+	if err != nil {
+		fmt.Println(err)
+		return err
 	}
 
 	// Return nil if everything went well.

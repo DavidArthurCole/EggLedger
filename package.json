@@ -20,8 +20,6 @@
     "build": "vite build",
     "build:css": "node scripts/build-css.js",
     "dev": "vite build --watch",
-    "setup-mac": "node scripts/setup-mac.js",
-    "setup-windows": "node scripts/setup-windows.js",
     "lint": "eslint www/src",
     "protobuf": "protoc --proto_path=. --go_out=paths=source_relative:. ei/ei.proto",
     "typecheck": "vue-tsc --noEmit"

@@ -170,7 +170,7 @@
       >
         <div
           v-if="!filterWarningRead && !hideFilterWarning"
-          class="text-red-700 border border-red-700 rounded-md mb-1 mt-1 py-2 px-4 max-w-50vw"
+          class="text-red-700 border border-red-700 rounded-md mb-1 mt-1 py-2 px-4"
         >
           <span class="font-bold ledger-underline mb-0_25rem">Warning:</span><br />
           The filter feature is experimental, and may not work as expected (especially with complicated combinations).

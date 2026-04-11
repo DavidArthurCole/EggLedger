@@ -716,16 +716,17 @@ func main() {
 			game := backup.GetGame()
 			seSuffix := AbbreviateFloat(game.GetSoulEggsD())
 			peCount := int(game.GetEggsOfProphecy())
-			breakdownMsg := fmt.Sprintf("[img:soul_egg.png] %s SE   [img:prophecy_egg.png] %d PE", seSuffix, peCount)
+			breakdownMsg := ""
 			if virtue := backup.GetVirtue(); virtue != nil {
 				totalEoT := 0
 				for _, v := range virtue.GetEovEarned() {
 					totalEoT += int(v)
 				}
 				if totalEoT > 0 {
-					breakdownMsg += fmt.Sprintf("   [img:truth_egg.png] %d EoT", totalEoT)
+					breakdownMsg += fmt.Sprintf("  [img:truth_egg.png] &c831ff<%d EoT>", totalEoT)
 				}
 			}
+			breakdownMsg += fmt.Sprintf("  [img:soul_egg.png] &a855f7<%s SE>  [img:prophecy_egg.png] &eab308<%d PE>", seSuffix, peCount)
 			pinfo(breakdownMsg)
 
 			ebMsg := fmt.Sprintf("updated local database EB to &%s<%s>, role to &%s<%s>", roleColor, ebString, roleColor, roleString)

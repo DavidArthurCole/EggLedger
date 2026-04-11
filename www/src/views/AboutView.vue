@@ -221,35 +221,8 @@
       <hr />
     </div>
 
-    <footer class="text-center text-sm text-gray-500 mt-4">
-      <a
-        v-external-link
-        href="https://github.com/DavidArthurCole/EggLedger"
-        target="_blank"
-        class="url-link"
-      >EggLedger</a>
-      v{{ appVersion }} by @<a
-        v-external-link
-        href="https://github.com/fanaticscripter"
-        target="_blank"
-        class="url-link"
-      >mk2</a> &amp; @<a
-        v-external-link
-        href="https://github.com/DavidArthurCole"
-        target="_blank"
-        class="url-link"
-      >DavidArthurCole</a>
-      <span v-if="appHasUpdate !== ''" class="text-red-700">
-        (<button
-          class="text-red-700 hover:text-red-800 ledger-underline"
-        >New version available!</button>)
-      </span>
-    </footer>
   </div>
 </template>
 
 <script setup lang="ts">
-import { useAppState } from '../composables/useAppState'
-
-const { appVersion, appHasUpdate } = useAppState()
 </script>

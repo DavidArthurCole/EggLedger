@@ -211,7 +211,9 @@
                 this.$emit('openTargetFilterMenu', index, orIndex);
             },
             generateOrFiltersConditionsArr(index: number) {
-                return new Array(this.modVals.orCount[index]);
+                const count = this.modVals.orCount[index];
+                if (!count) return [];
+                return new Array(count);
             },
             getIdHeader(){
                 return this.isLifetime ? 'lifetime-filter-' : 'filter-';

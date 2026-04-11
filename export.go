@@ -12,9 +12,9 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/xuri/excelize/v2"
 
 	"github.com/DavidArthurCole/EggLedger/ei"
+	"github.com/DavidArthurCole/EggLedger/xlsxwriter"
 )
 
 type mission struct {
@@ -95,26 +95,52 @@ func newMission(r *ei.CompleteMissionResponse) *mission {
 	}
 }
 
+// exportColumnDefs lists every fixed export column in order.
+// Both CSV and XLSX exporters derive their headers and (for XLSX) column widths from this table.
+var exportColumnDefs = []struct {
+	header string
+	width  float64
+}{
+	{"ID", 40},
+	{"Type", 12},
+	{"Ship", 26},
+	{"Duration Type", 16},
+	{"Level", 8},
+	{"Launched at", 22},
+	{"Returned at", 22},
+	{"Duration days", 16},
+	{"Capacity", 10},
+	{"Target", 26},
+}
+
+func maxArtifactCount(missions []*mission) int {
+	var max int
+	for _, m := range missions {
+		if n := len(m.ArtifactNames); n > max {
+			max = n
+		}
+	}
+	return max
+}
+
 func exportMissionsToCsv(missions []*mission, path string) error {
 	action := fmt.Sprintf("exporting missions to %s", path)
 	wrap := func(err error) error {
 		return errors.Wrap(err, "error "+action)
 	}
 
-	var maxArtifactCount int
-	for _, m := range missions {
-		count := len(m.ArtifactNames)
-		if count > maxArtifactCount {
-			maxArtifactCount = count
-		}
+	mac := maxArtifactCount(missions)
+	header := make([]string, len(exportColumnDefs)+mac)
+	for i, col := range exportColumnDefs {
+		header[i] = col.header
 	}
-	header := []string{"ID", "Type", "Ship", "Duration Type", "Level", "Launched at", "Returned at", "Duration days", "Capacity", "Target"}
-	for i := 1; i <= maxArtifactCount; i++ {
-		header = append(header, fmt.Sprintf("Artifact %d", i))
+	for i := 1; i <= mac; i++ {
+		header[len(exportColumnDefs)+i-1] = fmt.Sprintf("Artifact %d", i)
 	}
+
 	records := [][]string{header}
 	for _, m := range missions {
-		record := []string{
+		row := []string{
 			m.Id,
 			m.TypeName,
 			m.ShipName,
@@ -124,17 +150,16 @@ func exportMissionsToCsv(missions []*mission, path string) error {
 			m.ReturnedAtStr,
 			fmt.Sprint(m.DurationDays),
 			fmt.Sprint(m.Capacity),
-			fmt.Sprint(GetNamedTarget(&m.TargetArtifact)),
+			GetNamedTarget(&m.TargetArtifact),
 		}
-		count := len(m.ArtifactNames)
-		for i := 0; i < maxArtifactCount; i++ {
-			if i < count {
-				record = append(record, m.ArtifactNames[i])
+		for i := 0; i < mac; i++ {
+			if i < len(m.ArtifactNames) {
+				row = append(row, m.ArtifactNames[i])
 			} else {
-				record = append(record, "")
+				row = append(row, "")
 			}
 		}
-		records = append(records, record)
+		records = append(records, row)
 	}
 
 	temp, err := writeCsvToTempfile(records, filepath.Dir(path), tempfilePattern(path))
@@ -142,9 +167,9 @@ func exportMissionsToCsv(missions []*mission, path string) error {
 		return wrap(err)
 	}
 	if err := os.Rename(temp, path); err != nil {
+		_ = os.Remove(temp)
 		return wrap(err)
 	}
-
 	return nil
 }
 
@@ -155,7 +180,11 @@ func writeCsvToTempfile(records [][]string, dir, pattern string) (temp string, e
 	}
 	_ = os.Chmod(f.Name(), 0644)
 	temp = f.Name()
-	defer func() { err = f.Close() }()
+	defer func() {
+		if cerr := f.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
 	w := csv.NewWriter(f)
 	for _, record := range records {
 		err = w.Write(record)
@@ -177,103 +206,94 @@ func exportMissionsToXlsx(missions []*mission, path string) error {
 		return errors.Wrap(err, "error "+action)
 	}
 
-	var maxArtifactCount int
-	var maxArtifactNameLength int
+	mac := maxArtifactCount(missions)
+
+	var maxArtifactNameLen int
 	for _, m := range missions {
-		count := len(m.ArtifactNames)
-		if count > maxArtifactCount {
-			maxArtifactCount = count
-		}
 		for _, name := range m.ArtifactNames {
-			if len(name) > maxArtifactNameLength {
-				maxArtifactNameLength = len(name)
+			if n := len(name); n > maxArtifactNameLen {
+				maxArtifactNameLen = n
 			}
 		}
 	}
+	artifactColWidth := float64(maxArtifactNameLen + 5)
 
-	f := excelize.NewFile()
-	f.SetDefaultFont("Consolas")
-
-	datetimeStyle, err := f.NewStyle(&excelize.Style{CustomNumFmt: sptr("yyyy-mm-dd hh:MM:ss")})
-	if err != nil {
-		return wrap(err)
+	colWidths := make([]float64, len(exportColumnDefs)+mac)
+	for i, col := range exportColumnDefs {
+		colWidths[i] = col.width
 	}
-	durationStyle, err := f.NewStyle(&excelize.Style{CustomNumFmt: sptr("d\\dh\\hm\\m")})
-	if err != nil {
-		return wrap(err)
-	}
-
-	sw, err := f.NewStreamWriter("Sheet1")
-	if err != nil {
-		return wrap(err)
-	}
-	// Width of each column is set to max number of characters plus 5.
-	colWidths := []float64{56, 25, 13, 8, 24, 24, 13, 8}
-	for i := 1; i <= maxArtifactCount; i++ {
-		colWidths = append(colWidths, float64(maxArtifactNameLength+5))
-	}
-	for i, width := range colWidths {
-		if err := sw.SetColWidth(i+1, i+1, width); err != nil {
-			return wrap(err)
-		}
-	}
-
-	header := []any{"ID", "Type", "Ship", "Duration Type", "Level", "Launched at", "Returned at", "Duration days", "Capacity", "Target"}
-	for i := 1; i <= maxArtifactCount; i++ {
-		header = append(header, fmt.Sprintf("Artifact %d", i))
-	}
-	if err = sw.SetRow("A1", header); err != nil {
-		return wrap(err)
-	}
-	rowId := 1
-	for _, m := range missions {
-		rowId++
-		row := []any{
-			m.Id,
-			m.TypeName,
-			m.ShipName,
-			m.DurationTypeName,
-			m.Level,
-			&excelize.Cell{Value: m.LaunchedAt, StyleID: datetimeStyle},
-			&excelize.Cell{Value: m.ReturnedAt, StyleID: datetimeStyle},
-			&excelize.Cell{Value: m.DurationDays, StyleID: durationStyle},
-			m.Capacity,
-			GetNamedTarget(&m.TargetArtifact),
-		}
-		for _, name := range m.ArtifactNames {
-			row = append(row, name)
-		}
-		cell, err := excelize.CoordinatesToCellName(1, rowId)
-		if err != nil {
-			return wrap(err)
-		}
-		if err := sw.SetRow(cell, row); err != nil {
-			return wrap(err)
-		}
-	}
-	if err := sw.Flush(); err != nil {
-		return wrap(err)
+	for i := 0; i < mac; i++ {
+		colWidths[len(exportColumnDefs)+i] = artifactColWidth
 	}
 
 	temp, err := os.CreateTemp(filepath.Dir(path), tempfilePattern(path))
 	if err != nil {
 		return wrap(err)
 	}
-	if err := temp.Close(); err != nil {
-		return wrap(err)
-	}
 	_ = os.Chmod(temp.Name(), 0644)
-	if err := f.SaveAs(temp.Name()); err != nil {
+	tempName := temp.Name()
+
+	w, err := xlsxwriter.New(temp)
+	if err != nil {
+		_ = temp.Close()
+		_ = os.Remove(tempName)
 		return wrap(err)
 	}
-	if err := f.Close(); err != nil {
+	w.SetColWidths(colWidths)
+
+	header := make([]xlsxwriter.Cell, len(exportColumnDefs)+mac)
+	for i, col := range exportColumnDefs {
+		header[i] = xlsxwriter.StringCell(col.header)
+	}
+	for i := 1; i <= mac; i++ {
+		header[len(exportColumnDefs)+i-1] = xlsxwriter.StringCell(fmt.Sprintf("Artifact %d", i))
+	}
+	if err := w.WriteRow(header); err != nil {
+		_ = temp.Close()
+		_ = os.Remove(tempName)
 		return wrap(err)
 	}
 
-	if err := os.Rename(temp.Name(), path); err != nil {
-		return wrap(err)
+	for _, m := range missions {
+		row := []xlsxwriter.Cell{
+			xlsxwriter.StringCell(m.Id),
+			xlsxwriter.StringCell(m.TypeName),
+			xlsxwriter.StringCell(m.ShipName),
+			xlsxwriter.StringCell(m.DurationTypeName),
+			xlsxwriter.NumberCell(float64(m.Level)),
+			xlsxwriter.DatetimeCell(m.LaunchedAt),
+			xlsxwriter.DatetimeCell(m.ReturnedAt),
+			xlsxwriter.NumberCell(m.DurationDays),
+			xlsxwriter.NumberCell(float64(m.Capacity)),
+			xlsxwriter.StringCell(GetNamedTarget(&m.TargetArtifact)),
+		}
+		for i := 0; i < mac; i++ {
+			if i < len(m.ArtifactNames) {
+				row = append(row, xlsxwriter.StringCell(m.ArtifactNames[i]))
+			} else {
+				row = append(row, xlsxwriter.StringCell(""))
+			}
+		}
+		if err := w.WriteRow(row); err != nil {
+			_ = temp.Close()
+			_ = os.Remove(tempName)
+			return wrap(err)
+		}
 	}
 
+	if err := w.Close(); err != nil {
+		_ = temp.Close()
+		_ = os.Remove(tempName)
+		return wrap(err)
+	}
+	if err := temp.Close(); err != nil {
+		_ = os.Remove(tempName)
+		return wrap(err)
+	}
+	if err := os.Rename(tempName, path); err != nil {
+		_ = os.Remove(tempName)
+		return wrap(err)
+	}
 	return nil
 }
 
@@ -399,8 +419,4 @@ func tempfilePattern(f string) string {
 	f = filepath.Base(f)
 	ext := filepath.Ext(f)
 	return f[:len(f)-len(ext)] + ".*" + ext
-}
-
-func sptr(s string) *string {
-	return &s
 }
