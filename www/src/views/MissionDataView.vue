@@ -500,6 +500,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useAppState } from '../composables/useAppState'
 import { useMennoData } from '../composables/useMennoData'
 import { useFetch } from '../composables/useFetch'
+import { useFilters } from '../composables/useFilters'
 import type {
   DatabaseMission,
   MissionDrop,
@@ -513,23 +514,13 @@ import ShipDisplay from '../components/ShipDisplay.vue'
 import TargetDisplay from '../components/TargetDisplay.vue'
 import NoDataFallback from '../components/NoDataFallback.vue'
 
-// ───────────────────────────────────────────────────────────────────────────────
 // Shared state
-// ───────────────────────────────────────────────────────────────────────────────
 
 const { existingData, activeTab } = useAppState()
 const { mennoDataLoaded, getMennoData, load: loadMennoData } = useMennoData()
 const { isFetching } = useFetch()
 
-// ───────────────────────────────────────────────────────────────────────────────
 // Types local to this view
-// ───────────────────────────────────────────────────────────────────────────────
-
-interface FilterCondition {
-  topLevel: string
-  op: string
-  val: string
-}
 
 interface GroupedYear {
   year: number
@@ -547,15 +538,6 @@ interface GroupedArrays {
   year: GroupedYear[]
   month: GroupedMonth[][]
   day: GroupedDay[][][]
-}
-
-interface FilterOption {
-  text: string
-  value: string
-  styleClass?: string
-  imagePath?: string
-  rarity?: number
-  rarityGif?: string
 }
 
 // A view-mission-data object - used by ShipDisplay.
@@ -792,29 +774,55 @@ function getShipColorText(missionData: DatabaseMission, altMode = false): string
   return altMode ? 'text-gray-500' : 'text-gray-400'
 }
 
-// ───────────────────────────────────────────────────────────────────────────────
-// Filter state
-// ───────────────────────────────────────────────────────────────────────────────
+// Artifact/mission configs (loaded in onMounted, passed to useFilters)
+
+const possibleTargets = ref<PossibleTarget[]>([])
+const maxQuality = ref<number>(0)
+const artifactConfigs = ref<PossibleArtifact[]>([])
+const durationConfigs = ref<PossibleMission[]>([])
+
+// Filter composable
+
+const {
+  dataFilter,
+  orDataFilter,
+  filterHasChanged,
+  getFilterValueOptions,
+  changeFilterValue,
+  handleFilterChange,
+  handleOrFilterChange,
+  addOr,
+  removeAndShift,
+  removeOrAndShift,
+  generateFilterConditionsArr,
+  filterModVals,
+  clearFilter,
+  ledgerDate,
+  missionMatchesFilter,
+  dropSelectList,
+  dropFilterMenuOpen,
+  dropSearchTerm,
+  targetSelectList,
+  targetFilterMenuOpen,
+  targetSearchTerm,
+  openDropFilterMenu,
+  closeDropFilterMenu,
+  selectDropFilter,
+  openTargetFilterMenu,
+  closeTargetFilterMenu,
+  selectTargetFilter,
+} = useFilters({
+  accountId: loadedEid,
+  durationConfigs,
+  possibleTargets,
+  maxQuality,
+  artifactConfigs,
+})
+
+// Filter warning state (unique to this view)
 
 const filterApplyTime = ref('')
-const filterConditionsCount = ref(1)
-const topLevelFilterOptions = ref<(string | null)[]>([])
-const filterOperators = ref<(string | null)[]>([])
-const filterValues = ref<(string | null)[]>([])
-
-const orFilterConditionsCount = ref<(number | null)[]>([])
-const orFilterTopLevel = ref<(string | null)[][]>([[]])
-const orFilterOperators = ref<(string | null)[][]>([[]])
-const orFilterValues = ref<(string | null)[][]>([[]])
-
-const dFilterValues = ref<(string | null)[]>([])
-const dOrFilterValues = ref<(string | null)[][]>([[]])
-
-const dataFilter = ref<FilterCondition[]>([])
-const orDataFilter = ref<FilterCondition[][]>([[]])
-const filterHasChanged = ref(false)
 const dataBeingFiltered = ref(false)
-
 const filterWarningRead = ref(false)
 const hideFilterWarning = ref(false)
 
@@ -824,579 +832,7 @@ async function dismissFilterWarning() {
   hideFilterWarning.value = true
 }
 
-watch(filterValues, () => {
-  dFilterValues.value = filterValues.value.map(
-    (_f, index) => (dFilterValues.value[index] === undefined ? '' : dFilterValues.value[index]),
-  )
-}, { deep: true })
-
-watch(orFilterValues, () => {
-  dOrFilterValues.value = orFilterValues.value.map((orFilter, index) =>
-    dOrFilterValues.value[index] === undefined
-      ? []
-      : dOrFilterValues.value[index].slice(0, orFilter?.length ?? 0),
-  )
-}, { deep: true })
-
-watch([dataFilter, orDataFilter], () => {
-  filterHasChanged.value = true
-})
-
-// ───────────────────────────────────────────────────────────────────────────────
-// Possible targets / artifact configs (for filter value options)
-// ───────────────────────────────────────────────────────────────────────────────
-
-const possibleTargets = ref<PossibleTarget[]>([])
-const maxQuality = ref<number>(0)
-const artifactConfigs = ref<PossibleArtifact[]>([])
-const durationConfigs = ref<PossibleMission[]>([])
-
-function artifactDisplayText(artifact: PossibleArtifact): string {
-  const displayName = artifact.displayName
-  const level = artifact.level
-  let displayText = displayName
-  if (String(level) !== '%') {
-    const isStoneNotFragment =
-      displayName.toLowerCase().includes('stone') &&
-      !displayName.toLowerCase().includes('fragment')
-    displayText += ' (T' + (Number(level) + (isStoneNotFragment ? 2 : 1)) + ')'
-  }
-  return displayText
-}
-
-function dropPath(drop: PossibleArtifact): string {
-  const addendum = drop.protoName.includes('_STONE') ? 1 : 0
-  const fixedName = drop.protoName
-    .replaceAll('_FRAGMENT', '')
-    .replaceAll('ORNATE_GUSSET', 'GUSSET')
-    .replaceAll('VIAL_MARTIAN_DUST', 'VIAL_OF_MARTIAN_DUST')
-  return 'artifacts/' + fixedName + '/' + fixedName + '_' + (drop.level + 1 + addendum) + '.png'
-}
-function dropRarityPath(drop: PossibleArtifact): string {
-  switch (drop.rarity) {
-    case 1: return 'images/rare.gif'
-    case 2: return 'images/epic.gif'
-    case 3: return 'images/legendary.gif'
-    default: return ''
-  }
-}
-
-function getFilterValueOptions(topLevel: string | null): FilterOption[] {
-  switch (topLevel) {
-    case 'ship':
-      return Array.from({ length: 11 }, (_, index) => ({
-        text: [
-          'Chicken One', 'Chicken Nine', 'Chicken Heavy',
-          'BCR', 'Quintillion Chicken', 'Cornish-Hen Corvette',
-          'Galeggtica', 'Defihent', 'Voyegger', 'Henerprise', 'Atreggies Henliner',
-        ][index],
-        value: String(index),
-      }))
-    case 'farm':
-      return Array.from({ length: 2 }, (_, index) => ({
-        text: ['Home', 'Virtue'][index],
-        value: String(index),
-      }))
-    case 'duration':
-      return Array.from({ length: 4 }, (_, index) => ({
-        text: ['Short', 'Standard', 'Extended', 'Tutorial'][index],
-        value: String(index),
-        styleClass: 'text-duration-' + index,
-      }))
-    case 'level':
-      return Array.from({ length: 9 }, (_, index) => ({
-        text: index + '\u2605',
-        value: String(index),
-      }))
-    case 'target':
-      return possibleTargets.value.map((target) => ({
-        text: target.displayName,
-        value: String(target.id),
-        imagePath: target.imageString,
-      }))
-    case 'drops': {
-      const filtered: FilterOption[] = artifactConfigs.value
-        .filter((a) => a.baseQuality <= maxQuality.value)
-        .map((artifact) => ({
-          text: artifactDisplayText(artifact),
-          value: artifact.name + '_' + artifact.level + '_' + artifact.rarity + '_' + artifact.baseQuality,
-          rarity: artifact.rarity,
-          imagePath: dropPath(artifact),
-          rarityGif: dropRarityPath(artifact),
-        }))
-      filtered.unshift({ text: 'Any Legendary', value: '%_%_3_%', rarity: 3, styleClass: 'text-legendary', imagePath: 'icon_help.webp' })
-      filtered.unshift({ text: 'Any Epic', value: '%_%_2_%', rarity: 2, styleClass: 'text-epic', imagePath: 'icon_help.webp' })
-      filtered.unshift({ text: 'Any Rare', value: '%_%_1_%', rarity: 1, styleClass: 'text-rare', imagePath: 'icon_help.webp' })
-      return filtered
-    }
-    case 'type':
-      return [{ text: 'Standard', value: '0' }, { text: 'Virtue', value: '1' }]
-    case 'buggedcap':
-    case 'dubcap':
-      return [{ text: 'True', value: 'true' }, { text: 'False', value: 'false' }]
-    default:
-      return []
-  }
-}
-
-// ───────────────────────────────────────────────────────────────────────────────
-// Filter handling
-// ───────────────────────────────────────────────────────────────────────────────
-
-function changeFilterValue(
-  index: number | string,
-  orIndex: number | string | null,
-  level: string,
-  value: string,
-) {
-  const intIndex = typeof index === 'number' ? index : Number.parseInt(index)
-  let intOrIndex: number | null = null
-  if (orIndex != null) {
-    intOrIndex = typeof orIndex === 'number' ? orIndex : Number.parseInt(orIndex)
-  }
-  switch (level) {
-    case 'top':
-      if (intOrIndex == null) topLevelFilterOptions.value[intIndex] = value
-      else orFilterTopLevel.value[intIndex][intOrIndex] = value
-      break
-    case 'operator':
-      if (intOrIndex == null) filterOperators.value[intIndex] = value
-      else orFilterOperators.value[intIndex][intOrIndex] = value
-      break
-    case 'value':
-      if (intOrIndex == null) filterValues.value[intIndex] = value
-      else orFilterValues.value[intIndex][intOrIndex] = value
-      break
-  }
-}
-
-// eslint-disable-next-line sonarjs/cognitive-complexity
-function updateValueStyling(passedEl: HTMLElement, isOr: boolean) {
-  const idParts = passedEl.id.split('-')
-  const index = Number.parseInt(idParts[2])
-  const orIndex = isOr ? Number.parseInt(idParts[idParts.length - 1]) : null
-  if (isOr && orIndex == null) return
-  const el = document.getElementById('filter-value-' + index + (isOr ? '-' + orIndex : ''))
-  if (!el) return
-  const classMatchBorder = el.className.match(/ border-(.*?)(\s|$)/)
-  const classMatchText = el.className.replace('text-sm', ' ').match(/ text-(.*?)(\s|$)/)
-  const existingBorder = classMatchBorder ? 'border-' + classMatchBorder[1].trim() : ''
-  const existingText = classMatchText ? 'text-' + classMatchText[1].trim() : ''
-  const isDrops = isOr
-    ? orFilterTopLevel.value[index][orIndex!] === 'drops'
-    : topLevelFilterOptions.value[index] === 'drops'
-  const dropsValue = isOr ? orFilterValues.value[index][orIndex!] : filterValues.value[index]
-  const isDuration = isOr
-    ? orFilterTopLevel.value[index][orIndex!] === 'duration'
-    : topLevelFilterOptions.value[index] === 'duration'
-  let newBorder = ''
-  let newText = ''
-
-  if (isDrops && dropsValue != null && dropsValue !== '') {
-    switch (dropsValue.split('_')[2]) {
-      case '1': newBorder = 'border-rare'; newText = 'text-rarity-1'; break
-      case '2': newBorder = 'border-epic'; newText = 'text-rarity-2'; break
-      case '3': newBorder = 'border-legendary'; newText = 'text-rarity-3'; break
-      default: newBorder = 'border-gray-300'; newText = 'text-gray-400'; break
-    }
-  } else if (isDuration && (el as HTMLInputElement).value !== '') {
-    switch ((el as HTMLInputElement).value) {
-      case '0': newBorder = 'border-short'; newText = 'text-duration-0'; break
-      case '1': newBorder = 'border-standard'; newText = 'text-duration-1'; break
-      case '2': newBorder = 'border-extended'; newText = 'text-duration-2'; break
-      case '3': newBorder = 'border-tutorial'; newText = 'text-duration-3'; break
-      default: newBorder = 'border-gray-300'; newText = 'text-gray-400'; break
-    }
-  } else {
-    newBorder = 'border-gray-300'
-    newText = 'text-gray-400'
-  }
-  if (existingBorder) el.classList.replace(existingBorder, newBorder)
-  else el.classList.add(newBorder)
-  if (existingText) el.classList.replace(existingText, newText)
-  else el.classList.add(newText)
-}
-
-// eslint-disable-next-line sonarjs/cognitive-complexity
-function updateFilterNoReCount() {
-  filterHasChanged.value = true
-  const newDataFilter: FilterCondition[] = []
-  if (topLevelFilterOptions.value.length !== 0 && topLevelFilterOptions.value != null) {
-    for (let i = 0; i < topLevelFilterOptions.value.length; i++) {
-      const topLevel = topLevelFilterOptions.value[i]
-      const op = filterOperators.value[i]
-      const val = filterValues.value[i]
-      if (topLevel == null || op == null || val == null || (topLevel.includes('DT') && val === '')) break
-      newDataFilter.push({ topLevel, op, val })
-    }
-  }
-  dataFilter.value = newDataFilter
-
-  const newOrDataFilter: FilterCondition[][] = []
-  for (let i = 0; i < orFilterConditionsCount.value.length; i++) {
-    const arr: FilterCondition[] = []
-    if (orFilterTopLevel.value[i] == null || orFilterOperators.value[i] == null || orFilterValues.value[i] == null) continue
-    for (let j = 0; j < orFilterTopLevel.value[i].length; j++) {
-      const topLevel = orFilterTopLevel.value[i][j]
-      const op = orFilterOperators.value[i][j]
-      const val = orFilterValues.value[i][j]
-      if (topLevel == null || op == null || val == null || (topLevel.includes('DT') && val === '')) break
-      arr.push({ topLevel, op, val })
-    }
-    newOrDataFilter.push(arr)
-  }
-  orDataFilter.value = newOrDataFilter
-}
-
-function updateFilterConditionsCount() {
-  filterHasChanged.value = true
-  const newDataFilter: FilterCondition[] = []
-  if (topLevelFilterOptions.value.length === 0 || topLevelFilterOptions.value == null) return
-  let maxIndex = 0
-  let set = false
-
-  for (let i = 0; i < topLevelFilterOptions.value.length; i++) {
-    const topLevel = topLevelFilterOptions.value[i]
-    const op = filterOperators.value[i]
-    const val = filterValues.value[i]
-
-    if (topLevel == null || op == null || val == null || (topLevel.includes('DT') && val === '')) {
-      maxIndex = i
-      break
-    }
-
-    newDataFilter.push({ topLevel, op, val })
-
-    if (i + 1 === filterConditionsCount.value) {
-      filterConditionsCount.value += 1
-      set = true
-    }
-  }
-  if (maxIndex === 0) {
-    maxIndex = topLevelFilterOptions.value.filter((f) => f != null && f !== '').length
-  }
-
-  if (!set) filterConditionsCount.value = maxIndex + 1
-  dataFilter.value = newDataFilter
-}
-
-interface HandleFilterChangeEventTarget extends HTMLElement {
-  oldValue?: string | null
-  value?: string
-  type?: string
-}
-
-function handleFilterChange(eventOrId: Event | string) {
-  const targetEl =
-    typeof eventOrId === 'string'
-      ? (document.getElementById(eventOrId) as HandleFilterChangeEventTarget | null)
-      : ((eventOrId.target as HandleFilterChangeEventTarget) ?? null)
-  if (!targetEl) return
-  const targetId = targetEl.id
-  if (targetEl.oldValue == null || targetEl.type === 'date') {
-    updateFilterConditionsCount()
-    targetEl.oldValue = targetEl.value ?? ''
-  } else updateFilterNoReCount()
-  updateValueStyling(targetEl, false)
-  if (targetId.includes('filter-top')) {
-    const index = Number.parseInt(targetId.split('-').pop() ?? '0')
-    const options = getFilterValueOptions(targetEl.value ?? '')
-    const opts = new Set(options.map((o) => String(o.value)))
-    if (!opts.has(String(filterOperators.value[index]))) filterOperators.value[index] = null
-    if (!opts.has(String(filterValues.value[index]))) {
-      filterValues.value[index] = null
-      dFilterValues.value[index] = null
-    }
-  }
-}
-
-function handleOrFilterChange(eventOrId: Event | string) {
-  const targetEl =
-    typeof eventOrId === 'string'
-      ? (document.getElementById(eventOrId) as HandleFilterChangeEventTarget | null)
-      : ((eventOrId.target as HandleFilterChangeEventTarget) ?? null)
-  if (!targetEl) return
-  const targetId = targetEl.id
-  const idParts = targetId.split('-')
-  const index = Number.parseInt(idParts[2])
-  const orIndex = Number.parseInt(idParts[idParts.length - 1])
-  updateFilterNoReCount()
-  updateValueStyling(targetEl, true)
-  if (targetId.includes('filter-top')) {
-    const options = getFilterValueOptions(targetEl.value ?? '')
-    const opts = new Set(options.map((o) => String(o.value)))
-    if (!opts.has(String(orFilterOperators.value[index][orIndex]))) {
-      orFilterOperators.value[index][orIndex] = null
-    }
-    if (!opts.has(String(orFilterValues.value[index][orIndex]))) {
-      orFilterValues.value[index][orIndex] = null
-      dOrFilterValues.value[index][orIndex] = null
-    }
-  }
-}
-
-function addOr(index: number) {
-  if (orFilterConditionsCount.value == null) orFilterConditionsCount.value = []
-  if (orFilterConditionsCount.value[index] == null) orFilterConditionsCount.value[index] = 1
-  else orFilterConditionsCount.value[index] = (orFilterConditionsCount.value[index] as number) + 1
-
-  if (orFilterTopLevel.value[index] == null) orFilterTopLevel.value[index] = []
-  if (orFilterOperators.value[index] == null) orFilterOperators.value[index] = []
-  if (orFilterValues.value[index] == null) orFilterValues.value[index] = []
-
-  orFilterTopLevel.value[index].push(null)
-  orFilterOperators.value[index].push(null)
-  orFilterValues.value[index].push(null)
-}
-
-function removeAndShift(index: number) {
-  for (let i = index; i < topLevelFilterOptions.value.length; i++) {
-    topLevelFilterOptions.value[i] = topLevelFilterOptions.value[i + 1]
-    filterOperators.value[i] = filterOperators.value[i + 1]
-    filterValues.value[i] = filterValues.value[i + 1]
-    dFilterValues.value[i] = dFilterValues.value[i + 1]
-
-    orFilterConditionsCount.value[i] = orFilterConditionsCount.value[i + 1]
-    orFilterTopLevel.value[i] = orFilterTopLevel.value[i + 1]
-    orFilterOperators.value[i] = orFilterOperators.value[i + 1]
-    orFilterValues.value[i] = orFilterValues.value[i + 1]
-    dOrFilterValues.value[i] = dOrFilterValues.value[i + 1]
-  }
-  updateFilterConditionsCount()
-  updateFilterNoReCount()
-  filterHasChanged.value = true
-
-  setTimeout(() => {
-    document.querySelectorAll("[id^='filter-top-']").forEach((el) =>
-      updateValueStyling(el as HTMLElement, false),
-    )
-  }, 10)
-}
-
-function removeOrAndShift(index: number, orIndex: number) {
-  for (let i = orIndex; i < orFilterTopLevel.value[index].length; i++) {
-    orFilterTopLevel.value[index][i] = orFilterTopLevel.value[index][i + 1]
-    orFilterOperators.value[index][i] = orFilterOperators.value[index][i + 1]
-    orFilterValues.value[index][i] = orFilterValues.value[index][i + 1]
-    dOrFilterValues.value[index][i] = dOrFilterValues.value[index][i + 1]
-  }
-  const cur = orFilterConditionsCount.value[index]
-  if (cur != null) {
-    const next = cur - 1
-    orFilterConditionsCount.value[index] = next === 0 ? null : next
-  }
-  updateFilterNoReCount()
-  filterHasChanged.value = true
-}
-
-function generateFilterConditionsArr() {
-  return new Array(filterConditionsCount.value)
-}
-
-function filterModVals() {
-  return {
-    top: topLevelFilterOptions.value,
-    operator: filterOperators.value,
-    value: filterValues.value,
-    dValue: dFilterValues.value,
-    orTop: orFilterTopLevel.value,
-    orOperator: orFilterOperators.value,
-    orValue: orFilterValues.value,
-    orDValue: dOrFilterValues.value,
-    orCount: orFilterConditionsCount.value,
-  }
-}
-
-// ───────────────────────────────────────────────────────────────────────────────
-// Apply filter logic
-// ───────────────────────────────────────────────────────────────────────────────
-
-function ledgerDate(timestamp: number): Date {
-  return new Date(timestamp * 1000)
-}
-function ledgerDateObj(date: string): Date {
-  const parts = date.split('-')
-  return new Date(Number.parseInt(parts[0]), Number.parseInt(parts[1]) - 1, Number.parseInt(parts[2]))
-}
-function hhmmss(date: Date): string {
-  return `${date.getHours().toString().padStart(2, '0')}:${date
-    .getMinutes()
-    .toString()
-    .padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`
-}
-
-function commonFilterLogic(
-  value: unknown,
-  filterValue: unknown,
-  operator: string,
-  currentState: boolean,
-): boolean {
-  switch (operator) {
-    case 'd=':
-      if ((value as Date).toDateString() !== (filterValue as Date).toDateString()) return false
-      break
-    case '=':
-      if (value != filterValue) return false
-      break
-    case '!=':
-      if (value == filterValue) return false
-      break
-    case '>':
-      if ((value as number) <= (filterValue as number)) return false
-      break
-    case '<':
-      if ((value as number) >= (filterValue as number)) return false
-      break
-    case 'true':
-      if (!value) return false
-      break
-    case 'false':
-      if (value) return false
-      break
-    default:
-      return currentState
-  }
-  return currentState
-}
-
-// eslint-disable-next-line sonarjs/cognitive-complexity
-async function testMissionAgainstFilter(
-  mission: DatabaseMission,
-  filter: FilterCondition,
-): Promise<boolean> {
-  let filterPassed = true
-  if (filter.topLevel != null && filter.op != null && filter.val != null) {
-    switch (filter.topLevel) {
-      case 'buggedcap':
-        filterPassed = commonFilterLogic(mission.isBuggedCap, null, filter.val, filterPassed)
-        break
-      case 'dubcap':
-        filterPassed = commonFilterLogic(mission.isDubCap, null, filter.val, filterPassed)
-        break
-      case 'ship':
-        filterPassed = commonFilterLogic(mission.ship, filter.val, filter.op, filterPassed)
-        break
-      case 'farm':
-        filterPassed = commonFilterLogic(mission.missionType, filter.val, filter.op, filterPassed)
-        break
-      case 'duration':
-        filterPassed = commonFilterLogic(mission.durationType, filter.val, filter.op, filterPassed)
-        break
-      case 'level':
-        filterPassed = commonFilterLogic(mission.level, filter.val, filter.op, filterPassed)
-        break
-      case 'target':
-        filterPassed = commonFilterLogic(mission.targetInt, filter.val, filter.op, filterPassed)
-        break
-      case 'type':
-        filterPassed = commonFilterLogic(mission.missionType, filter.val, filter.op, filterPassed)
-        break
-      case 'launchDT':
-        filterPassed = commonFilterLogic(
-          ledgerDate(mission.launchDT),
-          ledgerDateObj(filter.val),
-          filter.op,
-          filterPassed,
-        )
-        break
-      case 'returnDT':
-        filterPassed = commonFilterLogic(
-          ledgerDate(mission.returnDT),
-          ledgerDateObj(filter.val),
-          filter.op,
-          filterPassed,
-        )
-        break
-      case 'drops': {
-        const shipIdx = mission.ship
-        const durIdx = mission.durationType
-        const shipConfig = durationConfigs.value[shipIdx]
-        if (!shipConfig) {
-          filterPassed = false
-          break
-        }
-        const durConfig = shipConfig.durations[durIdx]
-        if (!durConfig) {
-          filterPassed = false
-          break
-        }
-        const maxQual = durConfig.maxQuality + durConfig.levelQualityBump * mission.level
-        const filterQuality = filter.val.split('_')[3]
-        const qualityBypass = filterQuality === '%'
-        const filterRarity = filter.val.split('_')[2]
-        const rarityBypass = filterRarity === '%'
-        const filterLevel = filter.val.split('_')[1]
-        const levelBypass = filterLevel === '%'
-        const filterName = filter.val.split('_')[0]
-        const nameBypass = filterName === '%'
-        const allDrops = await globalThis.getShipDrops(loadedEid.value ?? '', mission.missionId)
-        if (allDrops == null) filterPassed = false
-        else {
-          switch (filter.op) {
-            case 'c': {
-              let foundDrop = false
-              if (
-                (!qualityBypass && maxQual < Number.parseFloat(filterQuality)) ||
-                (!qualityBypass && durConfig.minQuality > Number.parseFloat(filterQuality))
-              ) {
-                filterPassed = false
-              }
-              for (const drop of allDrops) {
-                if (!nameBypass && Number.parseInt(filterName) !== drop.id) continue
-                if (!levelBypass && Number.parseInt(filterLevel) !== drop.level) continue
-                if (!rarityBypass && Number.parseInt(filterRarity) !== drop.rarity) continue
-                foundDrop = true
-              }
-              if (!foundDrop) filterPassed = false
-              break
-            }
-            case 'dnc': {
-              for (const drop of allDrops) {
-                if (!nameBypass && Number.parseInt(filterName) !== drop.id) continue
-                if (!levelBypass && Number.parseInt(filterLevel) !== drop.level) continue
-                if (!rarityBypass && Number.parseInt(filterRarity) !== drop.rarity) continue
-                filterPassed = false
-              }
-              break
-            }
-          }
-        }
-        break
-      }
-    }
-    return filterPassed
-  }
-  return false
-}
-
-// eslint-disable-next-line sonarjs/cognitive-complexity
-async function missionMatchesFilter(
-  mission: DatabaseMission,
-  filters: FilterCondition[],
-  orFilters: FilterCondition[][],
-): Promise<boolean> {
-  let allFiltersPassed = true
-  let index = 0
-  for (const filter of filters) {
-    let filterPassed = true
-    if (filter.topLevel != null && filter.op != null && (filter.val != null || filter.topLevel === 'target')) {
-      filterPassed = await testMissionAgainstFilter(mission, filter)
-      if (!filterPassed) {
-        if (orFilters[index] != null) {
-          for (const orFilter of orFilters[index]) {
-            if (orFilter.topLevel != null && orFilter.op != null && (orFilter.val != null || orFilter.topLevel === 'target')) {
-              filterPassed = await testMissionAgainstFilter(mission, orFilter)
-              if (filterPassed) break
-            }
-          }
-        }
-        if (!filterPassed) allFiltersPassed = false
-      }
-    }
-    index++
-  }
-  return allFiltersPassed
-}
+// Apply filter (on-demand after data loaded, unique to this view)
 
 async function applyFilter() {
   if (!allLoadedMissions.value) return
@@ -1417,127 +853,11 @@ async function applyFilter() {
   dataBeingFiltered.value = false
 }
 
-// ───────────────────────────────────────────────────────────────────────────────
-// Drop / Target filter overlay state
-// ───────────────────────────────────────────────────────────────────────────────
-
-const dropSelectList = ref<FilterOption[]>([])
-const dropFilterSelectedIndex = ref<number | null>(null)
-const dropFilterSelectedOrIndex = ref<number | null>(null)
-const dropFilterMenuOpen = ref(false)
-const dropSearchTerm = ref('')
-
-const targetSelectList = ref<FilterOption[]>([])
-const targetFilterSelectedIndex = ref<number | null>(null)
-const targetFilterSelectedOrIndex = ref<number | null>(null)
-const targetFilterMenuOpen = ref(false)
-const targetSearchTerm = ref('')
-
-watch(dropSearchTerm, () => {
-  dropSelectList.value = getFilterValueOptions('drops').filter((drop) =>
-    drop.text.toLowerCase().includes(dropSearchTerm.value.toLowerCase()),
-  )
-})
-watch(targetSearchTerm, () => {
-  targetSelectList.value = getFilterValueOptions('target').filter((target) =>
-    target.text.toLowerCase().includes(targetSearchTerm.value.toLowerCase()),
-  )
-})
-
-function openDropFilterMenu(index: number, orIndex: number | null) {
-  dropSelectList.value = getFilterValueOptions('drops')
-  dropFilterSelectedIndex.value = index
-  dropFilterSelectedOrIndex.value = orIndex ?? null
-  dropFilterMenuOpen.value = true
-  const el = document.querySelector('.overlay-drop') as HTMLElement | null
-  if (el) {
-    el.style.display = 'flex'
-    el.classList.remove('hidden')
-  }
-  const input = document.getElementById('drop-search') as HTMLInputElement | null
-  input?.focus()
-}
-function closeDropFilterMenu() {
-  dropSearchTerm.value = ''
-  dropFilterSelectedIndex.value = null
-  dropFilterSelectedOrIndex.value = null
-  dropFilterMenuOpen.value = false
-  const el = document.querySelector('.overlay-drop') as HTMLElement | null
-  if (el) {
-    el.style.display = 'none'
-    el.classList.add('hidden')
-  }
-}
-function selectDropFilter(drop: FilterOption) {
-  const newValue = drop.value.toString().split('.')[0]
-  if (dropFilterSelectedIndex.value != null) {
-    if (dropFilterSelectedOrIndex.value == null) {
-      filterValues.value[dropFilterSelectedIndex.value] = newValue
-      dFilterValues.value[dropFilterSelectedIndex.value] = drop.text
-      handleFilterChange(`filter-value-${dropFilterSelectedIndex.value}`)
-      const el = document.getElementById(`filter-value-${dropFilterSelectedIndex.value}`) as HTMLInputElement | null
-      if (el) el.size = drop.text.length
-    } else {
-      orFilterValues.value[dropFilterSelectedIndex.value][dropFilterSelectedOrIndex.value] = newValue
-      dOrFilterValues.value[dropFilterSelectedIndex.value][dropFilterSelectedOrIndex.value] = drop.text
-      handleOrFilterChange(`filter-value-${dropFilterSelectedIndex.value}-${dropFilterSelectedOrIndex.value}`)
-      const el = document.getElementById(
-        `filter-value-${dropFilterSelectedIndex.value}-${dropFilterSelectedOrIndex.value}`,
-      ) as HTMLInputElement | null
-      if (el) el.size = drop.text.length
-    }
-  }
-  closeDropFilterMenu()
-}
-
-function openTargetFilterMenu(index: number, orIndex: number | null) {
-  targetSelectList.value = getFilterValueOptions('target')
-  targetFilterSelectedIndex.value = index
-  targetFilterSelectedOrIndex.value = orIndex ?? null
-  targetFilterMenuOpen.value = true
-  const el = document.querySelector('.overlay-target') as HTMLElement | null
-  if (el) {
-    el.style.display = 'flex'
-    el.classList.remove('hidden')
-  }
-  const input = document.getElementById('target-search') as HTMLInputElement | null
-  input?.focus()
-}
-function closeTargetFilterMenu() {
-  targetSearchTerm.value = ''
-  targetFilterSelectedIndex.value = null
-  targetFilterSelectedOrIndex.value = null
-  targetFilterMenuOpen.value = false
-  const el = document.querySelector('.overlay-target') as HTMLElement | null
-  if (el) {
-    el.style.display = 'none'
-    el.classList.add('hidden')
-  }
-}
-function selectTargetFilter(target: FilterOption) {
-  const newValue = target.value.toString().split('.')[0]
-  if (targetFilterSelectedIndex.value != null) {
-    if (targetFilterSelectedOrIndex.value == null) {
-      filterValues.value[targetFilterSelectedIndex.value] = newValue
-      dFilterValues.value[targetFilterSelectedIndex.value] = target.text
-      handleFilterChange(`filter-value-${targetFilterSelectedIndex.value}`)
-      const el = document.getElementById(
-        `filter-value-${targetFilterSelectedIndex.value}`,
-      ) as HTMLInputElement | null
-      if (el) el.size = target.text.length
-    } else {
-      orFilterValues.value[targetFilterSelectedIndex.value][targetFilterSelectedOrIndex.value] = newValue
-      dOrFilterValues.value[targetFilterSelectedIndex.value][targetFilterSelectedOrIndex.value] = target.text
-      handleOrFilterChange(
-        `filter-value-${targetFilterSelectedIndex.value}-${targetFilterSelectedOrIndex.value}`,
-      )
-      const el = document.getElementById(
-        `filter-value-${targetFilterSelectedIndex.value}-${targetFilterSelectedOrIndex.value}`,
-      ) as HTMLInputElement | null
-      if (el) el.size = target.text.length
-    }
-  }
-  closeTargetFilterMenu()
+function hhmmss(date: Date): string {
+  return `${date.getHours().toString().padStart(2, '0')}:${date
+    .getMinutes()
+    .toString()
+    .padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`
 }
 
 // ───────────────────────────────────────────────────────────────────────────────
@@ -1672,7 +992,7 @@ function inventoryVisualizerSort<T extends DropLike>(collection: T[]): T[] {
 
 async function onViewSubmit(event: Event) {
   event.preventDefault()
-  for (const _ of topLevelFilterOptions.value) removeAndShift(0)
+  clearFilter()
   await doViewMissionsOfEid()
 }
 
