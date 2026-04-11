@@ -38,9 +38,6 @@ type IdNamePair struct {
 	Name string `json:"name"`
 }
 
-const _mennoDateFormat = "2006-01-02-15-04-05"
-const _mennoFileFormat = "menno-data-%s.json"
-
 func loadLatestMennoData() (data MennoData, err error) {
 	_storage.Lock()
 	latestRefresh := _storage.LastMennoDataRefreshAt
@@ -52,7 +49,7 @@ func loadLatestMennoData() (data MennoData, err error) {
 	}
 
 	// Get the file name for the latest data.
-	filename := fmt.Sprintf(_mennoFileFormat, latestRefresh.Format(_mennoDateFormat))
+	filename := "menno-data.json"
 	filePath := filepath.Join(_internalDir, filename)
 
 	returnData := []ConfigurationItem{}
@@ -83,19 +80,20 @@ func loadLatestMennoData() (data MennoData, err error) {
 }
 
 func checkIfRefreshMennoDataIsNeeded() bool {
-	if !_storage.AutoRefreshMennoPref {
+	if _forceMennoRefresh {
+		return true
+	}
+	_storage.Lock()
+	autoPref := _storage.AutoRefreshMennoPref
+	lastMennoRefresh := _storage.LastMennoDataRefreshAt
+	_storage.Unlock()
+	if !autoPref {
 		return false
 	}
-
-	// Update every 5 days.
-	_storage.Lock()
-	lastMennoRefesh := _storage.LastMennoDataRefreshAt
-	_storage.Unlock()
-
-	return (time.Since(lastMennoRefesh) > time.Hour*24*5)
+	return time.Since(lastMennoRefresh) > time.Hour*24*5
 }
 
-func refreshMennoData() (err error) {
+func refreshMennoData(onProgress func(MennoDownloadProgress)) (err error) {
 
 	// Fetch the data from the Menno server.
 	resp, err := http.Get("https://eggincdatacollection.azurewebsites.net/api/GetAllData")
@@ -106,13 +104,41 @@ func refreshMennoData() (err error) {
 	}
 	defer resp.Body.Close()
 
-	// Read the data from the response body.
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		_storage.SetLastMennoDataRefreshAt(time.Time{}) // Reset time to allow for a new refresh.
-		fmt.Println(err)
-		return err
+	// Read response in chunks, emitting progress after each chunk.
+	startTime := time.Now()
+	totalBytes := resp.ContentLength // -1 if unknown
+	var buf []byte
+	chunk := make([]byte, 32*1024)
+	for {
+		n, readErr := resp.Body.Read(chunk)
+		if n > 0 {
+			buf = append(buf, chunk[:n]...)
+			elapsed := time.Since(startTime).Seconds()
+			var speedBps float64
+			if elapsed > 0 {
+				speedBps = float64(len(buf)) / elapsed
+			}
+			etaSeconds := -1.0
+			if totalBytes > 0 && speedBps > 0 {
+				etaSeconds = float64(totalBytes-int64(len(buf))) / speedBps
+			}
+			onProgress(MennoDownloadProgress{
+				BytesRead:  int64(len(buf)),
+				TotalBytes: totalBytes,
+				SpeedBps:   speedBps,
+				ETASeconds: etaSeconds,
+			})
+		}
+		if readErr == io.EOF {
+			break
+		}
+		if readErr != nil {
+			_storage.SetLastMennoDataRefreshAt(time.Time{})
+			fmt.Println(readErr)
+			return readErr
+		}
 	}
+	body := buf
 
 	// Unmarshal
 	var result interface{}
@@ -127,9 +153,9 @@ func refreshMennoData() (err error) {
 	oldDataTime := _storage.LastMennoDataRefreshAt
 	_storage.Unlock()
 
-	// Save the JSON to a file with a date-time stamp.
+	// Save the JSON to a temp new file.
 	newTime := time.Now()
-	filename := fmt.Sprintf(_mennoFileFormat, newTime.Format(_mennoDateFormat))
+	filename := "menno-data-new.json"
 	filePath := filepath.Join(_internalDir, filename)
 
 	err = os.WriteFile(filePath, body, 0644)
@@ -144,12 +170,19 @@ func refreshMennoData() (err error) {
 
 	//Remove old file - as long as it's not the default time (0001-01-01-00-00-00)
 	if !oldDataTime.IsZero() {
-		oldFileName := fmt.Sprintf(_mennoFileFormat, oldDataTime.Format(_mennoDateFormat))
+		oldFileName := "menno-data.json"
 		oldFilePath := filepath.Join(_internalDir, oldFileName)
 		err = os.Remove(oldFilePath)
 		if err != nil {
 			fmt.Println(err)
 		}
+	}
+
+	// Rename new file to the standard name.
+	err = os.Rename(filePath, filepath.Join(_internalDir, "menno-data.json"))
+	if err != nil {
+		fmt.Println(err)
+		return err
 	}
 
 	// Return nil if everything went well.

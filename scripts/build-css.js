@@ -1,15 +1,14 @@
-const fs = require('fs');
-const crypto = require('crypto');
-const execSync = require('child_process').execSync;
+const fs = require('node:fs');
+const crypto = require('node:crypto');
+const execSync = require('node:child_process').execSync;
 
-const configPath = 'tailwind.config.js';
+const configPath = 'www/tailwind.config.js';
 const configHashPath = 'tailwind.config.hash';
-const indexPath = 'www/index.pcss';
-const outputCssPath = 'www/index.css';
-const cssHashFilePath = 'www/index_pcss.hash';
+const indexPath = 'www/src/index.css';
+const cssHashFilePath = 'www/src/index_css.hash';
 
-const calculateHash = filePath => { return crypto.createHash('md5').update(fs.readFileSync(filePath, 'utf-8')).digest('hex'); }
-const updateHashFile = (path, hash) => { fs.writeFileSync(path, hash); }
+const calculateHash = filePath => crypto.createHash('md5').update(fs.readFileSync(filePath, 'utf-8')).digest('hex');
+const updateHashFile = (path, hash) => fs.writeFileSync(path, hash);
 
 if (fs.existsSync(cssHashFilePath) && fs.existsSync(configHashPath)) {
   const storedCSSHash = fs.readFileSync(cssHashFilePath, 'utf-8').trim();
@@ -21,16 +20,16 @@ if (fs.existsSync(cssHashFilePath) && fs.existsSync(configHashPath)) {
   if (storedCSSHash === currentCSSHash && storedConfigHash === currentConfigHash) {
     console.log('CSS hashes match. Skipping rebuild.');
   } else {
-    console.log('CSS hash mismatch. Rebuilding CSS.')
-    execSync(`tailwindcss -i ${indexPath} -o ${outputCssPath}`);
+    console.log('CSS hash mismatch. Rebuilding...');
+    execSync('npm run build', { stdio: 'inherit' });
     updateHashFile(cssHashFilePath, currentCSSHash);
     updateHashFile(configHashPath, currentConfigHash);
-    console.log('CSS rebuild completed.');
+    console.log('Rebuild completed.');
   }
 } else {
-  console.log('Hash file not found. Rebuilding CSS.');
-  execSync(`tailwindcss -i ${indexPath} -o ${outputCssPath}`);
+  console.log('Hash file not found. Rebuilding...');
+  execSync('npm run build', { stdio: 'inherit' });
   updateHashFile(cssHashFilePath, calculateHash(indexPath));
   updateHashFile(configHashPath, calculateHash(configPath));
-  console.log('CSS rebuild completed.');
+  console.log('Rebuild completed.');
 }

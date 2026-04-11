@@ -2,14 +2,30 @@
   "license": "MIT",
   "devDependencies": {
     "@tailwindcss/forms": "^0.5.7",
+    "@types/node": "^25.6.0",
+    "@vitejs/plugin-vue": "^6.0.5",
     "autoprefixer": "^10.4.19",
+    "eslint": "^9",
+    "eslint-plugin-sonarjs": "^4",
+    "eslint-plugin-vue": "^9",
     "postcss": "^8.4.38",
     "postcss-cli": "^11.0.0",
-    "tailwindcss": "^3.4.3"
+    "tailwindcss": "^3.4.3",
+    "typescript": "^6.0.2",
+    "typescript-eslint": "^8",
+    "vite": "^8.0.8",
+    "vue-tsc": "^2.2.12"
   },
   "scripts": {
+    "build": "vite build --config www/vite.config.ts",
     "build:css": "node scripts/build-css.js",
-    "dev:css": "node scripts/dev-css.js"
+    "dev": "vite build --watch --config www/vite.config.ts",
+    "lint": "eslint --config www/eslint.config.mjs www/src",
+    "protobuf": "protoc --proto_path=. --go_out=paths=source_relative:. ei/ei.proto",
+    "typecheck": "vue-tsc --noEmit --project www/tsconfig.json"
   },
-  "dependencies": {}
+  "dependencies": {
+    "marked": "^18.0.0",
+    "vue": "^3.5.32"
+  }
 }

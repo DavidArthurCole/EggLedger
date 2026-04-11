@@ -4,6 +4,7 @@ import (
 	"context"
 	"embed"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io/fs"
 	"math"
@@ -21,6 +22,7 @@ import (
 	"github.com/DavidArthurCole/EggLedger/db"
 	"github.com/DavidArthurCole/EggLedger/ei"
 	"github.com/DavidArthurCole/EggLedger/eiafx"
+	"github.com/DavidArthurCole/EggLedger/platform"
 	"github.com/davidarthurcole/lorca"
 	humanize "github.com/dustin/go-humanize"
 	"github.com/pkg/errors"
@@ -35,7 +37,7 @@ var (
 	//go:embed VERSION
 	_appVersion string
 
-	//go:embed www
+	//go:embed www/dist
 	_fs embed.FS
 
 	_rootDir     string
@@ -57,6 +59,9 @@ var (
 	_latestMennoData       = MennoData{}
 	_possibleTargets       = []PossibleTarget{}
 	_possibleArtifacts     = []PossibleArtifact{}
+
+	_forceMennoRefresh bool
+	_forceUpdateCheck  bool
 )
 
 const (
@@ -96,8 +101,18 @@ const (
 type MissionProgress struct {
 	Total                   int     `json:"total"`
 	Finished                int     `json:"finished"`
+	Failed                  int     `json:"failed"`
+	Retried                 int     `json:"retried"`
 	FinishedPercentage      string  `json:"finishedPercentage"`
 	ExpectedFinishTimestamp float64 `json:"expectedFinishTimestamp"`
+	CurrentMission          string  `json:"currentMission"`
+}
+
+type MennoDownloadProgress struct {
+	BytesRead  int64   `json:"bytesRead"`
+	TotalBytes int64   `json:"totalBytes"`
+	SpeedBps   float64 `json:"speedBps"`
+	ETASeconds float64 `json:"etaSeconds"`
 }
 
 type worker struct {
@@ -253,7 +268,7 @@ func init() {
 	if err := os.MkdirAll(_internalDir, 0755); err != nil {
 		log.Fatal("MkdirAll err: ", err)
 	}
-	if err := hide(_internalDir); err != nil {
+	if err := platform.Hide(_internalDir); err != nil {
 		log.Errorf("error hiding internal directory: %s", err)
 	}
 
@@ -284,8 +299,8 @@ func init() {
 		initNominalShipCapacities()
 	}
 
-	storageInit()
 	dataInit()
+	storageInit()
 	initPossibleTargets()
 	initPossibleArtifacts()
 }
@@ -437,6 +452,10 @@ func initPossibleArtifacts() {
 }
 
 func main() {
+	flag.BoolVar(&_forceMennoRefresh, "force-menno-refresh", false, "treat menno data as stale regardless of last refresh time")
+	flag.BoolVar(&_forceUpdateCheck, "force-update-check", false, "bypass the 12-hour update-check cooldown")
+	flag.Parse()
+
 	if _devMode {
 		log.Info("starting app in dev mode")
 	}
@@ -494,6 +513,14 @@ func main() {
 			return
 		}
 		ui.Eval(fmt.Sprintf("window.updateMissionProgress(%s)", encoded))
+	}
+	updateMennoDownloadProgress := func(progress MennoDownloadProgress) {
+		encoded, err := json.Marshal(progress)
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		ui.Eval(fmt.Sprintf("window.updateMennoDownloadProgress(%s)", encoded))
 	}
 	updateExportedFiles := func(files []string) {
 		encoded, err := json.Marshal(files)
@@ -628,6 +655,22 @@ func main() {
 		_storage.SetRetryFailedMissions(flag)
 	})
 
+	ui.MustBind("getHideTimeoutErrors", func() bool {
+		return _storage.GetHideTimeoutErrors()
+	})
+
+	ui.MustBind("setHideTimeoutErrors", func(flag bool) {
+		_storage.SetHideTimeoutErrors(flag)
+	})
+
+	ui.MustBind("getWorkerCount", func() int {
+		return _storage.GetWorkerCount()
+	})
+
+	ui.MustBind("setWorkerCount", func(n int) {
+		_storage.SetWorkerCount(n)
+	})
+
 	ui.MustBind("getAfxConfigs", func() []PossibleArtifact {
 		if len(_possibleArtifacts) == 0 {
 			initPossibleArtifacts()
@@ -683,19 +726,8 @@ func main() {
 			}
 
 			backup := fc.GetBackup()
-			game := backup.GetGame()
 			nickname := backup.GetUserName()
-			//EB calculations
-			soulEggBonus := 10.0
-			prophecyEggBonus := 1.05
-			for _, er := range game.GetEpicResearch() {
-				if strings.ToLower(er.GetId()) == "soul_eggs" {
-					soulEggBonus = float64(er.GetLevel()) + 10
-				} else if strings.ToLower(er.GetId()) == "prophecy_bonus" {
-					prophecyEggBonus = (float64(er.GetLevel())+5)/100 + 1
-				}
-			}
-			eb := float64(game.GetSoulEggsD() * soulEggBonus * math.Pow(float64(prophecyEggBonus), float64(game.GetEggsOfProphecy())))
+			eb := backup.GetEarningsBonus()
 			roleColor, roleString, ebAddendum, eb, precision := RoleFromEB(eb)
 			ebString := fmt.Sprintf(fmt.Sprintf("%%.%df", precision), eb) + ebAddendum
 
@@ -704,6 +736,22 @@ func main() {
 				msg += fmt.Sprintf(" (&%s<%s>)", roleColor, nickname)
 			}
 			pinfo(msg)
+
+			game := backup.GetGame()
+			seSuffix := AbbreviateFloat(game.GetSoulEggsD())
+			peCount := int(game.GetEggsOfProphecy())
+			totalEoT := 0
+			if virtue := backup.GetVirtue(); virtue != nil {
+				for _, v := range virtue.GetEovEarned() {
+					totalEoT += int(v)
+				}
+			}
+			breakdownMsg := ""
+			if totalEoT > 0 {
+				breakdownMsg += fmt.Sprintf("  [img:truth_egg.png] &c831ff<%d EoT>", totalEoT)
+			}
+			breakdownMsg += fmt.Sprintf("  [img:soul_egg.png] &a855f7<%s SE>  [img:prophecy_egg.png] &eab308<%d PE>", seSuffix, peCount)
+			pinfo(breakdownMsg)
 
 			ebMsg := fmt.Sprintf("updated local database EB to &%s<%s>, role to &%s<%s>", roleColor, ebString, roleColor, roleString)
 			pinfo(ebMsg)
@@ -720,7 +768,7 @@ func main() {
 			} else {
 				perror("backup is from unknown time")
 			}
-			_storage.AddKnownAccount(Account{Id: playerId, Nickname: nickname, EBString: ebString, AccountColor: roleColor})
+			_storage.AddKnownAccount(Account{Id: playerId, Nickname: nickname, EBString: ebString, AccountColor: roleColor, SeString: seSuffix, PeCount: peCount, EotCount: totalEoT})
 			_storage.Lock()
 			updateKnownAccounts(_storage.KnownAccounts)
 			_storage.Unlock()
@@ -752,27 +800,51 @@ func main() {
 			pinfo(fmt.Sprintf("found &148c32<%d completed> missions, &148c32<%d in-progress> missions, &148c32<%d to fetch>",
 				len(missions), len(inProgressMissions), len(newMissionIds)))
 
+			// Build label lookup for progress display: identifier -> "Ship · Duration"
+			missionLabelByID := make(map[string]string)
+			for _, mission := range missions {
+				label := mission.GetShip().Name() + " · " + mission.GetDurationType().Display()
+				missionLabelByID[mission.GetIdentifier()] = label
+			}
+
 			total := len(newMissionIds)
 			finished := 0
+			failed := 0
+			retried := 0
+			currentMission := ""
+			var currentMissionMu sync.Mutex
 			if total > 0 {
 				updateState(AppState_FETCHING_MISSIONS)
 
-				reportProgress := func(finished int) {
+				workerCount := _storage.GetWorkerCount()
+				var failureMu sync.Mutex
+
+				reportProgress := func(finished, failedCount, retriedCount int) {
+					currentMissionMu.Lock()
+					label := currentMission
+					currentMissionMu.Unlock()
+					remainingBatches := (total - finished + workerCount - 1) / workerCount
 					updateMissionProgress(MissionProgress{
 						Total:                   total,
 						Finished:                finished,
+						Failed:                  failedCount,
+						Retried:                 retriedCount,
 						FinishedPercentage:      fmt.Sprintf("%.1f%%", float64(finished)/float64(total)*100),
-						ExpectedFinishTimestamp: timeToUnix(time.Now().Add(time.Duration(total-finished) * _requestInterval)),
+						ExpectedFinishTimestamp: timeToUnix(time.Now().Add(time.Duration(remainingBatches) * _requestInterval)),
+						CurrentMission:          label,
 					})
 				}
 
-				reportProgress(finished)
+				reportProgress(finished, failed, retried)
 
 				finishedCh := make(chan struct{}, total)
 				go func() {
 					for range finishedCh {
 						finished++
-						reportProgress(finished)
+						failureMu.Lock()
+						f, r := failed, retried
+						failureMu.Unlock()
+						reportProgress(finished, f, r)
 					}
 				}()
 
@@ -786,7 +858,7 @@ func main() {
 				tryFailedAgain := _storage.GetRetryFailedMissions()
 
 			MissionsLoop:
-				for i := 0; i < total; i++ {
+				for i := 0; i < total; i += workerCount {
 					if i != 0 {
 						select {
 						case <-ctx.Done():
@@ -794,19 +866,31 @@ func main() {
 						case <-time.After(_requestInterval):
 						}
 					}
-					wg.Add(1)
-					go func(missionId string, startTimestamp float64) {
-						defer wg.Done()
-						_, err := fetchCompleteMissionWithContext(w.ctx, playerId, missionId, startTimestamp)
-						if err != nil {
-							perror(err)
-							errored++
-							if tryFailedAgain {
-								failedMissions = append(failedMissions, FailedMission{missionId, startTimestamp})
+					batchEnd := min(i+workerCount, total)
+					currentMissionMu.Lock()
+					currentMission = missionLabelByID[newMissionIds[i]]
+					currentMissionMu.Unlock()
+					for j := i; j < batchEnd; j++ {
+						wg.Add(1)
+						go func(missionId string, startTimestamp float64) {
+							defer wg.Done()
+							_, err := fetchCompleteMissionWithContext(w.ctx, playerId, missionId, startTimestamp)
+							if err != nil {
+								isTimeout := strings.Contains(err.Error(), "timeout after")
+								if !isTimeout || !_storage.GetHideTimeoutErrors() {
+									perror(err)
+								}
+								failureMu.Lock()
+								errored++
+								failed++
+								if tryFailedAgain {
+									failedMissions = append(failedMissions, FailedMission{missionId, startTimestamp})
+								}
+								failureMu.Unlock()
 							}
-						}
-						finishedCh <- struct{}{}
-					}(newMissionIds[i], newMissionStartTimestamps[i])
+							finishedCh <- struct{}{}
+						}(newMissionIds[j], newMissionStartTimestamps[j])
+					}
 				}
 				wg.Wait()
 
@@ -819,6 +903,7 @@ func main() {
 
 					if tryFailedAgain {
 						errored = 0
+						retried = len(failedMissions)
 						pinfo("retrying failed missions")
 
 						// Update the total to include the number of failed missions
@@ -830,8 +915,13 @@ func main() {
 								defer wg.Done()
 								_, err := fetchCompleteMissionWithContext(w.ctx, playerId, missionId, startTimestamp)
 								if err != nil {
-									perror(err)
+									isTimeout := strings.Contains(err.Error(), "timeout after")
+									if !isTimeout || !_storage.GetHideTimeoutErrors() {
+										perror(err)
+									}
+									failureMu.Lock()
 									errored++
+									failureMu.Unlock()
 								}
 								finishedCh <- struct{}{}
 							}(failedMission.missionId, failedMission.startTimestamp)
@@ -1100,7 +1190,7 @@ func main() {
 
 	ui.MustBind("openFileInFolder", func(file string) {
 		path := filepath.Join(_rootDir, file)
-		if err := openFolderAndSelect(path); err != nil {
+		if err := platform.OpenFolderAndSelect(path); err != nil {
 			log.Errorf("opening %s in folder: %s", path, err)
 		}
 	})
@@ -1118,12 +1208,13 @@ func main() {
 			log.Error(err)
 			return []string{"", ""}
 		}
-		if newVersion == "" {
+		switch newVersion {
+		case "":
 			log.Infof("no new version found")
 			return []string{"", ""}
-		} else if newVersion == "skip" {
+		case "skip":
 			return []string{"", ""}
-		} else {
+		default:
 			log.Infof("new version found: %s", newVersion)
 			return []string{newVersion, newReleaseNotes}
 		}
@@ -1133,13 +1224,12 @@ func main() {
 		return checkIfRefreshMennoDataIsNeeded()
 	})
 
-	ui.MustBind("updateMennoData", func() bool {
-		err := refreshMennoData()
-		if err != nil {
-			return false
-		} else {
-			return true
-		}
+	ui.MustBind("updateMennoData", func() {
+		go func() {
+			err := refreshMennoData(updateMennoDownloadProgress)
+			ok := err == nil
+			ui.Eval(fmt.Sprintf("window.onMennoRefreshDone(%t)", ok))
+		}()
 	})
 
 	ui.MustBind("secondsSinceLastMennoUpdate", func() int {
@@ -1206,9 +1296,9 @@ func main() {
 	go func() {
 		var httpfs http.FileSystem
 		if _devMode {
-			httpfs = http.Dir("www")
+			httpfs = http.Dir("www/dist")
 		} else {
-			wwwfs, err := fs.Sub(_fs, "www")
+			wwwfs, err := fs.Sub(_fs, "www/dist")
 			if err != nil {
 				log.Fatal("wwwfs err: ", err)
 			}

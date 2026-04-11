@@ -15,12 +15,15 @@ jobs:
     steps:
       - name: Create Release
         id: create_release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           name: ${{ github.ref_name }}
           draft: false
           prerelease: false
           generate_release_notes: false
+    outputs:
+      release_tag: ${{ github.ref_name }}
+
   build_release:
     name: Build Release
     needs: create_release
@@ -36,61 +39,26 @@ jobs:
             os: macos-latest
           - target: windows
             os: ubuntu-latest
+
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - name: Setup go
-        uses: actions/setup-go@v4
         with:
-          go-version: 'stable'
-      - name: Set up Node
-        uses: actions/setup-node@v4
+          fetch-depth: 1
+          show-progress: false
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-ledger-buildspace
         with:
-          node-version: '20'
-
-      - name: Install Linux build dependencies
-        if: matrix.target == 'linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y protobuf-compiler protoc-gen-go dos2unix
-
-      - name: Run Linux Build
-        if: matrix.target == 'linux'
-        run: make dist-linux
-
-      - name: Install Macos build dependencies
-        if: matrix.os == 'macos-latest'
-        run: |
-          brew update
-          brew install protobuf protoc-gen-go dos2unix
-      
-      - name: Run Mac x86 Build
-        if: matrix.target == 'mac'
-        run: make dist-mac
-
-      - name: Run Mac ARM Build
-        if: matrix.target == 'mac-arm64'
-        run: make dist-mac-arm
-
-      - name: Install Windows build dependencies
-        if: matrix.target == 'windows'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y protobuf-compiler protoc-gen-go gcc-mingw-w64 dos2unix
-
-      - name: Run Windows Build
-        if: matrix.target == 'windows'
-        run: make dist-windows
+          target: ${{ matrix.target }}
 
       - name: Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ needs.create_release.outputs.tag-name }}
+          tag_name: ${{ needs.create_release.outputs.release_tag }}
           files: | 
             dist/EggLedger-mac.zip
             dist/EggLedger-mac-arm64.zip
             dist/EggLedger-linux.tar.gz
-            dist/EggLedger-windows.zip
             dist/EggLedger.exe
-

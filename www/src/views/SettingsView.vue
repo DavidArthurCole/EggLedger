@@ -1,0 +1,212 @@
+<template>
+  <div class="flex-1 flex flex-col w-full mx-auto px-4 space-y-3 overflow-y-scroll bg-darker">
+    <div class="flex-1 px-3 py-2 overflow-auto shadow-sm block text-sm font-mono text-gray-400 bg-darkest rounded-md">
+      <div class="w-full pl-0_5rem pr-0_5rem">
+        <span class="text-base">
+          Preferred browser for Ledger (<span class="text-gray-300 text-sm">effective on restart</span>)
+        </span> <br />
+        <div ref="preferredBrowserSelectRef" class="text-sm relative w-full flex-grow focus-within:z-10 pl-0_5rem">
+          <div v-if="preferredBrowser" class="ledger-input-overlay">
+            <span>{{ preferredBrowser }}</span> (<span class="text-gray-300">{{ getBrowserDisplayName(preferredBrowser) }}</span>)
+          </div>
+          <input
+            id="preferredBrowserInput"
+            type="text"
+            class="drop-select-full text-sm bg-darker"
+            placeholder="-- Not Set (Default) --"
+            :value="preferredBrowser"
+            @focus="openPrefBrowserDropdown"
+            @input="(e) => (e as Event).preventDefault()"
+          />
+          <ul
+            v-if="prefBrowserDropdownOpen && allBrowsers.length > 0"
+            class="ledger-list focus:outline-none text-sm"
+            tabindex="-1"
+          >
+            <li
+              v-for="browser in allBrowsers"
+              :key="browser"
+              class="drop-opt bg-darker"
+              @click="closePrefBrowserDropdown(browser)"
+            >
+              {{ browser }} <span class="inline-block max-w-9/10">(<span class="text-gray-300">{{ getBrowserDisplayName(browser) }}</span>)</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <hr class="mt-1rem mb-1rem w-full" />
+
+      <div class="text-sm relative w-full pl-0_5rem pr-0_5rem">
+        <span class="text-base">
+          App resolution defaults (<span class="text-gray-300 text-sm">effective on restart</span>)
+        </span> <br />
+        <div class="flex flex-row items-center pl-0_5rem">
+          <div class="flex flex-col w-full max-w-10rem text-center mt-0_5rem">
+            <input type="number" id="resPrefX" class="number-input text-sm bg-darker" v-model="resolutionX" />
+            <span class="text-sm text-gray-400 mt-0_5rem">Width<br />(<span class="text-gray-300">X</span>)</span>
+          </div>
+          <span class="text-xl font-bold ml-0_5rem mr-0_5rem mb-2_5rem">x</span>
+          <div class="flex flex-col w-full max-w-10rem text-center mt-0_5rem">
+            <input type="number" id="resPrefY" class="number-input text-sm bg-darker" v-model="resolutionY" />
+            <span class="text-sm text-gray-400 mt-0_5rem">Height<br />(<span class="text-gray-300">Y</span>)</span>
+          </div>
+          <span class="text-xl font-bold ml-0_5rem mr-0_5rem mb-2_5rem">@</span>
+          <div class="flex flex-col w-full max-w-5rem text-center mt-0_5rem">
+            <input type="number" id="scalePref" class="number-input text-sm bg-darker" v-model="scalingFactor" />
+            <span class="text-sm text-gray-400 mt-0_5rem">Scaling Factor</span>
+          </div>
+        </div>
+        <div class="mt-0_5rem pl-0_5rem">
+          <input
+            id="startInFullscreenCheckbox"
+            type="checkbox"
+            class="ext-opt-check mr-0_5rem"
+            v-model="startInFullscreen"
+          />
+          <label for="startInFullscreenCheckbox" class="ext-opt-label">Launch app in fullscreen</label>
+        </div>
+      </div>
+
+      <hr class="mt-1rem mb-1rem w-full" />
+
+      <div class="px-2 py-2 text-sm text-gray-400 bg-darker rounded-md tabular-nums overflow-auto">
+        <span class="mr-0_5rem font-bold text-lg text-gray-400 ledger-underline">Menno's Ship Data</span><br />
+        <span class="italic text-gray-400">Data last refreshed on
+          <span :class="secondsSinceLastUpdate >= 2147483647 ? 'text-red-700' : 'text-green-500'">{{ lastUpdateString }}</span>
+        </span><br />
+        <button
+          class="mt-0_5rem mb-0_5rem mr-1rem -ml-px relative p-0.5 text-center space-x-2 px-3 py-1 border border-gray-300 text-sm font-medium rounded-md text-gray-400 bg-darkerer hover:bg-dark_tab_hover disabled:opacity-50 disabled:hover:darker_tab_hover disabled:hover:cursor-not-allowed focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+          :disabled="secondsSinceLastUpdate < 86400"
+          @click="onManualRefresh"
+        >
+          Refresh Data Now
+        </button><br />
+        <span class="italic text-sm text-gray-500" v-if="secondsSinceLastUpdate < 86400">
+          To reduce the load on Menno's API, manual refreshes can be performed once every day
+        </span>
+        <div class="mt-0_5rem">
+          <input
+            id="autoRefreshMennoCheckbox"
+            type="checkbox"
+            class="ext-opt-check mr-0_5rem"
+            v-model="autoRefreshMenno"
+          />
+          <label for="autoRefreshMennoCheckbox" class="ext-opt-label">Automatically refresh Menno data once weekly</label>
+        </div>
+      </div>
+
+      <hr class="mt-1rem mb-1rem w-full" />
+
+      <div class="px-2 py-2 text-sm text-gray-400 bg-darker rounded-md tabular-nums overflow-auto">
+        <span class="mr-0_5rem font-bold text-lg text-gray-400 ledger-underline">Other Globals</span><br />
+        <div>
+          <span class="font-bold text-base text-gray-400">Default Drop-Sort Method</span><br />
+          <span class="opt-span">
+            <label for="dvmDefault" class="ext-opt-label">Default</label>
+            <input id="dvmDefault" type="radio" v-model="defaultViewMode" value="default" class="ext-opt-check" />
+          </span>
+          <span class="opt-span">
+            <label for="dvmIv" class="ext-opt-label">Inventory Visualizer</label>
+            <input id="dvmIv" type="radio" v-model="defaultViewMode" value="iv" class="ext-opt-check" />
+          </span>
+        </div>
+        <div class="mt-0_5rem">
+          <span class="font-bold text-base text-gray-400">Auto-Retry Failed Missions</span><br />
+          <input
+            id="autoRetryCheckbox"
+            type="checkbox"
+            class="ext-opt-check mr-0_5rem"
+            v-model="autoRetry"
+          />
+          <label for="autoRetryCheckbox" class="ext-opt-label">Automatically retry pulling missions that fail while fetching</label>
+        </div>
+        <div class="mt-0_5rem">
+          <span class="font-bold text-base text-gray-400">Timeout Errors</span><br />
+          <input
+            id="hideTimeoutErrorsCheckbox"
+            type="checkbox"
+            class="ext-opt-check mr-0_5rem"
+            v-model="hideTimeoutErrors"
+          />
+          <label for="hideTimeoutErrorsCheckbox" class="ext-opt-label">Hide per-mission timeout errors in the fetch log</label>
+        </div>
+        <div class="mt-0_5rem">
+          <span class="font-bold text-base text-gray-400">Parallel Download Workers</span><br />
+          <div class="flex items-center mt-0_5rem pl-0_5rem gap-2">
+            <input
+              id="workerCountInput"
+              type="number"
+              class="number-input text-sm bg-darker"
+              :min="1"
+              :max="10"
+              v-model="workerCount"
+            />
+            <span class="text-gray-400">workers (1–10)</span>
+          </div>
+          <div class="mt-0_5rem pl-0_5rem text-yellow-500 italic">
+            Higher values fetch missions faster but may trigger API rate limiting.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import { useSettings } from '../composables/useSettings'
+import { useMennoData } from '../composables/useMennoData'
+
+const {
+  resolutionX,
+  resolutionY,
+  scalingFactor,
+  startInFullscreen,
+  preferredBrowser,
+  allBrowsers,
+  autoRefreshMenno,
+  autoRetry,
+  hideTimeoutErrors,
+  defaultViewMode,
+  workerCount,
+  loadSettings,
+  setPreferredBrowser,
+  refreshBrowserList,
+} = useSettings()
+
+const { secondsSinceLastUpdate, lastUpdateString, refresh, checkRefreshNeeded } = useMennoData()
+
+const preferredBrowserSelectRef = ref<HTMLElement | null>(null)
+const prefBrowserDropdownOpen = ref(false)
+
+function openPrefBrowserDropdown() {
+  prefBrowserDropdownOpen.value = true
+}
+
+function closePrefBrowserDropdown(pref?: string) {
+  if (pref != null && pref !== '') setPreferredBrowser(pref)
+  prefBrowserDropdownOpen.value = false
+}
+
+function getBrowserDisplayName(browser: string | null): string {
+  if (browser == null) return 'Unknown'
+  if (/chrome/i.test(browser)) return 'Google Chrome'
+  if (/brave/i.test(browser)) return 'Brave'
+  if (/opera/i.test(browser)) return 'Opera'
+  if (/edge/i.test(browser)) return 'Microsoft Edge'
+  if (/vivaldi/i.test(browser)) return 'Vivaldi'
+  return 'Unknown'
+}
+
+async function onManualRefresh(e: Event) {
+  e.preventDefault()
+  await refresh()
+}
+
+onMounted(async () => {
+  await loadSettings()
+  await refreshBrowserList()
+  await checkRefreshNeeded()
+})
+</script>

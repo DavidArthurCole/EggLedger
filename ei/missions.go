@@ -63,6 +63,16 @@ func (d MissionInfo_DurationType) Display() string {
 	return "Unknown"
 }
 
+func (t MissionInfo_MissionType) Display() string {
+	switch t {
+	case MissionInfo_STANDARD:
+		return "Standard"
+	case MissionInfo_VIRTUE:
+		return "Virtue"
+	}
+	return "Unknown"
+}
+
 func (fc *EggIncFirstContactResponse) GetCompletedMissions() []*MissionInfo {
 	afxdb := fc.GetBackup().GetArtifactsDb()
 	allMissions := append(afxdb.MissionArchive, afxdb.MissionInfos...)

@@ -33,7 +33,7 @@ func checkForUpdates() (newVersion string, newReleaseNotes string, err error) {
 	knownLatestTag := _storage.KnownLatestVersion
 	knownLatestReleaseNotes := _storage.KnownLatestReleaseNotes
 	_storage.Unlock()
-	if knownLatestTag != "" {
+	if !_forceUpdateCheck && knownLatestTag != "" {
 		if knownLatestVersion, err := version.NewVersion(knownLatestTag); err == nil {
 			if knownLatestVersion.GreaterThan(runningVersion) {
 				// A known new version is already stored, skip remote check.
@@ -44,7 +44,7 @@ func checkForUpdates() (newVersion string, newReleaseNotes string, err error) {
 		}
 	}
 
-	if time.Since(lastUpdateCheckAt) < _updateCheckInterval {
+	if !_forceUpdateCheck && time.Since(lastUpdateCheckAt) < _updateCheckInterval {
 		log.Infof("%s since last update check, skipping", time.Since(lastUpdateCheckAt))
 		return "skip", "", nil
 	}

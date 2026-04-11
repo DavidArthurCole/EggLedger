@@ -10,20 +10,22 @@ import (
 )
 
 type DatabaseMission struct {
-	LaunchDT       int64                        `json:"launchDT"` //Unix timestamp
-	ReturnDT       int64                        `json:"returnDT"` //Unix timestamp
-	MissiondId     string                       `json:"missionId"`
-	Ship           *ei.MissionInfo_Spaceship    `json:"ship"`
-	ShipString     string                       `json:"shipString"`
-	DurationType   *ei.MissionInfo_DurationType `json:"durationType"`
-	DurationString string                       `json:"durationString"`
-	Level          int32                        `json:"level"`
-	Capacity       int32                        `json:"capacity"`
-	NominalCapcity int32                        `json:"nominalCapacity"`
-	IsDubCap       bool                         `json:"isDubCap"`
-	IsBuggedCap    bool                         `json:"isBuggedCap"`
-	Target         string                       `json:"target"`
-	TargetInt      int32                        `json:"targetInt"`
+	LaunchDT         int64                        `json:"launchDT"` //Unix timestamp
+	ReturnDT         int64                        `json:"returnDT"` //Unix timestamp
+	MissiondId       string                       `json:"missionId"`
+	Ship             *ei.MissionInfo_Spaceship    `json:"ship"`
+	ShipString       string                       `json:"shipString"`
+	DurationType     *ei.MissionInfo_DurationType `json:"durationType"`
+	DurationString   string                       `json:"durationString"`
+	Level            int32                        `json:"level"`
+	Capacity         int32                        `json:"capacity"`
+	NominalCapcity   int32                        `json:"nominalCapacity"`
+	IsDubCap         bool                         `json:"isDubCap"`
+	IsBuggedCap      bool                         `json:"isBuggedCap"`
+	Target           string                       `json:"target"`
+	TargetInt        int32                        `json:"targetInt"`
+	MissionType      int32                        `json:"missionType"`
+	MissionTypeString string                      `json:"missionTypeString"`
 }
 
 func getMissionInformation(ctx context.Context, playerId string, missionId string) DatabaseMission {
@@ -43,20 +45,21 @@ func compileMissionInformation(completeMissionResponse *ei.CompleteMissionRespon
 	returnTimeObject := launchDateTimeObject.Add(time.Duration(*info.DurationSeconds * float64(time.Second)))
 
 	missionInst := DatabaseMission{
-		LaunchDT:       int64(*info.StartTimeDerived),
-		ReturnDT:       returnTimeObject.Unix(),
-		DurationString: info.GetDurationString(),
-
-		MissiondId:     *info.Identifier,
-		Ship:           info.Ship,
-		ShipString:     info.Ship.Name(),
-		DurationType:   info.DurationType,
-		Level:          int32(info.GetLevel()),
-		Capacity:       int32(info.GetCapacity()),
-		NominalCapcity: int32(_nominalShipCapacities[info.GetShip()][info.GetDurationType()][info.GetLevel()]),
-		IsDubCap:       isDubCap(completeMissionResponse),
-		IsBuggedCap:    isBuggedCap(completeMissionResponse),
-		Target:         properTargetName(info.TargetArtifact),
+		LaunchDT:          int64(*info.StartTimeDerived),
+		ReturnDT:          returnTimeObject.Unix(),
+		DurationString:    info.GetDurationString(),
+		MissiondId:        *info.Identifier,
+		Ship:              info.Ship,
+		ShipString:        info.Ship.Name(),
+		DurationType:      info.DurationType,
+		Level:             int32(info.GetLevel()),
+		Capacity:          int32(info.GetCapacity()),
+		NominalCapcity:    int32(_nominalShipCapacities[info.GetShip()][info.GetDurationType()][info.GetLevel()]),
+		IsDubCap:          isDubCap(completeMissionResponse),
+		IsBuggedCap:       isBuggedCap(completeMissionResponse),
+		Target:            properTargetName(info.TargetArtifact),
+		MissionType:       int32(info.GetType()),
+		MissionTypeString: info.GetType().Display(),
 	}
 	if missionInst.Target == "" {
 		missionInst.TargetInt = -1

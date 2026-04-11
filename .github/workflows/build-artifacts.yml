@@ -1,0 +1,49 @@
+name: Build artifacts
+
+# This is designed to work with my personal gitea server, but in _theory_ it should work for
+# forks as well? Dunno.
+
+on:
+  push:
+    branches:
+      - '**'
+
+jobs:
+  build:
+    name: Build
+    strategy:
+      matrix:
+        target: [linux, mac, mac-arm64, windows]
+        include:
+          - target: linux
+            os: ubuntu-latest
+            artifact: dist/EggLedger-linux.tar.gz
+          - target: mac
+            os: macos-latest
+            artifact: dist/EggLedger-mac.zip
+          - target: mac-arm64
+            os: macos-latest
+            artifact: dist/EggLedger-mac-arm64.zip
+          - target: windows
+            os: ubuntu-latest
+            artifact: dist/EggLedger.exe
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          show-progress: false
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-ledger-buildspace
+        with:
+          target: ${{ matrix.target }}
+
+      - name: Upload artifacts
+        uses: christopherHX/gitea-upload-artifact@v4
+        with:
+          name: EggLedger-${{ matrix.target }}
+          path: ${{ matrix.artifact }}

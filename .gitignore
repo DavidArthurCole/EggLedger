@@ -1,14 +1,12 @@
 /dist/
-/EggLedger
 /exports/
 /internal/
 /www/index.css
-/ei/ei.proto.OLD
-/ei/ei.pb.go.OLD
+/www/dist/
 node_modules/
 *.hash
-
-# Ignore custom-tailored files
-daveedbuild.sh
-daveedbuild.sh~
+vendor/
+/vendor/*
 .vscode/
+EggLedger.exe
+EggLedger

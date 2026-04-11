@@ -1,0 +1,47 @@
+name: Setup Ledger Buildspace
+description: Shared setup and build logic for EggLedger
+
+inputs:
+  target:
+    required: true
+    description: Build target (linux, mac, mac-arm64, windows)
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: stable
+        cache: false
+
+    - name: Install Linux build dependencies
+      if: inputs.target == 'linux'
+      shell: bash
+      run: |
+        sudo apt-get update -qq || true
+        sudo apt-get install -y protobuf-compiler protoc-gen-go dos2unix
+
+    - name: Install macOS build dependencies
+      if: runner.os == 'macOS'
+      shell: bash
+      run: |
+        brew install protobuf protoc-gen-go dos2unix || true
+
+    - name: Install Windows build dependencies
+      if: inputs.target == 'windows'
+      shell: bash
+      run: |
+        sudo apt-get update -qq || true
+        sudo apt-get install -y protobuf-compiler protoc-gen-go dos2unix
+
+    - name: Build
+      shell: bash
+      run: |
+        case "${{ inputs.target }}" in
+          linux) make dist-linux ;;
+          mac) make dist-mac ;;
+          mac-arm64) make dist-mac-arm ;;
+          windows) make dist-windows ;;
+          *) echo "Unknown target"; exit 1 ;;
+        esac
