@@ -1,6 +1,7 @@
 <template>
   <div class="flex-1 flex flex-col w-full mx-auto px-4 overflow-hidden bg-darker">
     <SearchOverSelector
+      v-if="dropFilterMenuOpen"
       :item-list="dropSelectList"
       ledger-type="drop"
       :is-lifetime="false"
@@ -10,6 +11,7 @@
     />
 
     <SearchOverSelector
+      v-if="targetFilterMenuOpen"
       :item-list="targetSelectList"
       ledger-type="target"
       :is-lifetime="false"
@@ -19,7 +21,7 @@
     />
 
     <!-- Single mission overlay -->
-    <div class="top-click-detect mission-view-overlay overlay-mission">
+    <div v-show="boolMissionBeingViewed" class="top-click-detect mission-view-overlay overlay-mission">
       <div class="inner-click-detect max-w-70vw max-h-90vh overflow-auto bg-dark rounded-lg relative p-1rem">
         <button class="detect-trigger hover:text-gray-500 close-button" @click="closeMissionOverlay">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -37,7 +39,7 @@
     </div>
 
     <!-- Multi-mission overlay -->
-    <div class="top-click-detect mission-view-overlay overlay-multi-mission">
+    <div v-show="multiMissionOverlayOpen" class="top-click-detect mission-view-overlay overlay-multi-mission">
       <div class="inner-click-detect max-w-90vw max-h-90vh bg-dark rounded-lg relative p-1rem">
         <button class="detect-trigger hover:text-gray-500 close-button" @click="closeMultiMissionOverlay">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -315,6 +317,26 @@
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- Mission type tabs -->
+    <div v-if="doesDataExist" class="flex gap-1 mt-0_75rem text-sm">
+      <button
+        v-for="tab in [{ label: 'All', value: null }, { label: 'Normal', value: 0 }, { label: 'Virtue', value: 1 }]"
+        :key="String(tab.value)"
+        type="button"
+        :class="[
+          'px-3 py-1 rounded-md border font-medium transition-colors',
+          missionTypeTab === tab.value
+            ? 'bg-darkest text-gray-200 border-gray-500'
+            : 'bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover',
+        ]"
+        @click="missionTypeTab = tab.value"
+      >
+        {{ tab.label }}
+        <span v-if="tab.value === null" class="text-gray-500 ml-1">({{ filteredMissions?.length ?? 0 }})</span>
+        <span v-else class="text-gray-500 ml-1">({{ filteredMissions?.filter(m => m.missionType === tab.value).length ?? 0 }})</span>
+      </button>
     </div>
 
     <!-- Mission tree -->
@@ -615,10 +637,16 @@ function closeAccountDropdown(id?: string) {
 
 const allLoadedMissions = ref<DatabaseMission[] | null>(null)
 const filteredMissions = ref<DatabaseMission[] | null>(null)
+const missionTypeTab = ref<number | null>(null) // null=All, 0=Standard, 1=Virtue
 const groupedArrays = ref<GroupedArrays>({ year: [], month: [], day: [] })
 const allVisible = ref(true)
 
 const resultsDiv = ref<HTMLElement | null>(null)
+
+const tabFilteredMissions = computed(() => {
+  if (missionTypeTab.value === null || filteredMissions.value === null) return filteredMissions.value
+  return filteredMissions.value.filter((m) => m.missionType === missionTypeTab.value)
+})
 
 const hasAnyFilterableData = computed(() => {
   if (groupedMissions.value && Object.keys(groupedMissions.value).length > 0) return true
@@ -633,7 +661,7 @@ const hasAnyFilterableData = computed(() => {
 // groupedArrays is updated alongside groupedMissions to reset expand-collapse state
 // when filters change. The three assignments below are intentional side effects.
 const groupedMissions = computed(() => {
-  const fm = filteredMissions.value
+  const fm = tabFilteredMissions.value
   if (fm == null || fm.length === 0) return [] as DatabaseMission[][][][]
 
   const uniqueYears = [...new Set(fm.map((mission) => ledgerDate(mission.launchDT).getFullYear()))].reverse()
@@ -896,6 +924,8 @@ function getFilterValueOptions(topLevel: string | null): FilterOption[] {
       filtered.unshift({ text: 'Any Rare', value: '%_%_1_%', rarity: 1, styleClass: 'text-rare', imagePath: 'icon_help.webp' })
       return filtered
     }
+    case 'type':
+      return [{ text: 'Standard', value: '0' }, { text: 'Virtue', value: '1' }]
     case 'buggedcap':
     case 'dubcap':
       return [{ text: 'True', value: 'true' }, { text: 'False', value: 'false' }]
@@ -1250,6 +1280,9 @@ async function testMissionAgainstFilter(
       case 'target':
         filterPassed = commonFilterLogic(mission.targetInt, filter.val, filter.op, filterPassed)
         break
+      case 'type':
+        filterPassed = commonFilterLogic(mission.missionType, filter.val, filter.op, filterPassed)
+        break
       case 'launchDT':
         filterPassed = commonFilterLogic(
           ledgerDate(mission.launchDT),
@@ -1511,6 +1544,7 @@ const multiViewMissionData = ref<ViewMissionData[]>([])
 const missionsBeingViewed = ref<string[]>([])
 const rowViewBeingLoaded = ref(false)
 const multiViewFreeSelectIds = ref<string[]>([])
+const multiMissionOverlayOpen = ref(false)
 
 function closeMissionOverlay() {
   const el = document.querySelector('.overlay-mission') as HTMLElement | null
@@ -1536,6 +1570,7 @@ function closeMultiMissionOverlay() {
     el.style.display = 'none'
     el.classList.add('hidden')
   }
+  multiMissionOverlayOpen.value = false
   multiViewMissionData.value = []
   missionsBeingViewed.value = []
 }
@@ -1545,6 +1580,7 @@ function openMultiMissionOverlay() {
     el.style.display = 'flex'
     el.classList.remove('hidden')
   }
+  multiMissionOverlayOpen.value = true
 }
 
 function handleKeyDown(event: KeyboardEvent) {

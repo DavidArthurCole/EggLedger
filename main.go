@@ -4,6 +4,7 @@ import (
 	"context"
 	"embed"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io/fs"
 	"math"
@@ -58,6 +59,9 @@ var (
 	_latestMennoData       = MennoData{}
 	_possibleTargets       = []PossibleTarget{}
 	_possibleArtifacts     = []PossibleArtifact{}
+
+	_forceMennoRefresh bool
+	_forceUpdateCheck  bool
 )
 
 const (
@@ -295,8 +299,8 @@ func init() {
 		initNominalShipCapacities()
 	}
 
-	storageInit()
 	dataInit()
+	storageInit()
 	initPossibleTargets()
 	initPossibleArtifacts()
 }
@@ -448,6 +452,10 @@ func initPossibleArtifacts() {
 }
 
 func main() {
+	flag.BoolVar(&_forceMennoRefresh, "force-menno-refresh", false, "treat menno data as stale regardless of last refresh time")
+	flag.BoolVar(&_forceUpdateCheck, "force-update-check", false, "bypass the 12-hour update-check cooldown")
+	flag.Parse()
+
 	if _devMode {
 		log.Info("starting app in dev mode")
 	}
@@ -647,6 +655,22 @@ func main() {
 		_storage.SetRetryFailedMissions(flag)
 	})
 
+	ui.MustBind("getHideTimeoutErrors", func() bool {
+		return _storage.GetHideTimeoutErrors()
+	})
+
+	ui.MustBind("setHideTimeoutErrors", func(flag bool) {
+		_storage.SetHideTimeoutErrors(flag)
+	})
+
+	ui.MustBind("getWorkerCount", func() int {
+		return _storage.GetWorkerCount()
+	})
+
+	ui.MustBind("setWorkerCount", func(n int) {
+		_storage.SetWorkerCount(n)
+	})
+
 	ui.MustBind("getAfxConfigs", func() []PossibleArtifact {
 		if len(_possibleArtifacts) == 0 {
 			initPossibleArtifacts()
@@ -716,15 +740,15 @@ func main() {
 			game := backup.GetGame()
 			seSuffix := AbbreviateFloat(game.GetSoulEggsD())
 			peCount := int(game.GetEggsOfProphecy())
-			breakdownMsg := ""
+			totalEoT := 0
 			if virtue := backup.GetVirtue(); virtue != nil {
-				totalEoT := 0
 				for _, v := range virtue.GetEovEarned() {
 					totalEoT += int(v)
 				}
-				if totalEoT > 0 {
-					breakdownMsg += fmt.Sprintf("  [img:truth_egg.png] &c831ff<%d EoT>", totalEoT)
-				}
+			}
+			breakdownMsg := ""
+			if totalEoT > 0 {
+				breakdownMsg += fmt.Sprintf("  [img:truth_egg.png] &c831ff<%d EoT>", totalEoT)
 			}
 			breakdownMsg += fmt.Sprintf("  [img:soul_egg.png] &a855f7<%s SE>  [img:prophecy_egg.png] &eab308<%d PE>", seSuffix, peCount)
 			pinfo(breakdownMsg)
@@ -744,7 +768,7 @@ func main() {
 			} else {
 				perror("backup is from unknown time")
 			}
-			_storage.AddKnownAccount(Account{Id: playerId, Nickname: nickname, EBString: ebString, AccountColor: roleColor})
+			_storage.AddKnownAccount(Account{Id: playerId, Nickname: nickname, EBString: ebString, AccountColor: roleColor, SeString: seSuffix, PeCount: peCount, EotCount: totalEoT})
 			_storage.Lock()
 			updateKnownAccounts(_storage.KnownAccounts)
 			_storage.Unlock()
@@ -792,28 +816,35 @@ func main() {
 			if total > 0 {
 				updateState(AppState_FETCHING_MISSIONS)
 
-				reportProgress := func(finished int) {
+				workerCount := _storage.GetWorkerCount()
+				var failureMu sync.Mutex
+
+				reportProgress := func(finished, failedCount, retriedCount int) {
 					currentMissionMu.Lock()
 					label := currentMission
 					currentMissionMu.Unlock()
+					remainingBatches := (total - finished + workerCount - 1) / workerCount
 					updateMissionProgress(MissionProgress{
 						Total:                   total,
 						Finished:                finished,
-						Failed:                  failed,
-						Retried:                 retried,
+						Failed:                  failedCount,
+						Retried:                 retriedCount,
 						FinishedPercentage:      fmt.Sprintf("%.1f%%", float64(finished)/float64(total)*100),
-						ExpectedFinishTimestamp: timeToUnix(time.Now().Add(time.Duration(total-finished) * _requestInterval)),
+						ExpectedFinishTimestamp: timeToUnix(time.Now().Add(time.Duration(remainingBatches) * _requestInterval)),
 						CurrentMission:          label,
 					})
 				}
 
-				reportProgress(finished)
+				reportProgress(finished, failed, retried)
 
 				finishedCh := make(chan struct{}, total)
 				go func() {
 					for range finishedCh {
 						finished++
-						reportProgress(finished)
+						failureMu.Lock()
+						f, r := failed, retried
+						failureMu.Unlock()
+						reportProgress(finished, f, r)
 					}
 				}()
 
@@ -827,7 +858,7 @@ func main() {
 				tryFailedAgain := _storage.GetRetryFailedMissions()
 
 			MissionsLoop:
-				for i := 0; i < total; i++ {
+				for i := 0; i < total; i += workerCount {
 					if i != 0 {
 						select {
 						case <-ctx.Done():
@@ -835,23 +866,31 @@ func main() {
 						case <-time.After(_requestInterval):
 						}
 					}
+					batchEnd := min(i+workerCount, total)
 					currentMissionMu.Lock()
 					currentMission = missionLabelByID[newMissionIds[i]]
 					currentMissionMu.Unlock()
-					wg.Add(1)
-					go func(missionId string, startTimestamp float64) {
-						defer wg.Done()
-						_, err := fetchCompleteMissionWithContext(w.ctx, playerId, missionId, startTimestamp)
-						if err != nil {
-							perror(err)
-							errored++
-							failed++
-							if tryFailedAgain {
-								failedMissions = append(failedMissions, FailedMission{missionId, startTimestamp})
+					for j := i; j < batchEnd; j++ {
+						wg.Add(1)
+						go func(missionId string, startTimestamp float64) {
+							defer wg.Done()
+							_, err := fetchCompleteMissionWithContext(w.ctx, playerId, missionId, startTimestamp)
+							if err != nil {
+								isTimeout := strings.Contains(err.Error(), "timeout after")
+								if !isTimeout || !_storage.GetHideTimeoutErrors() {
+									perror(err)
+								}
+								failureMu.Lock()
+								errored++
+								failed++
+								if tryFailedAgain {
+									failedMissions = append(failedMissions, FailedMission{missionId, startTimestamp})
+								}
+								failureMu.Unlock()
 							}
-						}
-						finishedCh <- struct{}{}
-					}(newMissionIds[i], newMissionStartTimestamps[i])
+							finishedCh <- struct{}{}
+						}(newMissionIds[j], newMissionStartTimestamps[j])
+					}
 				}
 				wg.Wait()
 
@@ -876,8 +915,13 @@ func main() {
 								defer wg.Done()
 								_, err := fetchCompleteMissionWithContext(w.ctx, playerId, missionId, startTimestamp)
 								if err != nil {
-									perror(err)
+									isTimeout := strings.Contains(err.Error(), "timeout after")
+									if !isTimeout || !_storage.GetHideTimeoutErrors() {
+										perror(err)
+									}
+									failureMu.Lock()
 									errored++
+									failureMu.Unlock()
 								}
 								finishedCh <- struct{}{}
 							}(failedMission.missionId, failedMission.startTimestamp)
@@ -1180,13 +1224,12 @@ func main() {
 		return checkIfRefreshMennoDataIsNeeded()
 	})
 
-	ui.MustBind("updateMennoData", func() bool {
-		err := refreshMennoData(updateMennoDownloadProgress)
-		if err != nil {
-			return false
-		} else {
-			return true
-		}
+	ui.MustBind("updateMennoData", func() {
+		go func() {
+			err := refreshMennoData(updateMennoDownloadProgress)
+			ok := err == nil
+			ui.Eval(fmt.Sprintf("window.onMennoRefreshDone(%t)", ok))
+		}()
 	})
 
 	ui.MustBind("secondsSinceLastMennoUpdate", func() int {

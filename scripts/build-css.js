@@ -2,7 +2,7 @@ const fs = require('node:fs');
 const crypto = require('node:crypto');
 const execSync = require('node:child_process').execSync;
 
-const configPath = 'tailwind.config.js';
+const configPath = 'www/tailwind.config.js';
 const configHashPath = 'tailwind.config.hash';
 const indexPath = 'www/src/index.css';
 const cssHashFilePath = 'www/src/index_css.hash';

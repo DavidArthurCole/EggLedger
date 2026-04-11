@@ -257,7 +257,7 @@ input[type=number] {
 }
 
 .popup-selector-main {
-  @apply h-full w-full z-40 fixed top-0 left-0 right-0 bottom-0 hidden items-center justify-center;
+  @apply h-full w-full z-40 fixed top-0 left-0 right-0 bottom-0 flex items-center justify-center;
 }
 
 .popup-selector-inner {
@@ -303,7 +303,7 @@ input[type=number] {
 }
 
 .mission-view-overlay {
-  @apply w-full h-full z-40 fixed top-0 left-0 right-0 bottom-0 hidden items-center justify-center;
+  @apply w-full h-full z-40 fixed top-0 left-0 right-0 bottom-0 flex items-center justify-center;
 }
 
 .bg-r-0 {

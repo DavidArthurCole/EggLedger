@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import type { ConfigurationItem, MennoDownloadProgress } from '../types/bridge'
 
 const secondsSinceLastUpdate = ref(Number.MAX_SAFE_INTEGER)
@@ -26,12 +26,21 @@ export function useMennoData() {
   async function refresh(isAuto = false): Promise<boolean> {
     mennoIsAutoRefresh.value = isAuto
     mennoRefreshing.value = true
-    globalThis.updateMennoDownloadProgress = (p) => { mennoProgress.value = p }
-    const ok = await globalThis.updateMennoData()
-    mennoProgress.value = null
+    // Wait for Vue to paint the modal before starting, so the goroutine's
+    // first ui.Eval doesn't race with lorca's binding-resolution write.
+    await nextTick()
+    const minDisplay = new Promise<void>((r) => setTimeout(r, 1500))
+    const download = new Promise<boolean>((resolve) => {
+      globalThis.onMennoRefreshDone = resolve
+      globalThis.updateMennoDownloadProgress = (p) => { mennoProgress.value = p }
+      globalThis.updateMennoData()
+    })
+    const [ok] = await Promise.all([download, minDisplay])
     globalThis.updateMennoDownloadProgress = () => {}
+    globalThis.onMennoRefreshDone = () => {}
     mennoRefreshing.value = false
     mennoIsAutoRefresh.value = false
+    mennoProgress.value = null
     if (ok) secondsSinceLastUpdate.value = 0
     return ok
   }

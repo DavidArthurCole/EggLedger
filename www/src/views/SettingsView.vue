@@ -121,6 +121,33 @@
           />
           <label for="autoRetryCheckbox" class="ext-opt-label">Automatically retry pulling missions that fail while fetching</label>
         </div>
+        <div class="mt-0_5rem">
+          <span class="font-bold text-base text-gray-400">Timeout Errors</span><br />
+          <input
+            id="hideTimeoutErrorsCheckbox"
+            type="checkbox"
+            class="ext-opt-check mr-0_5rem"
+            v-model="hideTimeoutErrors"
+          />
+          <label for="hideTimeoutErrorsCheckbox" class="ext-opt-label">Hide per-mission timeout errors in the fetch log</label>
+        </div>
+        <div class="mt-0_5rem">
+          <span class="font-bold text-base text-gray-400">Parallel Download Workers</span><br />
+          <div class="flex items-center mt-0_5rem pl-0_5rem gap-2">
+            <input
+              id="workerCountInput"
+              type="number"
+              class="number-input text-sm bg-darker"
+              :min="1"
+              :max="10"
+              v-model="workerCount"
+            />
+            <span class="text-gray-400">workers (1–10)</span>
+          </div>
+          <div class="mt-0_5rem pl-0_5rem text-yellow-500 italic">
+            Higher values fetch missions faster but may trigger API rate limiting.
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -140,7 +167,9 @@ const {
   allBrowsers,
   autoRefreshMenno,
   autoRetry,
+  hideTimeoutErrors,
   defaultViewMode,
+  workerCount,
   loadSettings,
   setPreferredBrowser,
   refreshBrowserList,

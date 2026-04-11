@@ -17,11 +17,24 @@
         @submit="onSubmit"
       >
         <div ref="playerIdSelectRef" class="tooltip-custom relative flex-grow focus-within:z-10">
-          <div v-if="nicknameForSelectedPlayerId" class="ledger-input-overlay">
+          <div v-if="selectedAccount?.nickname" class="ledger-input-overlay">
             <span class="whitespace-pre">{{ playerId }}</span>
-            (<span :style="'color: #' + (objectedExistingData.find(acc => acc.id === playerId)?.accountColor || '')">
-              {{ nicknameForSelectedPlayerId }} {{ objectedExistingData.find(acc => acc.id === playerId)?.ebString ?? '???' }}
-            </span>)
+            (<span :style="'color: #' + (selectedAccount.accountColor ?? '')">
+              {{ selectedAccount.nickname }} {{ selectedAccount.ebString ?? '???' }}
+            </span>
+            <template v-if="selectedAccount.seString">
+              <span class="text-gray-400">&nbsp;·</span>
+              <img :src="'images/soul_egg.png'" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="">
+              <span style="color:#a855f7">{{ selectedAccount.seString }} SE</span>
+              <span class="text-gray-400"> ·</span>
+              <img :src="'images/prophecy_egg.png'" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="">
+              <span style="color:#eab308">{{ selectedAccount.peCount }} PE</span>
+              <template v-if="selectedAccount.eotCount">
+                <span class="text-gray-400"> ·</span>
+                <img :src="'images/truth_egg.png'" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="">
+                <span style="color:#c831ff">{{ selectedAccount.eotCount }} EoT</span>
+              </template>
+            </template>)
           </div>
           <div v-if="!isPlayerIdValid" class="ledger-input-overlay">
             <span class="whitespace-pre">
@@ -49,10 +62,23 @@
               @click="closePlayerIdDropdown(account.id)"
             >
               {{ account.id }}
-              (<span :style="'color: #' + (objectedExistingData.find(acc => acc.id === account.id)?.accountColor || '')">
-                {{ objectedExistingData.find(acc => acc.id === account.id)?.nickname }}
-                {{ objectedExistingData.find(acc => acc.id === account.id)?.ebString ?? '???' }}
-              </span>)
+              (<span :style="'color: #' + (account.accountColor ?? '')">
+                {{ account.nickname }}
+                {{ account.ebString ?? '???' }}
+              </span>
+              <template v-if="account.seString">
+                <span class="text-gray-400">&nbsp;·</span>
+                <img :src="'images/soul_egg.png'" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="">
+                <span style="color:#a855f7">{{ account.seString }} SE</span>
+                <span class="text-gray-400"> ·</span>
+                <img :src="'images/prophecy_egg.png'" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="">
+                <span style="color:#eab308">{{ account.peCount }} PE</span>
+                <template v-if="account.eotCount">
+                  <span class="text-gray-400"> ·</span>
+                  <img :src="'images/truth_egg.png'" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="">
+                  <span style="color:#c831ff">{{ account.eotCount }} EoT</span>
+                </template>
+              </template>)
             </li>
           </ul>
         </div>
@@ -89,13 +115,6 @@
           <span v-if="(progress?.retried ?? 0) > 0" class="text-yellow-400">{{ progress?.retried }} retried</span>
         </div>
         <div v-if="progress?.currentMission" class="text-gray-400 italic">{{ progress.currentMission }}</div>
-        <div class="h-3 relative rounded-full overflow-hidden mt-1">
-          <div class="w-full h-full bg-dark absolute"></div>
-          <div
-            class="h-full absolute rounded-full bg-green-500"
-            :style="{ width: progress?.finishedPercentage ?? '0%' }"
-          ></div>
-        </div>
       </template>
       <template v-else-if="appState === AppState.ExportingData">Exporting data...</template>
       <template v-else-if="appState === AppState.Success">
@@ -111,6 +130,57 @@
         Data fetching failed. Please try again.<br />
       </template>
       <template v-else-if="appState === AppState.Interrupted">Interrupted.</template>
+      <template v-if="showSegmentedBar">
+        <div class="flex gap-1 mt-1">
+          <!-- Segment 1: Fetch Save (blue) -->
+          <div class="flex-1 h-3 bg-dark rounded-sm overflow-hidden">
+            <div
+              class="h-full transition-all duration-300 rounded-sm"
+              :class="[
+                segmentStates.seg1 === 'active' ? 'bg-blue-500 animate-pulse' :
+                segmentStates.seg1 === 'done' ? 'bg-blue-500' :
+                'bg-transparent',
+              ]"
+              :style="{ width: segmentStates.seg1 === 'pending' ? '0%' : '100%' }"
+            ></div>
+          </div>
+          <!-- Segment 2: Fetch Missions (green) -->
+          <div class="flex-1 h-3 bg-dark rounded-sm overflow-hidden">
+            <div
+              class="h-full transition-all duration-300 rounded-sm"
+              :class="[
+                segmentStates.seg2 === 'skipped' ? 'bg-gray-600' :
+                segmentStates.seg2 === 'active' ? 'bg-green-500' :
+                segmentStates.seg2 === 'done' ? 'bg-green-500' :
+                'bg-transparent',
+              ]"
+              :style="{
+                width:
+                  segmentStates.seg2 === 'pending' ? '0%' :
+                  segmentStates.seg2 === 'active' ? `${segmentStates.missionPct}%` :
+                  '100%',
+              }"
+            ></div>
+          </div>
+          <!-- Segment 3: Export (amber) -->
+          <div class="flex-1 h-3 bg-dark rounded-sm overflow-hidden">
+            <div
+              class="h-full transition-all duration-300 rounded-sm"
+              :class="[
+                segmentStates.seg3 === 'active' ? 'bg-amber-500 animate-pulse' :
+                segmentStates.seg3 === 'done' ? 'bg-amber-500' :
+                'bg-transparent',
+              ]"
+              :style="{ width: segmentStates.seg3 === 'pending' ? '0%' : '100%' }"
+            ></div>
+          </div>
+        </div>
+        <div class="flex mt-0.5 text-gray-600" style="font-size: 0.6rem">
+          <div class="flex-1 text-center">Save</div>
+          <div class="flex-1 text-center">Missions</div>
+          <div class="flex-1 text-center">Export</div>
+        </div>
+      </template>
     </div>
 
     <div
@@ -174,29 +244,79 @@ function normalizePlayerId(id: string): string {
 }
 
 const isPlayerIdValid = computed(() => /(^$)|(^EI\d{16}$)/.test(normalizePlayerId(playerId.value)))
-const nicknameForSelectedPlayerId = computed(
-  () => knownAccounts.value.find((acc) => acc.id === normalizePlayerId(playerId.value))?.nickname ?? '',
+const selectedAccount = computed(
+  () => knownAccounts.value.find((acc) => acc.id === normalizePlayerId(playerId.value)) ?? null,
 )
-
-const objectedExistingData = computed(() => {
-  return existingData.value
-    .map((account) => ({
-      id: account.id,
-      nickname: account.nickname,
-      missionCount: account.missionCount,
-      ebString: account.ebString && account.ebString !== '' ? account.ebString : '???',
-      accountColor: account.accountColor,
-    }))
-    .sort((a, b) => {
-      if (a.missionCount > b.missionCount) return -1
-      if (a.missionCount < b.missionCount) return 1
-      return 0
-    })
-})
 
 const idle = computed(() => {
   const s = appState.value
   return s !== AppState.FetchingSave && s !== AppState.FetchingMissions && s !== AppState.ExportingData
+})
+
+const hadMissions = ref(false)
+const exportEntered = ref(false)
+
+watch(appState, (s) => {
+  if (s === AppState.FetchingSave) {
+    hadMissions.value = false
+    exportEntered.value = false
+  }
+  if (s === AppState.FetchingMissions) hadMissions.value = true
+  if (s === AppState.ExportingData) exportEntered.value = true
+})
+
+type SegmentStatus = 'pending' | 'active' | 'done' | 'skipped'
+
+const showSegmentedBar = computed(
+  () => appState.value !== '' && appState.value !== AppState.AwaitingInput,
+)
+
+const segmentStates = computed(() => {
+  const s = appState.value
+  const p = progress.value
+
+  const afterSave = (
+    s === AppState.FetchingMissions ||
+    s === AppState.ExportingData ||
+    s === AppState.Success ||
+    s === AppState.Failed ||
+    s === AppState.Interrupted
+  )
+
+  const afterMissions = (
+    s === AppState.ExportingData ||
+    s === AppState.Success ||
+    s === AppState.Failed ||
+    s === AppState.Interrupted
+  )
+
+  const terminal = (
+    s === AppState.Success ||
+    s === AppState.Failed ||
+    s === AppState.Interrupted
+  )
+
+  let seg1: SegmentStatus = 'pending'
+  if (s === AppState.FetchingSave) seg1 = 'active'
+  else if (afterSave) seg1 = 'done'
+
+  let seg2: SegmentStatus = 'pending'
+  if (s === AppState.FetchingMissions) seg2 = 'active'
+  else if (afterMissions && hadMissions.value) seg2 = 'done'
+  else if (afterMissions && !hadMissions.value) seg2 = 'skipped'
+
+  let seg3: SegmentStatus = 'pending'
+  if (s === AppState.ExportingData) seg3 = 'active'
+  else if (exportEntered.value && terminal) seg3 = 'done'
+
+  let missionPct = 0
+  if (s === AppState.FetchingMissions && p?.total) {
+    missionPct = Math.round((p.finished / p.total) * 100)
+  } else if (seg2 === 'done') {
+    missionPct = 100
+  }
+
+  return { seg1, seg2, seg3, missionPct }
 })
 
 function openPlayerIdDropdown() {
@@ -233,12 +353,22 @@ function getEta(finish: number): string {
 
 const etaStr = ref('')
 let etaIntervalId: ReturnType<typeof setInterval> | undefined
+function handleClickOutside(event: MouseEvent) {
+  if (playerIdDropdownOpen.value && playerIdSelectRef.value && !playerIdSelectRef.value.contains(event.target as Node)) {
+    closePlayerIdDropdown()
+  }
+}
+
 onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
   etaIntervalId = setInterval(() => {
     if (progress.value) etaStr.value = getEta(progress.value.expectedFinishTimestamp)
   }, 200)
 })
-onUnmounted(() => clearInterval(etaIntervalId))
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
+  clearInterval(etaIntervalId)
+})
 
 async function onSubmit(event: Event) {
   event.preventDefault()

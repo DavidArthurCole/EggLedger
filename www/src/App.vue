@@ -23,12 +23,12 @@
       :release-notes="appReleaseNotes"
       @close="updateModalDismissed = true"
     />
-    <MennoLoadingModal
-      :visible="mennoRefreshing"
-      :is-auto-refresh="mennoIsAutoRefresh"
-      :progress="mennoProgress"
-    />
   </div>
+  <MennoLoadingModal
+    :visible="mennoRefreshing"
+    :is-auto-refresh="mennoIsAutoRefresh"
+    :progress="mennoProgress"
+  />
 </template>
 
 <script setup lang="ts">

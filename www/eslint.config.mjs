@@ -3,13 +3,13 @@ import tseslint from 'typescript-eslint'
 import sonarjs from 'eslint-plugin-sonarjs'
 
 export default [
-  { ignores: ['www/dist/**', 'node_modules/**'] },
+  { ignores: ['dist/**', 'node_modules/**'] },
 
   // TypeScript recommended rules scoped to .ts files only.
   // Must NOT include .vue here - tseslint.configs.recommended sets the parser
   // globally in its first element, which would shadow vue-eslint-parser.
   ...tseslint.configs.recommended.map(config =>
-    config.files ? config : { ...config, files: ['www/src/**/*.ts'] }
+    config.files ? config : { ...config, files: ['src/**/*.ts'] }
   ),
 
   // Vue 3 essential rules. Sets up vue-eslint-parser for .vue files.
@@ -18,21 +18,22 @@ export default [
 
   // Wire up typescript-eslint as the <script lang="ts"> sub-parser inside .vue.
   {
-    files: ['www/src/**/*.vue'],
+    files: ['src/**/*.vue'],
     languageOptions: {
       parserOptions: {
         parser: tseslint.parser,
+        tsconfigRootDir: import.meta.dirname,
       },
     },
   },
 
   // Rules applied to all TypeScript/Vue source files
   {
-    files: ['www/src/**/*.{ts,vue}'],
+    files: ['src/**/*.{ts,vue}'],
     plugins: { sonarjs },
     rules: {
       // Ban window.X member access - use globalThis for lorca bindings.
-      // All lorca bindings are declared as globals in www/src/types/bridge.ts,
+      // All lorca bindings are declared as globals in src/types/bridge.ts,
       // making them accessible via globalThis without losing type safety.
       //
       // Also ban .indexOf() used as an existence check in comparisons.

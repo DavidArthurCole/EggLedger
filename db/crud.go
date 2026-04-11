@@ -207,3 +207,60 @@ func transact(ctx context.Context, description string, txFunc func(*sql.Tx) erro
 	err = txFunc(tx)
 	return err
 }
+
+// GetAllSettings returns all settings as a key-value map.
+func GetAllSettings(ctx context.Context) (map[string]string, error) {
+	action := "get all settings"
+	result := make(map[string]string)
+	err := DoDBOperation(ctx, func(ctx context.Context, db *sql.DB) error {
+		return transact(ctx, action, func(tx *sql.Tx) error {
+			rows, err := tx.QueryContext(ctx, `SELECT key, value FROM settings;`)
+			if err != nil {
+				return err
+			}
+			defer rows.Close()
+			for rows.Next() {
+				var k, v string
+				if err := rows.Scan(&k, &v); err != nil {
+					return err
+				}
+				result[k] = v
+			}
+			return rows.Err()
+		})
+	})
+	return result, err
+}
+
+// SetSetting upserts a single key-value setting.
+func SetSetting(ctx context.Context, key, value string) error {
+	action := fmt.Sprintf("set setting %q", key)
+	return DoDBOperation(ctx, func(ctx context.Context, db *sql.DB) error {
+		return transact(ctx, action, func(tx *sql.Tx) error {
+			_, err := tx.ExecContext(ctx,
+				`INSERT INTO settings(key, value) VALUES (?, ?)
+				 ON CONFLICT(key) DO UPDATE SET value = excluded.value;`,
+				key, value)
+			return err
+		})
+	})
+}
+
+// SetSettings upserts multiple key-value settings in a single transaction.
+func SetSettings(ctx context.Context, settings map[string]string) error {
+	action := "set multiple settings"
+	return DoDBOperation(ctx, func(ctx context.Context, db *sql.DB) error {
+		return transact(ctx, action, func(tx *sql.Tx) error {
+			for k, v := range settings {
+				_, err := tx.ExecContext(ctx,
+					`INSERT INTO settings(key, value) VALUES (?, ?)
+					 ON CONFLICT(key) DO UPDATE SET value = excluded.value;`,
+					k, v)
+				if err != nil {
+					return err
+				}
+			}
+			return nil
+		})
+	})
+}

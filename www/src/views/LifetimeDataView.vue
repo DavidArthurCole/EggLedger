@@ -2,6 +2,7 @@
   <div class="flex-1 flex flex-col w-full mx-auto px-4 space-y-3 overflow-hidden bg-darker">
     <!-- Target filter overlay -->
     <SearchOverSelector
+      v-if="lifetimeTargetFilterMenuOpen"
       :item-list="lifetimeTargetSelectList"
       ledger-type="target"
       :is-lifetime="true"
@@ -12,6 +13,7 @@
 
     <!-- Drop filter overlay -->
     <SearchOverSelector
+      v-if="lifetimeDropFilterMenuOpen"
       :item-list="lifetimeDropSelectList"
       ledger-type="drop"
       :is-lifetime="true"
@@ -31,15 +33,28 @@
     >
       <div class="relative flex-grow focus-within:z-10">
         <div
-          v-if="selectedLifetimeAccount != null && accountById(selectedLifetimeAccount) != null"
+          v-if="selectedLifetimeAccountData != null"
           class="ledger-input-overlay"
         >
-          <span class="whitespace-pre">{{ accountById(selectedLifetimeAccount)?.id }}</span>
-          (<span :style="'color: #' + (accountById(selectedLifetimeAccount)?.accountColor || '')">
-            {{ accountById(selectedLifetimeAccount)?.nickname }}
-            {{ accountById(selectedLifetimeAccount)?.ebString }}
+          <span class="whitespace-pre">{{ selectedLifetimeAccountData.id }}</span>
+          (<span :style="'color: #' + selectedLifetimeAccountData.accountColor">
+            {{ selectedLifetimeAccountData.nickname }}
+            {{ selectedLifetimeAccountData.ebString }}
           </span>
-          - {{ accountById(selectedLifetimeAccount)?.missionCount }} missions)
+          - {{ selectedLifetimeAccountData.missionCount }} missions
+          <template v-if="selectedLifetimeKnownAccount?.seString">
+            <span class="text-gray-400">&nbsp;·</span>
+            <img :src="'images/soul_egg.png'" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="">
+            <span style="color:#a855f7">{{ selectedLifetimeKnownAccount.seString }} SE</span>
+            <span class="text-gray-400"> ·</span>
+            <img :src="'images/prophecy_egg.png'" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="">
+            <span style="color:#eab308">{{ selectedLifetimeKnownAccount.peCount }} PE</span>
+            <template v-if="selectedLifetimeKnownAccount.eotCount">
+              <span class="text-gray-400"> ·</span>
+              <img :src="'images/truth_egg.png'" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="">
+              <span style="color:#c831ff">{{ selectedLifetimeKnownAccount.eotCount }} EoT</span>
+            </template>
+          </template>)
         </div>
         <input
           id="lifetimeAccountInput"
@@ -73,7 +88,7 @@
         :disabled="
           !selectedLifetimeAccount ||
             selectedLifetimeAccount === '' ||
-            accountById(selectedLifetimeAccount) == null ||
+            selectedLifetimeAccountData == null ||
             lifetimeDataBeingLoaded
         "
       >
@@ -256,7 +271,7 @@ import DropDisplayContainer, { type LedgerData } from '../components/DropDisplay
 // Shared state
 // ───────────────────────────────────────────────────────────────────────────────
 
-const { existingData, activeTab } = useAppState()
+const { existingData, knownAccounts, activeTab } = useAppState()
 const { mennoDataLoaded, getMennoData, load: loadMennoData } = useMennoData()
 
 // ───────────────────────────────────────────────────────────────────────────────
@@ -351,6 +366,13 @@ function accountById(id: string | null) {
   if (id == null) return null
   return objectedExistingData.value.find((acc) => acc.id === id) ?? null
 }
+
+const selectedLifetimeAccountData = computed(
+  () => accountById(selectedLifetimeAccount.value),
+)
+const selectedLifetimeKnownAccount = computed(
+  () => knownAccounts.value.find((acc) => acc.id === selectedLifetimeAccount.value) ?? null,
+)
 
 function openAccountDropdown() {
   accountDropdownOpen.value = true
@@ -596,6 +618,8 @@ function getFilterValueOptions(topLevel: string | null): FilterOption[] {
       filtered.unshift({ text: 'Any Rare', value: '%_%_1_%', rarity: 1, styleClass: 'text-rare', imagePath: 'icon_help.webp' })
       return filtered
     }
+    case 'type':
+      return [{ text: 'Standard', value: '0' }, { text: 'Virtue', value: '1' }]
     case 'buggedcap':
     case 'dubcap':
       return [{ text: 'True', value: 'true' }, { text: 'False', value: 'false' }]
@@ -1042,6 +1066,9 @@ async function testMissionAgainstFilter(
         break
       case 'target':
         filterPassed = commonFilterLogic(mission.targetInt, filter.val, filter.op, filterPassed)
+        break
+      case 'type':
+        filterPassed = commonFilterLogic(mission.missionType, filter.val, filter.op, filterPassed)
         break
       case 'launchDT':
         filterPassed = commonFilterLogic(

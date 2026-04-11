@@ -1,8 +1,9 @@
+const path = require('node:path');
 const colors = require('tailwindcss/colors');
 
 module.exports = {
   content: [
-    './www/src/**/*.{vue,ts,html}',
+    path.join(__dirname, 'src/**/*.{vue,ts,html}'),
   ],
   theme: {
     extend: {
@@ -15,7 +16,7 @@ module.exports = {
         'duration-2': "rgb(246, 168, 35)",
         'duration-3': "rgb(115, 128, 140)",
         goldenstar: "rgb(255, 215, 0)",
-        'yellow-700': "rgb(251 191 36)", 
+        'yellow-700': "rgb(251 191 36)",
         shortdarker: "rgb(48, 111, 171)",
         'rarity-0': 'rgb(156 163 175)',
         'rarity-1': "#6ab6ff",

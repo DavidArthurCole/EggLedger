@@ -80,16 +80,17 @@ func loadLatestMennoData() (data MennoData, err error) {
 }
 
 func checkIfRefreshMennoDataIsNeeded() bool {
-	if !_storage.AutoRefreshMennoPref {
+	if _forceMennoRefresh {
+		return true
+	}
+	_storage.Lock()
+	autoPref := _storage.AutoRefreshMennoPref
+	lastMennoRefresh := _storage.LastMennoDataRefreshAt
+	_storage.Unlock()
+	if !autoPref {
 		return false
 	}
-
-	// Update every 5 days.
-	_storage.Lock()
-	lastMennoRefesh := _storage.LastMennoDataRefreshAt
-	_storage.Unlock()
-
-	return (time.Since(lastMennoRefesh) > time.Hour*24*5)
+	return time.Since(lastMennoRefresh) > time.Hour*24*5
 }
 
 func refreshMennoData(onProgress func(MennoDownloadProgress)) (err error) {

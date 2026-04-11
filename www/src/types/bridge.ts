@@ -10,6 +10,9 @@ export interface Account {
   nickname: string
   ebString: string
   accountColor: string
+  seString: string
+  peCount: number
+  eotCount: number
 }
 
 export interface DatabaseAccount {
@@ -41,6 +44,10 @@ export interface DatabaseMission {
   target: string
   /** ei.ArtifactSpec_Name enum value, or -1 */
   targetInt: number
+  /** ei.MissionInfo_MissionType enum value: 0=Standard, 1=Virtue */
+  missionType: number
+  /** Display string e.g. "Standard" or "Virtue" */
+  missionTypeString: string
 }
 
 export interface MissionDrop {
@@ -164,6 +171,10 @@ declare global {
   function setDefaultViewMode(viewMode: string): Promise<void>
   function getAutoRetryPreference(): Promise<boolean>
   function setAutoRetryPreference(flag: boolean): Promise<void>
+  function getHideTimeoutErrors(): Promise<boolean>
+  function setHideTimeoutErrors(flag: boolean): Promise<void>
+  function getWorkerCount(): Promise<number>
+  function setWorkerCount(count: number): Promise<void>
   function filterWarningRead(): Promise<boolean>
   function setFilterWarningRead(flag: boolean): Promise<void>
 
@@ -201,7 +212,7 @@ declare global {
 
   // Menno data
   function isMennoRefreshNeeded(): Promise<boolean>
-  function updateMennoData(): Promise<boolean>
+  function updateMennoData(): Promise<void>
   function secondsSinceLastMennoUpdate(): Promise<number>
   function loadMennoData(): Promise<boolean>
   function getMennoData(ship: number, shipDuration: number, shipLevel: number, targetArtifact: number): Promise<ConfigurationItem[]>
@@ -211,6 +222,7 @@ declare global {
   var updateState: (state: string) => void
   var updateMissionProgress: (progress: MissionProgress) => void
   var updateMennoDownloadProgress: (p: MennoDownloadProgress) => void
+  var onMennoRefreshDone: (ok: boolean) => void
   var updateExportedFiles: (files: string[]) => void
   var emitMessage: (message: string, isError: boolean) => void
 }

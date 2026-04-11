@@ -9,6 +9,6 @@
     "noEmit": true,
     "paths": {}
   },
-  "include": ["www/src/**/*.ts", "www/src/**/*.vue", "vite.config.ts"],
-  "exclude": ["node_modules", "www/dist"]
+  "include": ["src/**/*.ts", "src/**/*.vue", "vite.config.ts"],
+  "exclude": ["node_modules", "dist"]
 }

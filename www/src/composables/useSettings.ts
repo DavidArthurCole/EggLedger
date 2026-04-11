@@ -8,7 +8,9 @@ const preferredBrowser = ref<string | null>(null)
 const allBrowsers = ref<string[]>([])
 const autoRefreshMenno = ref(false)
 const autoRetry = ref(false)
+const hideTimeoutErrors = ref(false)
 const defaultViewMode = ref('default')
+const workerCount = ref(1)
 
 export function useSettings() {
   async function loadSettings() {
@@ -20,7 +22,9 @@ export function useSettings() {
     preferredBrowser.value = await globalThis.getPreferredBrowser()
     autoRefreshMenno.value = await globalThis.getAutoRefreshMennoPreference()
     autoRetry.value = await globalThis.getAutoRetryPreference()
+    hideTimeoutErrors.value = await globalThis.getHideTimeoutErrors()
     defaultViewMode.value = await globalThis.getDefaultViewMode()
+    workerCount.value = await globalThis.getWorkerCount()
   }
 
   watch(resolutionX, () => globalThis.setDefaultResolution(resolutionX.value, resolutionY.value))
@@ -29,7 +33,9 @@ export function useSettings() {
   watch(startInFullscreen, () => globalThis.setStartInFullscreen(startInFullscreen.value))
   watch(autoRefreshMenno, () => globalThis.setAutoRefreshMennoPreference(autoRefreshMenno.value))
   watch(autoRetry, () => globalThis.setAutoRetryPreference(autoRetry.value))
+  watch(hideTimeoutErrors, () => globalThis.setHideTimeoutErrors(hideTimeoutErrors.value))
   watch(defaultViewMode, () => globalThis.setDefaultViewMode(defaultViewMode.value))
+  watch(workerCount, () => globalThis.setWorkerCount(workerCount.value))
 
   async function setPreferredBrowser(path: string) {
     if (await globalThis.setPreferredBrowser(path)) {
@@ -43,7 +49,8 @@ export function useSettings() {
 
   return {
     resolutionX, resolutionY, scalingFactor, startInFullscreen,
-    preferredBrowser, allBrowsers, autoRefreshMenno, autoRetry, defaultViewMode,
+    preferredBrowser, allBrowsers, autoRefreshMenno, autoRetry, hideTimeoutErrors, defaultViewMode,
+    workerCount,
     loadSettings, setPreferredBrowser, refreshBrowserList,
   }
 }
