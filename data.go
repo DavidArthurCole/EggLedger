@@ -77,6 +77,7 @@ func fetchCompleteMissionWithContext(ctx context.Context, playerId string, missi
 	if len(resp.GetArtifacts()) == 0 {
 		return nil, wrap(errors.New("no artifact found in server response"))
 	}
-	err = db.InsertCompleteMission(ctx, playerId, missionId, startTimestamp, payload)
+	missionType := int32(resp.GetInfo().GetType())
+	err = db.InsertCompleteMission(ctx, playerId, missionId, startTimestamp, payload, missionType)
 	return resp, err
 }

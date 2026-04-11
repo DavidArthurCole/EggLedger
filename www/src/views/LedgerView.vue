@@ -103,6 +103,13 @@
 
     <div class="min-h-14 px-2 py-1 text-xs text-gray-500 bg-darkest rounded-md tabular-nums">
       <template v-if="appState === AppState.FetchingSave">Fetching save...</template>
+      <template v-else-if="appState === AppState.ResolvingMissionTypes">
+        <div class="text-yellow-400">Resolving mission types...</div>
+        <div>
+          <span class="text-green-400">{{ progress?.finished ?? 0 }}</span>
+          <span class="text-gray-400"> / {{ progress?.total ?? 0 }}</span>
+        </div>
+      </template>
       <template v-else-if="appState === AppState.FetchingMissions">
         <div class="text-yellow-400">Fetching missions...</div>
         <div>
@@ -250,7 +257,12 @@ const selectedAccount = computed(
 
 const idle = computed(() => {
   const s = appState.value
-  return s !== AppState.FetchingSave && s !== AppState.FetchingMissions && s !== AppState.ExportingData
+  return (
+    s !== AppState.FetchingSave &&
+    s !== AppState.ResolvingMissionTypes &&
+    s !== AppState.FetchingMissions &&
+    s !== AppState.ExportingData
+  )
 })
 
 const hadMissions = ref(false)
@@ -261,7 +273,7 @@ watch(appState, (s) => {
     hadMissions.value = false
     exportEntered.value = false
   }
-  if (s === AppState.FetchingMissions) hadMissions.value = true
+  if (s === AppState.ResolvingMissionTypes || s === AppState.FetchingMissions) hadMissions.value = true
   if (s === AppState.ExportingData) exportEntered.value = true
 })
 
@@ -276,6 +288,7 @@ const segmentStates = computed(() => {
   const p = progress.value
 
   const afterSave = (
+    s === AppState.ResolvingMissionTypes ||
     s === AppState.FetchingMissions ||
     s === AppState.ExportingData ||
     s === AppState.Success ||
@@ -301,7 +314,7 @@ const segmentStates = computed(() => {
   else if (afterSave) seg1 = 'done'
 
   let seg2: SegmentStatus = 'pending'
-  if (s === AppState.FetchingMissions) seg2 = 'active'
+  if (s === AppState.ResolvingMissionTypes || s === AppState.FetchingMissions) seg2 = 'active'
   else if (afterMissions && hadMissions.value) seg2 = 'done'
   else if (afterMissions && !hadMissions.value) seg2 = 'skipped'
 
@@ -310,7 +323,7 @@ const segmentStates = computed(() => {
   else if (exportEntered.value && terminal) seg3 = 'done'
 
   let missionPct = 0
-  if (s === AppState.FetchingMissions && p?.total) {
+  if ((s === AppState.ResolvingMissionTypes || s === AppState.FetchingMissions) && p?.total) {
     missionPct = Math.round((p.finished / p.total) * 100)
   } else if (seg2 === 'done') {
     missionPct = 100

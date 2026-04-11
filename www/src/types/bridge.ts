@@ -142,6 +142,7 @@ export interface MennoDownloadProgress {
 export enum AppState {
   AwaitingInput = 'AwaitingInput',
   FetchingSave = 'FetchingSave',
+  ResolvingMissionTypes = 'ResolvingMissionTypes',
   FetchingMissions = 'FetchingMissions',
   ExportingData = 'ExportingData',
   Success = 'Success',

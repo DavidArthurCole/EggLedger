@@ -89,13 +89,14 @@ func (u UI) MustBind(name string, f interface{}) {
 type AppState string
 
 const (
-	AppState_AWAITING_INPUT    AppState = "AwaitingInput"
-	AppState_FETCHING_SAVE     AppState = "FetchingSave"
-	AppState_FETCHING_MISSIONS AppState = "FetchingMissions"
-	AppState_EXPORTING_DATA    AppState = "ExportingData"
-	AppState_SUCCESS           AppState = "Success"
-	AppState_FAILED            AppState = "Failed"
-	AppState_INTERRUPTED       AppState = "Interrupted"
+	AppState_AWAITING_INPUT          AppState = "AwaitingInput"
+	AppState_FETCHING_SAVE           AppState = "FetchingSave"
+	AppState_RESOLVING_MISSION_TYPES AppState = "ResolvingMissionTypes"
+	AppState_FETCHING_MISSIONS       AppState = "FetchingMissions"
+	AppState_EXPORTING_DATA          AppState = "ExportingData"
+	AppState_SUCCESS                 AppState = "Success"
+	AppState_FAILED                  AppState = "Failed"
+	AppState_INTERRUPTED             AppState = "Interrupted"
 )
 
 type MissionProgress struct {
@@ -799,6 +800,40 @@ func main() {
 			}
 			pinfo(fmt.Sprintf("found &148c32<%d completed> missions, &148c32<%d in-progress> missions, &148c32<%d to fetch>",
 				len(missions), len(inProgressMissions), len(newMissionIds)))
+
+			// One-time type-resolution pass: update any cached missions whose
+			// mission_type is still -1 (the DB default for missions stored before
+			// the Virtue update added the type column). This decodes the locally
+			// stored payload - no API calls - so it runs quickly.
+			pendingCount, pcErr := db.CountPendingMissionTypes(context.Background(), playerId)
+			if pcErr != nil {
+				log.Error(pcErr)
+				pendingCount = 0
+			}
+			if pendingCount > 0 {
+				updateState(AppState_RESOLVING_MISSION_TYPES)
+				pinfo(fmt.Sprintf("resolving mission types for &148c32<%d> cached missions", pendingCount))
+				if checkInterrupt() {
+					return
+				}
+				resolved, resErr := db.ResolvePendingMissionTypes(
+					context.Background(),
+					playerId,
+					func(decoded, total int) {
+						updateMissionProgress(MissionProgress{
+							Total:              total,
+							Finished:           decoded,
+							FinishedPercentage: fmt.Sprintf("%.1f%%", float64(decoded)/float64(total)*100),
+						})
+					},
+				)
+				if resErr != nil {
+					perror(resErr)
+					// Non-fatal: continue with the normal fetch even if resolution fails.
+				} else {
+					pinfo(fmt.Sprintf("resolved &148c32<%d> cached mission types", resolved))
+				}
+			}
 
 			// Build label lookup for progress display: identifier -> "Ship · Duration"
 			missionLabelByID := make(map[string]string)

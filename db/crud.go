@@ -50,7 +50,7 @@ func InsertBackup(ctx context.Context, playerId string, timestamp float64, paylo
 	})
 }
 
-func InsertCompleteMission(ctx context.Context, playerId string, missionId string, startTimestamp float64, completePayload []byte) error {
+func InsertCompleteMission(ctx context.Context, playerId string, missionId string, startTimestamp float64, completePayload []byte, missionType int32) error {
 	action := fmt.Sprintf("insert mission %s for player %s into database", missionId, playerId)
 	compressedPayload, err := compress(completePayload)
 	if err != nil {
@@ -59,8 +59,8 @@ func InsertCompleteMission(ctx context.Context, playerId string, missionId strin
 	return DoDBOperation(ctx, func(ctx context.Context, db *sql.DB) error {
 		return transact(ctx, action, func(tx *sql.Tx) error {
 			_, err := tx.ExecContext(ctx, `INSERT INTO
-				mission(player_id, mission_id, start_timestamp, complete_payload)
-				VALUES (?, ?, ?, ?);`, playerId, missionId, startTimestamp, compressedPayload)
+				mission(player_id, mission_id, start_timestamp, complete_payload, mission_type)
+				VALUES (?, ?, ?, ?, ?);`, playerId, missionId, startTimestamp, compressedPayload, missionType)
 			if err != nil {
 				return err
 			}
@@ -183,6 +183,128 @@ func RetrievePlayerCompleteMissionIds(ctx context.Context, playerId string) ([]s
 		return nil, err
 	}
 	return missionIds, nil
+}
+
+// CountPendingMissionTypes returns the number of missions for a player that
+// have mission_type = -1 (i.e. the type has not yet been resolved from the
+// stored payload). This is used to decide whether the one-time type-resolution
+// pass is needed.
+func CountPendingMissionTypes(ctx context.Context, playerId string) (int, error) {
+	action := fmt.Sprintf("count pending mission types for player %s", playerId)
+	var count int
+	err := DoDBOperation(ctx, func(ctx context.Context, db *sql.DB) error {
+		return transact(ctx, action, func(tx *sql.Tx) error {
+			row := tx.QueryRowContext(ctx,
+				`SELECT COUNT(*) FROM mission WHERE player_id = ? AND mission_type = -1;`,
+				playerId)
+			return row.Scan(&count)
+		})
+	})
+	return count, err
+}
+
+// ResolvePendingMissionTypes decodes the stored payload for every mission with
+// mission_type = -1 and updates the column to the type found in the payload.
+// Returns the number of missions that were updated.
+// This replaces the DB default (-1 sentinel) with the real type without
+// hitting the network; old Standard missions decode to 0 because the proto
+// field defaults to STANDARD when absent.
+//
+// progressFn, if non-nil, is called after each payload is decoded with the
+// running decoded count and the total number of missions to process. Callers
+// can use this to drive a progress indicator.
+func ResolvePendingMissionTypes(ctx context.Context, playerId string, progressFn func(decoded, total int)) (int, error) {
+	action := fmt.Sprintf("resolve pending mission types for player %s", playerId)
+
+	type pendingRow struct {
+		missionId         string
+		compressedPayload []byte
+	}
+	var pending []pendingRow
+
+	err := DoDBOperation(ctx, func(ctx context.Context, db *sql.DB) error {
+		return transact(ctx, action, func(tx *sql.Tx) error {
+			rows, err := tx.QueryContext(ctx,
+				`SELECT mission_id, complete_payload FROM mission
+				 WHERE player_id = ? AND mission_type = -1;`,
+				playerId)
+			if err != nil {
+				return err
+			}
+			defer rows.Close()
+			for rows.Next() {
+				var r pendingRow
+				if err := rows.Scan(&r.missionId, &r.compressedPayload); err != nil {
+					return err
+				}
+				pending = append(pending, r)
+			}
+			return rows.Err()
+		})
+	})
+	if err != nil {
+		return 0, errors.Wrap(err, action)
+	}
+	if len(pending) == 0 {
+		return 0, nil
+	}
+
+	total := len(pending)
+
+	type resolvedMission struct {
+		missionId   string
+		missionType int32
+	}
+	var updates []resolvedMission
+
+	for i, r := range pending {
+		payload, derr := decompress(r.compressedPayload)
+		if derr != nil {
+			log.Warnf("resolve mission types: decompress %s: %s", r.missionId, derr)
+			if progressFn != nil {
+				progressFn(i+1, total)
+			}
+			continue
+		}
+		resp, derr := api.DecodeCompleteMissionPayload(payload)
+		if derr != nil {
+			log.Warnf("resolve mission types: decode %s: %s", r.missionId, derr)
+			if progressFn != nil {
+				progressFn(i+1, total)
+			}
+			continue
+		}
+		updates = append(updates, resolvedMission{
+			missionId:   r.missionId,
+			missionType: int32(resp.GetInfo().GetType()),
+		})
+		if progressFn != nil {
+			progressFn(i+1, total)
+		}
+	}
+
+	if len(updates) == 0 {
+		return 0, nil
+	}
+
+	err = DoDBOperation(ctx, func(ctx context.Context, db *sql.DB) error {
+		return transact(ctx, action, func(tx *sql.Tx) error {
+			for _, u := range updates {
+				if _, serr := tx.ExecContext(ctx,
+					`UPDATE mission SET mission_type = ? WHERE player_id = ? AND mission_id = ?;`,
+					u.missionType, playerId, u.missionId,
+				); serr != nil {
+					return serr
+				}
+			}
+			return nil
+		})
+	})
+	if err != nil {
+		return 0, errors.Wrap(err, action)
+	}
+
+	return len(updates), nil
 }
 
 func transact(ctx context.Context, description string, txFunc func(*sql.Tx) error) (err error) {
