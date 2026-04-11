@@ -586,6 +586,11 @@ function getFilterValueOptions(topLevel: string | null): FilterOption[] {
         ][index],
         value: String(index),
       }))
+    case 'farm':
+      return Array.from({ length: 2 }, (_, index) => ({
+        text: ['Home', 'Virtue'][index],
+        value: String(index),
+      }))
     case 'duration':
       return Array.from({ length: 4 }, (_, index) => ({
         text: ['Short', 'Standard', 'Extended', 'Tutorial'][index],
@@ -1057,6 +1062,9 @@ async function testMissionAgainstFilter(
         break
       case 'ship':
         filterPassed = commonFilterLogic(mission.ship, filter.val, filter.op, filterPassed)
+        break
+      case 'farm':
+        filterPassed = commonFilterLogic(mission.missionType, filter.val, filter.op, filterPassed)
         break
       case 'duration':
         filterPassed = commonFilterLogic(mission.durationType, filter.val, filter.op, filterPassed)
