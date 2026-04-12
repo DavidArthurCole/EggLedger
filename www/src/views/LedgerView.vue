@@ -157,9 +157,9 @@
               class="h-full transition-all duration-300 rounded-sm"
               :class="[
                 segmentStates.seg2 === 'skipped' ? 'bg-gray-600' :
-                segmentStates.seg2 === 'active' ? 'bg-green-500' :
-                segmentStates.seg2 === 'done' ? 'bg-green-500' :
+                segmentStates.seg2 === 'active' || segmentStates.seg2 === 'done' ? 'bg-green-500' :
                 'bg-transparent',
+                segmentStates.missionPulsing ? 'animate-pulse' : '',
               ]"
               :style="{
                 width:
@@ -190,9 +190,14 @@
       </template>
     </div>
 
+    <ProcessLogPanel :processes="processLogs" class="flex-1 overflow-y-auto" />
+
     <div
       ref="messagesRef"
-      class="flex-1 px-2 py-1 overflow-auto shadow-sm block text-xs font-mono text-gray-400 bg-darkest rounded-md"
+      :class="[
+        'px-2 py-1 overflow-auto shadow-sm block text-xs font-mono text-gray-400 bg-darkest rounded-md',
+        processLogs.length > 0 ? 'h-32 flex-shrink-0' : 'flex-1',
+      ]"
     >
       <div v-for="(message, i) in logMessages" :key="i" class="whitespace-pre">
         <span :class="message.isError ? 'text-red-700' : 'text-green-700'">{{ hhmmss(new Date()) }}|</span>
@@ -226,6 +231,7 @@ import { parseLogSegments } from '../composables/useLogRenderer'
 import { AppState } from '../types/bridge'
 import ForbiddenDirModal from '../components/modals/ForbiddenDirModal.vue'
 import TranslocationModal from '../components/modals/TranslocationModal.vue'
+import ProcessLogPanel from '../components/ProcessLogPanel.vue'
 
 const {
   appIsInForbiddenDirectory,
@@ -235,6 +241,7 @@ const {
   appState,
   logMessages,
   exportedFiles,
+  processLogs,
 } = useAppState()
 
 const { progress, fetchPlayerData, stopFetching } = useFetch()
@@ -323,13 +330,20 @@ const segmentStates = computed(() => {
   else if (exportEntered.value && terminal) seg3 = 'done'
 
   let missionPct = 0
-  if ((s === AppState.ResolvingMissionTypes || s === AppState.FetchingMissions) && p?.total) {
+  if (s === AppState.FetchingMissions && p?.total) {
     missionPct = Math.round((p.finished / p.total) * 100)
   } else if (seg2 === 'done') {
     missionPct = 100
   }
 
-  return { seg1, seg2, seg3, missionPct }
+  // When the Missions segment is active but no individual-mission progress has
+  // registered yet (ResolvingMissionTypes, or FetchingMissions just started),
+  // pulse the bar at a minimum visible width so the user can see the stage is
+  // active rather than looking identical to the Save-done state.
+  const missionPulsing = seg2 === 'active' && missionPct === 0
+  const visibleMissionPct = seg2 === 'active' ? Math.max(missionPct, 3) : missionPct
+
+  return { seg1, seg2, seg3, missionPct: visibleMissionPct, missionPulsing }
 })
 
 function openPlayerIdDropdown() {

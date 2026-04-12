@@ -31,7 +31,7 @@
       class="select-form"
       @submit="onViewSubmit"
     >
-      <div class="relative flex-grow focus-within:z-10">
+      <div ref="accountSelectRef" class="relative flex-grow focus-within:z-10">
         <div
           v-if="selectedLifetimeAccountData != null"
           class="ledger-input-overlay"
@@ -252,7 +252,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useAppState } from '../composables/useAppState'
 import { useMennoData } from '../composables/useMennoData'
 import { useFilters } from '../composables/useFilters'
@@ -323,6 +323,7 @@ interface LifetimeData extends LedgerData {
 
 const selectedLifetimeAccount = ref<string | null>(null)
 const accountDropdownOpen = ref(false)
+const accountSelectRef = ref<HTMLElement | null>(null)
 
 const doesDataExist = computed(() => existingData.value.length > 0)
 
@@ -356,6 +357,11 @@ function openAccountDropdown() {
 function closeAccountDropdown(id?: string) {
   if (id != null && id !== '') selectedLifetimeAccount.value = id
   accountDropdownOpen.value = false
+}
+function handleAccountClickOutside(event: MouseEvent) {
+  if (accountDropdownOpen.value && accountSelectRef.value && !accountSelectRef.value.contains(event.target as Node)) {
+    closeAccountDropdown()
+  }
 }
 
 // ───────────────────────────────────────────────────────────────────────────────
@@ -769,6 +775,8 @@ async function onFilterSubmit(event: Event) {
 // ───────────────────────────────────────────────────────────────────────────────
 
 onMounted(async () => {
+  document.addEventListener('click', handleAccountClickOutside)
+
   artifactConfigs.value = await globalThis.getAfxConfigs()
   maxQuality.value = await globalThis.getMaxQuality()
   durationConfigs.value = await globalThis.getDurationConfigs()
@@ -782,5 +790,8 @@ onMounted(async () => {
   getFilterValueOptions('level')
   getFilterValueOptions('target')
   getFilterValueOptions('drops')
+})
+onUnmounted(() => {
+  document.removeEventListener('click', handleAccountClickOutside)
 })
 </script>

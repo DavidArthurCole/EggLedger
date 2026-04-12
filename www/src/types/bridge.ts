@@ -128,6 +128,21 @@ export interface MissionProgress {
   currentMission: string
 }
 
+export interface ProcessLogEntry {
+  text: string
+  isError: boolean
+}
+
+export interface ProcessSnapshot {
+  id: string
+  label: string
+  status: 'running' | 'done' | 'failed'
+  /** Per-process log entries */
+  logs: ProcessLogEntry[]
+  /** Unix milliseconds */
+  startTimestamp: number
+}
+
 export interface MennoDownloadProgress {
   /** bytes downloaded so far */
   bytesRead: number
@@ -178,6 +193,8 @@ declare global {
   function setWorkerCount(count: number): Promise<void>
   function filterWarningRead(): Promise<boolean>
   function setFilterWarningRead(flag: boolean): Promise<void>
+  function workerCountWarningRead(): Promise<boolean>
+  function setWorkerCountWarningRead(flag: boolean): Promise<void>
 
   // App info
   function appVersion(): Promise<string>
@@ -226,4 +243,5 @@ declare global {
   var onMennoRefreshDone: (ok: boolean) => void
   var updateExportedFiles: (files: string[]) => void
   var emitMessage: (message: string, isError: boolean) => void
+  var updateProcesses: (processes: ProcessSnapshot[]) => void
 }

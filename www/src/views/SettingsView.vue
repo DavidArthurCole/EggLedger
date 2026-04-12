@@ -144,8 +144,19 @@
             />
             <span class="text-gray-400">workers (1–10)</span>
           </div>
-          <div class="mt-0_5rem pl-0_5rem text-yellow-500 italic">
+          <div
+            v-if="!workerCountWarningRead && !hideWorkerWarning"
+            class="mt-0_5rem pl-0_5rem text-red-700 border border-red-700 rounded-md py-2 px-3"
+          >
+            <span class="font-bold ledger-underline">Warning:</span><br />
             Higher values fetch missions faster but may trigger API rate limiting.
+            Sustained use of higher values can lead to IP blocking and potential further consequences.
+            <br /><br />
+            <button
+              type="button"
+              class="p-0_75rem btn-link text-blue-500 border border-blue-500 rounded-md"
+              @click="dismissWorkerCountWarning"
+            >I understand</button>
           </div>
         </div>
       </div>
@@ -179,6 +190,14 @@ const { secondsSinceLastUpdate, lastUpdateString, refresh, checkRefreshNeeded } 
 
 const preferredBrowserSelectRef = ref<HTMLElement | null>(null)
 const prefBrowserDropdownOpen = ref(false)
+const workerCountWarningRead = ref(false)
+const hideWorkerWarning = ref(false)
+
+async function dismissWorkerCountWarning() {
+  await globalThis.setWorkerCountWarningRead(true)
+  workerCountWarningRead.value = true
+  hideWorkerWarning.value = true
+}
 
 function openPrefBrowserDropdown() {
   prefBrowserDropdownOpen.value = true
@@ -208,5 +227,6 @@ onMounted(async () => {
   await loadSettings()
   await refreshBrowserList()
   await checkRefreshNeeded()
+  workerCountWarningRead.value = (await globalThis.workerCountWarningRead()) ?? false
 })
 </script>

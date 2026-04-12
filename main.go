@@ -540,14 +540,21 @@ func main() {
 		ui.Eval(fmt.Sprintf("window.emitMessage(%s, %t)", encoded, isError))
 	}
 
-	pinfo := func(args ...interface{}) {
-		log.Info(args...)
-		emitMessage(fmt.Sprint(args...), false)
-	}
 	perror := func(args ...interface{}) {
 		log.Error(args...)
 		emitMessage(fmt.Sprint(args...), true)
 	}
+
+	updateProcesses := func(snapshots []ProcessSnapshot) {
+		encoded, err := json.Marshal(snapshots)
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		ui.Eval(fmt.Sprintf("window.updateProcesses(%s)", encoded))
+	}
+	processRegistry := NewProcessRegistry(updateProcesses)
+	processRegistry.Start(context.Background())
 
 	ui.MustBind("getDefaultScalingFactor", func() float64 {
 		return _storage.GetDefaultScalingFactor()
@@ -635,6 +642,16 @@ func main() {
 		_storage.SetFilterWarningRead(flag)
 	})
 
+	ui.MustBind("workerCountWarningRead", func() bool {
+		_storage.Lock()
+		defer _storage.Unlock()
+		return _storage.WorkerCountWarningRead
+	})
+
+	ui.MustBind("setWorkerCountWarningRead", func(flag bool) {
+		_storage.SetWorkerCountWarningRead(flag)
+	})
+
 	ui.MustBind("getMaxQuality", func() float32 {
 		maxQuality := float32(0)
 		for _, mission := range _eiAfxConfigMissions {
@@ -704,6 +721,33 @@ func main() {
 			w.ctx = ctx
 			w.cancel = cancel
 			w.ctxlock.Unlock()
+
+			runProc := processRegistry.Register(
+				fmt.Sprintf("fetch-%s-%d", playerId, time.Now().UnixMilli()),
+				fmt.Sprintf("Fetching data for %s", playerId),
+			)
+			origUpdateState := updateState
+			pinfo := func(args ...interface{}) {
+				msg := fmt.Sprint(args...)
+				log.Info(args...)
+				emitMessage(msg, false)
+				runProc.Log(msg, false)
+			}
+			perror := func(args ...interface{}) {
+				msg := fmt.Sprint(args...)
+				log.Error(args...)
+				emitMessage(msg, true)
+				runProc.Log(msg, true)
+			}
+			updateState := func(state AppState) {
+				origUpdateState(state)
+				switch state {
+				case AppState_SUCCESS:
+					runProc.MarkDone()
+				case AppState_FAILED, AppState_INTERRUPTED:
+					runProc.MarkFailed()
+				}
+			}
 
 			checkInterrupt := func() bool {
 				select {

@@ -22,6 +22,7 @@ type AppStorage struct {
 	KnownLatestReleaseNotes string    `json:"known_latest_release_notes"`
 	KnownLatestVersion      string    `json:"known_latest_version"`
 	FilterWarningRead       bool      `json:"filter_warning_read"`
+	WorkerCountWarningRead  bool      `json:"worker_count_warning_read"`
 	PreferredChromiumPath   string    `json:"preferred_chromium_path"`
 	AutoRefreshMennoPref    bool      `json:"auto_refresh_menno_pref"`
 	DefaultViewMode         string    `json:"default_view_mode"`
@@ -125,6 +126,9 @@ func (s *AppStorage) loadFromDB() {
 	if v, ok := settings["filter_warning_read"]; ok {
 		s.FilterWarningRead, _ = strconv.ParseBool(v)
 	}
+	if v, ok := settings["worker_count_warning_read"]; ok {
+		s.WorkerCountWarningRead, _ = strconv.ParseBool(v)
+	}
 	if v, ok := settings["preferred_chromium_path"]; ok {
 		s.PreferredChromiumPath = v
 	}
@@ -171,6 +175,7 @@ func (s *AppStorage) persistAllToDB() {
 		"known_latest_release_notes": s.KnownLatestReleaseNotes,
 		"known_latest_version":       s.KnownLatestVersion,
 		"filter_warning_read":        strconv.FormatBool(s.FilterWarningRead),
+		"worker_count_warning_read":  strconv.FormatBool(s.WorkerCountWarningRead),
 		"preferred_chromium_path":    s.PreferredChromiumPath,
 		"auto_refresh_menno_pref":    strconv.FormatBool(s.AutoRefreshMennoPref),
 		"default_view_mode":          s.DefaultViewMode,
@@ -223,6 +228,13 @@ func (s *AppStorage) SetFilterWarningRead(flag bool) {
 	s.FilterWarningRead = flag
 	s.Unlock()
 	go s.dbSet("filter_warning_read", strconv.FormatBool(flag))
+}
+
+func (s *AppStorage) SetWorkerCountWarningRead(flag bool) {
+	s.Lock()
+	s.WorkerCountWarningRead = flag
+	s.Unlock()
+	go s.dbSet("worker_count_warning_read", strconv.FormatBool(flag))
 }
 
 func (s *AppStorage) SetLastMennoDataRefreshAt(t time.Time) {
