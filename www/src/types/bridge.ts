@@ -12,7 +12,7 @@ export interface Account {
   accountColor: string
   seString: string
   peCount: number
-  eotCount: number
+  teCount: number
 }
 
 export interface DatabaseAccount {
@@ -152,7 +152,7 @@ export interface ProcessSnapshot {
 }
 
 export interface MennoDownloadProgress {
-  /** "connecting" | "downloading" | "saving" */
+  /** "connecting" | "downloading" | "unzipping" | "saving" */
   phase: string
   /** bytes downloaded so far */
   bytesRead: number

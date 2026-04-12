@@ -13,9 +13,6 @@
           This data is used to provide further insights to the drops of your ships,<br>
           and how "lucky" you've been.
           <span v-if="isAutoRefresh"><b>This task runs on EggLedger start-up once every 7 days.</b></span>
-          <br/><br/>
-          Depending on your internet speed, this may take a while.<br>
-          This window will automatically close when the task has completed.
         </span>
         <hr class="mt-1rem mb-1rem w-full">
         <div v-if="phase === 'downloading'" class="text-sm text-gray-400 tabular-nums">
@@ -58,6 +55,7 @@ const phase = computed(() => props.progress?.phase ?? 'connecting')
 const phaseLabel = computed(() => {
   switch (phase.value) {
     case 'connecting': return 'Connecting to server...'
+    case 'unzipping': return 'Decompressing...'
     case 'saving': return 'Saving to disk...'
     default: return 'Loading...'
   }

@@ -49,10 +49,10 @@
             <span class="text-gray-400"> ·</span>
             <img :src="'images/prophecy_egg.png'" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="">
             <span style="color:#eab308">{{ selectedLifetimeKnownAccount.peCount }} PE</span>
-            <template v-if="selectedLifetimeKnownAccount.eotCount">
+            <template v-if="selectedLifetimeKnownAccount.teCount">
               <span class="text-gray-400"> ·</span>
               <img :src="'images/truth_egg.png'" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="">
-              <span style="color:#c831ff">{{ selectedLifetimeKnownAccount.eotCount }} EoT</span>
+              <span style="color:#c831ff">{{ selectedLifetimeKnownAccount.teCount }} TE</span>
             </template>
           </template>)
         </div>

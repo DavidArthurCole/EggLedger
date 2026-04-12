@@ -65,7 +65,7 @@ func strPtr(s string) *string { return &s }
 // GetEarningsBonus
 
 func TestGetEarningsBonus_BaseCase(t *testing.T) {
-	// 0 SE, 0 PE, 0 EoT, no epic research -> result = 0
+	// 0 SE, 0 PE, 0 TE, no epic research -> result = 0
 	soulEggsD := float64(0)
 	eggsOfProphecy := uint64(0)
 	b := &ei.Backup{
@@ -82,7 +82,7 @@ func TestGetEarningsBonus_BaseCase(t *testing.T) {
 }
 
 func TestGetEarningsBonus_SoulEggsOnly(t *testing.T) {
-	// 1000 SE, soulEggBonus=10 (default), 0 PE, 0 EoT -> 1.0 * 10*1000 * 1.0 = 10000
+	// 1000 SE, soulEggBonus=10 (default), 0 PE, 0 TE -> 1.0 * 10*1000 * 1.0 = 10000
 	soulEggsD := float64(1000)
 	eggsOfProphecy := uint64(0)
 	b := &ei.Backup{
@@ -100,7 +100,7 @@ func TestGetEarningsBonus_SoulEggsOnly(t *testing.T) {
 
 func TestGetEarningsBonus_WithEpicResearch(t *testing.T) {
 	// soul_eggs level 140 -> soulEggBonus = 140 + 10 = 150
-	// 1000 SE, 0 PE, 0 EoT -> 1.0 * 150*1000 * 1.0 = 150000
+	// 1000 SE, 0 PE, 0 TE -> 1.0 * 150*1000 * 1.0 = 150000
 	soulEggsD := float64(1000)
 	eggsOfProphecy := uint64(0)
 	soulEggsLevel := uint32(140)
@@ -122,7 +122,7 @@ func TestGetEarningsBonus_WithEpicResearch(t *testing.T) {
 
 func TestGetEarningsBonus_ProphecyEggs(t *testing.T) {
 	// soul_eggs=140 (bonus=150), prophecy_bonus=0 (bonus=1.05 default)
-	// 1000 SE, 10 PE, 0 EoT -> 1.05^10 * 150*1000 * 1.0
+	// 1000 SE, 10 PE, 0 TE -> 1.05^10 * 150*1000 * 1.0
 	soulEggsD := float64(1000)
 	eggsOfProphecy := uint64(10)
 	soulEggsLevel := uint32(140)
@@ -143,8 +143,8 @@ func TestGetEarningsBonus_ProphecyEggs(t *testing.T) {
 	}
 }
 
-func TestGetEarningsBonus_WithEoT(t *testing.T) {
-	// 1000 SE, soul_eggs=140 (bonus=150), 0 PE, EoT=100 -> 150000 * 1.01^100
+func TestGetEarningsBonus_WithTE(t *testing.T) {
+	// 1000 SE, soul_eggs=140 (bonus=150), 0 PE, TE=100 -> 150000 * 1.01^100
 	// 1.01^100 = 2.7048... -> 150000 * 2.7048 = 405723...
 	soulEggsD := float64(1000)
 	eggsOfProphecy := uint64(0)
@@ -162,6 +162,6 @@ func TestGetEarningsBonus_WithEoT(t *testing.T) {
 	got := b.GetEarningsBonus()
 	// 1.01^100 ≈ 2.7048 -> 405723...
 	if got < 405000 || got > 406000 {
-		t.Errorf("GetEarningsBonus (EoT=100) = %f, want ~405723", got)
+		t.Errorf("GetEarningsBonus (TE=100) = %f, want ~405723", got)
 	}
 }

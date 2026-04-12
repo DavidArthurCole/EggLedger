@@ -17,7 +17,7 @@
         @submit="onSubmit"
       >
         <div ref="playerIdSelectRef" class="tooltip-custom relative flex-grow focus-within:z-10">
-          <div v-if="selectedAccount?.nickname" class="ledger-input-overlay">
+          <div v-if="selectedAccount?.nickname || (screenshotSafety && playerId)" class="ledger-input-overlay">
             <span class="whitespace-pre">{{ maskEid(playerId) }}</span>
             (<span :style="'color: #' + (selectedAccount.accountColor ?? '')">
               {{ selectedAccount.nickname }} {{ selectedAccount.ebString ?? '???' }}
@@ -29,10 +29,10 @@
               <span class="text-gray-400"> ·</span>
               <img :src="'images/prophecy_egg.png'" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="">
               <span style="color:#eab308">{{ selectedAccount.peCount }} PE</span>
-              <template v-if="selectedAccount.eotCount">
+              <template v-if="selectedAccount.teCount">
                 <span class="text-gray-400"> ·</span>
                 <img :src="'images/truth_egg.png'" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="">
-                <span style="color:#c831ff">{{ selectedAccount.eotCount }} EoT</span>
+                <span style="color:#c831ff">{{ selectedAccount.teCount }} TE</span>
               </template>
             </template>)
           </div>
@@ -73,10 +73,10 @@
                 <span class="text-gray-400"> ·</span>
                 <img :src="'images/prophecy_egg.png'" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="">
                 <span style="color:#eab308">{{ account.peCount }} PE</span>
-                <template v-if="account.eotCount">
+                <template v-if="account.teCount">
                   <span class="text-gray-400"> ·</span>
                   <img :src="'images/truth_egg.png'" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="">
-                  <span style="color:#c831ff">{{ account.eotCount }} EoT</span>
+                  <span style="color:#c831ff">{{ account.teCount }} TE</span>
                 </template>
               </template>)
             </li>
@@ -226,7 +226,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useAppState } from '../composables/useAppState'
 import { useFetch } from '../composables/useFetch'
 import { parseLogSegments } from '../composables/useLogRenderer'
-import { maskEid } from '../composables/useSettings'
+import { maskEid, screenshotSafety } from '../composables/useSettings'
 import { useDropdownSelector } from '../composables/useDropdownSelector'
 import { AppState } from '../types/bridge'
 import ForbiddenDirModal from '../components/modals/ForbiddenDirModal.vue'

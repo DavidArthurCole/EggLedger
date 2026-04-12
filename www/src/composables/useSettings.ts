@@ -11,7 +11,7 @@ const autoRetry = ref(false)
 const hideTimeoutErrors = ref(false)
 const defaultViewMode = ref('default')
 const workerCount = ref(1)
-const screenshotSafety = ref(false)
+export const screenshotSafety = ref(false)
 
 export function maskEid(s: string): string {
   if (!screenshotSafety.value) return s
