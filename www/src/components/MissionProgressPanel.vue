@@ -47,7 +47,7 @@
           :key="i"
           class="whitespace-pre"
         >
-          <template v-for="(seg, j) in parseLogSegments(entry.text)" :key="j">
+          <template v-for="(seg, j) in parseLogSegments(maskEid(entry.text))" :key="j">
             <img
               v-if="seg.type === 'image'"
               :src="seg.src"
@@ -73,6 +73,7 @@
 import { ref, watch, onMounted, onUnmounted } from 'vue'
 import type { ProcessSnapshot } from '../types/bridge'
 import { parseLogSegments } from '../composables/useLogRenderer'
+import { maskEid } from '../composables/useSettings'
 
 const props = defineProps<{
   processes: ProcessSnapshot[]

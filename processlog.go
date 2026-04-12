@@ -61,20 +61,30 @@ func (p *Process) Log(text string, isError bool) {
 	p.registry.dirty.Store(true)
 }
 
-// MarkDone marks the process as successfully completed.
+// MarkDone marks the process as successfully completed and schedules its
+// removal from the registry after 5 seconds so the UI briefly shows the result.
 func (p *Process) MarkDone() {
 	p.mu.Lock()
 	p.status = ProcessDone
 	p.mu.Unlock()
 	p.registry.dirty.Store(true)
+	go func() {
+		time.Sleep(5 * time.Second)
+		p.registry.Remove(p.id)
+	}()
 }
 
-// MarkFailed marks the process as failed.
+// MarkFailed marks the process as failed and schedules its removal from the
+// registry after 5 seconds so the UI briefly shows the failure.
 func (p *Process) MarkFailed() {
 	p.mu.Lock()
 	p.status = ProcessFailed
 	p.mu.Unlock()
 	p.registry.dirty.Store(true)
+	go func() {
+		time.Sleep(5 * time.Second)
+		p.registry.Remove(p.id)
+	}()
 }
 
 // InitSegments creates segments for each name in pending state.
@@ -158,6 +168,20 @@ func (r *ProcessRegistry) Register(id, label, kind string) *Process {
 	r.mu.Unlock()
 	r.dirty.Store(true)
 	return p
+}
+
+// Remove deletes a process from the registry by id.
+func (r *ProcessRegistry) Remove(id string) {
+	r.mu.Lock()
+	delete(r.processes, id)
+	for i, oid := range r.order {
+		if oid == id {
+			r.order = append(r.order[:i], r.order[i+1:]...)
+			break
+		}
+	}
+	r.mu.Unlock()
+	r.dirty.Store(true)
 }
 
 // Snapshot returns a point-in-time copy of all processes in registration order.

@@ -36,7 +36,7 @@
           v-if="selectedLifetimeAccountData != null"
           class="ledger-input-overlay"
         >
-          <span class="whitespace-pre">{{ selectedLifetimeAccountData.id }}</span>
+          <span class="whitespace-pre">{{ maskEid(selectedLifetimeAccountData.id) }}</span>
           (<span :style="'color: #' + selectedLifetimeAccountData.accountColor">
             {{ selectedLifetimeAccountData.nickname }}
             {{ selectedLifetimeAccountData.ebString }}
@@ -76,7 +76,7 @@
             class="drop-opt"
             @click="closeAccountDropdown(account.id)"
           >
-            {{ account.id }}
+            {{ maskEid(account.id) }}
             (<span :style="'color: #' + account.accountColor">{{ account.nickname }} {{ account.ebString }}</span>
             - {{ account.missionCount }} missions)
           </li>
@@ -257,6 +257,7 @@ import { useAppState } from '../composables/useAppState'
 import { useMennoData } from '../composables/useMennoData'
 import { useFilters } from '../composables/useFilters'
 import { useDropdownSelector } from '../composables/useDropdownSelector'
+import { maskEid } from '../composables/useSettings'
 import type {
   DatabaseMission,
   MissionDrop,

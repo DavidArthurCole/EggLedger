@@ -98,7 +98,7 @@
           v-if="selectedMissionAccount != null && accountById(selectedMissionAccount) != null"
           class="ledger-input-overlay"
         >
-          <span class="whitespace-pre">{{ accountById(selectedMissionAccount)?.id }}</span>
+          <span class="whitespace-pre">{{ maskEid(accountById(selectedMissionAccount)?.id ?? '') }}</span>
           (<span :style="'color: #' + (accountById(selectedMissionAccount)?.accountColor || '')">
             {{ accountById(selectedMissionAccount)?.nickname }}
             {{ accountById(selectedMissionAccount)?.ebString }}
@@ -125,7 +125,7 @@
             class="drop-opt"
             @click="closeAccountDropdown(account.id)"
           >
-            {{ account.id }}
+            {{ maskEid(account.id) }}
             (<span :style="'color: #' + account.accountColor">{{ account.nickname }} {{ account.ebString }}</span>
             - {{ account.missionCount }} missions)
           </li>
@@ -502,6 +502,7 @@ import { useMennoData } from '../composables/useMennoData'
 import { useFetch } from '../composables/useFetch'
 import { useFilters } from '../composables/useFilters'
 import { useDropdownSelector } from '../composables/useDropdownSelector'
+import { maskEid } from '../composables/useSettings'
 import type {
   DatabaseMission,
   MissionDrop,

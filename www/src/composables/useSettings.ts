@@ -11,6 +11,12 @@ const autoRetry = ref(false)
 const hideTimeoutErrors = ref(false)
 const defaultViewMode = ref('default')
 const workerCount = ref(1)
+const screenshotSafety = ref(false)
+
+export function maskEid(s: string): string {
+  if (!screenshotSafety.value) return s
+  return s.replaceAll(/EI\d{16}/g, 'EI\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022')
+}
 
 export function useSettings() {
   async function loadSettings() {
@@ -25,6 +31,7 @@ export function useSettings() {
     hideTimeoutErrors.value = await globalThis.getHideTimeoutErrors()
     defaultViewMode.value = await globalThis.getDefaultViewMode()
     workerCount.value = await globalThis.getWorkerCount()
+    screenshotSafety.value = await globalThis.getScreenshotSafety()
   }
 
   watch(resolutionX, () => globalThis.setDefaultResolution(resolutionX.value, resolutionY.value))
@@ -36,6 +43,7 @@ export function useSettings() {
   watch(hideTimeoutErrors, () => globalThis.setHideTimeoutErrors(hideTimeoutErrors.value))
   watch(defaultViewMode, () => globalThis.setDefaultViewMode(defaultViewMode.value))
   watch(workerCount, () => globalThis.setWorkerCount(workerCount.value))
+  watch(screenshotSafety, () => globalThis.setScreenshotSafety(screenshotSafety.value))
 
   async function setPreferredBrowser(path: string) {
     if (await globalThis.setPreferredBrowser(path)) {
@@ -51,6 +59,7 @@ export function useSettings() {
     resolutionX, resolutionY, scalingFactor, startInFullscreen,
     preferredBrowser, allBrowsers, autoRefreshMenno, autoRetry, hideTimeoutErrors, defaultViewMode,
     workerCount,
+    screenshotSafety,
     loadSettings, setPreferredBrowser, refreshBrowserList,
   }
 }

@@ -33,6 +33,7 @@ type AppStorage struct {
 	RetryFailedMissions     bool      `json:"retry_failed_missions"`
 	HideTimeoutErrors       bool      `json:"hide_timeout_errors"`
 	WorkerCount             int       `json:"worker_count"`
+	ScreenshotSafety        bool      `json:"screenshot_safety"`
 }
 
 type Account struct {
@@ -161,6 +162,9 @@ func (s *AppStorage) loadFromDB() {
 			s.WorkerCount = n
 		}
 	}
+	if v, ok := settings["screenshot_safety"]; ok {
+		s.ScreenshotSafety, _ = strconv.ParseBool(v)
+	}
 }
 
 // persistAllToDB writes every field to the settings table in one transaction.
@@ -186,6 +190,7 @@ func (s *AppStorage) persistAllToDB() {
 		"retry_failed_missions":      strconv.FormatBool(s.RetryFailedMissions),
 		"hide_timeout_errors":        strconv.FormatBool(s.HideTimeoutErrors),
 		"worker_count":               strconv.Itoa(s.WorkerCount),
+		"screenshot_safety":          strconv.FormatBool(s.ScreenshotSafety),
 	}
 	s.Unlock()
 	if err := db.SetSettings(context.Background(), settings); err != nil {
@@ -376,4 +381,17 @@ func (s *AppStorage) SetWorkerCount(n int) {
 	s.WorkerCount = n
 	s.Unlock()
 	go s.dbSet("worker_count", strconv.Itoa(n))
+}
+
+func (s *AppStorage) SetScreenshotSafety(flag bool) {
+	s.Lock()
+	s.ScreenshotSafety = flag
+	s.Unlock()
+	go s.dbSet("screenshot_safety", strconv.FormatBool(flag))
+}
+
+func (s *AppStorage) GetScreenshotSafety() bool {
+	s.Lock()
+	defer s.Unlock()
+	return s.ScreenshotSafety
 }

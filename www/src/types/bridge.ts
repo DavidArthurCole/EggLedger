@@ -197,6 +197,8 @@ declare global {
   function setAutoRetryPreference(flag: boolean): Promise<void>
   function getHideTimeoutErrors(): Promise<boolean>
   function setHideTimeoutErrors(flag: boolean): Promise<void>
+  function getScreenshotSafety(): Promise<boolean>
+  function setScreenshotSafety(flag: boolean): Promise<void>
   function getWorkerCount(): Promise<number>
   function setWorkerCount(count: number): Promise<void>
   function filterWarningRead(): Promise<boolean>

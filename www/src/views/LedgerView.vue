@@ -18,7 +18,7 @@
       >
         <div ref="playerIdSelectRef" class="tooltip-custom relative flex-grow focus-within:z-10">
           <div v-if="selectedAccount?.nickname" class="ledger-input-overlay">
-            <span class="whitespace-pre">{{ playerId }}</span>
+            <span class="whitespace-pre">{{ maskEid(playerId) }}</span>
             (<span :style="'color: #' + (selectedAccount.accountColor ?? '')">
               {{ selectedAccount.nickname }} {{ selectedAccount.ebString ?? '???' }}
             </span>
@@ -61,7 +61,7 @@
               class="drop-opt"
               @click="closePlayerIdDropdown(account.id)"
             >
-              {{ account.id }}
+              {{ maskEid(account.id) }}
               (<span :style="'color: #' + (account.accountColor ?? '')">
                 {{ account.nickname }}
                 {{ account.ebString ?? '???' }}
@@ -188,44 +188,7 @@
           <div class="flex-1 text-center">Export</div>
         </div>
       </template>
-      <template v-if="showSegmentedBar && overallProcess">
-        <button
-          type="button"
-          class="flex items-center gap-1 mt-1 text-gray-600 hover:text-gray-400 text-xs"
-          @click="overallLogsOpen = !overallLogsOpen"
-        >
-          <span>{{ overallLogsOpen ? '▼' : '▶' }}</span>
-          <span>Overall log</span>
-        </button>
-        <div
-          v-if="overallLogsOpen"
-          class="max-h-32 overflow-y-auto text-xs font-mono mt-0.5"
-        >
-          <div v-if="overallProcess.logs.length === 0" class="text-gray-600 italic py-0.5">No logs yet.</div>
-          <div
-            v-for="(entry, i) in overallProcess.logs"
-            :key="i"
-            class="whitespace-pre"
-          >
-            <template v-for="(seg, j) in parseLogSegments(entry.text)" :key="j">
-              <img
-                v-if="seg.type === 'image'"
-                :src="seg.src"
-                style="display: inline; height: 1em; vertical-align: middle"
-                alt=""
-              />
-              <span
-                v-else-if="seg.type === 'text' && seg.color"
-                :style="'color: ' + seg.color"
-              >{{ seg.text }}</span>
-              <span
-                v-else
-                :class="entry.isError ? 'text-red-700' : 'text-gray-400'"
-              >{{ seg.text }}</span>
-            </template>
-          </div>
-        </div>
-      </template>
+
     </div>
 
     <MissionProgressPanel :processes="missionProcesses" />
@@ -236,7 +199,7 @@
     >
       <div v-for="(message, i) in logMessages" :key="i" class="whitespace-pre">
         <span :class="message.isError ? 'text-red-700' : 'text-green-700'">{{ hhmmss(new Date()) }}|</span>
-        <template v-for="(segment, j) in parseLogSegments(message.message)" :key="j">
+        <template v-for="(segment, j) in parseLogSegments(maskEid(message.message))" :key="j">
           <img
             v-if="segment.type === 'image'"
             :src="segment.src"
@@ -263,6 +226,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useAppState } from '../composables/useAppState'
 import { useFetch } from '../composables/useFetch'
 import { parseLogSegments } from '../composables/useLogRenderer'
+import { maskEid } from '../composables/useSettings'
 import { useDropdownSelector } from '../composables/useDropdownSelector'
 import { AppState } from '../types/bridge'
 import ForbiddenDirModal from '../components/modals/ForbiddenDirModal.vue'
@@ -285,17 +249,9 @@ const { progress, fetchPlayerData, stopFetching } = useFetch()
 const playerId = ref<string>(knownAccounts.value[0]?.id ?? '')
 const messagesRef = ref<HTMLElement | null>(null)
 
-const overallProcess = computed(() =>
-  processLogs.value.find((p) => p.kind === 'overall') ?? null,
-)
 const missionProcesses = computed(() =>
   processLogs.value.filter((p) => p.kind === 'mission'),
 )
-const overallLogsOpen = ref(false)
-
-watch(overallProcess, (cur, prev) => {
-  if (prev !== null && cur === null) overallLogsOpen.value = false
-})
 
 const {
   containerRef: playerIdSelectRef,

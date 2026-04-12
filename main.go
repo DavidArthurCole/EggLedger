@@ -634,6 +634,14 @@ func main() {
 		_storage.SetHideTimeoutErrors(flag)
 	})
 
+	ui.MustBind("getScreenshotSafety", func() bool {
+		return _storage.GetScreenshotSafety()
+	})
+
+	ui.MustBind("setScreenshotSafety", func(flag bool) {
+		_storage.SetScreenshotSafety(flag)
+	})
+
 	ui.MustBind("getWorkerCount", func() int {
 		return _storage.GetWorkerCount()
 	})

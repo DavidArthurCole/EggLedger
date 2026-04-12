@@ -132,6 +132,16 @@
           <label for="hideTimeoutErrorsCheckbox" class="ext-opt-label">Hide per-mission timeout errors in the fetch log</label>
         </div>
         <div class="mt-0_5rem">
+          <span class="font-bold text-base text-gray-400">Screenshot Safety</span><br />
+          <input
+            id="screenshotSafetyCheckbox"
+            type="checkbox"
+            class="ext-opt-check mr-0_5rem"
+            v-model="screenshotSafety"
+          />
+          <label for="screenshotSafetyCheckbox" class="ext-opt-label">Mask player IDs (EIDs) wherever they appear on screen</label>
+        </div>
+        <div class="mt-0_5rem">
           <span class="font-bold text-base text-gray-400">Parallel Download Workers</span><br />
           <div class="flex items-center mt-0_5rem pl-0_5rem gap-2">
             <input
@@ -182,6 +192,7 @@ const {
   hideTimeoutErrors,
   defaultViewMode,
   workerCount,
+  screenshotSafety,
   loadSettings,
   setPreferredBrowser,
   refreshBrowserList,
