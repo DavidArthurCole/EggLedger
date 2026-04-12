@@ -22,6 +22,9 @@
     "dev": "vite build --watch --config www/vite.config.ts",
     "lint": "eslint --config www/eslint.config.mjs www/src",
     "protobuf": "protoc --proto_path=. --go_out=paths=source_relative:. ei/ei.proto",
+    "sync": "npm run sync:proto && npm run sync:eiafx",
+    "sync:proto": "bash --login scripts/sync-proto.sh ../EggIncProtos",
+    "sync:eiafx": "bash scripts/sync-eiafx.sh ../EggIncAPITools %EID%",
     "typecheck": "vue-tsc --noEmit --project www/tsconfig.json"
   },
   "dependencies": {

@@ -53,11 +53,28 @@ func checkForUpdates() (newVersion string, newReleaseNotes string, err error) {
 	if err != nil {
 		return "", "", wrap(err)
 	}
-	log.Infof("latest tag: %s", latestTag)
+	log.Infof("latest stable tag: %s", latestTag)
 	latestVersion, err := version.NewVersion(latestTag)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to parse latest version %s", latestTag)
 		return "", "", wrap(err)
+	}
+
+	// If running a version newer than the latest stable release (e.g. a pre-release build),
+	// fetch all releases including pre-releases to find the true latest.
+	if runningVersion.GreaterThan(latestVersion) {
+		log.Infof("running version %s is newer than latest stable %s, checking pre-releases", _appVersion, latestTag)
+		if preTag, preNotes, preErr := getLatestTagIncludingPreReleases(); preErr != nil {
+			log.Warnf("failed to check pre-releases: %s", preErr)
+		} else {
+			log.Infof("latest pre-release tag: %s", preTag)
+			latestTag = preTag
+			latestReleaseNotes = preNotes
+			if latestVersion, err = version.NewVersion(latestTag); err != nil {
+				err = errors.Wrapf(err, "failed to parse latest pre-release version %s", latestTag)
+				return "", "", wrap(err)
+			}
+		}
 	}
 
 	_storage.SetUpdateCheck(latestTag, latestReleaseNotes)
@@ -66,6 +83,65 @@ func checkForUpdates() (newVersion string, newReleaseNotes string, err error) {
 		return latestTag, latestReleaseNotes, nil
 	}
 	return "", "", nil
+}
+
+func getLatestTagIncludingPreReleases() (string, string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	url := fmt.Sprintf("https://api.github.com/repos/%s/releases?per_page=10", _githubRepo)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return "", "", errors.Wrapf(err, "creating request for %s", url)
+	}
+
+	client := http.DefaultClient
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", "", errors.Wrapf(err, "GET %s", url)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", "", errors.Wrapf(err, "reading response body for %s: %#v", url, string(body))
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return "", "", errors.Errorf("GET %s: HTTP %d: %#v", url, resp.StatusCode, string(body))
+	}
+
+	var releases []struct {
+		TagName string `json:"tag_name"`
+		Body    string `json:"body"`
+		Draft   bool   `json:"draft"`
+	}
+	if err = json.Unmarshal(body, &releases); err != nil {
+		return "", "", errors.Wrapf(err, "parsing JSON for %s: %#v", url, string(body))
+	}
+
+	var highestVersion *version.Version
+	var highestTag, highestBody string
+	for _, release := range releases {
+		if release.Draft {
+			continue
+		}
+		v, parseErr := version.NewVersion(release.TagName)
+		if parseErr != nil {
+			continue
+		}
+		if highestVersion == nil || v.GreaterThan(highestVersion) {
+			highestVersion = v
+			highestTag = release.TagName
+			highestBody = release.Body
+		}
+	}
+
+	if highestTag == "" {
+		return "", "", errors.Errorf("GET %s: no valid releases found", url)
+	}
+
+	return highestTag, highestBody, nil
 }
 
 func getLatestTag() (string, string, error) {

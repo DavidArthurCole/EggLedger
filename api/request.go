@@ -21,9 +21,9 @@ import (
 )
 
 const (
-	AppVersion    = "1.35"
-	AppBuild      = "111313"
-	ClientVersion = 70
+	AppVersion    = "1.35.5"
+	AppBuild      = "111334"
+	ClientVersion = 71
 	Platform      = ei.Platform_IOS
 )
 

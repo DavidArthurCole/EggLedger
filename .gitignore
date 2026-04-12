@@ -11,3 +11,4 @@ vendor/
 EggLedger.exe
 EggLedger
 /logs/
+/eiafx/eiafx-config.json
