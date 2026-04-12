@@ -7,7 +7,7 @@
         </span> <br />
         <div ref="preferredBrowserSelectRef" class="text-sm relative w-full flex-grow focus-within:z-10 pl-0_5rem">
           <div v-if="preferredBrowser" class="ledger-input-overlay">
-            <span>{{ preferredBrowser }}</span> (<span class="text-gray-300">{{ getBrowserDisplayName(preferredBrowser) }}</span>)
+            <span>{{ preferredBrowser }}</span> (<img v-if="getBrowserIcon(preferredBrowser)" :src="getBrowserIcon(preferredBrowser)" :alt="getBrowserDisplayName(preferredBrowser)" class="inline-block w-4 h-4 align-text-bottom mr-1" /><span class="text-gray-300">{{ getBrowserDisplayName(preferredBrowser) }}</span>)
           </div>
           <input
             id="preferredBrowserInput"
@@ -29,7 +29,7 @@
               class="drop-opt bg-darker"
               @click="closePrefBrowserDropdown(browser)"
             >
-              {{ browser }} <span class="inline-block max-w-9/10">(<span class="text-gray-300">{{ getBrowserDisplayName(browser) }}</span>)</span>
+              {{ browser }} <span class="inline-block max-w-9/10">(<img v-if="getBrowserIcon(browser)" :src="getBrowserIcon(browser)" :alt="getBrowserDisplayName(browser)" class="inline-block w-4 h-4 align-text-bottom mr-1" /><span class="text-gray-300">{{ getBrowserDisplayName(browser) }}</span>)</span>
             </li>
           </ul>
         </div>
@@ -214,6 +214,17 @@ function getBrowserDisplayName(browser: string | null): string {
   if (/vivaldi/i.test(browser)) return 'Vivaldi'
   if (/firefox/i.test(browser)) return 'Mozilla Firefox'
   return 'Unknown'
+}
+
+function getBrowserIcon(browser: string | null): string {
+  if (browser == null) return ''
+  if (/chrome/i.test(browser)) return 'images/browsers/chrome.svg'
+  if (/brave/i.test(browser)) return 'images/browsers/brave.svg'
+  if (/opera/i.test(browser)) return 'images/browsers/opera.svg'
+  if (/edge/i.test(browser)) return 'images/browsers/edge.svg'
+  if (/vivaldi/i.test(browser)) return 'images/browsers/vivaldi.svg'
+  if (/firefox/i.test(browser)) return 'images/browsers/firefox.svg'
+  return ''
 }
 
 async function onManualRefresh(e: Event) {
