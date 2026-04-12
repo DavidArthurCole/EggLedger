@@ -11,7 +11,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const _downloadURL = "https://raw.githubusercontent.com/DavidArthurCole/EggLedger/master/ledger-display-data.json"
+const _downloadURL = "https://raw.githubusercontent.com/DavidArthurCole/EggLedger/master/ledgerdata/ledger-display-data.json"
 
 // tryDownloadFresh attempts to download a fresh copy of ledger-display-data.json
 // and write it to cacheFile. Called in a goroutine - never blocks startup.

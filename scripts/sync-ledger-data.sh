@@ -1,7 +1,7 @@
 #!/bin/bash
 # sync-ledger-data.sh - Regenerate ledgerdata/ledger-display-data-min.json from source.
 # Usage: bash scripts/sync-ledger-data.sh
-# Run this after editing ledger-display-data.json.
+# Run this after editing ledgerdata/ledger-display-data.json.
 
 set -euo pipefail
 
@@ -15,7 +15,7 @@ die()  { echo -e "${RED}[ERR]${NC}   $1"; exit 1; }
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 LEDGER_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-SRC="$LEDGER_DIR/ledger-display-data.json"
+SRC="$LEDGER_DIR/ledgerdata/ledger-display-data.json"
 OUT="$LEDGER_DIR/ledgerdata/ledger-display-data-min.json"
 
 [ -f "$SRC" ] || die "ledger-display-data.json not found at $SRC"

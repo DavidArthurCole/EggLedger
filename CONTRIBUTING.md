@@ -89,9 +89,9 @@ go test ./...         # run all tests
 When Auxbrain adds a new artifact, ship, or mission target:
 
 1. **eiafx config** - update `eiafx/eiafx-config-min.json` via `scripts/sync-eiafx.sh` (requires EggIncAPITools and a valid EID)
-2. **Display data** - add the entry to `ledger-display-data.json`, then run `scripts/sync-ledger-data.sh` to regenerate the embedded `ledgerdata/ledger-display-data-min.json`
+2. **Display data** - add the entry to `ledgerdata/ledger-display-data.json`, then run `scripts/sync-ledger-data.sh` to regenerate the embedded `ledgerdata/ledger-display-data-min.json`
 
-Sections to update in `ledger-display-data.json`:
+Sections to update in `ledgerdata/ledger-display-data.json`:
 
 - New artifact effect strings: `artifactEffects`
 - New ship: `shipNames`

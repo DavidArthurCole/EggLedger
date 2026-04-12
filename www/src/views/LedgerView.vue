@@ -19,26 +19,28 @@
         <div ref="playerIdSelectRef" class="tooltip-custom relative flex-grow focus-within:z-10">
           <div v-if="selectedAccount?.nickname || (screenshotSafety && playerId)" class="ledger-input-overlay">
             <span class="whitespace-pre">{{ maskEid(playerId) }}</span>
-            (<span :style="'color: #' + (selectedAccount?.accountColor ?? '')">
-              {{ selectedAccount?.nickname }} {{ selectedAccount?.ebString ?? '???' }}
-            </span>
-            <template v-if="selectedAccount?.seString">
-              <span class="text-gray-400">&nbsp;·</span>
-              <img :src="'images/soul_egg.png'" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="">
-              <span style="color:#a855f7">{{ selectedAccount?.seString }} SE</span>
-              <span class="text-gray-400"> ·</span>
-              <img :src="'images/prophecy_egg.png'" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="">
-              <span style="color:#eab308">{{ selectedAccount?.peCount }} PE</span>
-              <template v-if="selectedAccount?.teCount">
+            <template v-if="selectedAccount?.nickname">
+              (<span :style="'color: #' + (selectedAccount?.accountColor ?? '')">
+                {{ selectedAccount?.nickname }} {{ selectedAccount?.ebString ?? '???' }}
+              </span>
+              <template v-if="selectedAccount?.seString">
+                <span class="text-gray-400">&nbsp;·</span>
+                <img :src="'images/soul_egg.png'" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="">
+                <span style="color:#a855f7">{{ selectedAccount?.seString }} SE</span>
                 <span class="text-gray-400"> ·</span>
-                <img :src="'images/truth_egg.png'" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="">
-                <span style="color:#c831ff">{{ selectedAccount?.teCount }} TE</span>
-              </template>
-            </template>)
+                <img :src="'images/prophecy_egg.png'" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="">
+                <span style="color:#eab308">{{ selectedAccount?.peCount }} PE</span>
+                <template v-if="selectedAccount?.teCount">
+                  <span class="text-gray-400"> ·</span>
+                  <img :src="'images/truth_egg.png'" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="">
+                  <span style="color:#c831ff">{{ selectedAccount?.teCount }} TE</span>
+                </template>
+              </template>)
+            </template>
           </div>
           <div v-if="!isPlayerIdValid" class="ledger-input-overlay">
             <span class="whitespace-pre">
-              {{ playerId }} ( <span class="text-red-700">Invalid EID: {{ getEidProblem(playerId) }}</span> )
+              <template v-if="!screenshotSafety">{{ playerId }} </template>(<span class="text-red-700">Invalid EID: {{ getEidProblem(playerId) }}</span>)
             </span>
           </div>
           <input

@@ -16,7 +16,7 @@ export const screenshotSafety = ref(false)
 
 export function maskEid(s: string): string {
   if (!screenshotSafety.value) return s
-  return s.replaceAll(/EI\d{16}/g, 'EI\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022')
+  return s.replaceAll(/EI\d{16}/g, 'EI****************')
 }
 
 export function useSettings() {
