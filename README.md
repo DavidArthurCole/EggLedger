@@ -23,13 +23,14 @@ If your Microsoft Defender is removing the file post-download, mark your `Ledger
 
 **Why is EggLedger asking me to install Chrome?**
 
-EggLedger was originally built by MK2 on top of a `lorca`, an open-source solution to building Go apps with a web UI. `lorca` uses the Chromium API as its browser engine, and the default behavior when no chromium browser is detected, is to prompt you to install Google Chrome, as this is by far the most popular choice. I have since forked [my own version](https://github.com/DavidArthurCole/lorca) of `lorca`, and have added support for the following browsers, which will be detected and used, before you are prompted to install Chrome:
+EggLedger was originally built by MK2 on top of `lorca`, an open-source solution to building Go apps with a web UI. `lorca` uses a browser as its UI layer, and will prompt you to install Chrome if no supported browser is detected. I maintain [my own fork](https://github.com/DavidArthurCole/lorca) of `lorca`, which supports the following browsers:
+  - Google Chrome / Chromium
   - Brave
   - Opera
   - Vivaldi
   - Edge
+  - Firefox
 
-If you use a **Chromium-based** browser that is not on the above list, please reach out, and I'll see what I can do about adding support (the benefit of having my own fork of lorca, now).
 If EggLedger is launching in the incorrect browser, or you would prefer it launch in another browser, go to `Settings` in-app, and you can choose from a list of detected browsers.
 
 **Can I run EggLedger on Mobile?**
