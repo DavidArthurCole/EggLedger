@@ -1,0 +1,10 @@
+{
+    "makefile.configureOnOpen": false,
+    "npm.packageManager": "npm",
+    "files.associations": {
+        "**/ei/ei.proto": "plaintext"
+    },
+    "sonarlint.analyzerProperties": {
+        "sonar.exclusions": "**/ei/ei.pb.go,**/ei/ei.proto"
+    }
+}
