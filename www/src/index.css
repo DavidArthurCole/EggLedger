@@ -126,7 +126,7 @@ hr {
   @apply text-sm text-gray-400 cursor-pointer select-none relative py-1 pl-3 tabular-nums;
 
   &:hover {
-    @apply text-gray-300 bg-blue-500;
+    @apply text-gray-300 bg-blue-500/30;
   }
 }
 

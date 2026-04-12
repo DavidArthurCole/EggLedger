@@ -1,5 +1,5 @@
 import { ref, readonly } from 'vue'
-import type { Account, DatabaseAccount } from '../types/bridge'
+import type { Account, DatabaseAccount, ProcessSnapshot } from '../types/bridge'
 import { AppState } from '../types/bridge'
 
 const appVersion = ref('')
@@ -14,6 +14,7 @@ const appReleaseNotes = ref('')
 const appState = ref<AppState | ''>('')
 const logMessages = ref<{ message: string; isError: boolean }[]>([])
 const exportedFiles = ref<string[]>([])
+const processLogs = ref<ProcessSnapshot[]>([])
 
 export function useAppState() {
   async function initAppState() {
@@ -36,6 +37,7 @@ export function useAppState() {
     globalThis.emitMessage = (message, isError) => {
       logMessages.value.push({ message, isError })
     }
+    globalThis.updateProcesses = (processes) => { processLogs.value = processes }
   }
 
   return {
@@ -51,6 +53,7 @@ export function useAppState() {
     appState: readonly(appState),
     logMessages: readonly(logMessages),
     exportedFiles: readonly(exportedFiles),
+    processLogs: readonly(processLogs),
     initAppState,
   }
 }

@@ -2,24 +2,24 @@
   <div class="flex-1 flex flex-col w-full mx-auto px-4 space-y-3 overflow-hidden bg-darker">
     <!-- Target filter overlay -->
     <SearchOverSelector
-      v-if="lifetimeTargetFilterMenuOpen"
-      :item-list="lifetimeTargetSelectList"
+      v-if="targetFilterMenuOpen"
+      :item-list="targetSelectList"
       ledger-type="target"
       :is-lifetime="true"
       @close="closeTargetFilterMenu"
       @select="selectTargetFilter"
-      @input="(val: string) => (lifetimeTargetSearchTerm = val)"
+      @input="(val: string) => (targetSearchTerm = val)"
     />
 
     <!-- Drop filter overlay -->
     <SearchOverSelector
-      v-if="lifetimeDropFilterMenuOpen"
-      :item-list="lifetimeDropSelectList"
+      v-if="dropFilterMenuOpen"
+      :item-list="dropSelectList"
       ledger-type="drop"
       :is-lifetime="true"
       @close="closeDropFilterMenu"
       @select="selectDropFilter"
-      @input="(val: string) => (lifetimeDropSearchTerm = val)"
+      @input="(val: string) => (dropSearchTerm = val)"
     />
 
     <!-- Account selector -->
@@ -31,12 +31,12 @@
       class="select-form"
       @submit="onViewSubmit"
     >
-      <div class="relative flex-grow focus-within:z-10">
+      <div ref="accountSelectRef" class="relative flex-grow focus-within:z-10">
         <div
           v-if="selectedLifetimeAccountData != null"
           class="ledger-input-overlay"
         >
-          <span class="whitespace-pre">{{ selectedLifetimeAccountData.id }}</span>
+          <span class="whitespace-pre">{{ maskEid(selectedLifetimeAccountData.id) }}</span>
           (<span :style="'color: #' + selectedLifetimeAccountData.accountColor">
             {{ selectedLifetimeAccountData.nickname }}
             {{ selectedLifetimeAccountData.ebString }}
@@ -76,7 +76,7 @@
             class="drop-opt"
             @click="closeAccountDropdown(account.id)"
           >
-            {{ account.id }}
+            {{ maskEid(account.id) }}
             (<span :style="'color: #' + account.accountColor">{{ account.nickname }} {{ account.ebString }}</span>
             - {{ account.missionCount }} missions)
           </li>
@@ -167,7 +167,7 @@
           id="lifetime-filter-apply-button"
           type="submit"
           class="mt-0_5rem mr-1rem -ml-px relative p-0.5 text-center space-x-2 px-3 py-1 border border-gray-300 text-sm font-medium rounded-md text-gray-400 bg-darkerer hover:bg-dark_tab_hover disabled:opacity-50 disabled:hover:darker_tab_hover disabled:hover:cursor-not-allowed focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-          :disabled="lifetimeDataBeingFiltered || !lifetimeFilterHasChanged"
+          :disabled="lifetimeDataBeingFiltered || !filterHasChanged"
         >
           Apply Filter
         </button>
@@ -255,6 +255,9 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useAppState } from '../composables/useAppState'
 import { useMennoData } from '../composables/useMennoData'
+import { useFilters } from '../composables/useFilters'
+import { useDropdownSelector } from '../composables/useDropdownSelector'
+import { maskEid } from '../composables/useSettings'
 import type {
   DatabaseMission,
   MissionDrop,
@@ -267,16 +270,12 @@ import NoDataFallback from '../components/NoDataFallback.vue'
 import SearchOverSelector from '../components/SearchOverSelector.vue'
 import DropDisplayContainer, { type LedgerData } from '../components/DropDisplayContainer.vue'
 
-// ───────────────────────────────────────────────────────────────────────────────
 // Shared state
-// ───────────────────────────────────────────────────────────────────────────────
 
 const { existingData, knownAccounts, activeTab } = useAppState()
 const { mennoDataLoaded, getMennoData, load: loadMennoData } = useMennoData()
 
-// ───────────────────────────────────────────────────────────────────────────────
 // Types local to this view
-// ───────────────────────────────────────────────────────────────────────────────
 
 enum LifetimeLoadState {
   Idle = 'Idle',
@@ -286,21 +285,6 @@ enum LifetimeLoadState {
   Success = 'Success',
   Failed = 'Failed',
   FailedTooFast = 'FailedTooFast',
-}
-
-interface FilterCondition {
-  topLevel: string
-  op: string
-  val: string
-}
-
-interface FilterOption {
-  text: string
-  value: string
-  styleClass?: string
-  imagePath?: string
-  rarity?: number
-  rarityGif?: string
 }
 
 interface LifetimeDataLoadedProgress {
@@ -335,18 +319,18 @@ interface LifetimeData extends LedgerData {
   ingredients: LifetimeDrop[]
 }
 
-interface HandleFilterChangeEventTarget extends HTMLElement {
-  oldValue?: string | null
-  value?: string
-  type?: string
-}
-
 // ───────────────────────────────────────────────────────────────────────────────
 // Account selector state
 // ───────────────────────────────────────────────────────────────────────────────
 
 const selectedLifetimeAccount = ref<string | null>(null)
-const accountDropdownOpen = ref(false)
+
+const {
+  containerRef: accountSelectRef,
+  isOpen: accountDropdownOpen,
+  open: openAccountDropdown,
+  close: closeAccountDropdown,
+} = useDropdownSelector((id) => { selectedLifetimeAccount.value = id })
 
 const doesDataExist = computed(() => existingData.value.length > 0)
 
@@ -374,15 +358,6 @@ const selectedLifetimeKnownAccount = computed(
   () => knownAccounts.value.find((acc) => acc.id === selectedLifetimeAccount.value) ?? null,
 )
 
-function openAccountDropdown() {
-  accountDropdownOpen.value = true
-}
-function closeAccountDropdown(id?: string) {
-  if (id != null && id !== '') selectedLifetimeAccount.value = id
-  accountDropdownOpen.value = false
-}
-
-// ───────────────────────────────────────────────────────────────────────────────
 // Lifetime load state
 // ───────────────────────────────────────────────────────────────────────────────
 
@@ -531,144 +506,33 @@ function reSortLifetime() {
   ld.ingredients = sortFn(ld.ingredients as unknown as DropLike[]) as unknown as LifetimeDrop[]
 }
 
-// ───────────────────────────────────────────────────────────────────────────────
-// Configs used by the filter value options
-// ───────────────────────────────────────────────────────────────────────────────
-
+// Artifact/mission configs (loaded in onMounted, passed to useFilters)
 const possibleTargets = ref<PossibleTarget[]>([])
 const maxQuality = ref<number>(0)
 const artifactConfigs = ref<PossibleArtifact[]>([])
 const durationConfigs = ref<PossibleMission[]>([])
 
-function artifactDisplayText(artifact: PossibleArtifact): string {
-  const displayName = artifact.displayName
-  const level = artifact.level
-  let displayText = displayName
-  if (String(level) !== '%') {
-    const isStoneNotFragment =
-      displayName.toLowerCase().includes('stone') &&
-      !displayName.toLowerCase().includes('fragment')
-    displayText += ' (T' + (Number(level) + (isStoneNotFragment ? 2 : 1)) + ')'
-  }
-  return displayText
-}
-
-function dropPath(drop: PossibleArtifact): string {
-  const addendum = drop.protoName.includes('_STONE') ? 1 : 0
-  const fixedName = drop.protoName
-    .replaceAll('_FRAGMENT', '')
-    .replaceAll('ORNATE_GUSSET', 'GUSSET')
-    .replaceAll('VIAL_MARTIAN_DUST', 'VIAL_OF_MARTIAN_DUST')
-  return 'artifacts/' + fixedName + '/' + fixedName + '_' + (drop.level + 1 + addendum) + '.png'
-}
-
-function dropRarityPath(drop: PossibleArtifact): string {
-  switch (drop.rarity) {
-    case 1:
-      return 'images/rare.gif'
-    case 2:
-      return 'images/epic.gif'
-    case 3:
-      return 'images/legendary.gif'
-    default:
-      return ''
-  }
-}
-
-function getFilterValueOptions(topLevel: string | null): FilterOption[] {
-  switch (topLevel) {
-    case 'ship':
-      return Array.from({ length: 11 }, (_, index) => ({
-        text: [
-          'Chicken One', 'Chicken Nine', 'Chicken Heavy',
-          'BCR', 'Quintillion Chicken', 'Cornish-Hen Corvette',
-          'Galeggtica', 'Defihent', 'Voyegger', 'Henerprise', 'Atreggies Henliner',
-        ][index],
-        value: String(index),
-      }))
-    case 'duration':
-      return Array.from({ length: 4 }, (_, index) => ({
-        text: ['Short', 'Standard', 'Extended', 'Tutorial'][index],
-        value: String(index),
-        styleClass: 'text-duration-' + index,
-      }))
-    case 'level':
-      return Array.from({ length: 9 }, (_, index) => ({
-        text: index + '\u2605',
-        value: String(index),
-      }))
-    case 'target':
-      return possibleTargets.value.map((target) => ({
-        text: target.displayName,
-        value: String(target.id),
-        imagePath: target.imageString,
-      }))
-    case 'drops': {
-      const filtered: FilterOption[] = artifactConfigs.value
-        .filter((a) => a.baseQuality <= maxQuality.value)
-        .map((artifact) => ({
-          text: artifactDisplayText(artifact),
-          value: artifact.name + '_' + artifact.level + '_' + artifact.rarity + '_' + artifact.baseQuality,
-          rarity: artifact.rarity,
-          imagePath: dropPath(artifact),
-          rarityGif: dropRarityPath(artifact),
-        }))
-      filtered.unshift({ text: 'Any Legendary', value: '%_%_3_%', rarity: 3, styleClass: 'text-legendary', imagePath: 'icon_help.webp' })
-      filtered.unshift({ text: 'Any Epic', value: '%_%_2_%', rarity: 2, styleClass: 'text-epic', imagePath: 'icon_help.webp' })
-      filtered.unshift({ text: 'Any Rare', value: '%_%_1_%', rarity: 1, styleClass: 'text-rare', imagePath: 'icon_help.webp' })
-      return filtered
-    }
-    case 'type':
-      return [{ text: 'Standard', value: '0' }, { text: 'Virtue', value: '1' }]
-    case 'buggedcap':
-    case 'dubcap':
-      return [{ text: 'True', value: 'true' }, { text: 'False', value: 'false' }]
-    default:
-      return []
-  }
-}
-
-// ───────────────────────────────────────────────────────────────────────────────
-// Filter state (lifetime-local copy)
-// ───────────────────────────────────────────────────────────────────────────────
-
-const lifetimeFilterConditionsCount = ref(1)
-const lifetimeFilterTopLevel = ref<(string | null)[]>([])
-const lifetimeFilterOperators = ref<(string | null)[]>([])
-const lifetimeFilterValues = ref<(string | null)[]>([])
-
-const lifetimeOrFilterConditionsCount = ref<(number | null)[]>([])
-const lifetimeOrFilterTopLevel = ref<(string | null)[][]>([[]])
-const lifetimeOrFilterOperators = ref<(string | null)[][]>([[]])
-const lifetimeOrFilterValues = ref<(string | null)[][]>([[]])
-
-const dLifetimeFilterValues = ref<(string | null)[]>([])
-const dLifetimeOrFilterValues = ref<(string | null)[][]>([[]])
-
-const lifetimeDataFilter = ref<FilterCondition[]>([])
-const lifetimeOrDataFilter = ref<FilterCondition[][]>([[]])
-const hideLifetimeFilter = ref(false)
-const lifetimeFilterHasChanged = ref(false)
-
-watch(lifetimeFilterValues, () => {
-  dLifetimeFilterValues.value = lifetimeFilterValues.value.map(
-    (_f, index) => (dLifetimeFilterValues.value[index] === undefined ? '' : dLifetimeFilterValues.value[index]),
-  )
-}, { deep: true })
-
-watch(lifetimeOrFilterValues, () => {
-  dLifetimeOrFilterValues.value = lifetimeOrFilterValues.value.map((orFilter, index) =>
-    dLifetimeOrFilterValues.value[index] === undefined
-      ? []
-      : dLifetimeOrFilterValues.value[index].slice(0, orFilter?.length ?? 0),
-  )
-}, { deep: true })
-
-watch([lifetimeDataFilter, lifetimeOrDataFilter], () => {
-  lifetimeFilterHasChanged.value = true
+// Filter composable
+const {
+  dataFilter, orDataFilter, filterHasChanged, getFilterValueOptions,
+  filterTopLevel, filterOperators, filterValues,
+  changeFilterValue, handleFilterChange, handleOrFilterChange,
+  addOr, removeAndShift, removeOrAndShift, generateFilterConditionsArr,
+  filterModVals, clearFilter, ledgerDate, ledgerDateObj, missionMatchesFilter,
+  dropSelectList, dropFilterMenuOpen, dropSearchTerm,
+  targetSelectList, targetFilterMenuOpen, targetSearchTerm,
+  openDropFilterMenu, closeDropFilterMenu, selectDropFilter,
+  openTargetFilterMenu, closeTargetFilterMenu, selectTargetFilter,
+} = useFilters({
+  idSuffix: 'lifetime',
+  accountId: selectedLifetimeAccount,
+  durationConfigs, possibleTargets, maxQuality, artifactConfigs,
 })
 
-// "Has exactly one <X>" watchers used to decide if Menno data applies
+// View-specific filter state
+const hideLifetimeFilter = ref(false)
+
+// "Has exactly one" watchers for Menno data
 const lifetimeHasExactlyOneTarget = ref(false)
 const lifetimeOneTargetInt = ref<string | null>(null)
 const lifetimeHasExactlyOneShip = ref(false)
@@ -688,619 +552,21 @@ function refreshExactlyOneFlags() {
   for (const [kind, flagRef, valRef] of kinds) {
     flagRef.value = false
     valRef.value = null
-    const matches = lifetimeFilterTopLevel.value.filter((f) => f === kind)
+    const matches = filterTopLevel.value.filter((f) => f === kind)
     if (matches.length !== 1) continue
-    const idx = lifetimeFilterTopLevel.value.indexOf(kind)
-    const op = lifetimeFilterOperators.value[idx]
-    const val = lifetimeFilterValues.value[idx]
+    const idx = filterTopLevel.value.indexOf(kind)
+    const op = filterOperators.value[idx]
+    const val = filterValues.value[idx]
     if (op == null || val == null || op !== '=') continue
     flagRef.value = true
     valRef.value = val
   }
 }
 watch(
-  [lifetimeFilterTopLevel, lifetimeFilterOperators, lifetimeFilterValues],
+  [filterTopLevel, filterOperators, filterValues],
   refreshExactlyOneFlags,
   { deep: true },
 )
-
-function clearLifetimeFilter() {
-  lifetimeFilterTopLevel.value = []
-  lifetimeFilterOperators.value = []
-  lifetimeFilterValues.value = []
-  lifetimeFilterConditionsCount.value = 1
-  lifetimeOrFilterConditionsCount.value = []
-  lifetimeOrFilterTopLevel.value = [[]]
-  lifetimeOrFilterOperators.value = [[]]
-  lifetimeOrFilterValues.value = [[]]
-  dLifetimeFilterValues.value = []
-  dLifetimeOrFilterValues.value = [[]]
-  lifetimeDataFilter.value = []
-  lifetimeOrDataFilter.value = [[]]
-  lifetimeFilterHasChanged.value = false
-}
-
-// ───────────────────────────────────────────────────────────────────────────────
-// Filter handlers
-// ───────────────────────────────────────────────────────────────────────────────
-
-function changeFilterValue(
-  index: number | string,
-  orIndex: number | string | null,
-  level: string,
-  value: string,
-) {
-  const intIndex = typeof index === 'number' ? index : Number.parseInt(index)
-  let intOrIndex: number | null = null
-  if (orIndex != null) {
-    intOrIndex = typeof orIndex === 'number' ? orIndex : Number.parseInt(orIndex)
-  }
-  switch (level) {
-    case 'top':
-      if (intOrIndex == null) lifetimeFilterTopLevel.value[intIndex] = value
-      else lifetimeOrFilterTopLevel.value[intIndex][intOrIndex] = value
-      break
-    case 'operator':
-      if (intOrIndex == null) lifetimeFilterOperators.value[intIndex] = value
-      else lifetimeOrFilterOperators.value[intIndex][intOrIndex] = value
-      break
-    case 'value':
-      if (intOrIndex == null) lifetimeFilterValues.value[intIndex] = value
-      else lifetimeOrFilterValues.value[intIndex][intOrIndex] = value
-      break
-  }
-}
-
-// eslint-disable-next-line sonarjs/cognitive-complexity
-function updateValueStyling(passedEl: HTMLElement, isOr: boolean) {
-  const idParts = passedEl.id.split('-')
-  // Lifetime filter IDs are suffixed with "-lifetime"
-  // Example: filter-value-0-lifetime  or  filter-value-0-2-lifetime (or)
-  // We strip the trailing "-lifetime" and reparse.
-  const trimmed = idParts.filter((p) => p !== 'lifetime')
-  const index = Number.parseInt(trimmed[2])
-  const orIndex = isOr ? Number.parseInt(trimmed[trimmed.length - 1]) : null
-  if (isOr && orIndex == null) return
-  const el = document.getElementById('filter-value-' + index + (isOr ? '-' + orIndex : '') + '-lifetime')
-  if (!el) return
-  const classMatchBorder = el.className.match(/ border-(.*?)(\s|$)/)
-  const classMatchText = el.className.replace('text-sm', ' ').match(/ text-(.*?)(\s|$)/)
-  const existingBorder = classMatchBorder ? 'border-' + classMatchBorder[1].trim() : ''
-  const existingText = classMatchText ? 'text-' + classMatchText[1].trim() : ''
-  const isDrops = isOr
-    ? lifetimeOrFilterTopLevel.value[index][orIndex!] === 'drops'
-    : lifetimeFilterTopLevel.value[index] === 'drops'
-  const dropsValue = isOr
-    ? lifetimeOrFilterValues.value[index][orIndex!]
-    : lifetimeFilterValues.value[index]
-  const isDuration = isOr
-    ? lifetimeOrFilterTopLevel.value[index][orIndex!] === 'duration'
-    : lifetimeFilterTopLevel.value[index] === 'duration'
-  let newBorder = ''
-  let newText = ''
-
-  if (isDrops && dropsValue != null && dropsValue !== '') {
-    switch (dropsValue.split('_')[2]) {
-      case '1': newBorder = 'border-rare'; newText = 'text-rarity-1'; break
-      case '2': newBorder = 'border-epic'; newText = 'text-rarity-2'; break
-      case '3': newBorder = 'border-legendary'; newText = 'text-rarity-3'; break
-      default: newBorder = 'border-gray-300'; newText = 'text-gray-400'; break
-    }
-  } else if (isDuration && (el as HTMLInputElement).value !== '') {
-    switch ((el as HTMLInputElement).value) {
-      case '0': newBorder = 'border-short'; newText = 'text-duration-0'; break
-      case '1': newBorder = 'border-standard'; newText = 'text-duration-1'; break
-      case '2': newBorder = 'border-extended'; newText = 'text-duration-2'; break
-      case '3': newBorder = 'border-tutorial'; newText = 'text-duration-3'; break
-      default: newBorder = 'border-gray-300'; newText = 'text-gray-400'; break
-    }
-  } else {
-    newBorder = 'border-gray-300'
-    newText = 'text-gray-400'
-  }
-  if (existingBorder) el.classList.replace(existingBorder, newBorder)
-  else el.classList.add(newBorder)
-  if (existingText) el.classList.replace(existingText, newText)
-  else el.classList.add(newText)
-}
-
-// eslint-disable-next-line sonarjs/cognitive-complexity
-function updateFilterNoReCount() {
-  lifetimeFilterHasChanged.value = true
-  const newDataFilter: FilterCondition[] = []
-  if (lifetimeFilterTopLevel.value.length !== 0 && lifetimeFilterTopLevel.value != null) {
-    for (let i = 0; i < lifetimeFilterTopLevel.value.length; i++) {
-      const topLevel = lifetimeFilterTopLevel.value[i]
-      const op = lifetimeFilterOperators.value[i]
-      const val = lifetimeFilterValues.value[i]
-      if (topLevel == null || op == null || val == null || (topLevel.includes('DT') && val === '')) break
-      newDataFilter.push({ topLevel, op, val })
-    }
-  }
-  lifetimeDataFilter.value = newDataFilter
-
-  const newOrDataFilter: FilterCondition[][] = []
-  for (let i = 0; i < lifetimeOrFilterConditionsCount.value.length; i++) {
-    const arr: FilterCondition[] = []
-    if (
-      lifetimeOrFilterTopLevel.value[i] == null ||
-      lifetimeOrFilterOperators.value[i] == null ||
-      lifetimeOrFilterValues.value[i] == null
-    ) continue
-    for (let j = 0; j < lifetimeOrFilterTopLevel.value[i].length; j++) {
-      const topLevel = lifetimeOrFilterTopLevel.value[i][j]
-      const op = lifetimeOrFilterOperators.value[i][j]
-      const val = lifetimeOrFilterValues.value[i][j]
-      if (topLevel == null || op == null || val == null || (topLevel.includes('DT') && val === '')) break
-      arr.push({ topLevel, op, val })
-    }
-    newOrDataFilter.push(arr)
-  }
-  lifetimeOrDataFilter.value = newOrDataFilter
-}
-
-function updateFilterConditionsCount() {
-  lifetimeFilterHasChanged.value = true
-  const newDataFilter: FilterCondition[] = []
-  if (lifetimeFilterTopLevel.value.length === 0 || lifetimeFilterTopLevel.value == null) return
-  let maxIndex = 0
-  let set = false
-
-  for (let i = 0; i < lifetimeFilterTopLevel.value.length; i++) {
-    const topLevel = lifetimeFilterTopLevel.value[i]
-    const op = lifetimeFilterOperators.value[i]
-    const val = lifetimeFilterValues.value[i]
-
-    if (topLevel == null || op == null || val == null || (topLevel.includes('DT') && val === '')) {
-      maxIndex = i
-      break
-    }
-    newDataFilter.push({ topLevel, op, val })
-    if (i + 1 === lifetimeFilterConditionsCount.value) {
-      lifetimeFilterConditionsCount.value += 1
-      set = true
-    }
-  }
-  if (maxIndex === 0) {
-    maxIndex = lifetimeFilterTopLevel.value.filter((f) => f != null && f !== '').length
-  }
-
-  if (!set) lifetimeFilterConditionsCount.value = maxIndex + 1
-  lifetimeDataFilter.value = newDataFilter
-}
-
-function handleFilterChange(eventOrId: Event | string) {
-  const targetEl =
-    typeof eventOrId === 'string'
-      ? (document.getElementById(eventOrId) as HandleFilterChangeEventTarget | null)
-      : ((eventOrId.target as HandleFilterChangeEventTarget) ?? null)
-  if (!targetEl) return
-  const targetId = targetEl.id
-  if (targetEl.oldValue == null || targetEl.type === 'date') {
-    updateFilterConditionsCount()
-    targetEl.oldValue = targetEl.value ?? ''
-  } else updateFilterNoReCount()
-  updateValueStyling(targetEl, false)
-  if (targetId.includes('filter-top')) {
-    const idParts = targetId.split('-').filter((p) => p !== 'lifetime')
-    const index = Number.parseInt(idParts[idParts.length - 1])
-    const options = getFilterValueOptions(targetEl.value ?? '')
-    const opts = new Set(options.map((o) => String(o.value)))
-    if (!opts.has(String(lifetimeFilterOperators.value[index]))) {
-      lifetimeFilterOperators.value[index] = null
-    }
-    if (!opts.has(String(lifetimeFilterValues.value[index]))) {
-      lifetimeFilterValues.value[index] = null
-      dLifetimeFilterValues.value[index] = null
-    }
-  }
-}
-
-function handleOrFilterChange(eventOrId: Event | string) {
-  const targetEl =
-    typeof eventOrId === 'string'
-      ? (document.getElementById(eventOrId) as HandleFilterChangeEventTarget | null)
-      : ((eventOrId.target as HandleFilterChangeEventTarget) ?? null)
-  if (!targetEl) return
-  const targetId = targetEl.id
-  const idParts = targetId.split('-').filter((p) => p !== 'lifetime')
-  const index = Number.parseInt(idParts[2])
-  const orIndex = Number.parseInt(idParts[idParts.length - 1])
-  updateFilterNoReCount()
-  updateValueStyling(targetEl, true)
-  if (targetId.includes('filter-top')) {
-    const options = getFilterValueOptions(targetEl.value ?? '')
-    const opts = new Set(options.map((o) => String(o.value)))
-    if (!opts.has(String(lifetimeOrFilterOperators.value[index][orIndex]))) {
-      lifetimeOrFilterOperators.value[index][orIndex] = null
-    }
-    if (!opts.has(String(lifetimeOrFilterValues.value[index][orIndex]))) {
-      lifetimeOrFilterValues.value[index][orIndex] = null
-      dLifetimeOrFilterValues.value[index][orIndex] = null
-    }
-  }
-}
-
-function addOr(index: number) {
-  if (lifetimeOrFilterConditionsCount.value == null) lifetimeOrFilterConditionsCount.value = []
-  if (lifetimeOrFilterConditionsCount.value[index] == null) lifetimeOrFilterConditionsCount.value[index] = 1
-  else
-    lifetimeOrFilterConditionsCount.value[index] =
-      (lifetimeOrFilterConditionsCount.value[index] as number) + 1
-
-  if (lifetimeOrFilterTopLevel.value[index] == null) lifetimeOrFilterTopLevel.value[index] = []
-  if (lifetimeOrFilterOperators.value[index] == null) lifetimeOrFilterOperators.value[index] = []
-  if (lifetimeOrFilterValues.value[index] == null) lifetimeOrFilterValues.value[index] = []
-
-  lifetimeOrFilterTopLevel.value[index].push(null)
-  lifetimeOrFilterOperators.value[index].push(null)
-  lifetimeOrFilterValues.value[index].push(null)
-}
-
-function removeAndShift(index: number) {
-  for (let i = index; i < lifetimeFilterTopLevel.value.length; i++) {
-    lifetimeFilterTopLevel.value[i] = lifetimeFilterTopLevel.value[i + 1]
-    lifetimeFilterOperators.value[i] = lifetimeFilterOperators.value[i + 1]
-    lifetimeFilterValues.value[i] = lifetimeFilterValues.value[i + 1]
-    dLifetimeFilterValues.value[i] = dLifetimeFilterValues.value[i + 1]
-
-    lifetimeOrFilterConditionsCount.value[i] = lifetimeOrFilterConditionsCount.value[i + 1]
-    lifetimeOrFilterTopLevel.value[i] = lifetimeOrFilterTopLevel.value[i + 1]
-    lifetimeOrFilterOperators.value[i] = lifetimeOrFilterOperators.value[i + 1]
-    lifetimeOrFilterValues.value[i] = lifetimeOrFilterValues.value[i + 1]
-    dLifetimeOrFilterValues.value[i] = dLifetimeOrFilterValues.value[i + 1]
-  }
-  updateFilterConditionsCount()
-  updateFilterNoReCount()
-  lifetimeFilterHasChanged.value = true
-
-  setTimeout(() => {
-    document.querySelectorAll("[id^='filter-top-']").forEach((el) => {
-      if ((el as HTMLElement).id.endsWith('-lifetime')) updateValueStyling(el as HTMLElement, false)
-    })
-  }, 10)
-}
-
-function removeOrAndShift(index: number, orIndex: number) {
-  for (let i = orIndex; i < lifetimeOrFilterTopLevel.value[index].length; i++) {
-    lifetimeOrFilterTopLevel.value[index][i] = lifetimeOrFilterTopLevel.value[index][i + 1]
-    lifetimeOrFilterOperators.value[index][i] = lifetimeOrFilterOperators.value[index][i + 1]
-    lifetimeOrFilterValues.value[index][i] = lifetimeOrFilterValues.value[index][i + 1]
-    dLifetimeOrFilterValues.value[index][i] = dLifetimeOrFilterValues.value[index][i + 1]
-  }
-  const cur = lifetimeOrFilterConditionsCount.value[index]
-  if (cur != null) {
-    const next = cur - 1
-    lifetimeOrFilterConditionsCount.value[index] = next === 0 ? null : next
-  }
-  updateFilterNoReCount()
-  lifetimeFilterHasChanged.value = true
-}
-
-function generateFilterConditionsArr() {
-  return new Array(lifetimeFilterConditionsCount.value)
-}
-
-function filterModVals() {
-  return {
-    top: lifetimeFilterTopLevel.value,
-    operator: lifetimeFilterOperators.value,
-    value: lifetimeFilterValues.value,
-    dValue: dLifetimeFilterValues.value,
-    orTop: lifetimeOrFilterTopLevel.value,
-    orOperator: lifetimeOrFilterOperators.value,
-    orValue: lifetimeOrFilterValues.value,
-    orDValue: dLifetimeOrFilterValues.value,
-    orCount: lifetimeOrFilterConditionsCount.value,
-  }
-}
-
-// ───────────────────────────────────────────────────────────────────────────────
-// Mission-against-filter logic (for filtered lifetime loads)
-// ───────────────────────────────────────────────────────────────────────────────
-
-function ledgerDate(timestamp: number): Date {
-  return new Date(timestamp * 1000)
-}
-function ledgerDateObj(date: string): Date {
-  const parts = date.split('-')
-  return new Date(Number.parseInt(parts[0]), Number.parseInt(parts[1]) - 1, Number.parseInt(parts[2]))
-}
-
-function commonFilterLogic(
-  value: unknown,
-  filterValue: unknown,
-  operator: string,
-  currentState: boolean,
-): boolean {
-  switch (operator) {
-    case 'd=':
-      if ((value as Date).toDateString() !== (filterValue as Date).toDateString()) return false
-      break
-    case '=':
-      if (value != filterValue) return false
-      break
-    case '!=':
-      if (value == filterValue) return false
-      break
-    case '>':
-      if ((value as number) <= (filterValue as number)) return false
-      break
-    case '<':
-      if ((value as number) >= (filterValue as number)) return false
-      break
-    case 'true':
-      if (!value) return false
-      break
-    case 'false':
-      if (value) return false
-      break
-    default:
-      return currentState
-  }
-  return currentState
-}
-
-// eslint-disable-next-line sonarjs/cognitive-complexity
-async function testMissionAgainstFilter(
-  mission: DatabaseMission,
-  filter: FilterCondition,
-): Promise<boolean> {
-  let filterPassed = true
-  if (filter.topLevel != null && filter.op != null && filter.val != null) {
-    switch (filter.topLevel) {
-      case 'buggedcap':
-        filterPassed = commonFilterLogic(mission.isBuggedCap, null, filter.val, filterPassed)
-        break
-      case 'dubcap':
-        filterPassed = commonFilterLogic(mission.isDubCap, null, filter.val, filterPassed)
-        break
-      case 'ship':
-        filterPassed = commonFilterLogic(mission.ship, filter.val, filter.op, filterPassed)
-        break
-      case 'duration':
-        filterPassed = commonFilterLogic(mission.durationType, filter.val, filter.op, filterPassed)
-        break
-      case 'level':
-        filterPassed = commonFilterLogic(mission.level, filter.val, filter.op, filterPassed)
-        break
-      case 'target':
-        filterPassed = commonFilterLogic(mission.targetInt, filter.val, filter.op, filterPassed)
-        break
-      case 'type':
-        filterPassed = commonFilterLogic(mission.missionType, filter.val, filter.op, filterPassed)
-        break
-      case 'launchDT':
-        filterPassed = commonFilterLogic(
-          ledgerDate(mission.launchDT),
-          ledgerDateObj(filter.val),
-          filter.op,
-          filterPassed,
-        )
-        break
-      case 'returnDT':
-        filterPassed = commonFilterLogic(
-          ledgerDate(mission.returnDT),
-          ledgerDateObj(filter.val),
-          filter.op,
-          filterPassed,
-        )
-        break
-      case 'drops': {
-        const shipIdx = mission.ship
-        const durIdx = mission.durationType
-        const shipConfig = durationConfigs.value[shipIdx]
-        if (!shipConfig) {
-          filterPassed = false
-          break
-        }
-        const durConfig = shipConfig.durations[durIdx]
-        if (!durConfig) {
-          filterPassed = false
-          break
-        }
-        const maxQual = durConfig.maxQuality + durConfig.levelQualityBump * mission.level
-        const filterQuality = filter.val.split('_')[3]
-        const qualityBypass = filterQuality === '%'
-        const filterRarity = filter.val.split('_')[2]
-        const rarityBypass = filterRarity === '%'
-        const filterLevel = filter.val.split('_')[1]
-        const levelBypass = filterLevel === '%'
-        const filterName = filter.val.split('_')[0]
-        const nameBypass = filterName === '%'
-        const allDrops = await globalThis.getShipDrops(selectedLifetimeAccount.value ?? '', mission.missionId)
-        if (allDrops == null) filterPassed = false
-        else {
-          switch (filter.op) {
-            case 'c': {
-              let foundDrop = false
-              if (
-                (!qualityBypass && maxQual < Number.parseFloat(filterQuality)) ||
-                (!qualityBypass && durConfig.minQuality > Number.parseFloat(filterQuality))
-              ) {
-                filterPassed = false
-              }
-              for (const drop of allDrops) {
-                if (!nameBypass && Number.parseInt(filterName) !== drop.id) continue
-                if (!levelBypass && Number.parseInt(filterLevel) !== drop.level) continue
-                if (!rarityBypass && Number.parseInt(filterRarity) !== drop.rarity) continue
-                foundDrop = true
-              }
-              if (!foundDrop) filterPassed = false
-              break
-            }
-            case 'dnc': {
-              for (const drop of allDrops) {
-                if (!nameBypass && Number.parseInt(filterName) !== drop.id) continue
-                if (!levelBypass && Number.parseInt(filterLevel) !== drop.level) continue
-                if (!rarityBypass && Number.parseInt(filterRarity) !== drop.rarity) continue
-                filterPassed = false
-              }
-              break
-            }
-          }
-        }
-        break
-      }
-    }
-    return filterPassed
-  }
-  return false
-}
-
-// eslint-disable-next-line sonarjs/cognitive-complexity
-async function missionMatchesFilter(
-  mission: DatabaseMission,
-  filters: FilterCondition[],
-  orFilters: FilterCondition[][],
-): Promise<boolean> {
-  let allFiltersPassed = true
-  let index = 0
-  for (const filter of filters) {
-    let filterPassed = true
-    if (filter.topLevel != null && filter.op != null && (filter.val != null || filter.topLevel === 'target')) {
-      filterPassed = await testMissionAgainstFilter(mission, filter)
-      if (!filterPassed) {
-        if (orFilters[index] != null) {
-          for (const orFilter of orFilters[index]) {
-            if (orFilter.topLevel != null && orFilter.op != null && (orFilter.val != null || orFilter.topLevel === 'target')) {
-              filterPassed = await testMissionAgainstFilter(mission, orFilter)
-              if (filterPassed) break
-            }
-          }
-        }
-        if (!filterPassed) allFiltersPassed = false
-      }
-    }
-    index++
-  }
-  return allFiltersPassed
-}
-
-// ───────────────────────────────────────────────────────────────────────────────
-// Drop/target filter overlays (lifetime)
-// ───────────────────────────────────────────────────────────────────────────────
-
-const lifetimeDropSelectList = ref<FilterOption[]>([])
-const lifetimeDropFilterSelectedIndex = ref<number | null>(null)
-const lifetimeDropFilterSelectedOrIndex = ref<number | null>(null)
-const lifetimeDropFilterMenuOpen = ref(false)
-const lifetimeDropSearchTerm = ref('')
-
-const lifetimeTargetSelectList = ref<FilterOption[]>([])
-const lifetimeTargetFilterSelectedIndex = ref<number | null>(null)
-const lifetimeTargetFilterSelectedOrIndex = ref<number | null>(null)
-const lifetimeTargetFilterMenuOpen = ref(false)
-const lifetimeTargetSearchTerm = ref('')
-
-watch(lifetimeDropSearchTerm, () => {
-  lifetimeDropSelectList.value = getFilterValueOptions('drops').filter((d) =>
-    d.text.toLowerCase().includes(lifetimeDropSearchTerm.value.toLowerCase()),
-  )
-})
-watch(lifetimeTargetSearchTerm, () => {
-  lifetimeTargetSelectList.value = getFilterValueOptions('target').filter((t) =>
-    t.text.toLowerCase().includes(lifetimeTargetSearchTerm.value.toLowerCase()),
-  )
-})
-
-function openDropFilterMenu(index: number, orIndex: number | null) {
-  lifetimeDropSelectList.value = getFilterValueOptions('drops')
-  lifetimeDropFilterSelectedIndex.value = index
-  lifetimeDropFilterSelectedOrIndex.value = orIndex ?? null
-  lifetimeDropFilterMenuOpen.value = true
-  const el = document.querySelector('.overlay-drop-lifetime') as HTMLElement | null
-  if (el) {
-    el.style.display = 'flex'
-    el.classList.remove('hidden')
-  }
-  const input = document.getElementById('drop-search-lifetime') as HTMLInputElement | null
-  input?.focus()
-}
-function closeDropFilterMenu() {
-  lifetimeDropSearchTerm.value = ''
-  lifetimeDropFilterSelectedIndex.value = null
-  lifetimeDropFilterSelectedOrIndex.value = null
-  lifetimeDropFilterMenuOpen.value = false
-  const el = document.querySelector('.overlay-drop-lifetime') as HTMLElement | null
-  if (el) {
-    el.style.display = 'none'
-    el.classList.add('hidden')
-  }
-}
-function selectDropFilter(drop: FilterOption) {
-  const newValue = drop.value.toString().split('.')[0]
-  if (lifetimeDropFilterSelectedIndex.value != null) {
-    if (lifetimeDropFilterSelectedOrIndex.value == null) {
-      lifetimeFilterValues.value[lifetimeDropFilterSelectedIndex.value] = newValue
-      dLifetimeFilterValues.value[lifetimeDropFilterSelectedIndex.value] = drop.text
-      handleFilterChange(`filter-value-${lifetimeDropFilterSelectedIndex.value}-lifetime`)
-      const el = document.getElementById(`filter-value-${lifetimeDropFilterSelectedIndex.value}-lifetime`) as HTMLInputElement | null
-      if (el) el.size = drop.text.length
-    } else {
-      lifetimeOrFilterValues.value[lifetimeDropFilterSelectedIndex.value][lifetimeDropFilterSelectedOrIndex.value] = newValue
-      dLifetimeOrFilterValues.value[lifetimeDropFilterSelectedIndex.value][lifetimeDropFilterSelectedOrIndex.value] = drop.text
-      handleOrFilterChange(
-        `filter-value-${lifetimeDropFilterSelectedIndex.value}-${lifetimeDropFilterSelectedOrIndex.value}-lifetime`,
-      )
-      const el = document.getElementById(
-        `filter-value-${lifetimeDropFilterSelectedIndex.value}-${lifetimeDropFilterSelectedOrIndex.value}-lifetime`,
-      ) as HTMLInputElement | null
-      if (el) el.size = drop.text.length
-    }
-  }
-  closeDropFilterMenu()
-}
-
-function openTargetFilterMenu(index: number, orIndex: number | null) {
-  lifetimeTargetSelectList.value = getFilterValueOptions('target')
-  lifetimeTargetFilterSelectedIndex.value = index
-  lifetimeTargetFilterSelectedOrIndex.value = orIndex ?? null
-  lifetimeTargetFilterMenuOpen.value = true
-  const el = document.querySelector('.overlay-target-lifetime') as HTMLElement | null
-  if (el) {
-    el.style.display = 'flex'
-    el.classList.remove('hidden')
-  }
-  const input = document.getElementById('target-search-lifetime') as HTMLInputElement | null
-  input?.focus()
-}
-function closeTargetFilterMenu() {
-  lifetimeTargetSearchTerm.value = ''
-  lifetimeTargetFilterSelectedIndex.value = null
-  lifetimeTargetFilterSelectedOrIndex.value = null
-  lifetimeTargetFilterMenuOpen.value = false
-  const el = document.querySelector('.overlay-target-lifetime') as HTMLElement | null
-  if (el) {
-    el.style.display = 'none'
-    el.classList.add('hidden')
-  }
-}
-function selectTargetFilter(target: FilterOption) {
-  const newValue = target.value.toString().split('.')[0]
-  if (lifetimeTargetFilterSelectedIndex.value != null) {
-    if (lifetimeTargetFilterSelectedOrIndex.value == null) {
-      lifetimeFilterValues.value[lifetimeTargetFilterSelectedIndex.value] = newValue
-      dLifetimeFilterValues.value[lifetimeTargetFilterSelectedIndex.value] = target.text
-      handleFilterChange(`filter-value-${lifetimeTargetFilterSelectedIndex.value}-lifetime`)
-      const el = document.getElementById(
-        `filter-value-${lifetimeTargetFilterSelectedIndex.value}-lifetime`,
-      ) as HTMLInputElement | null
-      if (el) el.size = target.text.length
-    } else {
-      lifetimeOrFilterValues.value[lifetimeTargetFilterSelectedIndex.value][lifetimeTargetFilterSelectedOrIndex.value] = newValue
-      dLifetimeOrFilterValues.value[lifetimeTargetFilterSelectedIndex.value][lifetimeTargetFilterSelectedOrIndex.value] = target.text
-      handleOrFilterChange(
-        `filter-value-${lifetimeTargetFilterSelectedIndex.value}-${lifetimeTargetFilterSelectedOrIndex.value}-lifetime`,
-      )
-      const el = document.getElementById(
-        `filter-value-${lifetimeTargetFilterSelectedIndex.value}-${lifetimeTargetFilterSelectedOrIndex.value}-lifetime`,
-      ) as HTMLInputElement | null
-      if (el) el.size = target.text.length
-    }
-  }
-  closeTargetFilterMenu()
-}
 
 // ───────────────────────────────────────────────────────────────────────────────
 // Lifetime fetch pipeline
@@ -1387,7 +653,7 @@ async function viewLifetimeDataOfEid(filterLoad: boolean) {
     return
   }
 
-  const shouldFilter = lifetimeDataFilter.value != null && lifetimeDataFilter.value.length > 0 && filterLoad
+  const shouldFilter = dataFilter.value != null && dataFilter.value.length > 0 && filterLoad
   if (shouldFilter) {
     lifetimeDataLoadedProgress.value = { percentageDone: '0%', loadedCount: 0, totalCount: idsJson.length }
     lifetimeState.value = LifetimeLoadState.FilteringIds
@@ -1409,7 +675,7 @@ async function viewLifetimeDataOfEid(filterLoad: boolean) {
         lifetimeDataLoadedProgress.value.loadedCount++
         const mission = missions.find((m) => m.missionId === id)
         if (!mission) return false
-        return await missionMatchesFilter(mission, lifetimeDataFilter.value, lifetimeOrDataFilter.value)
+        return await missionMatchesFilter(mission, dataFilter.value, orDataFilter.value)
       })
     : idsJson
 
@@ -1482,13 +748,13 @@ async function viewLifetimeDataOfEid(filterLoad: boolean) {
   lifetimeSuccessTime.value =
     Math.floor((end - start) / 1000) + '.' + Math.floor((end - start) % 1000) + 's'
   lifetimeDataBeingFiltered.value = false
-  lifetimeFilterHasChanged.value = false
+  filterHasChanged.value = false
   lifetimeState.value = LifetimeLoadState.Success
 }
 
 async function onViewSubmit(event: Event) {
   event.preventDefault()
-  clearLifetimeFilter()
+  clearFilter()
   await viewLifetimeDataOfEid(false)
 }
 

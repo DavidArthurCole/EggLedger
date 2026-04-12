@@ -7,7 +7,7 @@
         </span> <br />
         <div ref="preferredBrowserSelectRef" class="text-sm relative w-full flex-grow focus-within:z-10 pl-0_5rem">
           <div v-if="preferredBrowser" class="ledger-input-overlay">
-            <span>{{ preferredBrowser }}</span> (<span class="text-gray-300">{{ getBrowserDisplayName(preferredBrowser) }}</span>)
+            <span>{{ preferredBrowser }}</span> (<img v-if="getBrowserIcon(preferredBrowser)" :src="getBrowserIcon(preferredBrowser)" :alt="getBrowserDisplayName(preferredBrowser)" class="inline-block w-4 h-4 align-text-bottom mr-1" /><span class="text-gray-300">{{ getBrowserDisplayName(preferredBrowser) }}</span>)
           </div>
           <input
             id="preferredBrowserInput"
@@ -29,7 +29,7 @@
               class="drop-opt bg-darker"
               @click="closePrefBrowserDropdown(browser)"
             >
-              {{ browser }} <span class="inline-block max-w-9/10">(<span class="text-gray-300">{{ getBrowserDisplayName(browser) }}</span>)</span>
+              {{ browser }} <span class="inline-block max-w-9/10">(<img v-if="getBrowserIcon(browser)" :src="getBrowserIcon(browser)" :alt="getBrowserDisplayName(browser)" class="inline-block w-4 h-4 align-text-bottom mr-1" /><span class="text-gray-300">{{ getBrowserDisplayName(browser) }}</span>)</span>
             </li>
           </ul>
         </div>
@@ -132,6 +132,16 @@
           <label for="hideTimeoutErrorsCheckbox" class="ext-opt-label">Hide per-mission timeout errors in the fetch log</label>
         </div>
         <div class="mt-0_5rem">
+          <span class="font-bold text-base text-gray-400">Screenshot Safety</span><br />
+          <input
+            id="screenshotSafetyCheckbox"
+            type="checkbox"
+            class="ext-opt-check mr-0_5rem"
+            v-model="screenshotSafety"
+          />
+          <label for="screenshotSafetyCheckbox" class="ext-opt-label">Mask player IDs (EIDs) wherever they appear on screen</label>
+        </div>
+        <div class="mt-0_5rem">
           <span class="font-bold text-base text-gray-400">Parallel Download Workers</span><br />
           <div class="flex items-center mt-0_5rem pl-0_5rem gap-2">
             <input
@@ -144,8 +154,19 @@
             />
             <span class="text-gray-400">workers (1–10)</span>
           </div>
-          <div class="mt-0_5rem pl-0_5rem text-yellow-500 italic">
+          <div
+            v-if="!workerCountWarningRead && !hideWorkerWarning"
+            class="mt-0_5rem pl-0_5rem text-red-700 border border-red-700 rounded-md py-2 px-3"
+          >
+            <span class="font-bold ledger-underline">Warning:</span><br />
             Higher values fetch missions faster but may trigger API rate limiting.
+            Sustained use of higher values can lead to IP blocking and potential further consequences.
+            <br /><br />
+            <button
+              type="button"
+              class="p-0_75rem btn-link text-blue-500 border border-blue-500 rounded-md"
+              @click="dismissWorkerCountWarning"
+            >I understand</button>
           </div>
         </div>
       </div>
@@ -157,6 +178,7 @@
 import { ref, onMounted } from 'vue'
 import { useSettings } from '../composables/useSettings'
 import { useMennoData } from '../composables/useMennoData'
+import { useDropdownSelector } from '../composables/useDropdownSelector'
 
 const {
   resolutionX,
@@ -170,6 +192,7 @@ const {
   hideTimeoutErrors,
   defaultViewMode,
   workerCount,
+  screenshotSafety,
   loadSettings,
   setPreferredBrowser,
   refreshBrowserList,
@@ -177,16 +200,20 @@ const {
 
 const { secondsSinceLastUpdate, lastUpdateString, refresh, checkRefreshNeeded } = useMennoData()
 
-const preferredBrowserSelectRef = ref<HTMLElement | null>(null)
-const prefBrowserDropdownOpen = ref(false)
+const {
+  containerRef: preferredBrowserSelectRef,
+  isOpen: prefBrowserDropdownOpen,
+  open: openPrefBrowserDropdown,
+  close: closePrefBrowserDropdown,
+} = useDropdownSelector((pref) => { setPreferredBrowser(pref) })
 
-function openPrefBrowserDropdown() {
-  prefBrowserDropdownOpen.value = true
-}
+const workerCountWarningRead = ref(false)
+const hideWorkerWarning = ref(false)
 
-function closePrefBrowserDropdown(pref?: string) {
-  if (pref != null && pref !== '') setPreferredBrowser(pref)
-  prefBrowserDropdownOpen.value = false
+async function dismissWorkerCountWarning() {
+  await globalThis.setWorkerCountWarningRead(true)
+  workerCountWarningRead.value = true
+  hideWorkerWarning.value = true
 }
 
 function getBrowserDisplayName(browser: string | null): string {
@@ -196,7 +223,19 @@ function getBrowserDisplayName(browser: string | null): string {
   if (/opera/i.test(browser)) return 'Opera'
   if (/edge/i.test(browser)) return 'Microsoft Edge'
   if (/vivaldi/i.test(browser)) return 'Vivaldi'
+  if (/firefox/i.test(browser)) return 'Mozilla Firefox'
   return 'Unknown'
+}
+
+function getBrowserIcon(browser: string | null): string {
+  if (browser == null) return ''
+  if (/chrome/i.test(browser)) return 'images/browsers/chrome.svg'
+  if (/brave/i.test(browser)) return 'images/browsers/brave.svg'
+  if (/opera/i.test(browser)) return 'images/browsers/opera.svg'
+  if (/edge/i.test(browser)) return 'images/browsers/edge.svg'
+  if (/vivaldi/i.test(browser)) return 'images/browsers/vivaldi.svg'
+  if (/firefox/i.test(browser)) return 'images/browsers/firefox.svg'
+  return ''
 }
 
 async function onManualRefresh(e: Event) {
@@ -208,5 +247,6 @@ onMounted(async () => {
   await loadSettings()
   await refreshBrowserList()
   await checkRefreshNeeded()
+  workerCountWarningRead.value = (await globalThis.workerCountWarningRead()) ?? false
 })
 </script>

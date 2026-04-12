@@ -1,16 +1,17 @@
-name: Build artifacts
-
-# This is designed to work with my personal gitea server, but in _theory_ it should work for
-# forks as well? Dunno.
+name: CI
 
 on:
   push:
-    branches:
-      - '**'
+    branches: ['**']
+    tags: ['*']
+
+permissions:
+  contents: write
 
 jobs:
   build:
-    name: Build
+    name: Build (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         target: [linux, mac, mac-arm64, windows]
@@ -18,17 +19,19 @@ jobs:
           - target: linux
             os: ubuntu-latest
             artifact: dist/EggLedger-linux.tar.gz
+            artifact_name: EggLedger-linux
           - target: mac
             os: macos-latest
             artifact: dist/EggLedger-mac.zip
+            artifact_name: EggLedger-mac
           - target: mac-arm64
             os: macos-latest
             artifact: dist/EggLedger-mac-arm64.zip
+            artifact_name: EggLedger-mac-arm64
           - target: windows
             os: ubuntu-latest
             artifact: dist/EggLedger.exe
-
-    runs-on: ${{ matrix.os }}
+            artifact_name: EggLedger-windows
 
     steps:
       - name: Checkout code
@@ -42,8 +45,16 @@ jobs:
         with:
           target: ${{ matrix.target }}
 
-      - name: Upload artifacts
+      - name: Upload artifact
         uses: christopherHX/gitea-upload-artifact@v4
         with:
-          name: EggLedger-${{ matrix.target }}
+          name: ${{ matrix.artifact_name }}
           path: ${{ matrix.artifact }}
+
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: ${{ matrix.artifact }}
+          generate_release_notes: true

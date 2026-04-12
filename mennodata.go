@@ -4,10 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type MennoData struct {
@@ -187,4 +191,64 @@ func refreshMennoData(onProgress func(MennoDownloadProgress)) (err error) {
 
 	// Return nil if everything went well.
 	return nil
+}
+
+type MennoDownloadProgress struct {
+	BytesRead  int64   `json:"bytesRead"`
+	TotalBytes int64   `json:"totalBytes"`
+	SpeedBps   float64 `json:"speedBps"`
+	ETASeconds float64 `json:"etaSeconds"`
+}
+
+func handleIsMennoRefreshNeeded() bool {
+	return checkIfRefreshMennoDataIsNeeded()
+}
+
+func handleSecondsSinceLastMennoUpdate() int {
+	_storage.Lock()
+	lastRefresh := _storage.LastMennoDataRefreshAt
+	_storage.Unlock()
+	if lastRefresh.IsZero() {
+		return math.MaxInt32
+	}
+	return int(time.Since(lastRefresh).Seconds())
+}
+
+func handleLoadMennoData() bool {
+	var err error
+	_latestMennoData, err = loadLatestMennoData()
+	if err != nil {
+		if !strings.Contains(err.Error(), "no menno data available") {
+			log.Error(err)
+		}
+		return false
+	}
+	return true
+}
+
+func handleGetMennoData(ship, shipDuration, shipLevel, targetArtifact int) []ConfigurationItem {
+	if len(_latestMennoData.ConfigurationItems) == 0 {
+		var err error
+		_latestMennoData, err = loadLatestMennoData()
+		if err != nil || len(_latestMennoData.ConfigurationItems) == 0 {
+			log.Error(err)
+			return nil
+		}
+	}
+	filteredMennoData := MennoData{}
+	for _, configurationItem := range _latestMennoData.ConfigurationItems {
+		sc := configurationItem.ShipConfiguration
+		if sc.ShipType.Id == ship && sc.ShipDurationType.Id == shipDuration &&
+			sc.Level == shipLevel && sc.TargetArtifact.Id == targetArtifact {
+			filteredMennoData.ConfigurationItems = append(
+				filteredMennoData.ConfigurationItems, configurationItem,
+			)
+		}
+	}
+	return filteredMennoData.ConfigurationItems
+}
+
+func handleUpdateMennoData(onDone func(bool), onProgress func(MennoDownloadProgress)) {
+	err := refreshMennoData(onProgress)
+	onDone(err == nil)
 }

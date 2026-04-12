@@ -51,32 +51,56 @@ func fetchFirstContactWithContext(ctx context.Context, playerId string) (*ei.Egg
 	return fc, nil
 }
 
-func fetchCompleteMissionWithContext(ctx context.Context, playerId string, missionId string, startTimestamp float64) (*ei.CompleteMissionResponse, error) {
+func fetchCompleteMissionWithContext(ctx context.Context, playerId string, missionId string, startTimestamp float64, tracker func(string, string)) (*ei.CompleteMissionResponse, error) {
 	action := fmt.Sprintf("fetching mission %s for player %s", missionId, playerId)
 	wrap := func(err error) error {
 		return errors.Wrap(err, "error "+action)
 	}
+	track := func(name, status string) {
+		if tracker != nil {
+			tracker(name, status)
+		}
+	}
+	track("Cache", "active")
 	resp, err := db.RetrieveCompleteMission(ctx, playerId, missionId)
 	if err != nil {
+		track("Cache", "failed")
 		return nil, wrap(err)
 	}
 	if resp != nil {
+		track("Cache", "done")
 		return resp, nil
 	}
+	track("Cache", "skipped")
+	track("Fetch", "active")
 	payload, err := api.RequestCompleteMissionRawPayloadWithContext(ctx, playerId, missionId)
 	if err != nil {
+		track("Fetch", "failed")
 		return nil, wrap(err)
 	}
+	track("Fetch", "done")
+	track("Decode", "active")
 	resp, err = api.DecodeCompleteMissionPayload(payload)
 	if err != nil {
+		track("Decode", "failed")
 		return nil, wrap(err)
 	}
 	if !resp.GetSuccess() {
+		track("Decode", "failed")
 		return nil, wrap(errors.New("success is false"))
 	}
 	if len(resp.GetArtifacts()) == 0 {
+		track("Decode", "failed")
 		return nil, wrap(errors.New("no artifact found in server response"))
 	}
-	err = db.InsertCompleteMission(ctx, playerId, missionId, startTimestamp, payload)
-	return resp, err
+	track("Decode", "done")
+	track("Store", "active")
+	missionType := int32(resp.GetInfo().GetType())
+	err = db.InsertCompleteMission(ctx, playerId, missionId, startTimestamp, payload, missionType)
+	if err != nil {
+		track("Store", "failed")
+		return resp, err
+	}
+	track("Store", "done")
+	return resp, nil
 }

@@ -10,13 +10,14 @@ runs:
   using: composite
   steps:
     - name: Setup Go
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5
       with:
         go-version: stable
-        cache: false
+        cache: true
+        cache-dependency-path: go.sum
 
-    - name: Install Linux build dependencies
-      if: inputs.target == 'linux'
+    - name: Install Linux/Windows build dependencies
+      if: runner.os == 'Linux'
       shell: bash
       run: |
         sudo apt-get update -qq || true
@@ -27,13 +28,6 @@ runs:
       shell: bash
       run: |
         brew install protobuf protoc-gen-go dos2unix || true
-
-    - name: Install Windows build dependencies
-      if: inputs.target == 'windows'
-      shell: bash
-      run: |
-        sudo apt-get update -qq || true
-        sudo apt-get install -y protobuf-compiler protoc-gen-go dos2unix
 
     - name: Build
       shell: bash

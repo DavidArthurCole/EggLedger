@@ -7,7 +7,6 @@ import (
 	"flag"
 	"fmt"
 	"io/fs"
-	"math"
 	"net"
 	"net/http"
 	"os"
@@ -16,7 +15,6 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/DavidArthurCole/EggLedger/db"
@@ -24,12 +22,9 @@ import (
 	"github.com/DavidArthurCole/EggLedger/eiafx"
 	"github.com/DavidArthurCole/EggLedger/platform"
 	"github.com/davidarthurcole/lorca"
-	humanize "github.com/dustin/go-humanize"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/writer"
 	"github.com/skratchdot/open-golang/open"
-	"golang.org/x/sync/semaphore"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
@@ -62,6 +57,14 @@ var (
 
 	_forceMennoRefresh bool
 	_forceUpdateCheck  bool
+
+	_processRegistry             *ProcessRegistry
+	_updateKnownAccounts         func([]Account)
+	_updateState                 func(AppState)
+	_updateMissionProgress       func(MissionProgress)
+	_updateMennoDownloadProgress func(MennoDownloadProgress)
+	_updateExportedFiles         func([]string)
+	_emitMessage                 func(string, bool)
 )
 
 const (
@@ -89,56 +92,21 @@ func (u UI) MustBind(name string, f interface{}) {
 type AppState string
 
 const (
-	AppState_AWAITING_INPUT    AppState = "AwaitingInput"
-	AppState_FETCHING_SAVE     AppState = "FetchingSave"
-	AppState_FETCHING_MISSIONS AppState = "FetchingMissions"
-	AppState_EXPORTING_DATA    AppState = "ExportingData"
-	AppState_SUCCESS           AppState = "Success"
-	AppState_FAILED            AppState = "Failed"
-	AppState_INTERRUPTED       AppState = "Interrupted"
+	AppState_AWAITING_INPUT          AppState = "AwaitingInput"
+	AppState_FETCHING_SAVE           AppState = "FetchingSave"
+	AppState_RESOLVING_MISSION_TYPES AppState = "ResolvingMissionTypes"
+	AppState_FETCHING_MISSIONS       AppState = "FetchingMissions"
+	AppState_EXPORTING_DATA          AppState = "ExportingData"
+	AppState_SUCCESS                 AppState = "Success"
+	AppState_FAILED                  AppState = "Failed"
+	AppState_INTERRUPTED             AppState = "Interrupted"
 )
-
-type MissionProgress struct {
-	Total                   int     `json:"total"`
-	Finished                int     `json:"finished"`
-	Failed                  int     `json:"failed"`
-	Retried                 int     `json:"retried"`
-	FinishedPercentage      string  `json:"finishedPercentage"`
-	ExpectedFinishTimestamp float64 `json:"expectedFinishTimestamp"`
-	CurrentMission          string  `json:"currentMission"`
-}
-
-type MennoDownloadProgress struct {
-	BytesRead  int64   `json:"bytesRead"`
-	TotalBytes int64   `json:"totalBytes"`
-	SpeedBps   float64 `json:"speedBps"`
-	ETASeconds float64 `json:"etaSeconds"`
-}
-
-type worker struct {
-	*semaphore.Weighted
-	ctx     context.Context
-	cancel  context.CancelFunc
-	ctxlock sync.Mutex
-}
 
 type ExportedFile struct {
 	File     string `json:"file"`
 	Count    int    `json:"count"`
 	DateTime string `json:"datetime"`
 	EID      string `json:"eid"`
-}
-
-type MissionDrop struct {
-	Id           int32   `json:"id"`
-	SpecType     string  `json:"specType"`
-	Name         string  `json:"name"`
-	GameName     string  `json:"gameName"`
-	EffectString string  `json:"effectString"`
-	Level        int32   `json:"level"`
-	Rarity       int32   `json:"rarity"`
-	Quality      float64 `json:"quality"`
-	IVOrder      int32   `json:"ivOrder"`
 }
 
 type DatabaseAccount struct {
@@ -159,19 +127,6 @@ type PossibleTarget struct {
 	DisplayName string `json:"displayName"`
 	Id          int32  `json:"id"`
 	ImageString string `json:"imageString"`
-}
-
-type PossibleMission struct {
-	Ship      *ei.MissionInfo_Spaceship `json:"ship"`
-	Durations []*DurationConfig         `json:"durations"`
-}
-
-type DurationConfig struct {
-	DurationType     *ei.MissionInfo_DurationType `json:"durationType"`
-	MinQuality       float64                      `json:"minQuality"`
-	MaxQuality       float64                      `json:"maxQuality"`
-	LevelQualityBump float64                      `json:"levelQualityBump"`
-	MaxLevels        int32                        `json:"maxLevels"`
 }
 
 type PossibleArtifact struct {
@@ -460,42 +415,57 @@ func main() {
 		log.Info("starting app in dev mode")
 	}
 
-	prefChromePath := _storage.PreferredChromiumPath
-	chrome := lorca.LocateChrome(prefChromePath)
-	if prefChromePath != chrome {
+	prefBrowserPath := _storage.PreferredChromiumPath
+	browser := lorca.LocateChrome(prefBrowserPath)
+	if prefBrowserPath != browser {
 		_storage.SetPreferredChromiumPath("")
 	}
-	if chrome == "" {
+	if browser == "" {
 		lorca.PromptDownload()
-		log.Fatal("unable to locate Chrome")
+		log.Fatal("unable to locate a supported browser")
 		return
 	}
 
+	// Firefox support is temporarily disabled. If LocateChrome fell back to
+	// Firefox (no Chromium-family browser installed), treat it as not found.
+	if strings.Contains(strings.ToLower(browser), "firefox") {
+		browser = ""
+	}
+	if browser == "" {
+		lorca.PromptDownload()
+		log.Fatal("unable to locate a supported browser")
+		return
+	}
+
+	isFirefox := strings.Contains(strings.ToLower(browser), "firefox")
+
 	args := []string{}
-	args = append(args, "--disable-features=TranslateUI,BlinkGenPropertyTrees")
+	if !isFirefox {
+		args = append(args, "--disable-features=TranslateUI,BlinkGenPropertyTrees")
+	}
 	/* User preference args */
 	scalingFactor := _storage.GetDefaultScalingFactor()
-	if scalingFactor != 1.0 {
+	if !isFirefox && scalingFactor != 1.0 {
 		args = append(args, "--force-device-scale-factor="+fmt.Sprintf("%f", scalingFactor))
 	}
-	if _storage.StartInFullscreen {
+	if !isFirefox && _storage.StartInFullscreen {
 		args = append(args, "--start-fullscreen")
 	}
-	if runtime.GOOS == "linux" {
+	if !isFirefox && runtime.GOOS == "linux" {
 		args = append(args, "--class=Lorca")
 	}
 	widthPreference, heightPreference := func() (int, int) {
 		resolutionPrefs := _storage.GetDefaultResolution()
 		return resolutionPrefs[0], resolutionPrefs[1]
 	}()
-	u, err := lorca.New("", "", chrome, widthPreference, heightPreference, args...)
+	u, err := lorca.New("", "", browser, widthPreference, heightPreference, args...)
 	if err != nil {
 		log.Fatal("lorca err: ", err)
 	}
 	ui := UI{u}
 	defer ui.Close()
 
-	updateKnownAccounts := func(accounts []Account) {
+	_updateKnownAccounts = func(accounts []Account) {
 		encoded, err := json.Marshal(accounts)
 		if err != nil {
 			log.Error(err)
@@ -503,10 +473,10 @@ func main() {
 		}
 		ui.Eval(fmt.Sprintf("window.updateKnownAccounts(%s)", encoded))
 	}
-	updateState := func(state AppState) {
+	_updateState = func(state AppState) {
 		ui.Eval(fmt.Sprintf("window.updateState('%s')", state))
 	}
-	updateMissionProgress := func(progress MissionProgress) {
+	_updateMissionProgress = func(progress MissionProgress) {
 		encoded, err := json.Marshal(progress)
 		if err != nil {
 			log.Error(err)
@@ -514,7 +484,7 @@ func main() {
 		}
 		ui.Eval(fmt.Sprintf("window.updateMissionProgress(%s)", encoded))
 	}
-	updateMennoDownloadProgress := func(progress MennoDownloadProgress) {
+	_updateMennoDownloadProgress = func(progress MennoDownloadProgress) {
 		encoded, err := json.Marshal(progress)
 		if err != nil {
 			log.Error(err)
@@ -522,7 +492,7 @@ func main() {
 		}
 		ui.Eval(fmt.Sprintf("window.updateMennoDownloadProgress(%s)", encoded))
 	}
-	updateExportedFiles := func(files []string) {
+	_updateExportedFiles = func(files []string) {
 		encoded, err := json.Marshal(files)
 		if err != nil {
 			log.Error(err)
@@ -530,7 +500,7 @@ func main() {
 		}
 		ui.Eval(fmt.Sprintf("window.updateExportedFiles(%s)", encoded))
 	}
-	emitMessage := func(message string, isError bool) {
+	_emitMessage = func(message string, isError bool) {
 		encoded, err := json.Marshal(message)
 		if err != nil {
 			log.Error(err)
@@ -539,14 +509,16 @@ func main() {
 		ui.Eval(fmt.Sprintf("window.emitMessage(%s, %t)", encoded, isError))
 	}
 
-	pinfo := func(args ...interface{}) {
-		log.Info(args...)
-		emitMessage(fmt.Sprint(args...), false)
+	updateProcesses := func(snapshots []ProcessSnapshot) {
+		encoded, err := json.Marshal(snapshots)
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		ui.Eval(fmt.Sprintf("window.updateProcesses(%s)", encoded))
 	}
-	perror := func(args ...interface{}) {
-		log.Error(args...)
-		emitMessage(fmt.Sprint(args...), true)
-	}
+	_processRegistry = NewProcessRegistry(updateProcesses)
+	_processRegistry.Start(context.Background())
 
 	ui.MustBind("getDefaultScalingFactor", func() float64 {
 		return _storage.GetDefaultScalingFactor()
@@ -634,6 +606,16 @@ func main() {
 		_storage.SetFilterWarningRead(flag)
 	})
 
+	ui.MustBind("workerCountWarningRead", func() bool {
+		_storage.Lock()
+		defer _storage.Unlock()
+		return _storage.WorkerCountWarningRead
+	})
+
+	ui.MustBind("setWorkerCountWarningRead", func(flag bool) {
+		_storage.SetWorkerCountWarningRead(flag)
+	})
+
 	ui.MustBind("getMaxQuality", func() float32 {
 		maxQuality := float32(0)
 		for _, mission := range _eiAfxConfigMissions {
@@ -663,6 +645,14 @@ func main() {
 		_storage.SetHideTimeoutErrors(flag)
 	})
 
+	ui.MustBind("getScreenshotSafety", func() bool {
+		return _storage.GetScreenshotSafety()
+	})
+
+	ui.MustBind("setScreenshotSafety", func(flag bool) {
+		_storage.SetScreenshotSafety(flag)
+	})
+
 	ui.MustBind("getWorkerCount", func() int {
 		return _storage.GetWorkerCount()
 	})
@@ -687,371 +677,9 @@ func main() {
 		return _possibleTargets
 	})
 
-	w := &worker{
-		Weighted: semaphore.NewWeighted(1),
-	}
+	w := newWorker(1)
 	ui.MustBind("fetchPlayerData", func(playerId string) {
-		go func() {
-			if !w.TryAcquire(1) {
-				perror("already fetching player data, cannot accept new work")
-				return
-			}
-			defer w.Release(1)
-
-			ctx, cancel := context.WithCancel(context.Background())
-			w.ctxlock.Lock()
-			w.ctx = ctx
-			w.cancel = cancel
-			w.ctxlock.Unlock()
-
-			checkInterrupt := func() bool {
-				select {
-				case <-ctx.Done():
-					perror("interrupted")
-					updateState(AppState_INTERRUPTED)
-					return true
-				default:
-					return false
-				}
-			}
-
-			updateState(AppState_FETCHING_SAVE)
-			fc, err := fetchFirstContactWithContext(w.ctx, playerId)
-			if err != nil {
-				perror(err)
-				if !checkInterrupt() {
-					updateState(AppState_FAILED)
-				}
-				return
-			}
-
-			backup := fc.GetBackup()
-			nickname := backup.GetUserName()
-			eb := backup.GetEarningsBonus()
-			roleColor, roleString, ebAddendum, eb, precision := RoleFromEB(eb)
-			ebString := fmt.Sprintf(fmt.Sprintf("%%.%df", precision), eb) + ebAddendum
-
-			msg := fmt.Sprintf("successfully fetched backup for &7a7a7a<%s>", playerId)
-			if nickname != "" {
-				msg += fmt.Sprintf(" (&%s<%s>)", roleColor, nickname)
-			}
-			pinfo(msg)
-
-			game := backup.GetGame()
-			seSuffix := AbbreviateFloat(game.GetSoulEggsD())
-			peCount := int(game.GetEggsOfProphecy())
-			totalEoT := 0
-			if virtue := backup.GetVirtue(); virtue != nil {
-				for _, v := range virtue.GetEovEarned() {
-					totalEoT += int(v)
-				}
-			}
-			breakdownMsg := ""
-			if totalEoT > 0 {
-				breakdownMsg += fmt.Sprintf("  [img:truth_egg.png] &c831ff<%d EoT>", totalEoT)
-			}
-			breakdownMsg += fmt.Sprintf("  [img:soul_egg.png] &a855f7<%s SE>  [img:prophecy_egg.png] &eab308<%d PE>", seSuffix, peCount)
-			pinfo(breakdownMsg)
-
-			ebMsg := fmt.Sprintf("updated local database EB to &%s<%s>, role to &%s<%s>", roleColor, ebString, roleColor, roleString)
-			pinfo(ebMsg)
-
-			lastBackupTime := backup.GetSettings().GetLastBackupTime()
-			if lastBackupTime != 0 {
-				t := unixToTime(lastBackupTime)
-				now := time.Now()
-				if t.After(now) {
-					t = now
-				}
-				msg := fmt.Sprintf("backup is from &7a7a7a<%s>", humanize.Time(t))
-				pinfo(msg)
-			} else {
-				perror("backup is from unknown time")
-			}
-			_storage.AddKnownAccount(Account{Id: playerId, Nickname: nickname, EBString: ebString, AccountColor: roleColor, SeString: seSuffix, PeCount: peCount, EotCount: totalEoT})
-			_storage.Lock()
-			updateKnownAccounts(_storage.KnownAccounts)
-			_storage.Unlock()
-			if checkInterrupt() {
-				return
-			}
-
-			missions := fc.GetCompletedMissions()
-			inProgressMissions := fc.GetInProgressMissions()
-			existingMissionIds, err := db.RetrievePlayerCompleteMissionIds(context.Background(), playerId)
-			if err != nil {
-				perror(err)
-				updateState(AppState_FAILED)
-				return
-			}
-			seen := make(map[string]struct{})
-			for _, id := range existingMissionIds {
-				seen[id] = struct{}{}
-			}
-			var newMissionIds []string
-			var newMissionStartTimestamps []float64
-			for _, mission := range missions {
-				id := mission.GetIdentifier()
-				if _, exists := seen[id]; !exists {
-					newMissionIds = append(newMissionIds, id)
-					newMissionStartTimestamps = append(newMissionStartTimestamps, mission.GetStartTimeDerived())
-				}
-			}
-			pinfo(fmt.Sprintf("found &148c32<%d completed> missions, &148c32<%d in-progress> missions, &148c32<%d to fetch>",
-				len(missions), len(inProgressMissions), len(newMissionIds)))
-
-			// Build label lookup for progress display: identifier -> "Ship · Duration"
-			missionLabelByID := make(map[string]string)
-			for _, mission := range missions {
-				label := mission.GetShip().Name() + " · " + mission.GetDurationType().Display()
-				missionLabelByID[mission.GetIdentifier()] = label
-			}
-
-			total := len(newMissionIds)
-			finished := 0
-			failed := 0
-			retried := 0
-			currentMission := ""
-			var currentMissionMu sync.Mutex
-			if total > 0 {
-				updateState(AppState_FETCHING_MISSIONS)
-
-				workerCount := _storage.GetWorkerCount()
-				var failureMu sync.Mutex
-
-				reportProgress := func(finished, failedCount, retriedCount int) {
-					currentMissionMu.Lock()
-					label := currentMission
-					currentMissionMu.Unlock()
-					remainingBatches := (total - finished + workerCount - 1) / workerCount
-					updateMissionProgress(MissionProgress{
-						Total:                   total,
-						Finished:                finished,
-						Failed:                  failedCount,
-						Retried:                 retriedCount,
-						FinishedPercentage:      fmt.Sprintf("%.1f%%", float64(finished)/float64(total)*100),
-						ExpectedFinishTimestamp: timeToUnix(time.Now().Add(time.Duration(remainingBatches) * _requestInterval)),
-						CurrentMission:          label,
-					})
-				}
-
-				reportProgress(finished, failed, retried)
-
-				finishedCh := make(chan struct{}, total)
-				go func() {
-					for range finishedCh {
-						finished++
-						failureMu.Lock()
-						f, r := failed, retried
-						failureMu.Unlock()
-						reportProgress(finished, f, r)
-					}
-				}()
-
-				errored := 0
-				var wg sync.WaitGroup
-				type FailedMission struct {
-					missionId      string
-					startTimestamp float64
-				}
-				failedMissions := []FailedMission{}
-				tryFailedAgain := _storage.GetRetryFailedMissions()
-
-			MissionsLoop:
-				for i := 0; i < total; i += workerCount {
-					if i != 0 {
-						select {
-						case <-ctx.Done():
-							break MissionsLoop
-						case <-time.After(_requestInterval):
-						}
-					}
-					batchEnd := min(i+workerCount, total)
-					currentMissionMu.Lock()
-					currentMission = missionLabelByID[newMissionIds[i]]
-					currentMissionMu.Unlock()
-					for j := i; j < batchEnd; j++ {
-						wg.Add(1)
-						go func(missionId string, startTimestamp float64) {
-							defer wg.Done()
-							_, err := fetchCompleteMissionWithContext(w.ctx, playerId, missionId, startTimestamp)
-							if err != nil {
-								isTimeout := strings.Contains(err.Error(), "timeout after")
-								if !isTimeout || !_storage.GetHideTimeoutErrors() {
-									perror(err)
-								}
-								failureMu.Lock()
-								errored++
-								failed++
-								if tryFailedAgain {
-									failedMissions = append(failedMissions, FailedMission{missionId, startTimestamp})
-								}
-								failureMu.Unlock()
-							}
-							finishedCh <- struct{}{}
-						}(newMissionIds[j], newMissionStartTimestamps[j])
-					}
-				}
-				wg.Wait()
-
-				if checkInterrupt() {
-					return
-				}
-
-				if errored > 0 {
-					perror(fmt.Sprintf("%d of %d missions failed to fetch", errored, total))
-
-					if tryFailedAgain {
-						errored = 0
-						retried = len(failedMissions)
-						pinfo("retrying failed missions")
-
-						// Update the total to include the number of failed missions
-						total += len(failedMissions)
-
-						for _, failedMission := range failedMissions {
-							wg.Add(1)
-							go func(missionId string, startTimestamp float64) {
-								defer wg.Done()
-								_, err := fetchCompleteMissionWithContext(w.ctx, playerId, missionId, startTimestamp)
-								if err != nil {
-									isTimeout := strings.Contains(err.Error(), "timeout after")
-									if !isTimeout || !_storage.GetHideTimeoutErrors() {
-										perror(err)
-									}
-									failureMu.Lock()
-									errored++
-									failureMu.Unlock()
-								}
-								finishedCh <- struct{}{}
-							}(failedMission.missionId, failedMission.startTimestamp)
-						}
-						wg.Wait()
-
-						if checkInterrupt() {
-							return
-						}
-
-						if errored > 0 {
-							perror(fmt.Sprintf("%d of %d mission retry fetches failed", errored, len(failedMissions)))
-							updateState(AppState_FAILED)
-							return
-						} else {
-							pinfo(fmt.Sprintf("successfully fetched &148c32<%d previously failed missions>", len(failedMissions)))
-						}
-					} else {
-						pinfo("(performing another &7a7a7a<fetch> will fetch the failed missions most of the time)")
-						updateState(AppState_FAILED)
-						return
-					}
-				} else {
-					pinfo(fmt.Sprintf("successfully fetched &148c32<%d missions>", total))
-				}
-			}
-
-			updateState(AppState_EXPORTING_DATA)
-			completeMissions, err := db.RetrievePlayerCompleteMissions(context.Background(), playerId)
-			if err != nil {
-				perror(err)
-				updateState(AppState_FAILED)
-				return
-			}
-			var exportMissions []*mission
-			for _, m := range completeMissions {
-				exportMissions = append(exportMissions, newMission(m))
-			}
-			if checkInterrupt() {
-				return
-			}
-
-			exportDir := filepath.Join(_rootDir, "exports", "missions")
-			if err := os.MkdirAll(exportDir, 0755); err != nil {
-				perror(errors.Wrap(err, "failed to create export directory"))
-				updateState(AppState_FAILED)
-				return
-			}
-
-			// Determine the last exported pair of xlsx and csv for future comparison.
-			filenamePattern := regexp.QuoteMeta(playerId) + `\.\d{8}_\d{6}`
-			lastExportedXlsxFile, err := findLastMatchingFile(exportDir, filenamePattern+`\.xlsx`)
-			if err != nil {
-				log.Errorf("error locating last exported .xlsx file: %s", err)
-			}
-			lastExportedCsvFile, err := findLastMatchingFile(exportDir, filenamePattern+`\.csv`)
-			if err != nil {
-				log.Errorf("error locating last exported .csv file: %s", err)
-			}
-			if filenameWithoutExt(lastExportedXlsxFile) != filenameWithoutExt(lastExportedCsvFile) {
-				// If the xlsx and csv files aren't a pair, just leave them alone.
-				lastExportedXlsxFile = ""
-				lastExportedCsvFile = ""
-			}
-
-			filenameTimestamp := time.Now().Format("20060102_150405")
-
-			xlsxFile := filepath.Join(exportDir, playerId+"."+filenameTimestamp+".xlsx")
-			if err := exportMissionsToXlsx(exportMissions, xlsxFile); err != nil {
-				perror(err)
-				updateState(AppState_FAILED)
-				return
-			}
-			if checkInterrupt() {
-				return
-			}
-
-			csvFile := filepath.Join(exportDir, playerId+"."+filenameTimestamp+".csv")
-			if err := exportMissionsToCsv(exportMissions, csvFile); err != nil {
-				perror(err)
-				updateState(AppState_FAILED)
-				return
-			}
-			if checkInterrupt() {
-				return
-			}
-
-			// Check if both exports are unchanged compared to the last exported pair.
-			exportsUnchanged := lastExportedXlsxFile != "" && lastExportedCsvFile != "" && func() bool {
-				xlsxUnchanged, err := cmpZipFiles(xlsxFile, lastExportedXlsxFile)
-				if err != nil {
-					log.Error(err)
-					return false
-				}
-				if !xlsxUnchanged {
-					return false
-				}
-				csvUnchanged, err := cmpFiles(csvFile, lastExportedCsvFile)
-				if err != nil {
-					log.Error(err)
-					return false
-				}
-				if !csvUnchanged {
-					return false
-				}
-				return true
-			}()
-
-			if exportsUnchanged {
-				log.Info("exports unchanged, using last exported files and deleting new ones")
-				emitMessage("exports identical with existing data files, reusing", false)
-				err = os.Remove(xlsxFile)
-				if err != nil {
-					log.Errorf("error removing %s: %s", xlsxFile, err)
-				}
-				err = os.Remove(csvFile)
-				if err != nil {
-					log.Errorf("error removing %s: %s", csvFile, err)
-				}
-
-				xlsxFile = lastExportedXlsxFile
-				csvFile = lastExportedCsvFile
-			}
-			xlsxFileRel, _ := filepath.Rel(_rootDir, xlsxFile)
-			csvFileRel, _ := filepath.Rel(_rootDir, csvFile)
-			updateExportedFiles([]string{strings.TrimSpace(xlsxFileRel), strings.TrimSpace(csvFileRel)})
-
-			pinfo("done.")
-			updateState(AppState_SUCCESS)
-		}()
+		go runFetchPipeline(w, playerId)
 	})
 
 	ui.MustBind("stopFetchingPlayerData", func() {
@@ -1062,124 +690,17 @@ func main() {
 		}
 	})
 
-	ui.MustBind("getExistingData", func() []DatabaseAccount {
-		knownAccounts := []DatabaseAccount{}
-		for _, knownAccount := range _storage.KnownAccounts {
-			ids, err := db.RetrievePlayerCompleteMissionIds(context.Background(), knownAccount.Id)
-			if err != nil {
-				log.Error(err)
-			} else if len(ids) > 0 {
-				knownAccounts = append(knownAccounts,
-					DatabaseAccount{
-						Id:           knownAccount.Id,
-						Nickname:     knownAccount.Nickname,
-						MissionCount: len(ids),
-						EBString:     knownAccount.EBString,
-						AccountColor: knownAccount.AccountColor,
-					},
-				)
-			}
-		}
-		return knownAccounts
-	})
+	ui.MustBind("getExistingData", handleGetExistingData)
 
-	ui.MustBind("getMissionIds", func(playerId string) []string {
-		ids, err := db.RetrievePlayerCompleteMissionIds(context.Background(), playerId)
-		if err != nil {
-			log.Error(err)
-			return nil
-		}
-		return ids
-	})
+	ui.MustBind("getMissionIds", handleGetMissionIds)
 
-	ui.MustBind("viewMissionsOfEid", func(eid string) []DatabaseMission {
-		if dbMissions, err := viewMissionsOfId(context.Background(), eid); err != nil {
-			log.Error(err)
-			return nil
-		} else {
-			return dbMissions
-		}
-	})
+	ui.MustBind("viewMissionsOfEid", handleViewMissionsOfEid)
 
-	ui.MustBind("getDurationConfigs", func() []PossibleMission {
-		possibleMissions := []PossibleMission{}
+	ui.MustBind("getDurationConfigs", handleGetDurationConfigs)
 
-		for _, mission := range _eiAfxConfigMissions {
-			ship := mission.Ship
-			durations := []*DurationConfig{}
-			for _, duration := range mission.GetDurations() {
-				durationConfig := &DurationConfig{
-					DurationType:     duration.DurationType,
-					MinQuality:       float64(duration.GetMinQuality()),
-					MaxQuality:       float64(duration.GetMaxQuality()),
-					LevelQualityBump: float64(duration.GetLevelQualityBump()),
-					MaxLevels:        int32(len(mission.LevelMissionRequirements)),
-				}
-				durations = append(durations, durationConfig)
-			}
-			possibleMission := PossibleMission{
-				Ship:      ship,
-				Durations: durations,
-			}
-			possibleMissions = append(possibleMissions, possibleMission)
-		}
+	ui.MustBind("getShipDrops", handleGetShipDrops)
 
-		return possibleMissions
-	})
-
-	ui.MustBind("getShipDrops", func(playerId string, shipId string) []MissionDrop {
-		//Get the mission from the database
-		completeMission, err := db.RetrieveCompleteMission(context.Background(), playerId, shipId)
-		if err != nil {
-			log.Error(err)
-			return nil
-		}
-
-		shipDrops := []MissionDrop{} //Array of drops
-		for _, drop := range completeMission.Artifacts {
-			spec := drop.GetSpec()
-			var foundQuality float64 = 0
-			// Iterate through the array to find the desired ArtifactParameters
-			for _, artifact := range _eiAfxConfigArtis {
-				// Compare the Spec field
-				if artifact.Spec == spec {
-					// Match found, retrieve the BaseQuality
-					foundQuality = *artifact.BaseQuality
-					break
-				}
-			}
-			missionDrop := MissionDrop{
-				Id:       int32(spec.GetName()),
-				Name:     ei.ArtifactSpec_Name_name[int32(spec.GetName())],
-				GameName: spec.CasedName(),
-				Level:    int32(*drop.Spec.Level),
-				Rarity:   int32(*drop.Spec.Rarity),
-				Quality:  foundQuality,
-				IVOrder:  int32(spec.Name.InventoryVisualizerOrder()),
-			}
-			switch {
-			case strings.Contains(missionDrop.Name, "_FRAGMENT"):
-				missionDrop.SpecType = "StoneFragment"
-			case strings.Contains(missionDrop.Name, "_STONE"):
-				missionDrop.SpecType = "Stone"
-				missionDrop.EffectString = spec.DropEffectString()
-			case strings.Contains(missionDrop.Name, "GOLD_METEORITE"),
-				strings.Contains(missionDrop.Name, "SOLAR_TITANIUM"),
-				strings.Contains(missionDrop.Name, "TAU_CETI_GEODE"):
-				missionDrop.SpecType = "Ingredient"
-			default:
-				missionDrop.SpecType = "Artifact"
-				missionDrop.EffectString = spec.DropEffectString()
-			}
-			shipDrops = append(shipDrops, missionDrop)
-		}
-
-		return shipDrops
-	})
-
-	ui.MustBind("getMissionInfo", func(playerId string, missionId string) DatabaseMission {
-		return getMissionInformation(context.Background(), playerId, missionId)
-	})
+	ui.MustBind("getMissionInfo", handleGetMissionInfo)
 
 	ui.MustBind("openFile", func(file string) {
 		path := filepath.Join(_rootDir, file)
@@ -1220,28 +741,16 @@ func main() {
 		}
 	})
 
-	ui.MustBind("isMennoRefreshNeeded", func() bool {
-		return checkIfRefreshMennoDataIsNeeded()
-	})
+	ui.MustBind("isMennoRefreshNeeded", handleIsMennoRefreshNeeded)
 
 	ui.MustBind("updateMennoData", func() {
-		go func() {
-			err := refreshMennoData(updateMennoDownloadProgress)
-			ok := err == nil
-			ui.Eval(fmt.Sprintf("window.onMennoRefreshDone(%t)", ok))
-		}()
+		go handleUpdateMennoData(
+			func(ok bool) { ui.Eval(fmt.Sprintf("window.onMennoRefreshDone(%t)", ok)) },
+			_updateMennoDownloadProgress,
+		)
 	})
 
-	ui.MustBind("secondsSinceLastMennoUpdate", func() int {
-		_storage.Lock()
-		lastRefresh := _storage.LastMennoDataRefreshAt
-		_storage.Unlock()
-		if lastRefresh.IsZero() {
-			return math.MaxInt32
-		} else {
-			return int(time.Since(lastRefresh).Seconds())
-		}
-	})
+	ui.MustBind("secondsSinceLastMennoUpdate", handleSecondsSinceLastMennoUpdate)
 
 	ui.MustBind("getDefaultViewMode", func() string {
 		_storage.Lock()
@@ -1257,36 +766,9 @@ func main() {
 		_storage.SetDefaultViewMode(viewMode)
 	})
 
-	ui.MustBind("loadMennoData", func() bool {
-		_latestMennoData, err = loadLatestMennoData()
-		if err != nil {
-			if !strings.Contains(err.Error(), "no menno data available") {
-				log.Error(err)
-			}
-			return false
-		}
-		return true
-	})
+	ui.MustBind("loadMennoData", handleLoadMennoData)
 
-	ui.MustBind("getMennoData", func(ship int, shipDuration int, shipLevel int, targetArtifact int) []ConfigurationItem {
-		// If the data is not loaded, return an empty MennoData
-		if len(_latestMennoData.ConfigurationItems) == 0 {
-			_latestMennoData, err = loadLatestMennoData()
-			if err != nil || len(_latestMennoData.ConfigurationItems) == 0 {
-				log.Error(err)
-				return nil
-			}
-		}
-
-		filteredMennoData := MennoData{}
-		for _, configurationItem := range _latestMennoData.ConfigurationItems {
-			sc := configurationItem.ShipConfiguration
-			if sc.ShipType.Id == ship && sc.ShipDurationType.Id == shipDuration && sc.Level == shipLevel && sc.TargetArtifact.Id == targetArtifact {
-				filteredMennoData.ConfigurationItems = append(filteredMennoData.ConfigurationItems, configurationItem)
-			}
-		}
-		return filteredMennoData.ConfigurationItems
-	})
+	ui.MustBind("getMennoData", handleGetMennoData)
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {

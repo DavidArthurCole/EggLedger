@@ -18,7 +18,7 @@
       >
         <div ref="playerIdSelectRef" class="tooltip-custom relative flex-grow focus-within:z-10">
           <div v-if="selectedAccount?.nickname" class="ledger-input-overlay">
-            <span class="whitespace-pre">{{ playerId }}</span>
+            <span class="whitespace-pre">{{ maskEid(playerId) }}</span>
             (<span :style="'color: #' + (selectedAccount.accountColor ?? '')">
               {{ selectedAccount.nickname }} {{ selectedAccount.ebString ?? '???' }}
             </span>
@@ -61,7 +61,7 @@
               class="drop-opt"
               @click="closePlayerIdDropdown(account.id)"
             >
-              {{ account.id }}
+              {{ maskEid(account.id) }}
               (<span :style="'color: #' + (account.accountColor ?? '')">
                 {{ account.nickname }}
                 {{ account.ebString ?? '???' }}
@@ -103,6 +103,13 @@
 
     <div class="min-h-14 px-2 py-1 text-xs text-gray-500 bg-darkest rounded-md tabular-nums">
       <template v-if="appState === AppState.FetchingSave">Fetching save...</template>
+      <template v-else-if="appState === AppState.ResolvingMissionTypes">
+        <div class="text-yellow-400">Resolving mission types...</div>
+        <div>
+          <span class="text-green-400">{{ progress?.finished ?? 0 }}</span>
+          <span class="text-gray-400"> / {{ progress?.total ?? 0 }}</span>
+        </div>
+      </template>
       <template v-else-if="appState === AppState.FetchingMissions">
         <div class="text-yellow-400">Fetching missions...</div>
         <div>
@@ -150,9 +157,9 @@
               class="h-full transition-all duration-300 rounded-sm"
               :class="[
                 segmentStates.seg2 === 'skipped' ? 'bg-gray-600' :
-                segmentStates.seg2 === 'active' ? 'bg-green-500' :
-                segmentStates.seg2 === 'done' ? 'bg-green-500' :
+                segmentStates.seg2 === 'active' || segmentStates.seg2 === 'done' ? 'bg-green-500' :
                 'bg-transparent',
+                segmentStates.missionPulsing ? 'animate-pulse' : '',
               ]"
               :style="{
                 width:
@@ -181,7 +188,10 @@
           <div class="flex-1 text-center">Export</div>
         </div>
       </template>
+
     </div>
+
+    <MissionProgressPanel :processes="missionProcesses" />
 
     <div
       ref="messagesRef"
@@ -189,7 +199,7 @@
     >
       <div v-for="(message, i) in logMessages" :key="i" class="whitespace-pre">
         <span :class="message.isError ? 'text-red-700' : 'text-green-700'">{{ hhmmss(new Date()) }}|</span>
-        <template v-for="(segment, j) in parseLogSegments(message.message)" :key="j">
+        <template v-for="(segment, j) in parseLogSegments(maskEid(message.message))" :key="j">
           <img
             v-if="segment.type === 'image'"
             :src="segment.src"
@@ -216,9 +226,12 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useAppState } from '../composables/useAppState'
 import { useFetch } from '../composables/useFetch'
 import { parseLogSegments } from '../composables/useLogRenderer'
+import { maskEid } from '../composables/useSettings'
+import { useDropdownSelector } from '../composables/useDropdownSelector'
 import { AppState } from '../types/bridge'
 import ForbiddenDirModal from '../components/modals/ForbiddenDirModal.vue'
 import TranslocationModal from '../components/modals/TranslocationModal.vue'
+import MissionProgressPanel from '../components/MissionProgressPanel.vue'
 
 const {
   appIsInForbiddenDirectory,
@@ -228,14 +241,24 @@ const {
   appState,
   logMessages,
   exportedFiles,
+  processLogs,
 } = useAppState()
 
 const { progress, fetchPlayerData, stopFetching } = useFetch()
 
 const playerId = ref<string>(knownAccounts.value[0]?.id ?? '')
-const playerIdSelectRef = ref<HTMLElement | null>(null)
-const playerIdDropdownOpen = ref(false)
 const messagesRef = ref<HTMLElement | null>(null)
+
+const missionProcesses = computed(() =>
+  processLogs.value.filter((p) => p.kind === 'mission'),
+)
+
+const {
+  containerRef: playerIdSelectRef,
+  isOpen: playerIdDropdownOpen,
+  open: openPlayerIdDropdown,
+  close: closePlayerIdDropdown,
+} = useDropdownSelector((id) => { playerId.value = id })
 
 function normalizePlayerId(id: string): string {
   id = id.trim()
@@ -250,7 +273,12 @@ const selectedAccount = computed(
 
 const idle = computed(() => {
   const s = appState.value
-  return s !== AppState.FetchingSave && s !== AppState.FetchingMissions && s !== AppState.ExportingData
+  return (
+    s !== AppState.FetchingSave &&
+    s !== AppState.ResolvingMissionTypes &&
+    s !== AppState.FetchingMissions &&
+    s !== AppState.ExportingData
+  )
 })
 
 const hadMissions = ref(false)
@@ -261,7 +289,7 @@ watch(appState, (s) => {
     hadMissions.value = false
     exportEntered.value = false
   }
-  if (s === AppState.FetchingMissions) hadMissions.value = true
+  if (s === AppState.ResolvingMissionTypes || s === AppState.FetchingMissions) hadMissions.value = true
   if (s === AppState.ExportingData) exportEntered.value = true
 })
 
@@ -276,6 +304,7 @@ const segmentStates = computed(() => {
   const p = progress.value
 
   const afterSave = (
+    s === AppState.ResolvingMissionTypes ||
     s === AppState.FetchingMissions ||
     s === AppState.ExportingData ||
     s === AppState.Success ||
@@ -301,7 +330,7 @@ const segmentStates = computed(() => {
   else if (afterSave) seg1 = 'done'
 
   let seg2: SegmentStatus = 'pending'
-  if (s === AppState.FetchingMissions) seg2 = 'active'
+  if (s === AppState.ResolvingMissionTypes || s === AppState.FetchingMissions) seg2 = 'active'
   else if (afterMissions && hadMissions.value) seg2 = 'done'
   else if (afterMissions && !hadMissions.value) seg2 = 'skipped'
 
@@ -316,16 +345,16 @@ const segmentStates = computed(() => {
     missionPct = 100
   }
 
-  return { seg1, seg2, seg3, missionPct }
+  // When the Missions segment is active but no individual-mission progress has
+  // registered yet (ResolvingMissionTypes, or FetchingMissions just started),
+  // pulse the bar at a minimum visible width so the user can see the stage is
+  // active rather than looking identical to the Save-done state.
+  const missionPulsing = seg2 === 'active' && missionPct === 0
+  const visibleMissionPct = seg2 === 'active' ? Math.max(missionPct, 3) : missionPct
+
+  return { seg1, seg2, seg3, missionPct: visibleMissionPct, missionPulsing }
 })
 
-function openPlayerIdDropdown() {
-  playerIdDropdownOpen.value = true
-}
-function closePlayerIdDropdown(id?: string) {
-  if (id != null && id !== '') playerId.value = id
-  playerIdDropdownOpen.value = false
-}
 
 function getEidProblem(id: string): string {
   const normalizedId = normalizePlayerId(id).toUpperCase()
@@ -353,20 +382,13 @@ function getEta(finish: number): string {
 
 const etaStr = ref('')
 let etaIntervalId: ReturnType<typeof setInterval> | undefined
-function handleClickOutside(event: MouseEvent) {
-  if (playerIdDropdownOpen.value && playerIdSelectRef.value && !playerIdSelectRef.value.contains(event.target as Node)) {
-    closePlayerIdDropdown()
-  }
-}
 
 onMounted(() => {
-  document.addEventListener('click', handleClickOutside)
   etaIntervalId = setInterval(() => {
     if (progress.value) etaStr.value = getEta(progress.value.expectedFinishTimestamp)
   }, 200)
 })
 onUnmounted(() => {
-  document.removeEventListener('click', handleClickOutside)
   clearInterval(etaIntervalId)
 })
 
