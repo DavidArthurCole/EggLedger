@@ -1,11 +1,10 @@
 <template>
-  <div v-if="processes.length > 0" class="flex flex-col gap-1 overflow-y-auto">
+  <div v-if="processes.length > 0" class="flex flex-col gap-1 overflow-y-auto max-h-48 flex-shrink-0">
     <div
       v-for="proc in processes"
       :key="proc.id"
       class="bg-darkest rounded-md overflow-hidden text-xs font-mono"
     >
-      <!-- Header row -->
       <button
         class="w-full flex items-center gap-2 px-2 py-1 text-gray-400 hover:text-gray-300 text-left"
         type="button"
@@ -20,14 +19,27 @@
           ]"
         ></span>
         <span class="flex-1 truncate">{{ proc.label }}</span>
-        <span class="text-gray-600 flex-shrink-0">{{ relativeTime(proc.startTimestamp) }}</span>
+        <div class="flex gap-1 flex-shrink-0">
+          <span
+            v-for="seg in proc.segments"
+            :key="seg.name"
+            :title="seg.name"
+            :class="[
+              'w-2 h-2 rounded-full',
+              seg.status === 'active' ? 'bg-blue-400 animate-pulse' :
+              seg.status === 'done' ? 'bg-green-500' :
+              seg.status === 'failed' ? 'bg-red-500' :
+              'bg-gray-600',
+            ]"
+          ></span>
+        </div>
+        <span class="text-gray-600 flex-shrink-0 ml-1">{{ relativeTime(proc.startTimestamp) }}</span>
         <span class="text-gray-600 flex-shrink-0 ml-1">{{ isExpanded(proc.id) ? '▼' : '▶' }}</span>
       </button>
 
-      <!-- Log lines -->
       <div
         v-show="isExpanded(proc.id)"
-        class="px-2 pb-1 max-h-40 overflow-y-auto border-t border-dark"
+        class="px-2 pb-1 max-h-32 overflow-y-auto border-t border-dark"
       >
         <div v-if="proc.logs.length === 0" class="text-gray-600 italic py-0.5">No logs yet.</div>
         <div
@@ -91,7 +103,7 @@ function toggle(id: string) {
   expandedIds.value = next
 }
 
-// Auto-expand any newly running process.
+// Auto-expand all currently running processes.
 watch(
   () => props.processes,
   (procs) => {

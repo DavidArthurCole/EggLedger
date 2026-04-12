@@ -133,6 +133,11 @@ export interface ProcessLogEntry {
   isError: boolean
 }
 
+export interface SegmentStatus {
+  name: string
+  status: 'pending' | 'active' | 'done' | 'failed' | 'skipped'
+}
+
 export interface ProcessSnapshot {
   id: string
   label: string
@@ -141,6 +146,9 @@ export interface ProcessSnapshot {
   logs: ProcessLogEntry[]
   /** Unix milliseconds */
   startTimestamp: number
+  /** "overall" | "mission" */
+  kind: string
+  segments: SegmentStatus[]
 }
 
 export interface MennoDownloadProgress {

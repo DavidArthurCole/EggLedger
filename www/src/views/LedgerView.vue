@@ -188,16 +188,51 @@
           <div class="flex-1 text-center">Export</div>
         </div>
       </template>
+      <template v-if="showSegmentedBar && overallProcess">
+        <button
+          type="button"
+          class="flex items-center gap-1 mt-1 text-gray-600 hover:text-gray-400 text-xs"
+          @click="overallLogsOpen = !overallLogsOpen"
+        >
+          <span>{{ overallLogsOpen ? '▼' : '▶' }}</span>
+          <span>Overall log</span>
+        </button>
+        <div
+          v-if="overallLogsOpen"
+          class="max-h-32 overflow-y-auto text-xs font-mono mt-0.5"
+        >
+          <div v-if="overallProcess.logs.length === 0" class="text-gray-600 italic py-0.5">No logs yet.</div>
+          <div
+            v-for="(entry, i) in overallProcess.logs"
+            :key="i"
+            class="whitespace-pre"
+          >
+            <template v-for="(seg, j) in parseLogSegments(entry.text)" :key="j">
+              <img
+                v-if="seg.type === 'image'"
+                :src="seg.src"
+                style="display: inline; height: 1em; vertical-align: middle"
+                alt=""
+              />
+              <span
+                v-else-if="seg.type === 'text' && seg.color"
+                :style="'color: ' + seg.color"
+              >{{ seg.text }}</span>
+              <span
+                v-else
+                :class="entry.isError ? 'text-red-700' : 'text-gray-400'"
+              >{{ seg.text }}</span>
+            </template>
+          </div>
+        </div>
+      </template>
     </div>
 
-    <ProcessLogPanel :processes="processLogs" class="flex-1 overflow-y-auto" />
+    <MissionProgressPanel :processes="missionProcesses" />
 
     <div
       ref="messagesRef"
-      :class="[
-        'px-2 py-1 overflow-auto shadow-sm block text-xs font-mono text-gray-400 bg-darkest rounded-md',
-        processLogs.length > 0 ? 'h-32 flex-shrink-0' : 'flex-1',
-      ]"
+      class="flex-1 px-2 py-1 overflow-auto shadow-sm block text-xs font-mono text-gray-400 bg-darkest rounded-md"
     >
       <div v-for="(message, i) in logMessages" :key="i" class="whitespace-pre">
         <span :class="message.isError ? 'text-red-700' : 'text-green-700'">{{ hhmmss(new Date()) }}|</span>
@@ -232,7 +267,7 @@ import { useDropdownSelector } from '../composables/useDropdownSelector'
 import { AppState } from '../types/bridge'
 import ForbiddenDirModal from '../components/modals/ForbiddenDirModal.vue'
 import TranslocationModal from '../components/modals/TranslocationModal.vue'
-import ProcessLogPanel from '../components/ProcessLogPanel.vue'
+import MissionProgressPanel from '../components/MissionProgressPanel.vue'
 
 const {
   appIsInForbiddenDirectory,
@@ -249,6 +284,18 @@ const { progress, fetchPlayerData, stopFetching } = useFetch()
 
 const playerId = ref<string>(knownAccounts.value[0]?.id ?? '')
 const messagesRef = ref<HTMLElement | null>(null)
+
+const overallProcess = computed(() =>
+  processLogs.value.find((p) => p.kind === 'overall') ?? null,
+)
+const missionProcesses = computed(() =>
+  processLogs.value.filter((p) => p.kind === 'mission'),
+)
+const overallLogsOpen = ref(false)
+
+watch(overallProcess, (cur, prev) => {
+  if (prev !== null && cur === null) overallLogsOpen.value = false
+})
 
 const {
   containerRef: playerIdSelectRef,

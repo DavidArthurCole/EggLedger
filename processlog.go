@@ -22,21 +22,31 @@ type ProcessLogEntry struct {
 	IsError bool   `json:"isError"`
 }
 
+// SegmentStatus is a named phase within a process and its current state.
+type SegmentStatus struct {
+	Name   string `json:"name"`
+	Status string `json:"status"` // "pending" | "active" | "done" | "failed" | "skipped"
+}
+
 // ProcessSnapshot is a JSON-serializable point-in-time copy of a Process.
 type ProcessSnapshot struct {
-	ID             string           `json:"id"`
-	Label          string           `json:"label"`
-	Status         ProcessStatus    `json:"status"`
+	ID             string            `json:"id"`
+	Label          string            `json:"label"`
+	Status         ProcessStatus     `json:"status"`
 	Logs           []ProcessLogEntry `json:"logs"`
-	StartTimestamp int64            `json:"startTimestamp"` // unix millis
+	StartTimestamp int64             `json:"startTimestamp"` // unix millis
+	Kind           string            `json:"kind"`           // "overall" | "mission"
+	Segments       []SegmentStatus   `json:"segments"`
 }
 
 // Process represents a tracked unit of work with its own log stream.
 type Process struct {
 	id             string
 	label          string
+	kind           string
 	status         ProcessStatus
 	logs           []ProcessLogEntry
+	segments       []SegmentStatus
 	startTimestamp int64
 	mu             sync.Mutex
 	registry       *ProcessRegistry
@@ -67,17 +77,46 @@ func (p *Process) MarkFailed() {
 	p.registry.dirty.Store(true)
 }
 
+// InitSegments creates segments for each name in pending state.
+func (p *Process) InitSegments(names []string) {
+	p.mu.Lock()
+	p.segments = make([]SegmentStatus, len(names))
+	for i, n := range names {
+		p.segments[i] = SegmentStatus{Name: n, Status: "pending"}
+	}
+	p.mu.Unlock()
+	p.registry.dirty.Store(true)
+}
+
+// SetSegment updates the status of the named segment.
+func (p *Process) SetSegment(name, status string) {
+	p.mu.Lock()
+	for i := range p.segments {
+		if p.segments[i].Name == name {
+			p.segments[i].Status = status
+			p.mu.Unlock()
+			p.registry.dirty.Store(true)
+			return
+		}
+	}
+	p.mu.Unlock()
+}
+
 func (p *Process) snapshot() ProcessSnapshot {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	logs := make([]ProcessLogEntry, len(p.logs))
 	copy(logs, p.logs)
+	segs := make([]SegmentStatus, len(p.segments))
+	copy(segs, p.segments)
 	return ProcessSnapshot{
 		ID:             p.id,
 		Label:          p.label,
 		Status:         p.status,
 		Logs:           logs,
 		StartTimestamp: p.startTimestamp,
+		Kind:           p.kind,
+		Segments:       segs,
 	}
 }
 
@@ -100,12 +139,13 @@ func NewProcessRegistry(flushFn func([]ProcessSnapshot)) *ProcessRegistry {
 	}
 }
 
-// Register creates a new Process with the given id and label.
+// Register creates a new Process with the given id, label, and kind.
 // If a process with the same id already exists it is replaced.
-func (r *ProcessRegistry) Register(id, label string) *Process {
+func (r *ProcessRegistry) Register(id, label, kind string) *Process {
 	p := &Process{
 		id:             id,
 		label:          label,
+		kind:           kind,
 		status:         ProcessRunning,
 		startTimestamp: time.Now().UnixMilli(),
 		registry:       r,

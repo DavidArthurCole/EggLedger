@@ -725,7 +725,9 @@ func main() {
 			runProc := processRegistry.Register(
 				fmt.Sprintf("fetch-%s-%d", playerId, time.Now().UnixMilli()),
 				fmt.Sprintf("Fetching data for %s", playerId),
+				"overall",
 			)
+			runProc.InitSegments([]string{"Save", "Missions", "Export"})
 			origUpdateState := updateState
 			pinfo := func(args ...interface{}) {
 				msg := fmt.Sprint(args...)
@@ -761,6 +763,7 @@ func main() {
 			}
 
 			updateState(AppState_FETCHING_SAVE)
+			runProc.SetSegment("Save", "active")
 			fc, err := fetchFirstContactWithContext(w.ctx, playerId)
 			if err != nil {
 				perror(err)
@@ -781,6 +784,7 @@ func main() {
 				msg += fmt.Sprintf(" (&%s<%s>)", roleColor, nickname)
 			}
 			pinfo(msg)
+			runProc.SetSegment("Save", "done")
 
 			game := backup.GetGame()
 			seSuffix := AbbreviateFloat(game.GetSoulEggsD())
@@ -894,6 +898,7 @@ func main() {
 			var currentMissionMu sync.Mutex
 			if total > 0 {
 				updateState(AppState_FETCHING_MISSIONS)
+				runProc.SetSegment("Missions", "active")
 
 				workerCount := _storage.GetWorkerCount()
 				var failureMu sync.Mutex
@@ -953,8 +958,13 @@ func main() {
 						wg.Add(1)
 						go func(missionId string, startTimestamp float64) {
 							defer wg.Done()
-							_, err := fetchCompleteMissionWithContext(w.ctx, playerId, missionId, startTimestamp)
+							missionLabel := missionLabelByID[missionId]
+							missionProc := processRegistry.Register(missionId, missionLabel, "mission")
+							missionProc.InitSegments([]string{"Cache", "Fetch", "Decode", "Store"})
+							tracker := func(name, status string) { missionProc.SetSegment(name, status) }
+							_, err := fetchCompleteMissionWithContext(w.ctx, playerId, missionId, startTimestamp, tracker)
 							if err != nil {
+								missionProc.MarkFailed()
 								isTimeout := strings.Contains(err.Error(), "timeout after")
 								if !isTimeout || !_storage.GetHideTimeoutErrors() {
 									perror(err)
@@ -966,6 +976,8 @@ func main() {
 									failedMissions = append(failedMissions, FailedMission{missionId, startTimestamp})
 								}
 								failureMu.Unlock()
+							} else {
+								missionProc.MarkDone()
 							}
 							finishedCh <- struct{}{}
 						}(newMissionIds[j], newMissionStartTimestamps[j])
@@ -992,8 +1004,13 @@ func main() {
 							wg.Add(1)
 							go func(missionId string, startTimestamp float64) {
 								defer wg.Done()
-								_, err := fetchCompleteMissionWithContext(w.ctx, playerId, missionId, startTimestamp)
+								missionLabel := missionLabelByID[missionId]
+								missionProc := processRegistry.Register(missionId+"-retry", missionLabel+" (retry)", "mission")
+								missionProc.InitSegments([]string{"Cache", "Fetch", "Decode", "Store"})
+								tracker := func(name, status string) { missionProc.SetSegment(name, status) }
+								_, err := fetchCompleteMissionWithContext(w.ctx, playerId, missionId, startTimestamp, tracker)
 								if err != nil {
+									missionProc.MarkFailed()
 									isTimeout := strings.Contains(err.Error(), "timeout after")
 									if !isTimeout || !_storage.GetHideTimeoutErrors() {
 										perror(err)
@@ -1001,6 +1018,8 @@ func main() {
 									failureMu.Lock()
 									errored++
 									failureMu.Unlock()
+								} else {
+									missionProc.MarkDone()
 								}
 								finishedCh <- struct{}{}
 							}(failedMission.missionId, failedMission.startTimestamp)
@@ -1025,10 +1044,12 @@ func main() {
 					}
 				} else {
 					pinfo(fmt.Sprintf("successfully fetched &148c32<%d missions>", total))
+					runProc.SetSegment("Missions", "done")
 				}
 			}
 
 			updateState(AppState_EXPORTING_DATA)
+			runProc.SetSegment("Export", "active")
 			completeMissions, err := db.RetrievePlayerCompleteMissions(context.Background(), playerId)
 			if err != nil {
 				perror(err)
@@ -1128,6 +1149,7 @@ func main() {
 			csvFileRel, _ := filepath.Rel(_rootDir, csvFile)
 			updateExportedFiles([]string{strings.TrimSpace(xlsxFileRel), strings.TrimSpace(csvFileRel)})
 
+			runProc.SetSegment("Export", "done")
 			pinfo("done.")
 			updateState(AppState_SUCCESS)
 		}()
