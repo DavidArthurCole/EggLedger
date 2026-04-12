@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/DavidArthurCole/EggLedger/ledgerdata"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
@@ -100,204 +101,18 @@ func (a *ArtifactSpec) GenericBenefitString() string {
 }
 
 func (a *ArtifactSpec) DropEffectString() string {
-	var replString string
-	switch *a.Name {
-	case ArtifactSpec_LUNAR_TOTEM:
-		replString = [][]string{
-			{"+100%", "", "", ""},
-			{"+300%", "8x", "", ""},
-			{"20x", "40x", "", ""},
-			{"50x", "100x", "150x", "200x"},
-		}[*a.Level][*a.Rarity]
-	case ArtifactSpec_NEODYMIUM_MEDALLION:
-		replString = [][]string{
-			{"10%", "", "", ""},
-			{"25%", "30%", "", ""},
-			{"50%", "", "60%", ""},
-			{"100%", "110%", "120%", "130%"},
-		}[*a.Level][*a.Rarity]
-	case ArtifactSpec_BEAK_OF_MIDAS:
-		replString = [][]string{
-			{"20%", "", "", ""},
-			{"50%", "", "", ""},
-			{"100%", "200%", "", ""},
-			{"500%", "1000%", "", "!!Gold gifts and drone rewards <guaranteed>"},
-		}[*a.Level][*a.Rarity]
-	case ArtifactSpec_LIGHT_OF_EGGENDIL:
-		replString = [][]string{
-			{"50%", "", "", ""},
-			{"100%", "200%", "", ""},
-			{"900%", "1400%", "", ""},
-			{"100x", "", "150x", "250x"},
-		}[*a.Level][*a.Rarity]
-	case ArtifactSpec_DEMETERS_NECKLACE:
-		replString = [][]string{
-			{"10%", "", "", ""},
-			{"25%", "35%", "", ""},
-			{"50%", "60%", "75%", ""},
-			{"100%", "125%", "150%", "200%"},
-		}[*a.Level][*a.Rarity]
-	case ArtifactSpec_VIAL_MARTIAN_DUST:
-		replString = [][]string{
-			{"10", "", "", ""},
-			{"50", "60", "", ""},
-			{"100", "", "150", ""},
-			{"200", "250", "", "500"},
-		}[*a.Level][*a.Rarity]
-	case ArtifactSpec_ORNATE_GUSSET:
-		replString = [][]string{
-			{"5%", "", "", ""},
-			{"10%", "", "12%", ""},
-			{"15%", "16%", "", ""},
-			{"20%", "", "22%", "25%"},
-		}[*a.Level][*a.Rarity]
-	case ArtifactSpec_THE_CHALICE:
-		replString = [][]string{
-			{"5%", "", "", ""},
-			{"10%", "", "15%", ""},
-			{"20%", "23%", "25%", ""},
-			{"30%", "", "35%", "40%"},
-		}[*a.Level][*a.Rarity]
-	case ArtifactSpec_BOOK_OF_BASAN:
-		replString = [][]string{
-			{"0.25%", "", "", ""},
-			{"0.5%", "", "", ""},
-			{"0.75%", "", "0.8%", ""},
-			{"1%", "", "1.1%", "1.2%"},
-		}[*a.Level][*a.Rarity]
-	case ArtifactSpec_PHOENIX_FEATHER:
-		replString = [][]string{
-			{"25%", "", "", ""},
-			{"100%", "", "", ""},
-			{"400%", "500%", "", ""},
-			{"900%", "1100%", "", "1400%"},
-		}[*a.Level][*a.Rarity]
-	case ArtifactSpec_TUNGSTEN_ANKH:
-		replString = [][]string{
-			{"10%", "", "", ""},
-			{"25%", "28%", "", ""},
-			{"50%", "75%", "", "100%"},
-			{"100%", "125%", "", "150%"},
-		}[*a.Level][*a.Rarity]
-	case ArtifactSpec_AURELIAN_BROOCH:
-		replString = [][]string{
-			{"10%", "", "", ""},
-			{"25%", "", "", ""},
-			{"50%", "60%", "70%", ""},
-			{"100%", "125%", "150%", "200%"},
-		}[*a.Level][*a.Rarity]
-	case ArtifactSpec_CARVED_RAINSTICK:
-		replString = [][]string{
-			{"20%", "", "", ""},
-			{"50%", "", "", ""},
-			{"100%", "", "", ""},
-			{"400%", "", "900%", "!!Cash drone rewards and gifts <guaranteed>"},
-		}[*a.Level][*a.Rarity]
-	case ArtifactSpec_PUZZLE_CUBE:
-		replString = [][]string{
-			{"5%", "", "", ""},
-			{"10%", "", "15%", ""},
-			{"20%", "22%", "", ""},
-			{"50%", "53%", "55%", "60%"},
-		}[*a.Level][*a.Rarity]
-	case ArtifactSpec_QUANTUM_METRONOME:
-		replString = [][]string{
-			{"5%", "", "", ""},
-			{"10%", "12%", "", ""},
-			{"15%", "17%", "20%", ""},
-			{"25%", "27%", "30%", "35%"},
-		}[*a.Level][*a.Rarity]
-	case ArtifactSpec_SHIP_IN_A_BOTTLE:
-		replString = [][]string{
-			{"20%", "", "", ""},
-			{"30%", "", "", ""},
-			{"50%", "60%", "", ""},
-			{"70%", "80%", "90%", "100%"},
-		}[*a.Level][*a.Rarity]
-	case ArtifactSpec_TACHYON_DEFLECTOR:
-		replString = [][]string{
-			{"5%", "", "", ""},
-			{"8%", "", "", ""},
-			{"12%", "13%", "", ""},
-			{"15%", "17%", "19%", "20%"},
-		}[*a.Level][*a.Rarity]
-	case ArtifactSpec_INTERSTELLAR_COMPASS:
-		replString = [][]string{
-			{"5%", "", "", ""},
-			{"10%", "", "", ""},
-			{"20%", "22%", "", ""},
-			{"30%", "35%", "40%", "50%"},
-		}[*a.Level][*a.Rarity]
-	case ArtifactSpec_DILITHIUM_MONOCLE:
-		replString = [][]string{
-			{"5%", "", "", ""},
-			{"10%", "", "", ""},
-			{"15%", "", "", ""},
-			{"20%", "", "25%", "30%"},
-		}[*a.Level][*a.Rarity]
-	case ArtifactSpec_TITANIUM_ACTUATOR:
-		replString = [][]string{
-			{"1", "", "", ""},
-			{"4", "", "", ""},
-			{"6", "7", "", ""},
-			{"10", "", "12", "15"},
-		}[*a.Level][*a.Rarity]
-	case ArtifactSpec_MERCURYS_LENS:
-		replString = [][]string{
-			{"10%", "", "", ""},
-			{"20%", "22%", "", ""},
-			{"50%", "55%", "", ""},
-			{"100%", "125%", "150%", "200%"},
-		}[*a.Level][*a.Rarity]
-	// Stones
-	case ArtifactSpec_QUANTUM_STONE:
-		fallthrough
-	case ArtifactSpec_TACHYON_STONE:
-		replString = []string{
-			"2%", "4%", "5%",
-		}[*a.Level]
-	case ArtifactSpec_DILITHIUM_STONE:
-		replString = []string{
-			"3%", "6%", "8%",
-		}[*a.Level]
-	case ArtifactSpec_SHELL_STONE:
-		replString = []string{
-			"5%", "8%", "10%",
-		}[*a.Level]
-	case ArtifactSpec_LUNAR_STONE:
-		replString = []string{
-			"20%", "30%", "40%",
-		}[*a.Level]
-	case ArtifactSpec_SOUL_STONE:
-		replString = []string{
-			"5%", "10%", "25%",
-		}[*a.Level]
-	case ArtifactSpec_PROPHECY_STONE:
-		replString = []string{
-			"0.05%", "0.1%", "0.15%",
-		}[*a.Level]
-	case ArtifactSpec_TERRA_STONE:
-		replString = []string{
-			"10", "50", "100",
-		}[*a.Level]
-	case ArtifactSpec_LIFE_STONE:
-		replString = []string{
-			"2%", "3%", "4%",
-		}[*a.Level]
-	case ArtifactSpec_CLARITY_STONE:
-		replString = []string{
-			"25%", "50%", "100%",
-		}[*a.Level]
-	default:
-		replString = "???" // should never happen
+	if a.Name == nil {
+		return ""
 	}
-
-	//If string starts with "!!", it is a custom parsing case.
-	if strings.HasPrefix(replString, "!!") {
-		return replString
+	effects, ok := ledgerdata.Config.ArtifactEffects[a.Name.String()]
+	if !ok || a.Level == nil || int(*a.Level) >= len(effects) {
+		return ""
 	}
-
-	return strings.ReplaceAll(a.GenericBenefitString(), "^b", replString)
+	row := effects[*a.Level]
+	if a.Rarity == nil || int(*a.Rarity) >= len(row) {
+		return ""
+	}
+	return row[*a.Rarity]
 }
 
 func (a *ArtifactSpec) DisplayTierName(includeSpace bool) string {

@@ -1,0 +1,253 @@
+{
+  "artifactEffects": {
+    "LUNAR_TOTEM": [
+      ["+100%", "", "", ""],
+      ["+300%", "8x", "", ""],
+      ["20x", "40x", "", ""],
+      ["50x", "100x", "150x", "200x"]
+    ],
+    "NEODYMIUM_MEDALLION": [
+      ["10%", "", "", ""],
+      ["25%", "30%", "", ""],
+      ["50%", "", "60%", ""],
+      ["100%", "110%", "120%", "130%"]
+    ],
+    "BEAK_OF_MIDAS": [
+      ["20%", "", "", ""],
+      ["50%", "", "", ""],
+      ["100%", "200%", "", ""],
+      ["500%", "1000%", "", "!!Gold gifts and drone rewards <guaranteed>"]
+    ],
+    "LIGHT_OF_EGGENDIL": [
+      ["50%", "", "", ""],
+      ["100%", "200%", "", ""],
+      ["900%", "1400%", "", ""],
+      ["100x", "", "150x", "250x"]
+    ],
+    "DEMETERS_NECKLACE": [
+      ["10%", "", "", ""],
+      ["25%", "35%", "", ""],
+      ["50%", "60%", "75%", ""],
+      ["100%", "125%", "150%", "200%"]
+    ],
+    "VIAL_MARTIAN_DUST": [
+      ["10", "", "", ""],
+      ["50", "60", "", ""],
+      ["100", "", "150", ""],
+      ["200", "250", "", "500"]
+    ],
+    "ORNATE_GUSSET": [
+      ["5%", "", "", ""],
+      ["10%", "", "12%", ""],
+      ["15%", "16%", "", ""],
+      ["20%", "", "22%", "25%"]
+    ],
+    "THE_CHALICE": [
+      ["5%", "", "", ""],
+      ["10%", "", "15%", ""],
+      ["20%", "23%", "25%", ""],
+      ["30%", "", "35%", "40%"]
+    ],
+    "BOOK_OF_BASAN": [
+      ["0.25%", "", "", ""],
+      ["0.5%", "", "", ""],
+      ["0.75%", "", "0.8%", ""],
+      ["1%", "", "1.1%", "1.2%"]
+    ],
+    "PHOENIX_FEATHER": [
+      ["25%", "", "", ""],
+      ["100%", "", "", ""],
+      ["400%", "500%", "", ""],
+      ["900%", "1100%", "", "1400%"]
+    ],
+    "TUNGSTEN_ANKH": [
+      ["10%", "", "", ""],
+      ["25%", "28%", "", ""],
+      ["50%", "75%", "", "100%"],
+      ["100%", "125%", "", "150%"]
+    ],
+    "AURELIAN_BROOCH": [
+      ["10%", "", "", ""],
+      ["25%", "", "", ""],
+      ["50%", "60%", "70%", ""],
+      ["100%", "125%", "150%", "200%"]
+    ],
+    "CARVED_RAINSTICK": [
+      ["20%", "", "", ""],
+      ["50%", "", "", ""],
+      ["100%", "", "", ""],
+      ["400%", "", "900%", "!!Cash drone rewards and gifts <guaranteed>"]
+    ],
+    "PUZZLE_CUBE": [
+      ["5%", "", "", ""],
+      ["10%", "", "15%", ""],
+      ["20%", "22%", "", ""],
+      ["50%", "53%", "55%", "60%"]
+    ],
+    "QUANTUM_METRONOME": [
+      ["5%", "", "", ""],
+      ["10%", "12%", "", ""],
+      ["15%", "17%", "20%", ""],
+      ["25%", "27%", "30%", "35%"]
+    ],
+    "SHIP_IN_A_BOTTLE": [
+      ["20%", "", "", ""],
+      ["30%", "", "", ""],
+      ["50%", "60%", "", ""],
+      ["70%", "80%", "90%", "100%"]
+    ],
+    "TACHYON_DEFLECTOR": [
+      ["5%", "", "", ""],
+      ["8%", "", "", ""],
+      ["12%", "13%", "", ""],
+      ["15%", "17%", "19%", "20%"]
+    ],
+    "INTERSTELLAR_COMPASS": [
+      ["5%", "", "", ""],
+      ["10%", "", "", ""],
+      ["20%", "22%", "", ""],
+      ["30%", "35%", "40%", "50%"]
+    ],
+    "DILITHIUM_MONOCLE": [
+      ["5%", "", "", ""],
+      ["10%", "", "", ""],
+      ["15%", "", "", ""],
+      ["20%", "", "25%", "30%"]
+    ],
+    "TITANIUM_ACTUATOR": [
+      ["1", "", "", ""],
+      ["4", "", "", ""],
+      ["6", "7", "", ""],
+      ["10", "", "12", "15"]
+    ],
+    "MERCURYS_LENS": [
+      ["10%", "", "", ""],
+      ["20%", "22%", "", ""],
+      ["50%", "55%", "", ""],
+      ["100%", "125%", "150%", "200%"]
+    ],
+    "TACHYON_STONE": [["2%"], ["4%"], ["5%"]],
+    "QUANTUM_STONE":  [["2%"], ["4%"], ["5%"]],
+    "DILITHIUM_STONE":[["3%"], ["6%"], ["8%"]],
+    "SHELL_STONE":    [["5%"], ["8%"], ["10%"]],
+    "LUNAR_STONE":    [["20%"], ["30%"], ["40%"]],
+    "SOUL_STONE":     [["5%"], ["10%"], ["25%"]],
+    "PROPHECY_STONE": [["0.05%"], ["0.1%"], ["0.15%"]],
+    "TERRA_STONE":    [["10"], ["50"], ["100"]],
+    "LIFE_STONE":     [["2%"], ["3%"], ["4%"]],
+    "CLARITY_STONE":  [["25%"], ["50%"], ["100%"]]
+  },
+  "farmerRoles": [
+    {"oom": 0,  "name": "Farmer",          "color": "d43500"},
+    {"oom": 1,  "name": "Farmer II",       "color": "d14400"},
+    {"oom": 2,  "name": "Farmer III",      "color": "cd5500"},
+    {"oom": 3,  "name": "Kilofarmer",      "color": "ca6800"},
+    {"oom": 4,  "name": "Kilofarmer II",   "color": "c77a00"},
+    {"oom": 5,  "name": "Kilofarmer III",  "color": "c58a00"},
+    {"oom": 6,  "name": "Megafarmer",      "color": "c49400"},
+    {"oom": 7,  "name": "Megafarmer II",   "color": "c39f00"},
+    {"oom": 8,  "name": "Megafarmer III",  "color": "c3a900"},
+    {"oom": 9,  "name": "Gigafarmer",      "color": "c2b100"},
+    {"oom": 10, "name": "Gigafarmer II",   "color": "c2ba00"},
+    {"oom": 11, "name": "Gigafarmer III",  "color": "c2c200"},
+    {"oom": 12, "name": "Terafarmer",      "color": "aec300"},
+    {"oom": 13, "name": "Terafarmer II",   "color": "99c400"},
+    {"oom": 14, "name": "Terafarmer III",  "color": "85c600"},
+    {"oom": 15, "name": "Petafarmer",      "color": "51ce00"},
+    {"oom": 16, "name": "Petafarmer II",   "color": "16dc00"},
+    {"oom": 17, "name": "Petafarmer III",  "color": "00ec2e"},
+    {"oom": 18, "name": "Exafarmer",       "color": "00fa68"},
+    {"oom": 19, "name": "Exafarmer II",    "color": "0afc9c"},
+    {"oom": 20, "name": "Exafarmer III",   "color": "1cf7ca"},
+    {"oom": 21, "name": "Zettafarmer",     "color": "2af3eb"},
+    {"oom": 22, "name": "Zettafarmer II",  "color": "35d9f0"},
+    {"oom": 23, "name": "Zettafarmer III", "color": "40bced"},
+    {"oom": 24, "name": "Yottafarmer",     "color": "46a8eb"},
+    {"oom": 25, "name": "Yottafarmer II",  "color": "4a9aea"},
+    {"oom": 26, "name": "Yottafarmer III", "color": "4e8dea"},
+    {"oom": 27, "name": "Xennafarmer",     "color": "527ce9"},
+    {"oom": 28, "name": "Xennafarmer II",  "color": "5463e8"},
+    {"oom": 29, "name": "Xennafarmer III", "color": "6155e8"},
+    {"oom": 30, "name": "Weccafarmer",     "color": "7952e9"},
+    {"oom": 31, "name": "Weccafarmer II",  "color": "8b4fe9"},
+    {"oom": 32, "name": "Weccafarmer III", "color": "9d4aeb"},
+    {"oom": 33, "name": "Vendafarmer",     "color": "b343ec"},
+    {"oom": 34, "name": "Vendafarmer II",  "color": "d636ef"},
+    {"oom": 35, "name": "Vendafarmer III", "color": "f327e5"},
+    {"oom": 36, "name": "Uadafarmer",      "color": "f915ba"},
+    {"oom": 37, "name": "Uadafarmer II",   "color": "fc0a9c"},
+    {"oom": 38, "name": "Uadafarmer III",  "color": "ff007d"},
+    {"oom": 39, "name": "Treidafarmer",    "color": "f7005d"},
+    {"oom": 40, "name": "Treidafarmer II", "color": "f61fd2"},
+    {"oom": 41, "name": "Treidafarmer III","color": "9c4aea"},
+    {"oom": 42, "name": "Quadafarmer",     "color": "5559e8"},
+    {"oom": 43, "name": "Quadafarmer II",  "color": "4a9deb"},
+    {"oom": 44, "name": "Quadafarmer III", "color": "2df0f2"},
+    {"oom": 45, "name": "Pendafarmer",     "color": "00f759"},
+    {"oom": 46, "name": "Pendafarmer II",  "color": "7ec700"},
+    {"oom": 47, "name": "Pendafarmer III", "color": "c2bf00"},
+    {"oom": 48, "name": "Exedafarmer",     "color": "c3a000"},
+    {"oom": 49, "name": "Exedafarmer II",  "color": "c87200"},
+    {"oom": 50, "name": "Exedafarmer III", "color": "d43500"},
+    {"oom": 51, "name": "Infinifarmer",    "color": "546e7a"}
+  ],
+  "shipNames": {
+    "CHICKEN_ONE":         "Chicken One",
+    "CHICKEN_NINE":        "Chicken Nine",
+    "CHICKEN_HEAVY":       "Chicken Heavy",
+    "BCR":                 "BCR",
+    "MILLENIUM_CHICKEN":   "Quintillion Chicken",
+    "CORELLIHEN_CORVETTE": "Cornish-Hen Corvette",
+    "GALEGGTICA":          "Galeggtica",
+    "CHICKFIANT":          "Defihent",
+    "VOYEGGER":            "Voyegger",
+    "HENERPRISE":          "Henerprise",
+    "ATREGGIES":           "Atreggies Henliner"
+  },
+  "artifactTargets": [
+    {"name": "UNKNOWN",                  "displayName": "Untargeted",               "imageString": "none.png"},
+    {"name": "BOOK_OF_BASAN",            "displayName": "Books of Basan",           "imageString": "bob_target.png"},
+    {"name": "TACHYON_DEFLECTOR",        "displayName": "Tachyon Deflectors",       "imageString": "deflector_target.png"},
+    {"name": "SHIP_IN_A_BOTTLE",         "displayName": "Ships in a Bottle",        "imageString": "siab_target.png"},
+    {"name": "TITANIUM_ACTUATOR",        "displayName": "Titanium Actuators",       "imageString": "actuator_target.png"},
+    {"name": "DILITHIUM_MONOCLE",        "displayName": "Dilithium Monocles",       "imageString": "monocle_target.png"},
+    {"name": "QUANTUM_METRONOME",        "displayName": "Quantum Metronomes",       "imageString": "metronome_target.png"},
+    {"name": "PHOENIX_FEATHER",          "displayName": "Phoenix Feathers",         "imageString": "feather_target.png"},
+    {"name": "THE_CHALICE",              "displayName": "Chalices",                 "imageString": "chalice_target.png"},
+    {"name": "INTERSTELLAR_COMPASS",     "displayName": "Interstellar Compasses",   "imageString": "compass_target.png"},
+    {"name": "CARVED_RAINSTICK",         "displayName": "Carved Rainsticks",        "imageString": "rainstick_target.png"},
+    {"name": "BEAK_OF_MIDAS",            "displayName": "Beaks of Midas",           "imageString": "beak_target.png"},
+    {"name": "MERCURYS_LENS",            "displayName": "Mercury's Lenses",         "imageString": "lens_target.png"},
+    {"name": "NEODYMIUM_MEDALLION",      "displayName": "Neodymium Medallions",     "imageString": "medallion_target.png"},
+    {"name": "ORNATE_GUSSET",            "displayName": "Gussets",                  "imageString": "gusset_target.png"},
+    {"name": "TUNGSTEN_ANKH",            "displayName": "Tungsten Ankhs",           "imageString": "ankh_target.png"},
+    {"name": "AURELIAN_BROOCH",          "displayName": "Aurelian Brooches",        "imageString": "brooch_target.png"},
+    {"name": "VIAL_MARTIAN_DUST",        "displayName": "Vials of Martian Dust",    "imageString": "vial_target.png"},
+    {"name": "DEMETERS_NECKLACE",        "displayName": "Demeters Necklaces",       "imageString": "necklace_target.png"},
+    {"name": "LUNAR_TOTEM",              "displayName": "Lunar Totems",             "imageString": "totem_target.png"},
+    {"name": "PUZZLE_CUBE",              "displayName": "Puzzle Cubes",             "imageString": "cube_target.png"},
+    {"name": "PROPHECY_STONE",           "displayName": "Prophecy Stones",          "imageString": "prophecy_target.png"},
+    {"name": "CLARITY_STONE",            "displayName": "Clarity Stones",           "imageString": "clarity_target.png"},
+    {"name": "DILITHIUM_STONE",          "displayName": "Dilithium Stones",         "imageString": "dilithium_target.png"},
+    {"name": "LIFE_STONE",               "displayName": "Life Stones",              "imageString": "life_target.png"},
+    {"name": "QUANTUM_STONE",            "displayName": "Quantum Stones",           "imageString": "quantum_target.png"},
+    {"name": "SOUL_STONE",               "displayName": "Soul Stones",              "imageString": "soul_target.png"},
+    {"name": "TERRA_STONE",              "displayName": "Terra Stones",             "imageString": "terra_target.png"},
+    {"name": "TACHYON_STONE",            "displayName": "Tachyon Stones",           "imageString": "tachyon_target.png"},
+    {"name": "LUNAR_STONE",              "displayName": "Lunar Stones",             "imageString": "lunar_target.png"},
+    {"name": "SHELL_STONE",              "displayName": "Shell Stones",             "imageString": "shell_target.png"},
+    {"name": "SOLAR_TITANIUM",           "displayName": "Solar Titanium",           "imageString": "titanium_target.png"},
+    {"name": "TAU_CETI_GEODE",           "displayName": "Geodes",                   "imageString": "geode_target.png"},
+    {"name": "GOLD_METEORITE",           "displayName": "Gold Meteorites",          "imageString": "gold_target.png"},
+    {"name": "PROPHECY_STONE_FRAGMENT",  "displayName": "Prophecy Stone Fragments", "imageString": "prophecy_frag_target.png"},
+    {"name": "CLARITY_STONE_FRAGMENT",   "displayName": "Clarity Stone Fragments",  "imageString": "clarity_frag_target.png"},
+    {"name": "LIFE_STONE_FRAGMENT",      "displayName": "Life Stone Fragments",     "imageString": "life_frag_target.png"},
+    {"name": "TERRA_STONE_FRAGMENT",     "displayName": "Terra Stone Fragments",    "imageString": "terra_frag_target.png"},
+    {"name": "DILITHIUM_STONE_FRAGMENT", "displayName": "Dilithium Stone Fragments","imageString": "dilithium_frag_target.png"},
+    {"name": "SOUL_STONE_FRAGMENT",      "displayName": "Soul Stone Fragments",     "imageString": "soul_frag_target.png"},
+    {"name": "QUANTUM_STONE_FRAGMENT",   "displayName": "Quantum Stone Fragments",  "imageString": "quantum_frag_target.png"},
+    {"name": "TACHYON_STONE_FRAGMENT",   "displayName": "Tachyon Stone Fragments",  "imageString": "tachyon_frag_target.png"},
+    {"name": "SHELL_STONE_FRAGMENT",     "displayName": "Shell Stone Fragments",    "imageString": "shell_frag_target.png"},
+    {"name": "LUNAR_STONE_FRAGMENT",     "displayName": "Lunar Stone Fragments",    "imageString": "lunar_frag_target.png"}
+  ]
+}

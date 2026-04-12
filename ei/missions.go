@@ -3,34 +3,15 @@ package ei
 import (
 	"fmt"
 	"sort"
+
+	"github.com/DavidArthurCole/EggLedger/ledgerdata"
 )
 
 func (s MissionInfo_Spaceship) Name() string {
-	switch s {
-	case MissionInfo_CHICKEN_ONE:
-		return "Chicken One"
-	case MissionInfo_CHICKEN_NINE:
-		return "Chicken Nine"
-	case MissionInfo_CHICKEN_HEAVY:
-		return "Chicken Heavy"
-	case MissionInfo_BCR:
-		return "BCR"
-	case MissionInfo_MILLENIUM_CHICKEN:
-		return "Quintillion Chicken"
-	case MissionInfo_CORELLIHEN_CORVETTE:
-		return "Cornish-Hen Corvette"
-	case MissionInfo_GALEGGTICA:
-		return "Galeggtica"
-	case MissionInfo_CHICKFIANT:
-		return "Defihent"
-	case MissionInfo_VOYEGGER:
-		return "Voyegger"
-	case MissionInfo_HENERPRISE:
-		return "Henerprise"
-	case MissionInfo_ATREGGIES:
-		return "Atreggies Henliner"
+	if name, ok := ledgerdata.Config.ShipNames[s.String()]; ok {
+		return name
 	}
-	return "Unknown"
+	return s.String()
 }
 
 func (d *MissionInfo) GetDurationString() string {
