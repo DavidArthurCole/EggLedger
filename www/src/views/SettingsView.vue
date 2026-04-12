@@ -212,6 +212,7 @@ function getBrowserDisplayName(browser: string | null): string {
   if (/opera/i.test(browser)) return 'Opera'
   if (/edge/i.test(browser)) return 'Microsoft Edge'
   if (/vivaldi/i.test(browser)) return 'Vivaldi'
+  if (/firefox/i.test(browser)) return 'Mozilla Firefox'
   return 'Unknown'
 }
 
