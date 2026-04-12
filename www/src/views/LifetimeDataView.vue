@@ -500,10 +500,10 @@ function reSortLifetime() {
         return sortGroupAlreadyCombed
     }
   })()
-  ld.artifacts = sortFn(ld.artifacts as unknown as DropLike[]) as unknown as LifetimeDrop[]
-  ld.stones = sortFn(ld.stones as unknown as DropLike[]) as unknown as LifetimeDrop[]
-  ld.stoneFragments = sortFn(ld.stoneFragments as unknown as DropLike[]) as unknown as LifetimeDrop[]
-  ld.ingredients = sortFn(ld.ingredients as unknown as DropLike[]) as unknown as LifetimeDrop[]
+  ld.artifacts = sortFn([...ld.artifacts] as unknown as DropLike[]) as unknown as LifetimeDrop[]
+  ld.stones = sortFn([...ld.stones] as unknown as DropLike[]) as unknown as LifetimeDrop[]
+  ld.stoneFragments = sortFn([...ld.stoneFragments] as unknown as DropLike[]) as unknown as LifetimeDrop[]
+  ld.ingredients = sortFn([...ld.ingredients] as unknown as DropLike[]) as unknown as LifetimeDrop[]
 }
 
 // Artifact/mission configs (loaded in onMounted, passed to useFilters)

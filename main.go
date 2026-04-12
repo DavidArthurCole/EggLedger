@@ -426,17 +426,6 @@ func main() {
 		return
 	}
 
-	// Firefox support is temporarily disabled. If LocateChrome fell back to
-	// Firefox (no Chromium-family browser installed), treat it as not found.
-	if strings.Contains(strings.ToLower(browser), "firefox") {
-		browser = ""
-	}
-	if browser == "" {
-		lorca.PromptDownload()
-		log.Fatal("unable to locate a supported browser")
-		return
-	}
-
 	isFirefox := strings.Contains(strings.ToLower(browser), "firefox")
 
 	args := []string{}
@@ -671,7 +660,7 @@ func main() {
 
 	ui.MustBind("getPossibleTargets", func() []PossibleTarget {
 		if len(_possibleTargets) == 0 {
-			initPossibleArtifacts()
+			initPossibleTargets()
 		}
 
 		return _possibleTargets

@@ -37,3 +37,5 @@ require (
 )
 
 require golang.org/x/text v0.33.0
+
+replace github.com/davidarthurcole/lorca => C:/Users/david/source/repos/lorca
