@@ -9,10 +9,9 @@
         <hr class="mt-1rem mb-1rem w-full">
         <span class="mt-0_5rem p-0_5rem text-lg">
           <a v-external-link target="_blank" class="url-link" href="https://github.com/menno-egginc/eggincdatacollection-docs/blob/main/DataEndpoints.md">Menno's Ship Data</a>
-          is currently being loaded or refreshed.<br>
-          This data is used to provide further insights to the drops of your ships,<br>
+          is currently being loaded or refreshed. This data is used to provide further insights to the drops of your ships,<br>
           and how "lucky" you've been.
-          <span v-if="isAutoRefresh"><b>This task runs on EggLedger start-up once every 7 days.</b></span>
+          <span v-if="isAutoRefresh"><br><b>This task runs on EggLedger start-up once every 7 days.</b></span>
         </span>
         <hr class="mt-1rem mb-1rem w-full">
         <div v-if="phase === 'downloading'" class="text-sm text-gray-400 tabular-nums">
