@@ -21,10 +21,15 @@ var Config LedgerDisplayData
 type LedgerDisplayData struct {
 	// ArtifactEffects maps proto enum name (e.g. "LUNAR_TOTEM") to a
 	// [level][rarity] string matrix of effect substitution values.
-	ArtifactEffects map[string][][]string `json:"artifactEffects"`
-	FarmerRoles     []FarmerRole          `json:"farmerRoles"`
-	ShipNames       map[string]string     `json:"shipNames"`
-	ArtifactTargets []ArtifactTarget      `json:"artifactTargets"`
+	ArtifactEffects          map[string][][]string `json:"artifactEffects"`
+	FarmerRoles              []FarmerRole          `json:"farmerRoles"`
+	ShipNames                map[string]string     `json:"shipNames"`
+	ArtifactTargets          []ArtifactTarget      `json:"artifactTargets"`
+	ArtifactTierNames        map[string][]string   `json:"artifactTierNames"`
+	InventoryVisualizerOrder map[string]int        `json:"inventoryVisualizerOrder"`
+	GenericBenefitStrings    map[string]string     `json:"genericBenefitStrings"`
+	ArtifactTypes            map[string]string     `json:"artifactTypes"`
+	StoneFragmentMap         map[string]string     `json:"stoneFragmentMap"`
 }
 
 // FarmerRole maps an EB order-of-magnitude bucket to a display tier.

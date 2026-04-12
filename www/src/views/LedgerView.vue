@@ -45,6 +45,7 @@
             id="playerIdInput"
             type="text"
             :class="'drop-select ' + (isPlayerIdValid ? 'border-gray-300' : 'border-red-700')"
+            :style="(selectedAccount?.nickname || (screenshotSafety && playerId)) ? { color: 'transparent', caretColor: '#9ca3af' } : undefined"
             placeholder="EI1234567890123456"
             :value="playerId"
             @focus="openPlayerIdDropdown"

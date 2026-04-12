@@ -188,6 +188,8 @@ declare global {
   function setDefaultResolution(x: number, y: number): Promise<void>
   function setPreferredBrowser(path: string): Promise<boolean>
   function getPreferredBrowser(): Promise<string>
+  function getLoadedBrowser(): Promise<string>
+  function restartApp(): Promise<void>
   function getDetectedBrowsers(): Promise<string[]>
   function getAutoRefreshMennoPreference(): Promise<boolean>
   function setAutoRefreshMennoPreference(flag: boolean): Promise<void>

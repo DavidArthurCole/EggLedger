@@ -31,73 +31,13 @@ func (a ArtifactSpec_Name) CasedName() string {
 }
 
 func (a *ArtifactSpec) GenericBenefitString() string {
-	switch *a.Name {
-	case ArtifactSpec_LUNAR_TOTEM:
-		return "[^b] away earnings"
-	case ArtifactSpec_NEODYMIUM_MEDALLION:
-		return "[+^b] drone frequency"
-	case ArtifactSpec_BEAK_OF_MIDAS:
-		return "[+^b] chance of gold in gifts and drones"
-	case ArtifactSpec_LIGHT_OF_EGGENDIL:
-		return "Enlightenment egg value increased by [^b]"
-	case ArtifactSpec_TUNGSTEN_ANKH:
-		fallthrough
-	case ArtifactSpec_DEMETERS_NECKLACE:
-		return "[+^b] egg value"
-	case ArtifactSpec_VIAL_MARTIAN_DUST:
-		return "Increases max running chicken bonus by [^b]"
-	case ArtifactSpec_ORNATE_GUSSET:
-		return "[+^b] hab capacity"
-	case ArtifactSpec_THE_CHALICE:
-		return "[+^b] internal hatchery rate"
-	case ArtifactSpec_BOOK_OF_BASAN:
-		return "[+^b] to Egg of Prophecy bonus"
-	case ArtifactSpec_PHOENIX_FEATHER:
-		return "[+^b] Soul Egg collection rate"
-	case ArtifactSpec_AURELIAN_BROOCH:
-		return "[+^b] drone rewards"
-	case ArtifactSpec_CARVED_RAINSTICK:
-		return "[+^b] chance of cash in gifts and drones"
-	case ArtifactSpec_PUZZLE_CUBE:
-		return "[-^b] research cost"
-	case ArtifactSpec_QUANTUM_METRONOME:
-		return "[+^b] egg laying rate"
-	case ArtifactSpec_SHIP_IN_A_BOTTLE:
-		return "[+^b] co-op teammate's earnings"
-	case ArtifactSpec_TACHYON_DEFLECTOR:
-		return "[+^b] co-op teammate's egg laying rate"
-	case ArtifactSpec_INTERSTELLAR_COMPASS:
-		return "[+^b] shipping rate"
-	case ArtifactSpec_DILITHIUM_MONOCLE:
-		return "[+^b] boost boost"
-	case ArtifactSpec_TITANIUM_ACTUATOR:
-		return "[+^b] hold to hatch rate"
-	case ArtifactSpec_MERCURYS_LENS:
-		return "[+^b] farm valuation"
-	// Stones
-	case ArtifactSpec_TACHYON_STONE:
-		return "[+^b] egg laying rate"
-	case ArtifactSpec_DILITHIUM_STONE:
-		return "[+^b] boost duration"
-	case ArtifactSpec_SHELL_STONE:
-		return "[+^b] egg value"
-	case ArtifactSpec_LUNAR_STONE:
-		return "[+^b] away earnings"
-	case ArtifactSpec_SOUL_STONE:
-		return "[+^b] bonus per Soul Egg"
-	case ArtifactSpec_PROPHECY_STONE:
-		return "[+^b] to Egg of Prophecy bonus"
-	case ArtifactSpec_QUANTUM_STONE:
-		return "[+^b] shipping rate"
-	case ArtifactSpec_TERRA_STONE:
-		return "Increases max running chicken bonus by [^b]"
-	case ArtifactSpec_LIFE_STONE:
-		return "[+^b] internal hatchery rate"
-	case ArtifactSpec_CLARITY_STONE:
-		return "[^b] effect of host artifact on enlightenment egg farms"
-	default:
+	if a.Name == nil {
 		return ""
 	}
+	if s, ok := ledgerdata.Config.GenericBenefitStrings[a.Name.String()]; ok {
+		return s
+	}
+	return ""
 }
 
 func (a *ArtifactSpec) DropEffectString() string {
@@ -301,213 +241,24 @@ func (a *ArtifactSpec) Type() ArtifactSpec_Type {
 }
 
 func (a ArtifactSpec_Name) InventoryVisualizerOrder() int {
-	switch a {
-	case ArtifactSpec_LUNAR_TOTEM:
-		return 15
-	case ArtifactSpec_NEODYMIUM_MEDALLION:
-		return 21
-	case ArtifactSpec_BEAK_OF_MIDAS:
-		return 23
-	case ArtifactSpec_LIGHT_OF_EGGENDIL:
-		return 34
-	case ArtifactSpec_DEMETERS_NECKLACE:
-		return 16
-	case ArtifactSpec_VIAL_MARTIAN_DUST:
-		return 17
-	case ArtifactSpec_ORNATE_GUSSET:
-		return 20
-	case ArtifactSpec_THE_CHALICE:
-		return 26
-	case ArtifactSpec_BOOK_OF_BASAN:
-		return 33
-	case ArtifactSpec_PHOENIX_FEATHER:
-		return 27
-	case ArtifactSpec_TUNGSTEN_ANKH:
-		return 19
-	case ArtifactSpec_AURELIAN_BROOCH:
-		return 18
-	case ArtifactSpec_CARVED_RAINSTICK:
-		return 24
-	case ArtifactSpec_PUZZLE_CUBE:
-		return 14
-	case ArtifactSpec_QUANTUM_METRONOME:
-		return 28
-	case ArtifactSpec_SHIP_IN_A_BOTTLE:
-		return 31
-	case ArtifactSpec_TACHYON_DEFLECTOR:
-		return 32
-	case ArtifactSpec_INTERSTELLAR_COMPASS:
-		return 25
-	case ArtifactSpec_DILITHIUM_MONOCLE:
-		return 29
-	case ArtifactSpec_TITANIUM_ACTUATOR:
-		return 30
-	case ArtifactSpec_MERCURYS_LENS:
-		return 22
-	case ArtifactSpec_TACHYON_STONE_FRAGMENT:
-		fallthrough
-	case ArtifactSpec_TACHYON_STONE:
-		return 6
-	case ArtifactSpec_DILITHIUM_STONE_FRAGMENT:
-		fallthrough
-	case ArtifactSpec_DILITHIUM_STONE:
-		return 11
-	case ArtifactSpec_SHELL_STONE_FRAGMENT:
-		fallthrough
-	case ArtifactSpec_SHELL_STONE:
-		return 4
-	case ArtifactSpec_LUNAR_STONE_FRAGMENT:
-		fallthrough
-	case ArtifactSpec_LUNAR_STONE:
-		return 5
-	case ArtifactSpec_SOUL_STONE_FRAGMENT:
-		fallthrough
-	case ArtifactSpec_SOUL_STONE:
-		return 8
-	case ArtifactSpec_PROPHECY_STONE_FRAGMENT:
-		fallthrough
-	case ArtifactSpec_PROPHECY_STONE:
-		return 13
-	case ArtifactSpec_QUANTUM_STONE_FRAGMENT:
-		fallthrough
-	case ArtifactSpec_QUANTUM_STONE:
-		return 9
-	case ArtifactSpec_TERRA_STONE_FRAGMENT:
-		fallthrough
-	case ArtifactSpec_TERRA_STONE:
-		return 7
-	case ArtifactSpec_LIFE_STONE_FRAGMENT:
-		fallthrough
-	case ArtifactSpec_LIFE_STONE:
-		return 10
-	case ArtifactSpec_CLARITY_STONE_FRAGMENT:
-		fallthrough
-	case ArtifactSpec_CLARITY_STONE:
-		return 12
-	case ArtifactSpec_GOLD_METEORITE:
-		return 1
-	case ArtifactSpec_TAU_CETI_GEODE:
-		return 2
-	case ArtifactSpec_SOLAR_TITANIUM:
-		return 3
-	default:
-		return 0
+	if order, ok := ledgerdata.Config.InventoryVisualizerOrder[a.String()]; ok {
+		return order
 	}
+	return 0
 }
 
 func (a ArtifactSpec_Name) ArtifactType() ArtifactSpec_Type {
-	switch a {
-	// Artifacts
-	case ArtifactSpec_LUNAR_TOTEM:
-		fallthrough
-	case ArtifactSpec_NEODYMIUM_MEDALLION:
-		fallthrough
-	case ArtifactSpec_BEAK_OF_MIDAS:
-		fallthrough
-	case ArtifactSpec_LIGHT_OF_EGGENDIL:
-		fallthrough
-	case ArtifactSpec_DEMETERS_NECKLACE:
-		fallthrough
-	case ArtifactSpec_VIAL_MARTIAN_DUST:
-		fallthrough
-	case ArtifactSpec_ORNATE_GUSSET:
-		fallthrough
-	case ArtifactSpec_THE_CHALICE:
-		fallthrough
-	case ArtifactSpec_BOOK_OF_BASAN:
-		fallthrough
-	case ArtifactSpec_PHOENIX_FEATHER:
-		fallthrough
-	case ArtifactSpec_TUNGSTEN_ANKH:
-		fallthrough
-	case ArtifactSpec_AURELIAN_BROOCH:
-		fallthrough
-	case ArtifactSpec_CARVED_RAINSTICK:
-		fallthrough
-	case ArtifactSpec_PUZZLE_CUBE:
-		fallthrough
-	case ArtifactSpec_QUANTUM_METRONOME:
-		fallthrough
-	case ArtifactSpec_SHIP_IN_A_BOTTLE:
-		fallthrough
-	case ArtifactSpec_TACHYON_DEFLECTOR:
-		fallthrough
-	case ArtifactSpec_INTERSTELLAR_COMPASS:
-		fallthrough
-	case ArtifactSpec_DILITHIUM_MONOCLE:
-		fallthrough
-	case ArtifactSpec_TITANIUM_ACTUATOR:
-		fallthrough
-	case ArtifactSpec_MERCURYS_LENS:
-		return ArtifactSpec_ARTIFACT
-	// Stones
-	case ArtifactSpec_TACHYON_STONE:
-		fallthrough
-	case ArtifactSpec_DILITHIUM_STONE:
-		fallthrough
-	case ArtifactSpec_SHELL_STONE:
-		fallthrough
-	case ArtifactSpec_LUNAR_STONE:
-		fallthrough
-	case ArtifactSpec_SOUL_STONE:
-		fallthrough
-	case ArtifactSpec_PROPHECY_STONE:
-		fallthrough
-	case ArtifactSpec_QUANTUM_STONE:
-		fallthrough
-	case ArtifactSpec_TERRA_STONE:
-		fallthrough
-	case ArtifactSpec_LIFE_STONE:
-		fallthrough
-	case ArtifactSpec_CLARITY_STONE:
-		return ArtifactSpec_STONE
-	// Stone fragments
-	case ArtifactSpec_TACHYON_STONE_FRAGMENT:
-		fallthrough
-	case ArtifactSpec_DILITHIUM_STONE_FRAGMENT:
-		fallthrough
-	case ArtifactSpec_SHELL_STONE_FRAGMENT:
-		fallthrough
-	case ArtifactSpec_LUNAR_STONE_FRAGMENT:
-		fallthrough
-	case ArtifactSpec_SOUL_STONE_FRAGMENT:
-		fallthrough
-	case ArtifactSpec_PROPHECY_STONE_FRAGMENT:
-		fallthrough
-	case ArtifactSpec_QUANTUM_STONE_FRAGMENT:
-		fallthrough
-	case ArtifactSpec_TERRA_STONE_FRAGMENT:
-		fallthrough
-	case ArtifactSpec_LIFE_STONE_FRAGMENT:
-		fallthrough
-	case ArtifactSpec_CLARITY_STONE_FRAGMENT:
-		return ArtifactSpec_STONE_INGREDIENT
-	// Ingredients
-	case ArtifactSpec_GOLD_METEORITE:
-		fallthrough
-	case ArtifactSpec_TAU_CETI_GEODE:
-		fallthrough
-	case ArtifactSpec_SOLAR_TITANIUM:
-		fallthrough
-	// Unconfirmed ingredients
-	case ArtifactSpec_EXTRATERRESTRIAL_ALUMINUM:
-		fallthrough
-	case ArtifactSpec_ANCIENT_TUNGSTEN:
-		fallthrough
-	case ArtifactSpec_SPACE_ROCKS:
-		fallthrough
-	case ArtifactSpec_ALIEN_WOOD:
-		fallthrough
-	case ArtifactSpec_CENTAURIAN_STEEL:
-		fallthrough
-	case ArtifactSpec_ERIDANI_FEATHER:
-		fallthrough
-	case ArtifactSpec_DRONE_PARTS:
-		fallthrough
-	case ArtifactSpec_CELESTIAL_BRONZE:
-		fallthrough
-	case ArtifactSpec_LALANDE_HIDE:
-		return ArtifactSpec_INGREDIENT
+	if t, ok := ledgerdata.Config.ArtifactTypes[a.String()]; ok {
+		switch t {
+		case "ARTIFACT":
+			return ArtifactSpec_ARTIFACT
+		case "STONE":
+			return ArtifactSpec_STONE
+		case "STONE_INGREDIENT":
+			return ArtifactSpec_STONE_INGREDIENT
+		case "INGREDIENT":
+			return ArtifactSpec_INGREDIENT
+		}
 	}
 	return ArtifactSpec_ARTIFACT
 }
@@ -531,27 +282,10 @@ func (a ArtifactSpec_Name) Family() ArtifactSpec_Name {
 // CorrespondingStone returns the corresponding stone for a stone fragment.
 // Result is undefined for non-stone fragments.
 func (a ArtifactSpec_Name) CorrespondingStone() ArtifactSpec_Name {
-	switch a {
-	case ArtifactSpec_TACHYON_STONE_FRAGMENT:
-		return ArtifactSpec_TACHYON_STONE
-	case ArtifactSpec_DILITHIUM_STONE_FRAGMENT:
-		return ArtifactSpec_DILITHIUM_STONE
-	case ArtifactSpec_SHELL_STONE_FRAGMENT:
-		return ArtifactSpec_SHELL_STONE
-	case ArtifactSpec_LUNAR_STONE_FRAGMENT:
-		return ArtifactSpec_LUNAR_STONE
-	case ArtifactSpec_SOUL_STONE_FRAGMENT:
-		return ArtifactSpec_SOUL_STONE
-	case ArtifactSpec_PROPHECY_STONE_FRAGMENT:
-		return ArtifactSpec_PROPHECY_STONE
-	case ArtifactSpec_QUANTUM_STONE_FRAGMENT:
-		return ArtifactSpec_QUANTUM_STONE
-	case ArtifactSpec_TERRA_STONE_FRAGMENT:
-		return ArtifactSpec_TERRA_STONE
-	case ArtifactSpec_LIFE_STONE_FRAGMENT:
-		return ArtifactSpec_LIFE_STONE
-	case ArtifactSpec_CLARITY_STONE_FRAGMENT:
-		return ArtifactSpec_CLARITY_STONE
+	if stone, ok := ledgerdata.Config.StoneFragmentMap[a.String()]; ok {
+		if val, ok2 := ArtifactSpec_Name_value[stone]; ok2 {
+			return ArtifactSpec_Name(val)
+		}
 	}
 	return ArtifactSpec_UNKNOWN
 }
@@ -559,27 +293,13 @@ func (a ArtifactSpec_Name) CorrespondingStone() ArtifactSpec_Name {
 // CorrespondingFragment returns the corresponding stone fragment for a stone.
 // Result is undefined for non-stones.
 func (a ArtifactSpec_Name) CorrespondingFragment() ArtifactSpec_Name {
-	switch a {
-	case ArtifactSpec_TACHYON_STONE:
-		return ArtifactSpec_TACHYON_STONE_FRAGMENT
-	case ArtifactSpec_DILITHIUM_STONE:
-		return ArtifactSpec_DILITHIUM_STONE_FRAGMENT
-	case ArtifactSpec_SHELL_STONE:
-		return ArtifactSpec_SHELL_STONE_FRAGMENT
-	case ArtifactSpec_LUNAR_STONE:
-		return ArtifactSpec_LUNAR_STONE_FRAGMENT
-	case ArtifactSpec_SOUL_STONE:
-		return ArtifactSpec_SOUL_STONE_FRAGMENT
-	case ArtifactSpec_PROPHECY_STONE:
-		return ArtifactSpec_PROPHECY_STONE_FRAGMENT
-	case ArtifactSpec_QUANTUM_STONE:
-		return ArtifactSpec_QUANTUM_STONE_FRAGMENT
-	case ArtifactSpec_TERRA_STONE:
-		return ArtifactSpec_TERRA_STONE_FRAGMENT
-	case ArtifactSpec_LIFE_STONE:
-		return ArtifactSpec_LIFE_STONE_FRAGMENT
-	case ArtifactSpec_CLARITY_STONE:
-		return ArtifactSpec_CLARITY_STONE_FRAGMENT
+	target := a.String()
+	for fragment, stone := range ledgerdata.Config.StoneFragmentMap {
+		if stone == target {
+			if val, ok := ArtifactSpec_Name_value[fragment]; ok {
+				return ArtifactSpec_Name(val)
+			}
+		}
 	}
 	return ArtifactSpec_UNKNOWN
 }
@@ -602,118 +322,14 @@ func (a *ArtifactSpec) TierNumber() int {
 }
 
 func (a *ArtifactSpec) TierName() string {
-	switch *a.Name {
-	// Artifacts
-	case ArtifactSpec_LUNAR_TOTEM:
-		return []string{"BASIC", "REGULAR", "POWERFUL", "EGGCEPTIONAL"}[*a.Level]
-	case ArtifactSpec_NEODYMIUM_MEDALLION:
-		return []string{"WEAK", "REGULAR", "PRECISE", "EGGCEPTIONAL"}[*a.Level]
-	case ArtifactSpec_BEAK_OF_MIDAS:
-		return []string{"DULL", "REGULAR", "JEWELED", "GLISTENING"}[*a.Level]
-	case ArtifactSpec_LIGHT_OF_EGGENDIL:
-		return []string{"DIM", "SHIMMERING", "GLOWING", "BRILLIANT"}[*a.Level]
-	case ArtifactSpec_DEMETERS_NECKLACE:
-		return []string{"SIMPLE", "JEWELED", "PRISTINE", "BEGGSPOKE"}[*a.Level]
-	case ArtifactSpec_VIAL_MARTIAN_DUST:
-		return []string{"TINY", "REGULAR", "HERMETIC", "PRIME"}[*a.Level]
-	case ArtifactSpec_ORNATE_GUSSET:
-		return []string{"PLAIN", "ORNATE", "DISTEGGUISHED", "JEWELED"}[*a.Level]
-	case ArtifactSpec_THE_CHALICE:
-		return []string{"PLAIN", "POLISHED", "JEWELED", "EGGCEPTIONAL"}[*a.Level]
-	case ArtifactSpec_BOOK_OF_BASAN:
-		return []string{"REGULAR", "COLLECTORS", "FORTIFIED", "GILDED"}[*a.Level]
-	case ArtifactSpec_PHOENIX_FEATHER:
-		return []string{"TATTERED", "REGULAR", "BRILLIANT", "BLAZING"}[*a.Level]
-	case ArtifactSpec_TUNGSTEN_ANKH:
-		return []string{"CRUDE", "REGULAR", "POLISHED", "BRILLIANT"}[*a.Level]
-	case ArtifactSpec_AURELIAN_BROOCH:
-		return []string{"PLAIN", "REGULAR", "JEWELED", "EGGCEPTIONAL"}[*a.Level]
-	case ArtifactSpec_CARVED_RAINSTICK:
-		return []string{"SIMPLE", "REGULAR", "ORNATE", "MEGGNIFICENT"}[*a.Level]
-	case ArtifactSpec_PUZZLE_CUBE:
-		return []string{"ANCIENT", "REGULAR", "MYSTICAL", "UNSOLVABLE"}[*a.Level]
-	case ArtifactSpec_QUANTUM_METRONOME:
-		return []string{"MISALIGNED", "ADEQUATE", "PERFECT", "REGGFERENCE"}[*a.Level]
-	case ArtifactSpec_SHIP_IN_A_BOTTLE:
-		return []string{"REGULAR", "DETAILED", "COMPLEX", "EGGQUISITE"}[*a.Level]
-	case ArtifactSpec_TACHYON_DEFLECTOR:
-		return []string{"WEAK", "REGULAR", "ROBUST", "EGGCEPTIONAL"}[*a.Level]
-	case ArtifactSpec_INTERSTELLAR_COMPASS:
-		return []string{"MISCALIBRATED", "REGULAR", "PRECISE", "CLAIRVOYANT"}[*a.Level]
-	case ArtifactSpec_DILITHIUM_MONOCLE:
-		return []string{"REGULAR", "PRECISE", "EGGSACTING", "FLAWLESS"}[*a.Level]
-	case ArtifactSpec_TITANIUM_ACTUATOR:
-		return []string{"INCONSISTENT", "REGULAR", "PRECISE", "REGGFERENCE"}[*a.Level]
-	case ArtifactSpec_MERCURYS_LENS:
-		return []string{"MISALIGNED", "REGULAR", "PRECISE", "MEGGNIFICENT"}[*a.Level]
-	// Stones
-	case ArtifactSpec_DILITHIUM_STONE:
-		fallthrough
-	case ArtifactSpec_TACHYON_STONE:
-		return []string{"REGULAR", "EGGSQUISITE", "BRILLIANT"}[*a.Level]
-	case ArtifactSpec_SHELL_STONE:
-		return []string{"REGULAR", "EGGSQUISITE", "FLAWLESS"}[*a.Level]
-	case ArtifactSpec_LUNAR_STONE:
-		return []string{"REGULAR", "EGGSQUISITE", "MEGGNIFICENT"}[*a.Level]
-	case ArtifactSpec_PROPHECY_STONE:
-		fallthrough
-	case ArtifactSpec_SOUL_STONE:
-		return []string{"REGULAR", "EGGSQUISITE", "RADIANT"}[*a.Level]
-	case ArtifactSpec_QUANTUM_STONE:
-		return []string{"REGULAR", "PHASED", "MEGGNIFICENT"}[*a.Level]
-	case ArtifactSpec_TERRA_STONE:
-		return []string{"REGULAR", "RICH", "EGGCEPTIONAL"}[*a.Level]
-	case ArtifactSpec_LIFE_STONE:
-		return []string{"REGULAR", "GOOD", "EGGCEPTIONAL"}[*a.Level]
-	case ArtifactSpec_CLARITY_STONE:
-		return []string{"REGULAR", "EGGSQUISITE", "EGGCEPTIONAL"}[*a.Level]
-	// Stone fragments
-	case ArtifactSpec_TACHYON_STONE_FRAGMENT:
-		fallthrough
-	case ArtifactSpec_DILITHIUM_STONE_FRAGMENT:
-		fallthrough
-	case ArtifactSpec_SHELL_STONE_FRAGMENT:
-		fallthrough
-	case ArtifactSpec_LUNAR_STONE_FRAGMENT:
-		fallthrough
-	case ArtifactSpec_SOUL_STONE_FRAGMENT:
-		fallthrough
-	case ArtifactSpec_PROPHECY_STONE_FRAGMENT:
-		fallthrough
-	case ArtifactSpec_QUANTUM_STONE_FRAGMENT:
-		fallthrough
-	case ArtifactSpec_TERRA_STONE_FRAGMENT:
-		fallthrough
-	case ArtifactSpec_LIFE_STONE_FRAGMENT:
-		fallthrough
-	case ArtifactSpec_CLARITY_STONE_FRAGMENT:
-		return "FRAGMENT"
-	// Ingredients
-	case ArtifactSpec_GOLD_METEORITE:
-		return []string{"TINY", "ENRICHED", "SOLID"}[*a.Level]
-	case ArtifactSpec_TAU_CETI_GEODE:
-		return []string{"TAU", "GLIMMERING", "RADIANT"}[*a.Level]
-	case ArtifactSpec_SOLAR_TITANIUM:
-		return []string{"ORE", "BAR", "GEOGON"}[*a.Level]
-	// Unconfirmed ingredients
-	case ArtifactSpec_EXTRATERRESTRIAL_ALUMINUM:
-		fallthrough
-	case ArtifactSpec_ANCIENT_TUNGSTEN:
-		fallthrough
-	case ArtifactSpec_SPACE_ROCKS:
-		fallthrough
-	case ArtifactSpec_ALIEN_WOOD:
-		fallthrough
-	case ArtifactSpec_CENTAURIAN_STEEL:
-		fallthrough
-	case ArtifactSpec_ERIDANI_FEATHER:
-		fallthrough
-	case ArtifactSpec_DRONE_PARTS:
-		fallthrough
-	case ArtifactSpec_CELESTIAL_BRONZE:
-		fallthrough
-	case ArtifactSpec_LALANDE_HIDE:
+	if a.Name == nil || a.Level == nil {
 		return "?"
+	}
+	if names, ok := ledgerdata.Config.ArtifactTierNames[a.Name.String()]; ok {
+		idx := int(*a.Level)
+		if idx >= 0 && idx < len(names) {
+			return names[idx]
+		}
 	}
 	return "?"
 }

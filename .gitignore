@@ -8,7 +8,7 @@ node_modules/
 vendor/
 /vendor/*
 .vscode/
-EggLedger.exe
+EggLedger.exe*
 EggLedger
 /logs/
 /eiafx/eiafx-config.json

@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"regexp"
@@ -60,6 +61,7 @@ var (
 	_forceMennoRefresh bool
 	_forceUpdateCheck  bool
 	_debugCompression  bool
+	_launchedBrowser   string
 
 	_processRegistry             *ProcessRegistry
 	_updateKnownAccounts         func([]Account)
@@ -377,6 +379,7 @@ func main() {
 
 	prefBrowserPath := _storage.PreferredChromiumPath
 	browser := lorca.LocateChrome(prefBrowserPath)
+	_launchedBrowser = browser
 	if prefBrowserPath != browser {
 		_storage.SetPreferredChromiumPath("")
 	}
@@ -478,6 +481,24 @@ func main() {
 
 	ui.MustBind("getPreferredBrowser", func() string {
 		return _storage.PreferredChromiumPath
+	})
+
+	ui.MustBind("getLoadedBrowser", func() string {
+		return _launchedBrowser
+	})
+
+	ui.MustBind("restartApp", func() {
+		executable, err := os.Executable()
+		if err != nil {
+			log.Errorf("restartApp: %v", err)
+			return
+		}
+		cmd := exec.Command(executable, os.Args[1:]...)
+		if err := cmd.Start(); err != nil {
+			log.Errorf("restartApp: failed to start new instance: %v", err)
+			return
+		}
+		ui.Close()
 	})
 
 	ui.MustBind("setAutoRefreshMennoPreference", func(flag bool) {

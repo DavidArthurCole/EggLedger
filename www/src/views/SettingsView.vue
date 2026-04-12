@@ -33,6 +33,14 @@
             </li>
           </ul>
         </div>
+        <div v-if="preferredBrowser && preferredBrowser !== loadedBrowser" class="mt-0_5rem pl-0_5rem">
+          <button
+            type="button"
+            class="apply-filter-button"
+            @click="globalThis.restartApp()"
+          >Restart Now</button>
+          <span class="ml-0_5rem text-gray-400 text-xs">Browser change takes effect after restart</span>
+        </div>
       </div>
 
       <hr class="mt-1rem mb-1rem w-full" />
@@ -186,6 +194,7 @@ const {
   scalingFactor,
   startInFullscreen,
   preferredBrowser,
+  loadedBrowser,
   allBrowsers,
   autoRefreshMenno,
   autoRetry,

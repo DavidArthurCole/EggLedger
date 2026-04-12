@@ -108,3 +108,83 @@ func TestLoadConfig_KnownArtifactEffect(t *testing.T) {
 		t.Fatalf("expected '20%%', got %q", effects[3][3])
 	}
 }
+
+func TestLoadConfig_ArtifactTierNames(t *testing.T) {
+	if err := ledgerdata.LoadConfig(t.TempDir()); err != nil {
+		t.Fatal(err)
+	}
+	tiers, ok := ledgerdata.Config.ArtifactTierNames["TACHYON_DEFLECTOR"]
+	if !ok {
+		t.Fatal("TACHYON_DEFLECTOR not in ArtifactTierNames")
+	}
+	if len(tiers) != 4 {
+		t.Fatalf("expected 4 tiers for TACHYON_DEFLECTOR, got %d", len(tiers))
+	}
+	if tiers[3] != "EGGCEPTIONAL" {
+		t.Fatalf("expected tier[3] = %q, got %q", "EGGCEPTIONAL", tiers[3])
+	}
+}
+
+func TestLoadConfig_InventoryVisualizerOrder(t *testing.T) {
+	if err := ledgerdata.LoadConfig(t.TempDir()); err != nil {
+		t.Fatal(err)
+	}
+	order, ok := ledgerdata.Config.InventoryVisualizerOrder["BOOK_OF_BASAN"]
+	if !ok {
+		t.Fatal("BOOK_OF_BASAN not in InventoryVisualizerOrder")
+	}
+	if order != 33 {
+		t.Fatalf("expected order 33, got %d", order)
+	}
+}
+
+func TestLoadConfig_GenericBenefitStrings(t *testing.T) {
+	if err := ledgerdata.LoadConfig(t.TempDir()); err != nil {
+		t.Fatal(err)
+	}
+	s, ok := ledgerdata.Config.GenericBenefitStrings["QUANTUM_METRONOME"]
+	if !ok {
+		t.Fatal("QUANTUM_METRONOME not in GenericBenefitStrings")
+	}
+	if s != "[+^b] egg laying rate" {
+		t.Fatalf("expected %q, got %q", "[+^b] egg laying rate", s)
+	}
+}
+
+func TestLoadConfig_ArtifactTypes(t *testing.T) {
+	if err := ledgerdata.LoadConfig(t.TempDir()); err != nil {
+		t.Fatal(err)
+	}
+	tests := []struct {
+		key  string
+		want string
+	}{
+		{"BOOK_OF_BASAN", "ARTIFACT"},
+		{"TACHYON_STONE", "STONE"},
+		{"TACHYON_STONE_FRAGMENT", "STONE_INGREDIENT"},
+		{"GOLD_METEORITE", "INGREDIENT"},
+	}
+	for _, tc := range tests {
+		got, ok := ledgerdata.Config.ArtifactTypes[tc.key]
+		if !ok {
+			t.Errorf("%s not in ArtifactTypes", tc.key)
+			continue
+		}
+		if got != tc.want {
+			t.Errorf("ArtifactTypes[%q] = %q, want %q", tc.key, got, tc.want)
+		}
+	}
+}
+
+func TestLoadConfig_StoneFragmentMap(t *testing.T) {
+	if err := ledgerdata.LoadConfig(t.TempDir()); err != nil {
+		t.Fatal(err)
+	}
+	stone, ok := ledgerdata.Config.StoneFragmentMap["TACHYON_STONE_FRAGMENT"]
+	if !ok {
+		t.Fatal("TACHYON_STONE_FRAGMENT not in StoneFragmentMap")
+	}
+	if stone != "TACHYON_STONE" {
+		t.Fatalf("expected %q, got %q", "TACHYON_STONE", stone)
+	}
+}
