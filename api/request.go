@@ -3,6 +3,7 @@
 package api
 
 import (
+	"compress/gzip"
 	"context"
 	"encoding/base64"
 	"fmt"
@@ -20,6 +21,11 @@ import (
 	"github.com/DavidArthurCole/EggLedger/ei"
 )
 
+// DebugCompression, when true, disables the transport's automatic gzip
+// decompression so the raw Content-Encoding header can be logged. Set via
+// the -debug-compression CLI flag.
+var DebugCompression bool
+
 const (
 	AppVersion    = "1.35.5"
 	AppBuild      = "111334"
@@ -30,10 +36,19 @@ const (
 const _apiPrefix = "https://ctx-dot-auxbrainhome.appspot.com"
 
 var _client *http.Client
+var _debugClient *http.Client
 
 func init() {
 	_client = &http.Client{
 		Timeout: 5 * time.Second,
+	}
+	_debugClient = &http.Client{
+		Timeout: 5 * time.Second,
+		Transport: &http.Transport{
+			// Disable automatic gzip decompression so the raw
+			// Content-Encoding header is preserved for inspection.
+			DisableCompression: true,
+		},
 	}
 }
 
@@ -80,7 +95,11 @@ func doRequestRawPayloadWithContext(ctx context.Context, endpoint string, reqMsg
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	resp, err := _client.Do(req)
+	client := _client
+	if DebugCompression {
+		client = _debugClient
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		if e, ok := err.(net.Error); ok && e.Timeout() {
 			err = fmt.Errorf("timeout after %s", _client.Timeout.String())
@@ -91,7 +110,25 @@ func doRequestRawPayloadWithContext(ctx context.Context, endpoint string, reqMsg
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	var bodyReader io.Reader = resp.Body
+	if DebugCompression {
+		contentEncoding := resp.Header.Get("Content-Encoding")
+		if contentEncoding == "" {
+			log.Infof("[debug-compression] POST %s: Content-Encoding: (none) — server is not compressing responses", apiUrl)
+		} else {
+			log.Infof("[debug-compression] POST %s: Content-Encoding: %s", apiUrl, contentEncoding)
+		}
+		if strings.EqualFold(contentEncoding, "gzip") {
+			gr, gzErr := gzip.NewReader(resp.Body)
+			if gzErr != nil {
+				return nil, fmt.Errorf("POST %s: opening gzip reader: %w", apiUrl, gzErr)
+			}
+			defer gr.Close()
+			bodyReader = gr
+		}
+	}
+
+	body, err := io.ReadAll(bodyReader)
 	if err != nil {
 		return nil, fmt.Errorf("POST %s: %w", apiUrl, err)
 	}

@@ -1,5 +1,5 @@
 <template>
-  <div class="flex-1 flex flex-col w-full mx-auto px-4 space-y-3 overflow-hidden bg-darker">
+  <div class="view-layout overflow-hidden">
     <!-- Target filter overlay -->
     <SearchOverSelector
       v-if="targetFilterMenuOpen"
@@ -67,7 +67,7 @@
         />
         <ul
           v-if="accountDropdownOpen && objectedExistingData.length > 0"
-          class="ledger-list focus:outline-none sm:text-sm"
+          class="ledger-list"
           tabindex="-1"
         >
           <li
@@ -83,7 +83,7 @@
         </ul>
       </div>
       <button
-        class="-ml-px relative w-20 text-center space-x-2 px-4 py-2 border border-gray-300 text-sm font-medium rounded-r-md text-gray-400 filter-button"
+        class="view-form-button"
         type="submit"
         :disabled="
           !selectedLifetimeAccount ||
@@ -108,7 +108,7 @@
           />
           <span :class="statusColor">{{ statusText }}</span>
         </div>
-        <div class="h-3 relative rounded-full overflow-hidden mt-1">
+        <div class="progress-track mt-1">
           <div class="w-full h-full bg-dark absolute"></div>
           <div
             v-if="lifetimeState === LifetimeLoadState.Failed || lifetimeState === LifetimeLoadState.FailedTooFast"
@@ -126,7 +126,7 @@
     <!-- Filter panel -->
     <div
       v-if="doesDataExist"
-      class="min-h-7 px-2 py-1 text-gray-400 bg-darkest rounded-md tabular-nums overflow-auto mt-0_75rem"
+      class="filter-panel"
     >
       <span
         v-if="(lifetimeData != null && !lifetimeDataBeingLoaded) || lifetimeDataBeingFiltered"
@@ -166,7 +166,7 @@
         <button
           id="lifetime-filter-apply-button"
           type="submit"
-          class="mt-0_5rem mr-1rem -ml-px relative p-0.5 text-center space-x-2 px-3 py-1 border border-gray-300 text-sm font-medium rounded-md text-gray-400 bg-darkerer hover:bg-dark_tab_hover disabled:opacity-50 disabled:hover:darker_tab_hover disabled:hover:cursor-not-allowed focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+          class="apply-filter-button"
           :disabled="lifetimeDataBeingFiltered || !filterHasChanged"
         >
           Apply Filter

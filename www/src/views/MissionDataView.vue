@@ -116,7 +116,7 @@
         />
         <ul
           v-if="accountDropdownOpen && objectedExistingData.length > 0"
-          class="ledger-list focus:outline-none sm:text-sm"
+          class="ledger-list"
           tabindex="-1"
         >
           <li
@@ -132,7 +132,7 @@
         </ul>
       </div>
       <button
-        class="-ml-px relative w-20 text-center space-x-2 px-4 py-2 border border-gray-300 text-sm font-medium rounded-r-md text-gray-400 filter-button"
+        class="view-form-button"
         type="submit"
         :disabled="
           !selectedMissionAccount ||
@@ -148,7 +148,7 @@
     <!-- Filter panel -->
     <div
       v-if="doesDataExist"
-      class="min-h-7 px-2 py-1 text-gray-400 bg-darkest rounded-md tabular-nums overflow-auto mt-0_75rem"
+      class="filter-panel"
     >
       <span
         v-if="hasAnyFilterableData"
@@ -181,7 +181,7 @@
           <br /><br />
           <button
             type="button"
-            class="p-0_75rem btn-link text-blue-500 border border-blue-500 rounded-md"
+            class="btn-link dismiss-btn"
             @click="dismissFilterWarning"
           >I understand</button>
         </div>
@@ -206,7 +206,7 @@
         <button
           id="filter-apply-button"
           type="submit"
-          class="mt-0_5rem mr-1rem -ml-px relative p-0.5 text-center space-x-2 px-3 py-1 border border-gray-300 text-sm font-medium rounded-md text-gray-400 bg-darkerer hover:bg-dark_tab_hover disabled:opacity-50 disabled:hover:darker_tab_hover disabled:hover:cursor-not-allowed focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+          class="apply-filter-button"
           :disabled="dataBeingFiltered || !filterHasChanged"
         >
           Apply Filter
@@ -240,7 +240,7 @@
     >
       <div v-if="hasAnyFilterableData">
         <div>
-          <span class="mr-0_5rem font-bold text-base text-gray-400">Options</span>
+          <span class="mr-0_5rem section-heading">Options</span>
           <button
             id="toggleOptionsButtonVM"
             class="text-base toggle-link"
@@ -278,7 +278,7 @@
             />
           </span>
           <div>
-            <span class="font-bold text-base text-gray-400">Multi-View Method</span><br />
+            <span class="section-heading">Multi-View Method</span><br />
             <span class="opt-span">
               <label for="multiViewOffCB" class="ext-opt-label">Off</label>
               <input id="multiViewOffCB" type="radio" v-model="multiViewMode" value="off" class="ext-opt-check" />
@@ -293,7 +293,7 @@
             </span>
           </div>
           <div>
-            <span class="font-bold text-base text-gray-400">Drops Sort Method</span><br />
+            <span class="section-heading">Drops Sort Method</span><br />
             <span class="opt-span">
               <label for="viewMissionSortDefault" class="ext-opt-label">Default</label>
               <input

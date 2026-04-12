@@ -7,7 +7,7 @@
     <!-- Main ledger UI -->
     <div
       v-if="!appIsInForbiddenDirectory && !appIsTranslocated"
-      class="flex-1 flex flex-col w-full mx-auto px-4 space-y-3 overflow-hidden bg-darker"
+      class="view-layout overflow-hidden"
     >
     <div>
       <form
@@ -19,20 +19,20 @@
         <div ref="playerIdSelectRef" class="tooltip-custom relative flex-grow focus-within:z-10">
           <div v-if="selectedAccount?.nickname || (screenshotSafety && playerId)" class="ledger-input-overlay">
             <span class="whitespace-pre">{{ maskEid(playerId) }}</span>
-            (<span :style="'color: #' + (selectedAccount.accountColor ?? '')">
-              {{ selectedAccount.nickname }} {{ selectedAccount.ebString ?? '???' }}
+            (<span :style="'color: #' + (selectedAccount?.accountColor ?? '')">
+              {{ selectedAccount?.nickname }} {{ selectedAccount?.ebString ?? '???' }}
             </span>
-            <template v-if="selectedAccount.seString">
+            <template v-if="selectedAccount?.seString">
               <span class="text-gray-400">&nbsp;·</span>
               <img :src="'images/soul_egg.png'" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="">
-              <span style="color:#a855f7">{{ selectedAccount.seString }} SE</span>
+              <span style="color:#a855f7">{{ selectedAccount?.seString }} SE</span>
               <span class="text-gray-400"> ·</span>
               <img :src="'images/prophecy_egg.png'" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="">
-              <span style="color:#eab308">{{ selectedAccount.peCount }} PE</span>
-              <template v-if="selectedAccount.teCount">
+              <span style="color:#eab308">{{ selectedAccount?.peCount }} PE</span>
+              <template v-if="selectedAccount?.teCount">
                 <span class="text-gray-400"> ·</span>
                 <img :src="'images/truth_egg.png'" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="">
-                <span style="color:#c831ff">{{ selectedAccount.teCount }} TE</span>
+                <span style="color:#c831ff">{{ selectedAccount?.teCount }} TE</span>
               </template>
             </template>)
           </div>
@@ -52,7 +52,7 @@
           />
           <ul
             v-if="playerIdDropdownOpen && knownAccounts.length > 0"
-            class="ledger-list focus:outline-none sm:text-sm"
+            class="ledger-list"
             tabindex="-1"
           >
             <li

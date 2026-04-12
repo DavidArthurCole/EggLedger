@@ -143,12 +143,12 @@ export interface ProcessSnapshot {
   label: string
   status: 'running' | 'done' | 'failed'
   /** Per-process log entries */
-  logs: ProcessLogEntry[]
+  logs: readonly ProcessLogEntry[]
   /** Unix milliseconds */
   startTimestamp: number
   /** "overall" | "mission" */
   kind: string
-  segments: SegmentStatus[]
+  segments: readonly SegmentStatus[]
 }
 
 export interface MennoDownloadProgress {

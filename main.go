@@ -18,6 +18,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/DavidArthurCole/EggLedger/api"
 	"github.com/DavidArthurCole/EggLedger/db"
 	"github.com/DavidArthurCole/EggLedger/ei"
 	"github.com/DavidArthurCole/EggLedger/eiafx"
@@ -58,6 +59,7 @@ var (
 
 	_forceMennoRefresh bool
 	_forceUpdateCheck  bool
+	_debugCompression  bool
 
 	_processRegistry             *ProcessRegistry
 	_updateKnownAccounts         func([]Account)
@@ -365,7 +367,9 @@ func initPossibleArtifacts() {
 func main() {
 	flag.BoolVar(&_forceMennoRefresh, "force-menno-refresh", false, "treat menno data as stale regardless of last refresh time")
 	flag.BoolVar(&_forceUpdateCheck, "force-update-check", false, "bypass the 12-hour update-check cooldown")
+	flag.BoolVar(&_debugCompression, "debug-compression", false, "log Content-Encoding headers on API responses to check if the server is gzip-compressing")
 	flag.Parse()
+	api.DebugCompression = _debugCompression
 
 	if _devMode {
 		log.Info("starting app in dev mode")

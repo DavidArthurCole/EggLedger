@@ -1,5 +1,5 @@
 <template>
-  <div class="flex-1 flex flex-col w-full mx-auto px-4 space-y-3 overflow-y-scroll bg-darker">
+  <div class="view-layout overflow-y-scroll">
     <div class="flex-1 px-3 py-2 overflow-auto shadow-sm block text-sm font-mono text-gray-400 bg-darkest rounded-md">
       <div class="w-full pl-0_5rem pr-0_5rem">
         <span class="text-base">
@@ -20,7 +20,7 @@
           />
           <ul
             v-if="prefBrowserDropdownOpen && allBrowsers.length > 0"
-            class="ledger-list focus:outline-none text-sm"
+            class="ledger-list"
             tabindex="-1"
           >
             <li
@@ -76,7 +76,7 @@
           <span :class="secondsSinceLastUpdate >= 2147483647 ? 'text-red-700' : 'text-green-500'">{{ lastUpdateString }}</span>
         </span><br />
         <button
-          class="mt-0_5rem mb-0_5rem mr-1rem -ml-px relative p-0.5 text-center space-x-2 px-3 py-1 border border-gray-300 text-sm font-medium rounded-md text-gray-400 bg-darkerer hover:bg-dark_tab_hover disabled:opacity-50 disabled:hover:darker_tab_hover disabled:hover:cursor-not-allowed focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+          class="apply-filter-button mb-0_5rem"
           :disabled="secondsSinceLastUpdate < 86400"
           @click="onManualRefresh"
         >
@@ -101,7 +101,7 @@
       <div class="px-2 py-2 text-sm text-gray-400 bg-darker rounded-md tabular-nums overflow-auto">
         <span class="mr-0_5rem font-bold text-lg text-gray-400 ledger-underline">Other Globals</span><br />
         <div>
-          <span class="font-bold text-base text-gray-400">Default Drop-Sort Method</span><br />
+          <span class="section-heading">Default Drop-Sort Method</span><br />
           <span class="opt-span">
             <label for="dvmDefault" class="ext-opt-label">Default</label>
             <input id="dvmDefault" type="radio" v-model="defaultViewMode" value="default" class="ext-opt-check" />
@@ -112,7 +112,7 @@
           </span>
         </div>
         <div class="mt-0_5rem">
-          <span class="font-bold text-base text-gray-400">Auto-Retry Failed Missions</span><br />
+          <span class="section-heading">Auto-Retry Failed Missions</span><br />
           <input
             id="autoRetryCheckbox"
             type="checkbox"
@@ -122,7 +122,7 @@
           <label for="autoRetryCheckbox" class="ext-opt-label">Automatically retry pulling missions that fail while fetching</label>
         </div>
         <div class="mt-0_5rem">
-          <span class="font-bold text-base text-gray-400">Timeout Errors</span><br />
+          <span class="section-heading">Timeout Errors</span><br />
           <input
             id="hideTimeoutErrorsCheckbox"
             type="checkbox"
@@ -132,7 +132,7 @@
           <label for="hideTimeoutErrorsCheckbox" class="ext-opt-label">Hide per-mission timeout errors in the fetch log</label>
         </div>
         <div class="mt-0_5rem">
-          <span class="font-bold text-base text-gray-400">Screenshot Safety</span><br />
+          <span class="section-heading">Screenshot Safety</span><br />
           <input
             id="screenshotSafetyCheckbox"
             type="checkbox"
@@ -142,7 +142,7 @@
           <label for="screenshotSafetyCheckbox" class="ext-opt-label">Mask player IDs (EIDs) wherever they appear on screen</label>
         </div>
         <div class="mt-0_5rem">
-          <span class="font-bold text-base text-gray-400">Parallel Download Workers</span><br />
+          <span class="section-heading">Parallel Download Workers</span><br />
           <div class="flex items-center mt-0_5rem pl-0_5rem gap-2">
             <input
               id="workerCountInput"
@@ -164,7 +164,7 @@
             <br /><br />
             <button
               type="button"
-              class="p-0_75rem btn-link text-blue-500 border border-blue-500 rounded-md"
+              class="btn-link dismiss-btn"
               @click="dismissWorkerCountWarning"
             >I understand</button>
           </div>

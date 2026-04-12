@@ -217,7 +217,11 @@ input[type=number] {
 }
 
 .ledger-list {
-  @apply absolute z-10 mt-1 w-full bg-darkerer shadow-lg max-h-60 rounded-md py-1 text-gray-400 ring-1 ring-black ring-opacity-5 overflow-auto;
+  @apply absolute z-10 mt-1 w-full bg-darkerer shadow-lg max-h-60 rounded-md py-1 text-gray-400 ring-1 ring-black ring-opacity-5 overflow-auto text-sm;
+
+  &:focus {
+    @apply outline-none;
+  }
 }
 
 .ledger-input-overlay {
@@ -509,4 +513,48 @@ input[type=number] {
   height: calc(100%);
   border-top: 2px solid;
   border-bottom: 2px solid;
+}
+
+.view-layout {
+  @apply flex-1 flex flex-col w-full mx-auto px-4 space-y-3 bg-darker;
+}
+
+.filter-panel {
+  @apply min-h-7 px-2 py-1 text-gray-400 bg-darkest rounded-md tabular-nums overflow-auto mt-0_75rem;
+}
+
+.view-form-button {
+  @apply -ml-px relative w-20 text-center space-x-2 px-4 py-2 border border-gray-300 text-sm font-medium rounded-r-md text-gray-400 filter-button;
+}
+
+.apply-filter-button {
+  @apply mt-0_5rem mr-1rem -ml-px relative p-0.5 text-center space-x-2 px-3 py-1 border border-gray-300 text-sm font-medium rounded-md text-gray-400 bg-darkerer;
+
+  &:hover {
+    @apply bg-dark_tab_hover;
+  }
+
+  &:disabled {
+    @apply opacity-50;
+
+    &:hover {
+      @apply bg-darker_tab_hover cursor-not-allowed;
+    }
+  }
+
+  &:focus {
+    @apply outline-none ring-1 ring-blue-500 border-blue-500;
+  }
+}
+
+.section-heading {
+  @apply font-bold text-base text-gray-400;
+}
+
+.dismiss-btn {
+  @apply p-0_75rem text-blue-500 border border-blue-500 rounded-md;
+}
+
+.progress-track {
+  @apply h-3 relative rounded-full overflow-hidden;
 }

@@ -22,7 +22,7 @@
             <span v-if="progress!.speedBps > 0">  ({{ formatBytes(progress!.speedBps) }}/s)</span>
             <span v-if="progress!.etaSeconds >= 0">  ETA {{ Math.ceil(progress!.etaSeconds) }}s</span>
           </div>
-          <div class="h-3 relative rounded-full overflow-hidden">
+          <div class="progress-track">
             <div class="w-full h-full bg-darker absolute"></div>
             <div
               class="h-full absolute rounded-full bg-green-500 transition-all"
