@@ -36,7 +36,7 @@
         <div v-if="preferredBrowser && preferredBrowser !== loadedBrowser" class="mt-0_5rem pl-0_5rem">
           <button
             type="button"
-            class="apply-filter-button"
+            class="apply-filter-button !bg-blue-700 !text-white hover:!bg-blue-600 !border-blue-500"
             @click="globalThis.restartApp()"
           >Restart Now</button>
           <span class="ml-0_5rem text-gray-400 text-xs">Browser change takes effect after restart</span>

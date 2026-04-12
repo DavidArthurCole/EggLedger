@@ -21,14 +21,14 @@ if (fs.existsSync(cssHashFilePath) && fs.existsSync(configHashPath)) {
     console.log('CSS hashes match. Skipping rebuild.');
   } else {
     console.log('CSS hash mismatch. Rebuilding...');
-    execSync('npm run build', { stdio: 'inherit' });
+    execSync('npm run build:force', { stdio: 'inherit' });
     updateHashFile(cssHashFilePath, currentCSSHash);
     updateHashFile(configHashPath, currentConfigHash);
     console.log('Rebuild completed.');
   }
 } else {
   console.log('Hash file not found. Rebuilding...');
-  execSync('npm run build', { stdio: 'inherit' });
+  execSync('npm run build:force', { stdio: 'inherit' });
   updateHashFile(cssHashFilePath, calculateHash(indexPath));
   updateHashFile(configHashPath, calculateHash(configPath));
   console.log('Rebuild completed.');

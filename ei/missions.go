@@ -47,7 +47,7 @@ func (d MissionInfo_DurationType) Display() string {
 func (t MissionInfo_MissionType) Display() string {
 	switch t {
 	case MissionInfo_STANDARD:
-		return "Standard"
+		return "Home"
 	case MissionInfo_VIRTUE:
 		return "Virtue"
 	}

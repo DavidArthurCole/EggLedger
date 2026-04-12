@@ -135,7 +135,7 @@ export function useFilters(options: UseFiltersOptions) {
         return filtered
       }
       case 'type':
-        return [{ text: 'Standard', value: '0' }, { text: 'Virtue', value: '1' }]
+        return [{ text: 'Home', value: '0' }, { text: 'Virtue', value: '1' }]
       case 'buggedcap':
       case 'dubcap':
         return [{ text: 'True', value: 'true' }, { text: 'False', value: 'false' }]

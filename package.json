@@ -17,7 +17,8 @@
     "vue-tsc": "^2.2.12"
   },
   "scripts": {
-    "build": "vite build --config www/vite.config.ts",
+    "build": "node scripts/build-vite.js",
+    "build:force": "vite build --config www/vite.config.ts",
     "build:css": "node scripts/build-css.js",
     "dev": "vite build --watch --config www/vite.config.ts",
     "lint": "eslint --config www/eslint.config.mjs www/src",

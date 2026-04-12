@@ -44,9 +44,9 @@ export interface DatabaseMission {
   target: string
   /** ei.ArtifactSpec_Name enum value, or -1 */
   targetInt: number
-  /** ei.MissionInfo_MissionType enum value: 0=Standard, 1=Virtue */
+  /** ei.MissionInfo_MissionType enum value: 0=Home, 1=Virtue */
   missionType: number
-  /** Display string e.g. "Standard" or "Virtue" */
+  /** Display string e.g. "Home" or "Virtue" */
   missionTypeString: string
 }
 

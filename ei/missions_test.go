@@ -82,7 +82,7 @@ func TestMissionTypeDisplay(t *testing.T) {
 		m    ei.MissionInfo_MissionType
 		want string
 	}{
-		{ei.MissionInfo_STANDARD, "Standard"},
+		{ei.MissionInfo_STANDARD, "Home"},
 		{ei.MissionInfo_VIRTUE, "Virtue"},
 	}
 	for _, tc := range tests {

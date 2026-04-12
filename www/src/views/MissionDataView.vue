@@ -319,10 +319,10 @@
       </div>
     </div>
 
-    <!-- Mission type tabs -->
-    <div v-if="doesDataExist" class="flex gap-1 mt-0_75rem text-sm">
+    <!-- Mission type tabs: only shown when loaded missions include both Home and Virtue -->
+    <div v-if="hasBothMissionTypes" class="flex gap-1 mt-0_75rem text-sm">
       <button
-        v-for="tab in [{ label: 'All', value: null }, { label: 'Normal', value: 0 }, { label: 'Virtue', value: 1 }]"
+        v-for="tab in [{ label: 'All', value: null }, { label: 'Home', value: 0 }, { label: 'Virtue', value: 1 }]"
         :key="String(tab.value)"
         type="button"
         :class="[
@@ -617,7 +617,17 @@ function accountById(id: string | null) {
 
 const allLoadedMissions = ref<DatabaseMission[] | null>(null)
 const filteredMissions = ref<DatabaseMission[] | null>(null)
-const missionTypeTab = ref<number | null>(null) // null=All, 0=Standard, 1=Virtue
+const missionTypeTab = ref<number | null>(null) // null=All, 0=Home, 1=Virtue
+
+const hasBothMissionTypes = computed(() => {
+  const missions = allLoadedMissions.value
+  if (!missions || missions.length === 0) return false
+  return missions.some(m => m.missionType === 0) && missions.some(m => m.missionType === 1)
+})
+
+watch(hasBothMissionTypes, (val) => {
+  if (!val) missionTypeTab.value = null
+})
 const groupedArrays = ref<GroupedArrays>({ year: [], month: [], day: [] })
 const allVisible = ref(true)
 
