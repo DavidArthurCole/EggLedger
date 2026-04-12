@@ -252,10 +252,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useAppState } from '../composables/useAppState'
 import { useMennoData } from '../composables/useMennoData'
 import { useFilters } from '../composables/useFilters'
+import { useDropdownSelector } from '../composables/useDropdownSelector'
 import type {
   DatabaseMission,
   MissionDrop,
@@ -322,8 +323,13 @@ interface LifetimeData extends LedgerData {
 // ───────────────────────────────────────────────────────────────────────────────
 
 const selectedLifetimeAccount = ref<string | null>(null)
-const accountDropdownOpen = ref(false)
-const accountSelectRef = ref<HTMLElement | null>(null)
+
+const {
+  containerRef: accountSelectRef,
+  isOpen: accountDropdownOpen,
+  open: openAccountDropdown,
+  close: closeAccountDropdown,
+} = useDropdownSelector((id) => { selectedLifetimeAccount.value = id })
 
 const doesDataExist = computed(() => existingData.value.length > 0)
 
@@ -351,20 +357,6 @@ const selectedLifetimeKnownAccount = computed(
   () => knownAccounts.value.find((acc) => acc.id === selectedLifetimeAccount.value) ?? null,
 )
 
-function openAccountDropdown() {
-  accountDropdownOpen.value = true
-}
-function closeAccountDropdown(id?: string) {
-  if (id != null && id !== '') selectedLifetimeAccount.value = id
-  accountDropdownOpen.value = false
-}
-function handleAccountClickOutside(event: MouseEvent) {
-  if (accountDropdownOpen.value && accountSelectRef.value && !accountSelectRef.value.contains(event.target as Node)) {
-    closeAccountDropdown()
-  }
-}
-
-// ───────────────────────────────────────────────────────────────────────────────
 // Lifetime load state
 // ───────────────────────────────────────────────────────────────────────────────
 
@@ -775,8 +767,6 @@ async function onFilterSubmit(event: Event) {
 // ───────────────────────────────────────────────────────────────────────────────
 
 onMounted(async () => {
-  document.addEventListener('click', handleAccountClickOutside)
-
   artifactConfigs.value = await globalThis.getAfxConfigs()
   maxQuality.value = await globalThis.getMaxQuality()
   durationConfigs.value = await globalThis.getDurationConfigs()
@@ -790,8 +780,5 @@ onMounted(async () => {
   getFilterValueOptions('level')
   getFilterValueOptions('target')
   getFilterValueOptions('drops')
-})
-onUnmounted(() => {
-  document.removeEventListener('click', handleAccountClickOutside)
 })
 </script>

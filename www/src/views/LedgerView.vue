@@ -228,6 +228,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useAppState } from '../composables/useAppState'
 import { useFetch } from '../composables/useFetch'
 import { parseLogSegments } from '../composables/useLogRenderer'
+import { useDropdownSelector } from '../composables/useDropdownSelector'
 import { AppState } from '../types/bridge'
 import ForbiddenDirModal from '../components/modals/ForbiddenDirModal.vue'
 import TranslocationModal from '../components/modals/TranslocationModal.vue'
@@ -247,9 +248,14 @@ const {
 const { progress, fetchPlayerData, stopFetching } = useFetch()
 
 const playerId = ref<string>(knownAccounts.value[0]?.id ?? '')
-const playerIdSelectRef = ref<HTMLElement | null>(null)
-const playerIdDropdownOpen = ref(false)
 const messagesRef = ref<HTMLElement | null>(null)
+
+const {
+  containerRef: playerIdSelectRef,
+  isOpen: playerIdDropdownOpen,
+  open: openPlayerIdDropdown,
+  close: closePlayerIdDropdown,
+} = useDropdownSelector((id) => { playerId.value = id })
 
 function normalizePlayerId(id: string): string {
   id = id.trim()
@@ -346,13 +352,6 @@ const segmentStates = computed(() => {
   return { seg1, seg2, seg3, missionPct: visibleMissionPct, missionPulsing }
 })
 
-function openPlayerIdDropdown() {
-  playerIdDropdownOpen.value = true
-}
-function closePlayerIdDropdown(id?: string) {
-  if (id != null && id !== '') playerId.value = id
-  playerIdDropdownOpen.value = false
-}
 
 function getEidProblem(id: string): string {
   const normalizedId = normalizePlayerId(id).toUpperCase()
@@ -380,20 +379,13 @@ function getEta(finish: number): string {
 
 const etaStr = ref('')
 let etaIntervalId: ReturnType<typeof setInterval> | undefined
-function handleClickOutside(event: MouseEvent) {
-  if (playerIdDropdownOpen.value && playerIdSelectRef.value && !playerIdSelectRef.value.contains(event.target as Node)) {
-    closePlayerIdDropdown()
-  }
-}
 
 onMounted(() => {
-  document.addEventListener('click', handleClickOutside)
   etaIntervalId = setInterval(() => {
     if (progress.value) etaStr.value = getEta(progress.value.expectedFinishTimestamp)
   }, 200)
 })
 onUnmounted(() => {
-  document.removeEventListener('click', handleClickOutside)
   clearInterval(etaIntervalId)
 })
 

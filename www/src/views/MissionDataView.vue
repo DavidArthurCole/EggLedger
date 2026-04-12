@@ -501,6 +501,7 @@ import { useAppState } from '../composables/useAppState'
 import { useMennoData } from '../composables/useMennoData'
 import { useFetch } from '../composables/useFetch'
 import { useFilters } from '../composables/useFilters'
+import { useDropdownSelector } from '../composables/useDropdownSelector'
 import type {
   DatabaseMission,
   MissionDrop,
@@ -581,8 +582,13 @@ interface InnerDrop extends MissionDrop {
 // ───────────────────────────────────────────────────────────────────────────────
 
 const selectedMissionAccount = ref<string | null>(null)
-const viewMissionAccountSelectRef = ref<HTMLElement | null>(null)
-const accountDropdownOpen = ref(false)
+
+const {
+  containerRef: viewMissionAccountSelectRef,
+  isOpen: accountDropdownOpen,
+  open: openAccountDropdown,
+  close: closeAccountDropdown,
+} = useDropdownSelector((id) => { selectedMissionAccount.value = id })
 const eidMissionsBeingLoaded = ref(false)
 const loadedEid = ref<string | null>(null)
 
@@ -605,15 +611,6 @@ function accountById(id: string | null) {
   return objectedExistingData.value.find((acc) => acc.id === id) ?? null
 }
 
-function openAccountDropdown() {
-  accountDropdownOpen.value = true
-}
-function closeAccountDropdown(id?: string) {
-  if (id != null && id !== '') selectedMissionAccount.value = id
-  accountDropdownOpen.value = false
-}
-
-// ───────────────────────────────────────────────────────────────────────────────
 // Mission list + filter result state
 // ───────────────────────────────────────────────────────────────────────────────
 

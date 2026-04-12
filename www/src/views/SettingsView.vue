@@ -168,6 +168,7 @@
 import { ref, onMounted } from 'vue'
 import { useSettings } from '../composables/useSettings'
 import { useMennoData } from '../composables/useMennoData'
+import { useDropdownSelector } from '../composables/useDropdownSelector'
 
 const {
   resolutionX,
@@ -188,8 +189,13 @@ const {
 
 const { secondsSinceLastUpdate, lastUpdateString, refresh, checkRefreshNeeded } = useMennoData()
 
-const preferredBrowserSelectRef = ref<HTMLElement | null>(null)
-const prefBrowserDropdownOpen = ref(false)
+const {
+  containerRef: preferredBrowserSelectRef,
+  isOpen: prefBrowserDropdownOpen,
+  open: openPrefBrowserDropdown,
+  close: closePrefBrowserDropdown,
+} = useDropdownSelector((pref) => { setPreferredBrowser(pref) })
+
 const workerCountWarningRead = ref(false)
 const hideWorkerWarning = ref(false)
 
@@ -197,15 +203,6 @@ async function dismissWorkerCountWarning() {
   await globalThis.setWorkerCountWarningRead(true)
   workerCountWarningRead.value = true
   hideWorkerWarning.value = true
-}
-
-function openPrefBrowserDropdown() {
-  prefBrowserDropdownOpen.value = true
-}
-
-function closePrefBrowserDropdown(pref?: string) {
-  if (pref != null && pref !== '') setPreferredBrowser(pref)
-  prefBrowserDropdownOpen.value = false
 }
 
 function getBrowserDisplayName(browser: string | null): string {
