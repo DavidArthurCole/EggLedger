@@ -98,7 +98,7 @@ func TestExportMissionsToCsv_structure(t *testing.T) {
 		t.Errorf("row1 Artifact 2: want %q, got %q", "Lunar Totem (T1)", row1[11])
 	}
 
-	// Mission 2 has only 1 artifact — second artifact column must be empty string.
+	// Mission 2 has only 1 artifact - second artifact column must be empty string.
 	row2 := records[2]
 	if row2[11] != "" {
 		t.Errorf("row2 Artifact 2: want empty string, got %q", row2[11])
