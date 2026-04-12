@@ -152,6 +152,8 @@ export interface ProcessSnapshot {
 }
 
 export interface MennoDownloadProgress {
+  /** "connecting" | "downloading" | "saving" */
+  phase: string
   /** bytes downloaded so far */
   bytesRead: number
   /** total bytes; -1 if Content-Length was not provided */

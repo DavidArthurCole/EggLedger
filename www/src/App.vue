@@ -62,13 +62,12 @@ const updateModalDismissed = ref(false)
 onMounted(async () => {
   await initAppState()
   registerShortcuts()
+  mounted.value = true
 
-  // Auto-refresh Menno data if needed
+  // Auto-refresh Menno data if needed - runs after UI is visible
   if (await checkRefreshNeeded()) {
     await refresh(true)
   }
   await load()
-
-  mounted.value = true
 })
 </script>

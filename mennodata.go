@@ -99,6 +99,9 @@ func checkIfRefreshMennoDataIsNeeded() bool {
 
 func refreshMennoData(onProgress func(MennoDownloadProgress)) (err error) {
 
+	// Signal that we are connecting before the request goes out.
+	onProgress(MennoDownloadProgress{Phase: "connecting"})
+
 	// Fetch the data from the Menno server.
 	resp, err := http.Get("https://eggincdatacollection.azurewebsites.net/api/GetAllData")
 	if err != nil {
@@ -127,6 +130,7 @@ func refreshMennoData(onProgress func(MennoDownloadProgress)) (err error) {
 				etaSeconds = float64(totalBytes-int64(len(buf))) / speedBps
 			}
 			onProgress(MennoDownloadProgress{
+				Phase:      "downloading",
 				BytesRead:  int64(len(buf)),
 				TotalBytes: totalBytes,
 				SpeedBps:   speedBps,
@@ -143,6 +147,9 @@ func refreshMennoData(onProgress func(MennoDownloadProgress)) (err error) {
 		}
 	}
 	body := buf
+
+	// Signal that the download is done and disk IO is starting.
+	onProgress(MennoDownloadProgress{Phase: "saving"})
 
 	// Unmarshal
 	var result interface{}
@@ -194,6 +201,8 @@ func refreshMennoData(onProgress func(MennoDownloadProgress)) (err error) {
 }
 
 type MennoDownloadProgress struct {
+	// "connecting" | "downloading" | "saving"
+	Phase      string  `json:"phase"`
 	BytesRead  int64   `json:"bytesRead"`
 	TotalBytes int64   `json:"totalBytes"`
 	SpeedBps   float64 `json:"speedBps"`
