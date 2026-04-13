@@ -209,6 +209,8 @@ declare global {
   function setShowMissionProgress(flag: boolean): Promise<void>
   function getCollapseOlderSections(): Promise<boolean>
   function setCollapseOlderSections(flag: boolean): Promise<void>
+  function getAdvancedDropFilter(): Promise<boolean>
+  function setAdvancedDropFilter(flag: boolean): Promise<void>
   function getWorkerCount(): Promise<number>
   function setWorkerCount(count: number): Promise<void>
   function filterWarningRead(): Promise<boolean>
@@ -248,6 +250,10 @@ declare global {
 
   // Updates - returns [version, releaseNotes]
   function checkForUpdates(): Promise<[string, string]>
+
+  // API version staleness
+  function isApiVersionStale(): Promise<boolean>
+  function getCompiledApiVersion(): Promise<string>
 
   // Menno data
   function isMennoRefreshNeeded(): Promise<boolean>

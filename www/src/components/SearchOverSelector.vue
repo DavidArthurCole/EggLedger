@@ -42,12 +42,23 @@
           <span class="text-gray-400">No results found.</span>
         </div>
       </div>
+      <div v-if="ledgerType === 'drop'" class="flex items-center gap-1.5 px-1 pt-1 pb-0.5 text-xs text-gray-400 border-t border-gray-600">
+        <input
+          id="advanced-drop-toggle"
+          type="checkbox"
+          class="ext-opt-check"
+          :checked="advancedDropFilter"
+          @change="advancedDropFilter = !advancedDropFilter"
+        />
+        <label for="advanced-drop-toggle" class="cursor-pointer select-none">Advanced (family groupings)</label>
+      </div>
     </dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { nextTick, onMounted, ref } from 'vue'
+import { advancedDropFilter } from '../composables/useSettings'
 
 interface SelectorItem {
   value: string

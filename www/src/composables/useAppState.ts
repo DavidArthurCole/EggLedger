@@ -11,6 +11,8 @@ const existingData = ref<DatabaseAccount[]>([])
 const activeTab = ref<string>('Ledger')
 const appHasUpdate = ref('')
 const appReleaseNotes = ref('')
+const apiVersionIsStale = ref(false)
+const compiledApiVersion = ref('')
 const appState = ref<AppState | ''>('')
 const logMessages = ref<{ message: string; isError: boolean; timestamp: number }[]>([])
 const exportedFiles = ref<string[]>([])
@@ -28,6 +30,9 @@ export function useAppState() {
     const [hasUpdate, releaseNotes] = await globalThis.checkForUpdates()
     appHasUpdate.value = hasUpdate
     appReleaseNotes.value = releaseNotes
+
+    apiVersionIsStale.value = await globalThis.isApiVersionStale()
+    compiledApiVersion.value = await globalThis.getCompiledApiVersion()
 
     // Register Go-to-JS callbacks
     globalThis.updateKnownAccounts = (accounts) => { knownAccounts.value = accounts ?? [] }
@@ -61,6 +66,8 @@ export function useAppState() {
     activeTab,
     appHasUpdate: readonly(appHasUpdate),
     appReleaseNotes: readonly(appReleaseNotes),
+    apiVersionIsStale: readonly(apiVersionIsStale),
+    compiledApiVersion: readonly(compiledApiVersion),
     appState: readonly(appState),
     logMessages: readonly(logMessages),
     exportedFiles: readonly(exportedFiles),

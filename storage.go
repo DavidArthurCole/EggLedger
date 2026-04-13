@@ -36,6 +36,8 @@ type AppStorage struct {
 	ScreenshotSafety        bool      `json:"screenshot_safety"`
 	ShowMissionProgress     bool      `json:"show_mission_progress"`
 	CollapseOlderSections   bool      `json:"collapse_older_sections"`
+	AdvancedDropFilter      bool      `json:"advanced_drop_filter"`
+	lastKnownGoodApiVersion string
 }
 
 type Account struct {
@@ -177,6 +179,12 @@ func (s *AppStorage) loadFromDB() {
 	} else {
 		s.CollapseOlderSections = true
 	}
+	if v, ok := settings["advanced_drop_filter"]; ok {
+		s.AdvancedDropFilter, _ = strconv.ParseBool(v)
+	}
+	if v, ok := settings["last_known_good_api_version"]; ok {
+		s.lastKnownGoodApiVersion = v
+	}
 }
 
 // persistAllToDB writes every field to the settings table in one transaction.
@@ -205,6 +213,7 @@ func (s *AppStorage) persistAllToDB() {
 		"screenshot_safety":          strconv.FormatBool(s.ScreenshotSafety),
 		"show_mission_progress":      strconv.FormatBool(s.ShowMissionProgress),
 		"collapse_older_sections":    strconv.FormatBool(s.CollapseOlderSections),
+		"advanced_drop_filter":        strconv.FormatBool(s.AdvancedDropFilter),
 	}
 	s.Unlock()
 	if err := db.SetSettings(context.Background(), settings); err != nil {
@@ -434,4 +443,30 @@ func (s *AppStorage) GetCollapseOlderSections() bool {
 	s.Lock()
 	defer s.Unlock()
 	return s.CollapseOlderSections
+}
+
+func (s *AppStorage) SetAdvancedDropFilter(flag bool) {
+	s.Lock()
+	s.AdvancedDropFilter = flag
+	s.Unlock()
+	go s.dbSet("advanced_drop_filter", strconv.FormatBool(flag))
+}
+
+func (s *AppStorage) GetAdvancedDropFilter() bool {
+	s.Lock()
+	defer s.Unlock()
+	return s.AdvancedDropFilter
+}
+
+func (s *AppStorage) GetLastKnownGoodApiVersion() string {
+	s.Lock()
+	defer s.Unlock()
+	return s.lastKnownGoodApiVersion
+}
+
+func (s *AppStorage) SetLastKnownGoodApiVersion(v string) {
+	s.Lock()
+	s.lastKnownGoodApiVersion = v
+	s.Unlock()
+	go s.dbSet("last_known_good_api_version", v)
 }

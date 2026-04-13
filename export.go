@@ -58,6 +58,19 @@ func GetNamedTarget(aspecN *ei.ArtifactSpec_Name) string {
 	return ""
 }
 
+// missionTypeName returns the display string for a mission type integer.
+// Handles the -1 sentinel (not yet determined) by returning "Unknown".
+func missionTypeName(t int) string {
+	switch t {
+	case 0:
+		return "Standard"
+	case 1:
+		return "Virtue"
+	default:
+		return "Unknown"
+	}
+}
+
 func newMission(r *ei.CompleteMissionResponse) *mission {
 	info := r.GetInfo()
 	ship := info.GetShip()
@@ -76,7 +89,7 @@ func newMission(r *ei.CompleteMissionResponse) *mission {
 	return &mission{
 		Id:               info.GetIdentifier(),
 		Type:             info.GetType(),
-		TypeName:         info.GetType().Display(),
+		TypeName:         missionTypeName(int(info.GetType())),
 		Ship:             ship,
 		ShipName:         ship.Name(),
 		DurationType:     durationType,
