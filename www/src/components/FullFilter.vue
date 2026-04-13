@@ -47,7 +47,7 @@
           v-if="filterLevelIf(index, null, 'value', 'target')"
           :index="index"
           :model-value="modVals.dValue[index]"
-          :internal-id="getIdHeader() + 'value-' + index"
+          :internal-id="'filter-value-' + index + (isLifetime ? '-lifetime' : '')"
           @open-modal="openTargetFilterMenu"
         ></filter-modal-input>
         <!-- Drop Selectors - opens a custom modal -->
@@ -55,7 +55,7 @@
           v-if="filterLevelIf(index, null, 'value', 'drops')"
           :index="index"
           :model-value="modVals.dValue[index]"
-          :internal-id="getIdHeader() + 'value-' + index"
+          :internal-id="'filter-value-' + index + (isLifetime ? '-lifetime' : '')"
           @open-modal="openDropFilterMenu"
         ></filter-modal-input>
         <!-- Value options - Launch/Return Date Selectors - Min: 20 January 2021 - Max: Today-->
@@ -101,7 +101,7 @@
       </div>
       <div
         class="ml-2rem filter-container focus-within:z-10"
-        v-for="(orFilter, orIndex) in generateOrFiltersConditionsArr(index)"
+        v-for="(_, orIndex) in generateOrFiltersConditionsArr(index)"
         :key="orIndex"
       >
         <!-- Separator -->
@@ -154,7 +154,7 @@
           :index="index"
           :or-index="orIndex"
           :model-value="modVals.orDValue[index][orIndex]"
-          :internal-id="getIdHeader() + 'value-' + index + '-' + orIndex"
+          :internal-id="'filter-value-' + index + '-' + orIndex + (isLifetime ? '-lifetime' : '')"
           @open-modal="openTargetFilterMenu"
         ></filter-modal-input>
 
@@ -164,7 +164,7 @@
           :index="index"
           :or-index="orIndex"
           :model-value="modVals.orDValue[index][orIndex]"
-          :internal-id="getIdHeader() + 'value-' + index + '-' + orIndex"
+          :internal-id="'filter-value-' + index + '-' + orIndex + (isLifetime ? '-lifetime' : '')"
           @open-modal="openDropFilterMenu"
         ></filter-modal-input>
 

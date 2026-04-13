@@ -62,6 +62,42 @@ func makeSimpleResponse() *ei.CompleteMissionResponse {
 	}
 }
 
+func makeVirtueResponse() *ei.CompleteMissionResponse {
+	ship := ei.MissionInfo_CHICKEN_ONE
+	dur := ei.MissionInfo_SHORT
+	level := uint32(0)
+	capacity := uint32(6)
+	durSecs := float64(300)
+	success := true
+	mType := ei.MissionInfo_VIRTUE
+	return &ei.CompleteMissionResponse{
+		Success: &success,
+		Info: &ei.MissionInfo{
+			Ship:            &ship,
+			DurationType:    &dur,
+			Level:           &level,
+			Capacity:        &capacity,
+			DurationSeconds: &durSecs,
+			Type:            &mType,
+		},
+	}
+}
+
+// insertPendingTypeMission inserts a mission row with mission_type at the DB
+// default (-1 sentinel), simulating a mission stored before the Virtue update
+// added the type-resolution pass. The filter columns (ship etc.) also default
+// to -1, which is fine for mission-type-resolution tests.
+func insertPendingTypeMission(t *testing.T, ctx context.Context, playerId, missionId string, startTs float64, payload []byte) {
+	t.Helper()
+	_, err := _db.ExecContext(ctx,
+		`INSERT INTO mission(player_id, mission_id, start_timestamp, complete_payload)
+		 VALUES (?, ?, ?, ?);`,
+		playerId, missionId, startTs, payload)
+	if err != nil {
+		t.Fatalf("insertPendingTypeMission %s: %v", missionId, err)
+	}
+}
+
 // InsertCompleteMission
 
 func TestInsertCompleteMission_StoresAndRetrieves(t *testing.T) {
@@ -440,5 +476,193 @@ func TestResolvePendingFilterCols_ComputeFnSkips(t *testing.T) {
 	}
 	if count != 1 {
 		t.Errorf("mission should remain pending, got count=%d", count)
+	}
+}
+
+// CountPendingMissionTypes
+
+func TestCountPendingMissionTypes_None(t *testing.T) {
+	setupTestDB(t)
+	ctx := context.Background()
+
+	count, err := CountPendingMissionTypes(ctx, "EI1234")
+	if err != nil {
+		t.Fatalf("CountPendingMissionTypes: %v", err)
+	}
+	if count != 0 {
+		t.Errorf("expected 0 pending, got %d", count)
+	}
+}
+
+func TestCountPendingMissionTypes_WithPending(t *testing.T) {
+	setupTestDB(t)
+	ctx := context.Background()
+
+	payload := makeTestPayload(t, makeSimpleResponse())
+	insertPendingTypeMission(t, ctx, "EI1234", "m1", 1000000, payload)
+	insertPendingTypeMission(t, ctx, "EI1234", "m2", 1001000, payload)
+
+	count, err := CountPendingMissionTypes(ctx, "EI1234")
+	if err != nil {
+		t.Fatalf("CountPendingMissionTypes: %v", err)
+	}
+	if count != 2 {
+		t.Errorf("expected 2 pending, got %d", count)
+	}
+}
+
+func TestCountPendingMissionTypes_OnlyCountsPlayer(t *testing.T) {
+	setupTestDB(t)
+	ctx := context.Background()
+
+	payload := makeTestPayload(t, makeSimpleResponse())
+	insertPendingTypeMission(t, ctx, "EI1234", "m1", 1000000, payload)
+	insertPendingTypeMission(t, ctx, "EI9999", "m2", 1001000, payload)
+
+	count, err := CountPendingMissionTypes(ctx, "EI1234")
+	if err != nil {
+		t.Fatalf("CountPendingMissionTypes: %v", err)
+	}
+	if count != 1 {
+		t.Errorf("expected 1 pending for EI1234 (not EI9999's missions), got %d", count)
+	}
+}
+
+// ResolvePendingMissionTypes
+
+func TestResolvePendingMissionTypes_NoPending(t *testing.T) {
+	setupTestDB(t)
+	ctx := context.Background()
+
+	resolved, err := ResolvePendingMissionTypes(ctx, "EI1234", nil)
+	if err != nil {
+		t.Fatalf("ResolvePendingMissionTypes: %v", err)
+	}
+	if resolved != 0 {
+		t.Errorf("expected 0 resolved, got %d", resolved)
+	}
+}
+
+func TestResolvePendingMissionTypes_Standard(t *testing.T) {
+	setupTestDB(t)
+	ctx := context.Background()
+
+	// MissionType field absent in proto: GetType() returns 0 (Standard) by default.
+	payload := makeTestPayload(t, makeSimpleResponse())
+	insertPendingTypeMission(t, ctx, "EI1234", "m1", 1000000, payload)
+
+	resolved, err := ResolvePendingMissionTypes(ctx, "EI1234", nil)
+	if err != nil {
+		t.Fatalf("ResolvePendingMissionTypes: %v", err)
+	}
+	if resolved != 1 {
+		t.Errorf("expected 1 resolved, got %d", resolved)
+	}
+
+	count, err := CountPendingMissionTypes(ctx, "EI1234")
+	if err != nil {
+		t.Fatalf("CountPendingMissionTypes after resolve: %v", err)
+	}
+	if count != 0 {
+		t.Errorf("expected 0 pending after resolve, got %d", count)
+	}
+
+	var missionType int
+	row := _db.QueryRowContext(ctx,
+		`SELECT mission_type FROM mission WHERE player_id = ? AND mission_id = ?`,
+		"EI1234", "m1")
+	if err := row.Scan(&missionType); err != nil {
+		t.Fatalf("scan mission_type: %v", err)
+	}
+	if missionType != 0 {
+		t.Errorf("mission_type: got %d, want 0 (Standard)", missionType)
+	}
+}
+
+func TestResolvePendingMissionTypes_Virtue(t *testing.T) {
+	setupTestDB(t)
+	ctx := context.Background()
+
+	// MissionType field explicitly set to VIRTUE (1).
+	payload := makeTestPayload(t, makeVirtueResponse())
+	insertPendingTypeMission(t, ctx, "EI1234", "m1", 1000000, payload)
+
+	resolved, err := ResolvePendingMissionTypes(ctx, "EI1234", nil)
+	if err != nil {
+		t.Fatalf("ResolvePendingMissionTypes: %v", err)
+	}
+	if resolved != 1 {
+		t.Errorf("expected 1 resolved, got %d", resolved)
+	}
+
+	count, err := CountPendingMissionTypes(ctx, "EI1234")
+	if err != nil {
+		t.Fatalf("CountPendingMissionTypes after resolve: %v", err)
+	}
+	if count != 0 {
+		t.Errorf("expected 0 pending after resolve, got %d", count)
+	}
+
+	var missionType int
+	row := _db.QueryRowContext(ctx,
+		`SELECT mission_type FROM mission WHERE player_id = ? AND mission_id = ?`,
+		"EI1234", "m1")
+	if err := row.Scan(&missionType); err != nil {
+		t.Fatalf("scan mission_type: %v", err)
+	}
+	if missionType != 1 {
+		t.Errorf("mission_type: got %d, want 1 (Virtue)", missionType)
+	}
+}
+
+func TestResolvePendingMissionTypes_OnlyAffectsPlayer(t *testing.T) {
+	setupTestDB(t)
+	ctx := context.Background()
+
+	payload := makeTestPayload(t, makeSimpleResponse())
+	insertPendingTypeMission(t, ctx, "EI1234", "m1", 1000000, payload)
+	insertPendingTypeMission(t, ctx, "EI9999", "m2", 1001000, payload)
+
+	resolved, err := ResolvePendingMissionTypes(ctx, "EI1234", nil)
+	if err != nil {
+		t.Fatalf("ResolvePendingMissionTypes: %v", err)
+	}
+	if resolved != 1 {
+		t.Errorf("expected 1 resolved for EI1234, got %d", resolved)
+	}
+
+	count, err := CountPendingMissionTypes(ctx, "EI9999")
+	if err != nil {
+		t.Fatalf("CountPendingMissionTypes EI9999: %v", err)
+	}
+	if count != 1 {
+		t.Errorf("expected EI9999 mission to remain pending, got %d", count)
+	}
+}
+
+func TestResolvePendingMissionTypes_Progress(t *testing.T) {
+	setupTestDB(t)
+	ctx := context.Background()
+
+	payload := makeTestPayload(t, makeSimpleResponse())
+	for i, ts := range []float64{1000, 2000, 3000} {
+		insertPendingTypeMission(t, ctx, "EI1234", []string{"m0", "m1", "m2"}[i], ts, payload)
+	}
+
+	var calls []int
+	_, err := ResolvePendingMissionTypes(ctx, "EI1234", func(decoded, total int) {
+		if total != 3 {
+			t.Errorf("progress total: got %d, want 3", total)
+		}
+		calls = append(calls, decoded)
+	})
+	if err != nil {
+		t.Fatalf("ResolvePendingMissionTypes: %v", err)
+	}
+	if len(calls) != 3 {
+		t.Errorf("expected 3 progress calls, got %d", len(calls))
+	}
+	if calls[len(calls)-1] != 3 {
+		t.Errorf("last progress decoded value: got %d, want 3", calls[len(calls)-1])
 	}
 }

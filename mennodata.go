@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -100,6 +101,8 @@ func checkIfRefreshMennoDataIsNeeded() bool {
 }
 
 func refreshMennoData(onProgress func(MennoDownloadProgress)) (err error) {
+	action := "refresh Menno data"
+	wrap := func(e error) error { return errors.Wrap(e, action) }
 
 	// Signal that we are connecting before the request goes out.
 	onProgress(MennoDownloadProgress{Phase: "connecting"})
@@ -170,13 +173,21 @@ func refreshMennoData(onProgress func(MennoDownloadProgress)) (err error) {
 	// Signal that disk IO is starting.
 	onProgress(MennoDownloadProgress{Phase: "saving"})
 
-	// Unmarshal
-	var result interface{}
-	err = json.Unmarshal(body, &result)
+	// Decode into typed slice to catch schema drift early.
+	// The Menno endpoint returns a raw JSON array of ConfigurationItem.
+	var items []ConfigurationItem
+	if err := json.Unmarshal(body, &items); err != nil {
+		_storage.SetLastMennoDataRefreshAt(time.Time{})
+		return wrap(errors.Wrap(err, "failed to decode Menno data response"))
+	}
+	if len(items) == 0 {
+		_storage.SetLastMennoDataRefreshAt(time.Time{})
+		return wrap(errors.New("Menno data response was empty or schema has changed"))
+	}
+	encoded, err := json.Marshal(items)
 	if err != nil {
-		_storage.SetLastMennoDataRefreshAt(time.Time{}) // Reset time to allow for a new refresh.
-		fmt.Println(err)
-		return err
+		_storage.SetLastMennoDataRefreshAt(time.Time{})
+		return wrap(errors.Wrap(err, "failed to re-encode Menno data"))
 	}
 
 	_storage.Lock()
@@ -188,7 +199,7 @@ func refreshMennoData(onProgress func(MennoDownloadProgress)) (err error) {
 	filename := "menno-data-new.json"
 	filePath := filepath.Join(_internalDir, filename)
 
-	err = os.WriteFile(filePath, body, 0644)
+	err = os.WriteFile(filePath, encoded, 0644)
 	if err != nil {
 		_storage.SetLastMennoDataRefreshAt(time.Time{}) // Reset time to allow for a new refresh.
 		fmt.Println(err)

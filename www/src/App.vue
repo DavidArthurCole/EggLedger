@@ -8,6 +8,11 @@
     <SettingsView v-show="activeTab === 'Settings'" />
     <AboutView v-show="activeTab === 'About'" />
 
+    <div v-if="apiVersionIsStale && !apiStaleBannerDismissed" class="flex-shrink-0 flex items-center justify-between px-4 py-2 bg-yellow-900 text-yellow-200 text-sm">
+      <span>The API version constants in this build (v{{ compiledApiVersion }}) may be outdated. Fetches may fail. Check for a newer EggLedger release.</span>
+      <button class="ml-4 text-yellow-200 hover:text-yellow-100 font-bold" @click="apiStaleBannerDismissed = true">Dismiss</button>
+    </div>
+
     <footer class="flex-shrink-0 text-center text-sm text-gray-500">
       <a v-external-link href="https://github.com/DavidArthurCole/EggLedger" target="_blank" class="url-link">EggLedger</a>
       v{{ appVersion }} by @<a v-external-link href="https://github.com/fanaticscripter" target="_blank" class="url-link">mk2</a>
@@ -50,6 +55,8 @@ const {
   appHasUpdate,
   appReleaseNotes,
   appVersion,
+  apiVersionIsStale,
+  compiledApiVersion,
   initAppState,
 } = useAppState()
 
@@ -59,6 +66,7 @@ const tabList = ['Ledger', 'Mission Data', 'Lifetime Data', 'Settings', 'About']
 
 const mounted = ref(false)
 const updateModalDismissed = ref(false)
+const apiStaleBannerDismissed = ref(false)
 
 onMounted(async () => {
   await initAppState()

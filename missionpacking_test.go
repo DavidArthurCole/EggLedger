@@ -382,6 +382,39 @@ func TestMissionMetaToDBMission_WithTarget(t *testing.T) {
 	}
 }
 
+// compileMissionInformation: when no MissionType field is set on the proto,
+// GetType() returns 0 (Standard). resolveMissionType must return 0, not -1.
+func TestCompileMissionInformation_NoMissionTypeField(t *testing.T) {
+	_nominalShipCapacitiesOnce.Do(initNominalShipCapacities)
+
+	ship := ei.MissionInfo_CHICKEN_ONE
+	dur := ei.MissionInfo_SHORT
+	level := uint32(0)
+	capacity := uint32(6)
+	startTime := float64(1000000)
+	durSecs := float64(300)
+	identifier := "test-no-type"
+
+	resp := &ei.CompleteMissionResponse{
+		Info: &ei.MissionInfo{
+			Ship:            &ship,
+			DurationType:    &dur,
+			Level:           &level,
+			Capacity:        &capacity,
+			StartTimeDerived: &startTime,
+			DurationSeconds: &durSecs,
+			Identifier:      &identifier,
+			// MissionType field intentionally omitted - proto default is 0 (Standard)
+		},
+	}
+
+	dm := compileMissionInformation(resp)
+
+	if dm.MissionType != 0 {
+		t.Errorf("MissionType: got %d, want 0 (Standard) when no MissionType field is set", dm.MissionType)
+	}
+}
+
 func TestMissionMetaToDBMission_VirtueMissionType(t *testing.T) {
 	_nominalShipCapacitiesOnce.Do(initNominalShipCapacities)
 	setupLedgerDataForUtils(t)

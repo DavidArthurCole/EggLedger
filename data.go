@@ -39,6 +39,7 @@ func fetchFirstContactWithContext(ctx context.Context, playerId string) (*ei.Egg
 	if err := fc.Validate(); err != nil {
 		return nil, errors.Wrap(wrap(err), "please double check your ID")
 	}
+	_storage.SetLastKnownGoodApiVersion(api.AppVersion)
 	timestamp := fc.GetBackup().GetSettings().GetLastBackupTime()
 	if timestamp != 0 {
 		if err := db.InsertBackup(ctx, playerId, timestamp, payload, 12*time.Hour); err != nil {

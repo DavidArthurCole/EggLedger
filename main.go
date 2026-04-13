@@ -261,8 +261,8 @@ func init() {
 		})
 	}
 
-	if err := eiafx.LoadConfig(); err != nil {
-		log.Fatal("eiafx.LoadConfig: ", err)
+	if err := eiafx.LoadConfig(_internalDir); err != nil {
+		log.Warnf("eiafx config load failed, using embedded fallback: %v", err)
 	}
 	_eiAfxConfigMissions = eiafx.Config.MissionParameters
 	_eiAfxConfigArtis = eiafx.Config.ArtifactParameters
@@ -392,6 +392,14 @@ func initPossibleArtifacts() {
 	}
 
 	_possibleArtifacts = possibleArtifacts
+}
+
+func checkApiVersionStaleness() bool {
+	last := _storage.GetLastKnownGoodApiVersion()
+	if last == "" {
+		return false
+	}
+	return last != api.AppVersion
 }
 
 func main() {
@@ -632,6 +640,14 @@ func main() {
 		_storage.SetCollapseOlderSections(flag)
 	})
 
+	ui.MustBind("getAdvancedDropFilter", func() bool {
+		return _storage.GetAdvancedDropFilter()
+	})
+
+	ui.MustBind("setAdvancedDropFilter", func(flag bool) {
+		_storage.SetAdvancedDropFilter(flag)
+	})
+
 	ui.MustBind("getWorkerCount", func() int {
 		return _storage.GetWorkerCount()
 	})
@@ -695,6 +711,14 @@ func main() {
 		if err := open.Start(url); err != nil {
 			log.Errorf("opening %s: %s", url, err)
 		}
+	})
+
+	ui.MustBind("isApiVersionStale", func() bool {
+		return checkApiVersionStaleness()
+	})
+
+	ui.MustBind("getCompiledApiVersion", func() string {
+		return api.AppVersion
 	})
 
 	ui.MustBind("checkForUpdates", func() []string {

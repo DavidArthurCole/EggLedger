@@ -25,8 +25,9 @@ type DatabaseMission struct {
 	IsBuggedCap      bool                         `json:"isBuggedCap"`
 	Target           string                       `json:"target"`
 	TargetInt        int32                        `json:"targetInt"`
-	MissionType      int32                        `json:"missionType"`
-	MissionTypeString string                      `json:"missionTypeString"`
+	MissionType       int32                        `json:"missionType"`
+	MissionTypeString string                       `json:"missionTypeString"`
+	ShipEnumString    string                       `json:"shipEnumString"`
 }
 
 // durationStringFromSecs converts a float64 duration in seconds to a compact
@@ -125,6 +126,7 @@ func missionMetaToDBMission(meta db.MissionMeta) DatabaseMission {
 		TargetInt:         targetInt,
 		MissionType:       meta.MissionType,
 		MissionTypeString: missionType.Display(),
+		ShipEnumString:    ship.String(),
 	}
 }
 
@@ -137,6 +139,20 @@ func getMissionInformation(ctx context.Context, playerId string, missionId strin
 	}
 
 	return compileMissionInformation(completeMission)
+}
+
+// resolveMissionType resolves a mission type integer, falling back to the
+// protobuf payload when the stored value is -1 (the "not yet determined"
+// sentinel). For real missions the proto default (0 = Standard) is correct
+// for pre-Virtue missions that pre-date the mission_type DB column.
+func resolveMissionType(dbMissionType int, mission *ei.CompleteMissionResponse) int32 {
+	missionType := dbMissionType
+	if missionType == -1 {
+		if info := mission.GetInfo(); info != nil {
+			missionType = int(info.GetType())
+		}
+	}
+	return int32(missionType)
 }
 
 func compileMissionInformation(completeMissionResponse *ei.CompleteMissionResponse) DatabaseMission {
@@ -158,8 +174,9 @@ func compileMissionInformation(completeMissionResponse *ei.CompleteMissionRespon
 		IsDubCap:          isDubCap(completeMissionResponse),
 		IsBuggedCap:       isBuggedCap(completeMissionResponse),
 		Target:            properTargetName(info.TargetArtifact),
-		MissionType:       int32(info.GetType()),
-		MissionTypeString: info.GetType().Display(),
+		MissionType:       resolveMissionType(-1, completeMissionResponse),
+		MissionTypeString: ei.MissionInfo_MissionType(resolveMissionType(-1, completeMissionResponse)).Display(),
+		ShipEnumString:    info.Ship.String(),
 	}
 	if missionInst.Target == "" {
 		missionInst.TargetInt = -1

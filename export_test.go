@@ -105,6 +105,70 @@ func TestExportMissionsToCsv_structure(t *testing.T) {
 	}
 }
 
+func TestMissionTypeName_Unknown(t *testing.T) {
+	cases := []struct {
+		input int
+		want  string
+	}{
+		{0, "Standard"},
+		{1, "Virtue"},
+		{-1, "Unknown"},
+		{99, "Unknown"},
+	}
+	for _, tc := range cases {
+		got := missionTypeName(tc.input)
+		if got != tc.want {
+			t.Errorf("missionTypeName(%d) = %q, want %q", tc.input, got, tc.want)
+		}
+	}
+}
+
+func TestExportMissionsToCsv_UnknownMissionType(t *testing.T) {
+	missions := []*mission{
+		{
+			Id:               "test-unknown-type",
+			TypeName:         missionTypeName(-1),
+			ShipName:         "Chicken One",
+			DurationTypeName: "Short",
+			Level:            0,
+			LaunchedAt:       time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+			LaunchedAtStr:    "2024-01-01T00:00:00Z",
+			ReturnedAt:       time.Date(2024, 1, 1, 1, 0, 0, 0, time.UTC),
+			ReturnedAtStr:    "2024-01-01T01:00:00Z",
+			DurationDays:     1.0 / 24.0,
+			Capacity:         6,
+			TargetArtifact:   ei.ArtifactSpec_UNKNOWN,
+			ArtifactNames:    []string{},
+		},
+	}
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "unknown-type.csv")
+
+	if err := exportMissionsToCsv(missions, path); err != nil {
+		t.Fatal(err)
+	}
+
+	f, err := os.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+
+	records, err := csv.NewReader(f).ReadAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(records) != 2 {
+		t.Fatalf("expected 2 rows (header + 1 mission), got %d", len(records))
+	}
+
+	typeCol := records[1][1]
+	if typeCol != "Unknown" {
+		t.Errorf("Type column: want %q, got %q", "Unknown", typeCol)
+	}
+}
+
 func TestExportMissionsToXlsx_structure(t *testing.T) {
 	missions := testMissions()
 	dir := t.TempDir()

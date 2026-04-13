@@ -9,6 +9,7 @@
 import { ref, watch } from 'vue'
 import type { Ref } from 'vue'
 import type { DatabaseMission, PossibleArtifact, PossibleMission, PossibleTarget } from '../types/bridge'
+import { advancedDropFilter } from './useSettings'
 
 export interface FilterCondition {
   topLevel: string
@@ -120,22 +121,64 @@ export function useFilters(options: UseFiltersOptions) {
           imagePath: target.imageString,
         }))
       case 'drops': {
-        const filtered: FilterOption[] = options.artifactConfigs.value
+        const artifactList = options.artifactConfigs.value
           .filter((a) => a.baseQuality <= options.maxQuality.value)
-          .map((artifact) => ({
-            text: artifactDisplayText(artifact),
-            value: artifact.name + '_' + artifact.level + '_' + artifact.rarity + '_' + artifact.baseQuality,
-            rarity: artifact.rarity,
-            imagePath: dropPath(artifact),
-            rarityGif: dropRarityPath(artifact),
-          }))
-        filtered.unshift({ text: 'Any Legendary', value: '%_%_3_%', rarity: 3, styleClass: 'text-legendary', imagePath: 'icon_help.webp' })
-        filtered.unshift({ text: 'Any Epic', value: '%_%_2_%', rarity: 2, styleClass: 'text-epic', imagePath: 'icon_help.webp' })
-        filtered.unshift({ text: 'Any Rare', value: '%_%_1_%', rarity: 1, styleClass: 'text-rare', imagePath: 'icon_help.webp' })
-        return filtered
+
+        const result: FilterOption[] = [
+          { text: 'Any Rare', value: '%_%_1_%', rarity: 1, styleClass: 'text-rare', imagePath: 'icon_help.webp' },
+          { text: 'Any Epic', value: '%_%_2_%', rarity: 2, styleClass: 'text-epic', imagePath: 'icon_help.webp' },
+          { text: 'Any Legendary', value: '%_%_3_%', rarity: 3, styleClass: 'text-legendary', imagePath: 'icon_help.webp' },
+        ]
+
+        // Group by family (name) then by tier (level), preserving insertion order
+        const byFamily = new Map<number, Map<number, PossibleArtifact[]>>()
+        for (const a of artifactList) {
+          if (!byFamily.has(a.name)) byFamily.set(a.name, new Map())
+          const byTier = byFamily.get(a.name)!
+          if (!byTier.has(a.level)) byTier.set(a.level, [])
+          byTier.get(a.level)!.push(a)
+        }
+
+        for (const [familyId, tierMap] of byFamily) {
+          if (advancedDropFilter.value) {
+            const firstArtifact = [...tierMap.values()][0][0]
+            result.push({
+              text: firstArtifact.displayName + ' (Any)',
+              value: familyId + '_%_%_%',
+              rarity: 0,
+              imagePath: dropPath(firstArtifact),
+            })
+          }
+          for (const [tierLevel, rarities] of tierMap) {
+            if (advancedDropFilter.value && rarities.some((a) => a.rarity > 0)) {
+              const tierRep = rarities.find((a) => a.rarity === 0) ?? rarities[0]
+              result.push({
+                text: artifactDisplayText(rarities[0]) + ' (Any Rarity)',
+                value: familyId + '_' + tierLevel + '_%_%',
+                rarity: 0,
+                imagePath: dropPath(tierRep),
+              })
+            }
+            for (const a of rarities) {
+              result.push({
+                text: artifactDisplayText(a),
+                value: a.name + '_' + a.level + '_' + a.rarity + '_' + a.baseQuality,
+                rarity: a.rarity,
+                imagePath: dropPath(a),
+                rarityGif: dropRarityPath(a),
+              })
+            }
+          }
+        }
+
+        return result
       }
       case 'type':
-        return [{ text: 'Home', value: '0' }, { text: 'Virtue', value: '1' }]
+        return [
+          { text: 'Home', value: '0' },
+          { text: 'Virtue', value: '1' },
+          { text: 'Unknown', value: '-1' },
+        ]
       case 'buggedcap':
       case 'dubcap':
         return [{ text: 'True', value: 'true' }, { text: 'False', value: 'false' }]
@@ -665,6 +708,13 @@ export function useFilters(options: UseFiltersOptions) {
     dropSelectList.value = getFilterValueOptions('drops').filter((d) =>
       d.text.toLowerCase().includes(dropSearchTerm.value.toLowerCase()),
     )
+  })
+  watch(advancedDropFilter, () => {
+    if (!dropFilterMenuOpen.value) return
+    const all = getFilterValueOptions('drops')
+    dropSelectList.value = dropSearchTerm.value
+      ? all.filter((d) => d.text.toLowerCase().includes(dropSearchTerm.value.toLowerCase()))
+      : all
   })
   watch(targetSearchTerm, () => {
     targetSelectList.value = getFilterValueOptions('target').filter((t) =>
