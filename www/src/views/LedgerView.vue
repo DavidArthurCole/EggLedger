@@ -18,7 +18,7 @@
       >
         <div ref="playerIdSelectRef" class="tooltip-custom relative flex-grow focus-within:z-10">
           <div v-if="selectedAccount?.nickname || (screenshotSafety && playerId)" class="ledger-input-overlay">
-            <span class="whitespace-pre">{{ maskEid(playerId) }}</span>
+            <span class="whitespace-pre"><template v-if="screenshotSafety && playerId.startsWith('EI')">EI<span class="blur-sm select-none">{{ playerId.slice(2) }}</span></template><template v-else>{{ playerId }}</template></span>
             <template v-if="selectedAccount?.nickname">
               (<span :style="'color: #' + (selectedAccount?.accountColor ?? '')">
                 {{ selectedAccount?.nickname }} {{ selectedAccount?.ebString ?? '???' }}
@@ -201,7 +201,7 @@
       class="flex-1 min-h-0 px-2 py-1 overflow-auto shadow-sm block text-xs font-mono text-gray-400 bg-darkest rounded-md"
     >
       <div v-for="(message, i) in logMessages" :key="i" class="whitespace-pre">
-        <span :class="message.isError ? 'text-red-700' : 'text-green-700'">{{ hhmmss(new Date()) }}|</span>
+        <span :class="message.isError ? 'text-red-700' : 'text-green-700'">{{ hhmmss(new Date(message.timestamp)) }}|</span>
         <template v-for="(segment, j) in parseLogSegments(maskEid(message.message))" :key="j">
           <img
             v-if="segment.type === 'image'"

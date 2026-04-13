@@ -98,7 +98,7 @@
           v-if="selectedMissionAccount != null && accountById(selectedMissionAccount) != null"
           class="ledger-input-overlay"
         >
-          <span class="whitespace-pre">{{ maskEid(accountById(selectedMissionAccount)?.id ?? '') }}</span>
+          <span class="whitespace-pre"><template v-if="screenshotSafety">EI<span class="blur-sm select-none">{{ (accountById(selectedMissionAccount)?.id ?? '').slice(2) }}</span></template><template v-else>{{ accountById(selectedMissionAccount)?.id }}</template></span>
           (<span :style="'color: #' + (accountById(selectedMissionAccount)?.accountColor || '')">
             {{ accountById(selectedMissionAccount)?.nickname }}
             {{ accountById(selectedMissionAccount)?.ebString }}
@@ -502,7 +502,7 @@ import { useMennoData } from '../composables/useMennoData'
 import { useFetch } from '../composables/useFetch'
 import { useFilters } from '../composables/useFilters'
 import { useDropdownSelector } from '../composables/useDropdownSelector'
-import { maskEid } from '../composables/useSettings'
+import { maskEid, screenshotSafety } from '../composables/useSettings'
 import type {
   DatabaseMission,
   MissionDrop,

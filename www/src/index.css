@@ -225,7 +225,7 @@ input[type=number] {
 }
 
 .ledger-input-overlay {
-  @apply absolute top-0 left-0 w-full px-3 py-2 truncate border border-transparent text-sm text-gray-300 tabular-nums z-_20;
+  @apply absolute top-0 left-0 w-full px-3 py-2 truncate border border-transparent text-sm text-gray-300 tabular-nums z-3 pointer-events-none;
 }
 
 .ledger-af-link {

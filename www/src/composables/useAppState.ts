@@ -12,7 +12,7 @@ const activeTab = ref<string>('Ledger')
 const appHasUpdate = ref('')
 const appReleaseNotes = ref('')
 const appState = ref<AppState | ''>('')
-const logMessages = ref<{ message: string; isError: boolean }[]>([])
+const logMessages = ref<{ message: string; isError: boolean; timestamp: number }[]>([])
 const exportedFiles = ref<string[]>([])
 const processLogs = ref<ProcessSnapshot[]>([])
 
@@ -35,7 +35,7 @@ export function useAppState() {
     globalThis.updateMissionProgress = () => {}   // overridden in useFetch
     globalThis.updateExportedFiles = (files) => { exportedFiles.value = files }
     globalThis.emitMessage = (message, isError) => {
-      logMessages.value.push({ message, isError })
+      logMessages.value.push({ message, isError, timestamp: Date.now() })
     }
     globalThis.updateProcesses = (processes) => { processLogs.value = processes }
   }

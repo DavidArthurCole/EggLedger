@@ -36,7 +36,7 @@
           v-if="selectedLifetimeAccountData != null"
           class="ledger-input-overlay"
         >
-          <span class="whitespace-pre">{{ maskEid(selectedLifetimeAccountData.id) }}</span>
+          <span class="whitespace-pre"><template v-if="screenshotSafety">EI<span class="blur-sm select-none">{{ selectedLifetimeAccountData.id.slice(2) }}</span></template><template v-else>{{ selectedLifetimeAccountData.id }}</template></span>
           (<span :style="'color: #' + selectedLifetimeAccountData.accountColor">
             {{ selectedLifetimeAccountData.nickname }}
             {{ selectedLifetimeAccountData.ebString }}
@@ -257,7 +257,7 @@ import { useAppState } from '../composables/useAppState'
 import { useMennoData } from '../composables/useMennoData'
 import { useFilters } from '../composables/useFilters'
 import { useDropdownSelector } from '../composables/useDropdownSelector'
-import { maskEid } from '../composables/useSettings'
+import { maskEid, screenshotSafety } from '../composables/useSettings'
 import type {
   DatabaseMission,
   MissionDrop,
