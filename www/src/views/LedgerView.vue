@@ -18,7 +18,7 @@
       >
         <div ref="playerIdSelectRef" class="tooltip-custom relative flex-grow focus-within:z-10">
           <div v-if="selectedAccount?.nickname || (screenshotSafety && playerId)" class="ledger-input-overlay">
-            <span class="whitespace-pre"><template v-if="screenshotSafety && playerId.startsWith('EI')">EI<span class="blur-sm select-none">{{ playerId.slice(2) }}</span></template><template v-else>{{ playerId }}</template></span>
+            <span class="whitespace-pre"><template v-if="screenshotSafety && playerId.startsWith('EI')">EI<span class="inline-block rounded-sm bg-current select-none" style="width: 16ch; height: 0.8em; vertical-align: -0.05em;"></span></template><template v-else>{{ playerId }}</template></span>
             <template v-if="selectedAccount?.nickname">
               (<span :style="'color: #' + (selectedAccount?.accountColor ?? '')">
                 {{ selectedAccount?.nickname }} {{ selectedAccount?.ebString ?? '???' }}
@@ -64,7 +64,7 @@
               class="drop-opt"
               @click="closePlayerIdDropdown(account.id)"
             >
-              {{ maskEid(account.id) }}
+              <template v-if="screenshotSafety">EI<span class="inline-block rounded-sm bg-current select-none" style="width: 16ch; height: 0.8em; vertical-align: -0.05em;"></span></template><template v-else>{{ account.id }}</template>
               (<span :style="'color: #' + (account.accountColor ?? '')">
                 {{ account.nickname }}
                 {{ account.ebString ?? '???' }}

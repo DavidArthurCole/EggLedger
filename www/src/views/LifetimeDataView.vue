@@ -36,25 +36,12 @@
           v-if="selectedLifetimeAccountData != null"
           class="ledger-input-overlay"
         >
-          <span class="whitespace-pre"><template v-if="screenshotSafety">EI<span class="blur-sm select-none">{{ selectedLifetimeAccountData.id.slice(2) }}</span></template><template v-else>{{ selectedLifetimeAccountData.id }}</template></span>
+          <span class="whitespace-pre"><template v-if="screenshotSafety">EI<span class="inline-block rounded-sm bg-current select-none" style="width: 16ch; height: 0.8em; vertical-align: -0.05em;"></span></template><template v-else>{{ selectedLifetimeAccountData.id }}</template></span>
           (<span :style="'color: #' + selectedLifetimeAccountData.accountColor">
             {{ selectedLifetimeAccountData.nickname }}
             {{ selectedLifetimeAccountData.ebString }}
           </span>
-          - {{ selectedLifetimeAccountData.missionCount }} missions
-          <template v-if="selectedLifetimeKnownAccount?.seString">
-            <span class="text-gray-400">&nbsp;·</span>
-            <img :src="'images/soul_egg.png'" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="">
-            <span style="color:#a855f7">{{ selectedLifetimeKnownAccount.seString }} SE</span>
-            <span class="text-gray-400"> ·</span>
-            <img :src="'images/prophecy_egg.png'" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="">
-            <span style="color:#eab308">{{ selectedLifetimeKnownAccount.peCount }} PE</span>
-            <template v-if="selectedLifetimeKnownAccount.teCount">
-              <span class="text-gray-400"> ·</span>
-              <img :src="'images/truth_egg.png'" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="">
-              <span style="color:#c831ff">{{ selectedLifetimeKnownAccount.teCount }} TE</span>
-            </template>
-          </template>)
+          - {{ selectedLifetimeAccountData.missionCount }} missions)
         </div>
         <input
           id="lifetimeAccountInput"
@@ -76,7 +63,7 @@
             class="drop-opt"
             @click="closeAccountDropdown(account.id)"
           >
-            {{ maskEid(account.id) }}
+            <template v-if="screenshotSafety">EI<span class="inline-block rounded-sm bg-current select-none" style="width: 16ch; height: 0.8em; vertical-align: -0.05em;"></span></template><template v-else>{{ account.id }}</template>
             (<span :style="'color: #' + account.accountColor">{{ account.nickname }} {{ account.ebString }}</span>
             - {{ account.missionCount }} missions)
           </li>
@@ -257,7 +244,7 @@ import { useAppState } from '../composables/useAppState'
 import { useMennoData } from '../composables/useMennoData'
 import { useFilters } from '../composables/useFilters'
 import { useDropdownSelector } from '../composables/useDropdownSelector'
-import { maskEid, screenshotSafety } from '../composables/useSettings'
+import { screenshotSafety } from '../composables/useSettings'
 import type {
   DatabaseMission,
   MissionDrop,

@@ -6,13 +6,14 @@
           Preferred browser for Ledger (<span class="text-gray-300 text-sm">effective on restart</span>)
         </span> <br />
         <div ref="preferredBrowserSelectRef" class="text-sm relative w-full flex-grow focus-within:z-10 pl-0_5rem">
-          <div v-if="preferredBrowser" class="ledger-input-overlay">
+          <div v-if="preferredBrowser" class="ledger-input-overlay" style="padding-left: 1.25rem;">
             <span>{{ preferredBrowser }}</span> (<img v-if="getBrowserIcon(preferredBrowser)" :src="getBrowserIcon(preferredBrowser)" :alt="getBrowserDisplayName(preferredBrowser)" class="inline-block w-4 h-4 align-text-bottom mr-1" /><span class="text-gray-300">{{ getBrowserDisplayName(preferredBrowser) }}</span>)
           </div>
           <input
             id="preferredBrowserInput"
             type="text"
             class="drop-select-full text-sm bg-darker"
+            :style="preferredBrowser ? { color: 'transparent' } : undefined"
             placeholder="-- Not Set (Default) --"
             :value="preferredBrowser"
             @focus="openPrefBrowserDropdown"

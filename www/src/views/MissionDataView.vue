@@ -98,7 +98,7 @@
           v-if="selectedMissionAccount != null && accountById(selectedMissionAccount) != null"
           class="ledger-input-overlay"
         >
-          <span class="whitespace-pre"><template v-if="screenshotSafety">EI<span class="blur-sm select-none">{{ (accountById(selectedMissionAccount)?.id ?? '').slice(2) }}</span></template><template v-else>{{ accountById(selectedMissionAccount)?.id }}</template></span>
+          <span class="whitespace-pre"><template v-if="screenshotSafety">EI<span class="inline-block rounded-sm bg-current select-none" style="width: 16ch; height: 0.8em; vertical-align: -0.05em;"></span></template><template v-else>{{ accountById(selectedMissionAccount)?.id }}</template></span>
           (<span :style="'color: #' + (accountById(selectedMissionAccount)?.accountColor || '')">
             {{ accountById(selectedMissionAccount)?.nickname }}
             {{ accountById(selectedMissionAccount)?.ebString }}
@@ -125,7 +125,7 @@
             class="drop-opt"
             @click="closeAccountDropdown(account.id)"
           >
-            {{ maskEid(account.id) }}
+            <template v-if="screenshotSafety">EI<span class="inline-block rounded-sm bg-current select-none" style="width: 16ch; height: 0.8em; vertical-align: -0.05em;"></span></template><template v-else>{{ account.id }}</template>
             (<span :style="'color: #' + account.accountColor">{{ account.nickname }} {{ account.ebString }}</span>
             - {{ account.missionCount }} missions)
           </li>
@@ -502,7 +502,7 @@ import { useMennoData } from '../composables/useMennoData'
 import { useFetch } from '../composables/useFetch'
 import { useFilters } from '../composables/useFilters'
 import { useDropdownSelector } from '../composables/useDropdownSelector'
-import { maskEid, screenshotSafety } from '../composables/useSettings'
+import { screenshotSafety } from '../composables/useSettings'
 import type {
   DatabaseMission,
   MissionDrop,
