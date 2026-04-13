@@ -34,6 +34,8 @@ type AppStorage struct {
 	HideTimeoutErrors       bool      `json:"hide_timeout_errors"`
 	WorkerCount             int       `json:"worker_count"`
 	ScreenshotSafety        bool      `json:"screenshot_safety"`
+	ShowMissionProgress     bool      `json:"show_mission_progress"`
+	CollapseOlderSections   bool      `json:"collapse_older_sections"`
 }
 
 type Account struct {
@@ -165,6 +167,16 @@ func (s *AppStorage) loadFromDB() {
 	if v, ok := settings["screenshot_safety"]; ok {
 		s.ScreenshotSafety, _ = strconv.ParseBool(v)
 	}
+	if v, ok := settings["show_mission_progress"]; ok {
+		s.ShowMissionProgress, _ = strconv.ParseBool(v)
+	} else {
+		s.ShowMissionProgress = true
+	}
+	if v, ok := settings["collapse_older_sections"]; ok {
+		s.CollapseOlderSections, _ = strconv.ParseBool(v)
+	} else {
+		s.CollapseOlderSections = true
+	}
 }
 
 // persistAllToDB writes every field to the settings table in one transaction.
@@ -191,6 +203,8 @@ func (s *AppStorage) persistAllToDB() {
 		"hide_timeout_errors":        strconv.FormatBool(s.HideTimeoutErrors),
 		"worker_count":               strconv.Itoa(s.WorkerCount),
 		"screenshot_safety":          strconv.FormatBool(s.ScreenshotSafety),
+		"show_mission_progress":      strconv.FormatBool(s.ShowMissionProgress),
+		"collapse_older_sections":    strconv.FormatBool(s.CollapseOlderSections),
 	}
 	s.Unlock()
 	if err := db.SetSettings(context.Background(), settings); err != nil {
@@ -394,4 +408,30 @@ func (s *AppStorage) GetScreenshotSafety() bool {
 	s.Lock()
 	defer s.Unlock()
 	return s.ScreenshotSafety
+}
+
+func (s *AppStorage) SetShowMissionProgress(flag bool) {
+	s.Lock()
+	s.ShowMissionProgress = flag
+	s.Unlock()
+	go s.dbSet("show_mission_progress", strconv.FormatBool(flag))
+}
+
+func (s *AppStorage) GetShowMissionProgress() bool {
+	s.Lock()
+	defer s.Unlock()
+	return s.ShowMissionProgress
+}
+
+func (s *AppStorage) SetCollapseOlderSections(flag bool) {
+	s.Lock()
+	s.CollapseOlderSections = flag
+	s.Unlock()
+	go s.dbSet("collapse_older_sections", strconv.FormatBool(flag))
+}
+
+func (s *AppStorage) GetCollapseOlderSections() bool {
+	s.Lock()
+	defer s.Unlock()
+	return s.CollapseOlderSections
 }

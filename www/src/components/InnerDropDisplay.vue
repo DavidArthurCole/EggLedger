@@ -1,6 +1,6 @@
 <template>
     <div :class="getRepeatClass()">
-        <div :class="getInnerRepeatClass()" v-for="item in itemArray" :key="item.id">
+        <div :class="getInnerRepeatClass()" v-for="item in itemArray" :key="item.id + '_' + item.level + '_' + item.rarity">
             <a v-external-link :class="getAClass(item)"
                 target="_blank" :href="afExplorerName(item, getSpecPathOffset(item))">
                 <img class="h-full w-full" :alt="item.gameName" :src="specPath(item, getSpecPathOffset(item))"/>

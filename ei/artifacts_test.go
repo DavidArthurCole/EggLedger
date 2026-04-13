@@ -25,8 +25,8 @@ func TestDropEffectString_KnownArtifact(t *testing.T) {
 		Rarity: &rarity,
 	}
 	got := spec.DropEffectString()
-	if got != "20%" {
-		t.Errorf("DropEffectString() = %q, want %q", got, "20%")
+	if got != "[20%]" {
+		t.Errorf("DropEffectString() = %q, want %q", got, "[20%]")
 	}
 }
 

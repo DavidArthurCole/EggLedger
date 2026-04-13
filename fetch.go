@@ -222,6 +222,40 @@ func runFetchPipeline(w *worker, playerId string) {
 		}
 	}
 
+	// One-time backfill pass: populate migration-6 filter columns (ship,
+	// duration_type, level, etc.) for any cached missions that predate this
+	// feature. Decodes locally stored payloads - no API calls.
+	_nominalShipCapacitiesOnce.Do(initNominalShipCapacities)
+	pendingFilterCols, pfcErr := db.CountPendingFilterCols(context.Background(), playerId)
+	if pfcErr != nil {
+		log.Error(pfcErr)
+		pendingFilterCols = 0
+	}
+	if pendingFilterCols > 0 {
+		pinfo(fmt.Sprintf("indexing filter columns for &148c32<%d> cached missions", pendingFilterCols))
+		if checkInterrupt() {
+			return
+		}
+		resolved, resErr := db.ResolvePendingFilterCols(
+			context.Background(),
+			playerId,
+			computeMissionFilterCols,
+			func(done, total int) {
+				_updateMissionProgress(MissionProgress{
+					Total:              total,
+					Finished:           done,
+					FinishedPercentage: fmt.Sprintf("%.1f%%", float64(done)/float64(total)*100),
+				})
+			},
+		)
+		if resErr != nil {
+			perror(resErr)
+			// Non-fatal: continue even if backfill fails.
+		} else if resolved > 0 {
+			pinfo(fmt.Sprintf("indexed filter columns for &148c32<%d> missions", resolved))
+		}
+	}
+
 	// Build label lookup for progress display: identifier -> "Ship · Duration"
 	missionLabelByID := make(map[string]string)
 	for _, mission := range missions {
@@ -246,7 +280,8 @@ func runFetchPipeline(w *worker, playerId string) {
 			currentMissionMu.Lock()
 			label := currentMission
 			currentMissionMu.Unlock()
-			remainingBatches := (total - finished + workerCount - 1) / workerCount
+			wc := _storage.GetWorkerCount()
+			remainingBatches := (total - finished + wc - 1) / wc
 			_updateMissionProgress(MissionProgress{
 				Total:                   total,
 				Finished:                finished,
@@ -277,7 +312,8 @@ func runFetchPipeline(w *worker, playerId string) {
 		tryFailedAgain := _storage.GetRetryFailedMissions()
 
 	MissionsLoop:
-		for i := 0; i < total; i += workerCount {
+		for i := 0; i < total; {
+			workerCount = _storage.GetWorkerCount()
 			if i != 0 {
 				select {
 				case <-ctx.Done():
@@ -287,14 +323,14 @@ func runFetchPipeline(w *worker, playerId string) {
 			}
 			batchEnd := min(i+workerCount, total)
 			currentMissionMu.Lock()
-			currentMission = missionLabelByID[newMissionIds[i]]
+			currentMission = fmt.Sprintf("%s · %s", missionLabelByID[newMissionIds[i]], unixToTime(newMissionStartTimestamps[i]).Format("2006-01-02"))
 			currentMissionMu.Unlock()
 			for j := i; j < batchEnd; j++ {
 				id := newMissionIds[j]
 				ts := newMissionStartTimestamps[j]
 				wg.Add(1)
 				go fetchOneMission(w.ctx, playerId, id, ts,
-					id, missionLabelByID[id],
+					id, fmt.Sprintf("%s · %s", missionLabelByID[id], unixToTime(ts).Format("2006-01-02")),
 					_storage.GetHideTimeoutErrors(), perror,
 					func() {
 						failureMu.Lock()
@@ -306,6 +342,7 @@ func runFetchPipeline(w *worker, playerId string) {
 						failureMu.Unlock()
 					}, &wg, finishedCh)
 			}
+			i += workerCount
 		}
 		wg.Wait()
 
@@ -329,7 +366,7 @@ func runFetchPipeline(w *worker, playerId string) {
 					ts := fm.startTimestamp
 					wg.Add(1)
 					go fetchOneMission(w.ctx, playerId, id, ts,
-						id+"-retry", missionLabelByID[id]+" (retry)",
+						id+"-retry", fmt.Sprintf("%s · %s (retry)", missionLabelByID[id], unixToTime(ts).Format("2006-01-02")),
 						_storage.GetHideTimeoutErrors(), perror,
 						func() {
 							failureMu.Lock()
@@ -444,8 +481,7 @@ func runFetchPipeline(w *worker, playerId string) {
 	}()
 
 	if exportsUnchanged {
-		log.Info("exports unchanged, using last exported files and deleting new ones")
-		_emitMessage("exports identical with existing data files, reusing", false)
+		pinfo("exports identical with existing data files, reusing")
 		err = os.Remove(xlsxFile)
 		if err != nil {
 			log.Errorf("error removing %s: %s", xlsxFile, err)
@@ -488,6 +524,7 @@ func fetchOneMission(
 	tracker := func(name, status string) { missionProc.SetSegment(name, status) }
 	_, err := fetchCompleteMissionWithContext(ctx, playerId, missionId, startTimestamp, tracker)
 	if err != nil {
+		missionProc.Log(err.Error(), true)
 		missionProc.MarkFailed()
 		isTimeout := strings.Contains(err.Error(), "timeout after")
 		if !isTimeout || !hideTimeouts {
@@ -495,6 +532,7 @@ func fetchOneMission(
 		}
 		onError()
 	} else {
+		missionProc.Log("done.", false)
 		missionProc.MarkDone()
 	}
 	finishedCh <- struct{}{}

@@ -18,6 +18,12 @@ export function useMennoData() {
     return d.toLocaleString()
   })
 
+  const nextWeeklyRefreshString = computed(() => {
+    if (secondsSinceLastUpdate.value >= 2147483647) return null
+    const nextAt = new Date(Date.now() - secondsSinceLastUpdate.value * 1000 + 7 * 24 * 3600 * 1000)
+    return nextAt.toLocaleString()
+  })
+
   async function checkRefreshNeeded(): Promise<boolean> {
     secondsSinceLastUpdate.value = await globalThis.secondsSinceLastMennoUpdate()
     return globalThis.isMennoRefreshNeeded()
@@ -53,7 +59,7 @@ export function useMennoData() {
 
   return {
     secondsSinceLastUpdate, mennoDataLoaded, mennoRefreshing, mennoIsAutoRefresh, mennoProgress,
-    lastUpdateString,
+    lastUpdateString, nextWeeklyRefreshString,
     checkRefreshNeeded, refresh, load, getMennoData,
   }
 }

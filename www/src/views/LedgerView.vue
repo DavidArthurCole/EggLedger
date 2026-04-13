@@ -18,7 +18,7 @@
       >
         <div ref="playerIdSelectRef" class="tooltip-custom relative flex-grow focus-within:z-10">
           <div v-if="selectedAccount?.nickname || (screenshotSafety && playerId)" class="ledger-input-overlay">
-            <span class="whitespace-pre">{{ maskEid(playerId) }}</span>
+            <span class="whitespace-pre"><template v-if="screenshotSafety && playerId.startsWith('EI')">EI<span class="inline-block rounded-sm bg-current select-none" style="width: 16ch; height: 0.8em; vertical-align: -0.05em;"></span></template><template v-else>{{ playerId }}</template></span>
             <template v-if="selectedAccount?.nickname">
               (<span :style="'color: #' + (selectedAccount?.accountColor ?? '')">
                 {{ selectedAccount?.nickname }} {{ selectedAccount?.ebString ?? '???' }}
@@ -64,7 +64,7 @@
               class="drop-opt"
               @click="closePlayerIdDropdown(account.id)"
             >
-              {{ maskEid(account.id) }}
+              <template v-if="screenshotSafety">EI<span class="inline-block rounded-sm bg-current select-none" style="width: 16ch; height: 0.8em; vertical-align: -0.05em;"></span></template><template v-else>{{ account.id }}</template>
               (<span :style="'color: #' + (account.accountColor ?? '')">
                 {{ account.nickname }}
                 {{ account.ebString ?? '???' }}
@@ -114,7 +114,7 @@
         </div>
       </template>
       <template v-else-if="appState === AppState.FetchingMissions">
-        <div class="text-yellow-400">Fetching missions...</div>
+        <div class="text-yellow-400">Fetching missions... <span v-if="progress?.currentMission" class="text-gray-400 italic">{{ progress.currentMission }}</span></div>
         <div>
           <span class="text-green-400">{{ progress?.finished ?? 0 }}</span>
           <span class="text-gray-400"> / {{ progress?.total ?? 0 }}  ETA {{ etaStr }}</span>
@@ -122,17 +122,16 @@
         <div v-if="(progress?.failed ?? 0) > 0 || (progress?.retried ?? 0) > 0">
           <span v-if="(progress?.failed ?? 0) > 0" class="text-red-500">{{ progress?.failed }} failed</span>
           <span v-if="(progress?.failed ?? 0) > 0 && (progress?.retried ?? 0) > 0" class="text-gray-400"> · </span>
-          <span v-if="(progress?.retried ?? 0) > 0" class="text-yellow-400">{{ progress?.retried }} retried</span>
+          <span v-if="(progress?.retried ?? 0) > 0" class="text-orange-400">{{ progress?.retried }} to retry</span>
         </div>
-        <div v-if="progress?.currentMission" class="text-gray-400 italic">{{ progress.currentMission }}</div>
       </template>
       <template v-else-if="appState === AppState.ExportingData">Exporting data...</template>
       <template v-else-if="appState === AppState.Success">
         Successfully exported to:
         <div class="grid gap-x-2" style="grid-template-columns: repeat(2, max-content)">
           <template v-for="file in exportedFiles" :key="file">
-            <button class="file-link" @click="openFile(file)">{{ file }}</button>
-            <button class="url-link truncate" @click="openFileInFolder(file)">open in folder</button>
+            <button class="file-link p-0" @click="openFile(file)"><template v-if="screenshotSafety"><template v-for="(part, partIdx) in splitMaskedPath(file)" :key="partIdx"><span v-if="part.mask" class="inline-block rounded-sm bg-current select-none" style="width: 16ch; height: 0.8em; vertical-align: -0.05em;"></span><template v-else>{{ part.text }}</template></template></template><template v-else>{{ file }}</template></button>
+            <button class="url-link truncate p-0" @click="openFileInFolder(file)">open in folder</button>
           </template>
         </div>
       </template>
@@ -159,17 +158,19 @@
             <div
               class="h-full transition-all duration-300 rounded-sm"
               :class="[
-                segmentStates.seg2 === 'skipped' ? 'bg-gray-600' :
                 segmentStates.seg2 === 'active' || segmentStates.seg2 === 'done' ? 'bg-green-500' :
+                segmentStates.seg2 === 'skipped' ? '' :
                 'bg-transparent',
                 segmentStates.missionPulsing ? 'animate-pulse' : '',
               ]"
-              :style="{
-                width:
-                  segmentStates.seg2 === 'pending' ? '0%' :
-                  segmentStates.seg2 === 'active' ? `${segmentStates.missionPct}%` :
-                  '100%',
-              }"
+              :style="segmentStates.seg2 === 'skipped'
+                ? { width: '100%', backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(16,185,129,0.3) 3px, rgba(16,185,129,0.3) 5px)' }
+                : {
+                  width:
+                    segmentStates.seg2 === 'pending' ? '0%' :
+                    segmentStates.seg2 === 'active' ? `${segmentStates.missionPct}%` :
+                    '100%',
+                }"
             ></div>
           </div>
           <!-- Segment 3: Export (amber) -->
@@ -186,38 +187,35 @@
           </div>
         </div>
         <div class="flex mt-0.5 text-gray-600" style="font-size: 0.6rem">
-          <div class="flex-1 text-center">Save</div>
-          <div class="flex-1 text-center">Missions</div>
-          <div class="flex-1 text-center">Export</div>
+          <div
+            class="flex-1 text-center"
+            :class="segmentStates.seg1 === 'active' ? 'animate-pulse' : ''"
+            :style="segmentStates.seg1 !== 'pending' ? 'color: rgb(59 130 246)' : ''"
+          >Save</div>
+          <div
+            class="flex-1 text-center"
+            :class="segmentStates.missionPulsing ? 'animate-pulse' : ''"
+            :style="(segmentStates.seg2 === 'active' || segmentStates.seg2 === 'done') ? 'color: rgb(16 185 129)' : ''"
+          >Missions</div>
+          <div
+            class="flex-1 text-center"
+            :class="segmentStates.seg3 === 'active' ? 'animate-pulse' : ''"
+            :style="segmentStates.seg3 !== 'pending' ? 'color: rgb(245 158 11)' : ''"
+          >Export</div>
         </div>
       </template>
 
     </div>
 
-    <MissionProgressPanel :processes="missionProcesses" />
+    <MissionProgressPanel v-if="showMissionProgress" :processes="missionProcesses" />
 
     <div
       ref="messagesRef"
       class="flex-1 min-h-0 px-2 py-1 overflow-auto shadow-sm block text-xs font-mono text-gray-400 bg-darkest rounded-md"
     >
       <div v-for="(message, i) in logMessages" :key="i" class="whitespace-pre">
-        <span :class="message.isError ? 'text-red-700' : 'text-green-700'">{{ hhmmss(new Date()) }}|</span>
-        <template v-for="(segment, j) in parseLogSegments(maskEid(message.message))" :key="j">
-          <img
-            v-if="segment.type === 'image'"
-            :src="segment.src"
-            style="display: inline; height: 1em; vertical-align: middle"
-            alt=""
-          />
-          <span
-            v-else-if="segment.type === 'text' && segment.color"
-            :style="'color: ' + segment.color"
-          >{{ segment.text }}</span>
-          <span
-            v-else-if="segment.type === 'text'"
-            :class="message.isError ? 'text-red-700' : ''"
-          >{{ segment.text }}</span>
-        </template>
+        <span :class="message.isError ? 'text-red-700' : 'text-green-700'">{{ hhmmss(new Date(message.timestamp)) }}|</span>
+        <LogLine :text="message.message" :is-error="message.isError" />
       </div>
     </div>
   </div>
@@ -228,8 +226,8 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useAppState } from '../composables/useAppState'
 import { useFetch } from '../composables/useFetch'
-import { parseLogSegments } from '../composables/useLogRenderer'
-import { maskEid, screenshotSafety } from '../composables/useSettings'
+import { screenshotSafety, showMissionProgress } from '../composables/useSettings'
+import LogLine from '../components/LogLine.vue'
 import { useDropdownSelector } from '../composables/useDropdownSelector'
 import { AppState } from '../types/bridge'
 import ForbiddenDirModal from '../components/modals/ForbiddenDirModal.vue'
@@ -262,6 +260,20 @@ const {
   open: openPlayerIdDropdown,
   close: closePlayerIdDropdown,
 } = useDropdownSelector((id) => { playerId.value = id })
+
+function splitMaskedPath(path: string): Array<{ text?: string; mask?: boolean }> {
+  const parts: Array<{ text?: string; mask?: boolean }> = []
+  const regex = /EI(\d{16})/g
+  let lastIndex = 0
+  let match: RegExpExecArray | null
+  while ((match = regex.exec(path)) !== null) {
+    if (match.index > lastIndex) parts.push({ text: path.slice(lastIndex, match.index) })
+    parts.push({ text: 'EI' }, { mask: true })
+    lastIndex = match.index + match[0].length
+  }
+  if (lastIndex < path.length) parts.push({ text: path.slice(lastIndex) })
+  return parts
+}
 
 function normalizePlayerId(id: string): string {
   id = id.trim()

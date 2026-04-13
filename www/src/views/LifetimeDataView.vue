@@ -36,25 +36,12 @@
           v-if="selectedLifetimeAccountData != null"
           class="ledger-input-overlay"
         >
-          <span class="whitespace-pre">{{ maskEid(selectedLifetimeAccountData.id) }}</span>
+          <span class="whitespace-pre"><template v-if="screenshotSafety">EI<span class="inline-block rounded-sm bg-current select-none" style="width: 16ch; height: 0.8em; vertical-align: -0.05em;"></span></template><template v-else>{{ selectedLifetimeAccountData.id }}</template></span>
           (<span :style="'color: #' + selectedLifetimeAccountData.accountColor">
             {{ selectedLifetimeAccountData.nickname }}
             {{ selectedLifetimeAccountData.ebString }}
           </span>
-          - {{ selectedLifetimeAccountData.missionCount }} missions
-          <template v-if="selectedLifetimeKnownAccount?.seString">
-            <span class="text-gray-400">&nbsp;·</span>
-            <img :src="'images/soul_egg.png'" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="">
-            <span style="color:#a855f7">{{ selectedLifetimeKnownAccount.seString }} SE</span>
-            <span class="text-gray-400"> ·</span>
-            <img :src="'images/prophecy_egg.png'" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="">
-            <span style="color:#eab308">{{ selectedLifetimeKnownAccount.peCount }} PE</span>
-            <template v-if="selectedLifetimeKnownAccount.teCount">
-              <span class="text-gray-400"> ·</span>
-              <img :src="'images/truth_egg.png'" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="">
-              <span style="color:#c831ff">{{ selectedLifetimeKnownAccount.teCount }} TE</span>
-            </template>
-          </template>)
+          - {{ selectedLifetimeAccountData.missionCount }} missions)
         </div>
         <input
           id="lifetimeAccountInput"
@@ -76,7 +63,7 @@
             class="drop-opt"
             @click="closeAccountDropdown(account.id)"
           >
-            {{ maskEid(account.id) }}
+            <template v-if="screenshotSafety">EI<span class="inline-block rounded-sm bg-current select-none" style="width: 16ch; height: 0.8em; vertical-align: -0.05em;"></span></template><template v-else>{{ account.id }}</template>
             (<span :style="'color: #' + account.accountColor">{{ account.nickname }} {{ account.ebString }}</span>
             - {{ account.missionCount }} missions)
           </li>
@@ -97,43 +84,24 @@
     </form>
 
     <!-- Lifetime progress -->
-    <div v-if="doesDataExist" class="h-14 px-2 py-1 text-sm text-gray-400 bg-darkest rounded-md tabular-nums">
-      <div v-if="lifetimeState !== LifetimeLoadState.Idle">
-        <div>
-          <img
-            v-if="isProgressSpinning"
-            :src="'images/loading.gif'"
-            alt="Loading..."
-            class="target-ico"
-          />
-          <span :class="statusColor">{{ statusText }}</span>
-        </div>
-        <div class="progress-track mt-1">
-          <div class="w-full h-full bg-dark absolute"></div>
-          <div
-            v-if="lifetimeState === LifetimeLoadState.Failed || lifetimeState === LifetimeLoadState.FailedTooFast"
-            class="h-full absolute rounded-full bg-data_loss_red w-full"
-          ></div>
-          <div
-            v-else
-            class="h-full absolute rounded-full bg-green-500"
-            :style="{ width: lifetimeDataLoadedProgress.percentageDone }"
-          ></div>
-        </div>
-      </div>
-    </div>
+    <SegmentedProgressBar
+      v-if="doesDataExist"
+      :active="isProgressSpinning"
+      :segments="lifetimeProgressSegments"
+      :status-text="statusText"
+      :status-class="statusColor"
+      :is-spinning="isProgressSpinning"
+    />
 
     <!-- Filter panel -->
     <div
-      v-if="doesDataExist"
+      v-if="doesDataExist && ((lifetimeData != null && !lifetimeDataBeingLoaded) || lifetimeDataBeingFiltered)"
       class="filter-panel"
     >
       <span
-        v-if="(lifetimeData != null && !lifetimeDataBeingLoaded) || lifetimeDataBeingFiltered"
         class="h-20 font-bold text-gray-400"
       >Mission Filter: </span>
       <button
-        v-if="(lifetimeData != null && !lifetimeDataBeingLoaded) || lifetimeDataBeingFiltered"
         id="toggleLifetimeFilterButton"
         class="text-base toggle-link"
         type="button"
@@ -142,7 +110,7 @@
         {{ hideLifetimeFilter ? 'Show' : 'Hide' }}
       </button>
       <form
-        v-if="(!hideLifetimeFilter && lifetimeData != null && !lifetimeDataBeingLoaded) || lifetimeDataBeingFiltered"
+        v-if="!hideLifetimeFilter || lifetimeDataBeingFiltered"
         id="lifetimeFilterForm"
         name="lifetimeFilterForm"
         class="filter-form text-xs"
@@ -174,6 +142,62 @@
       </form>
     </div>
 
+    <!-- Options panel -->
+    <div
+      v-if="doesDataExist && lifetimeData != null && !lifetimeDataBeingLoaded"
+      class="min-h-7 max-h-50 px-2 py-2 text-sm text-gray-400 bg-darkest rounded-md tabular-nums overflow-auto mt-0_75rem"
+    >
+      <div>
+        <span class="mr-0_5rem section-heading">Options</span>
+        <button
+          id="toggleLifetimeOptionsButton"
+          class="text-base toggle-link"
+          type="button"
+          @click="hideLifetimeOptions = !hideLifetimeOptions"
+        >
+          {{ hideLifetimeOptions ? 'Show' : 'Hide' }}
+        </button>
+      </div>
+      <div v-if="!hideLifetimeOptions">
+        <div>
+          <span class="section-heading">Sort Method</span><br />
+          <span class="opt-span">
+            <label for="lifetimeSortDefault" class="ext-opt-label">Default</label>
+            <input id="lifetimeSortDefault" v-model="lifetimeSortMethod" type="radio" value="default" class="ext-opt-check" />
+          </span>
+          <span class="opt-span">
+            <label for="lifetimeSortIV" class="ext-opt-label">Inventory Visualizer</label>
+            <input id="lifetimeSortIV" v-model="lifetimeSortMethod" type="radio" value="iv" class="ext-opt-check" />
+          </span>
+          <span class="opt-span">
+            <label for="lifetimeSortTotalCount" class="ext-opt-label">Total Count</label>
+            <input id="lifetimeSortTotalCount" v-model="lifetimeSortMethod" type="radio" value="count" class="ext-opt-check" />
+          </span>
+          <span class="opt-span">
+            <label for="lifetimeSortRandom" class="ext-opt-label">Random</label>
+            <input id="lifetimeSortRandom" v-model="lifetimeSortMethod" type="radio" value="random" class="ext-opt-check" />
+          </span>
+        </div>
+        <div class="mt-0_5rem">
+          <span class="section-heading">Display</span><br />
+          <span class="opt-span">
+            <label for="lifetimeDataPerShip" class="ext-opt-label">Show 'Average Drops per Ship'</label>
+            <input id="lifetimeDataPerShip" v-model="lifetimeShowDropsPerShip" type="checkbox" class="ext-opt-check" />
+          </span>
+          <span v-if="lifetimeAllowExpectedTotals" class="opt-span">
+            <label for="lifetimeExpectedTotals" class="ext-opt-label">Show 'Expected Total Drops'</label>
+            <input
+              id="lifetimeExpectedTotals"
+              v-model="lifetimeShowExpectedTotalsPref"
+              type="checkbox"
+              :disabled="!mennoDataLoaded"
+              class="ext-opt-check"
+            />
+          </span>
+        </div>
+      </div>
+    </div>
+
     <!-- Data display -->
     <div
       v-if="doesDataExist"
@@ -191,57 +215,17 @@
           Data compiled from {{ lifetimeData.missionCount }} Missions
           <span v-if="lifetimeDataExcludedCount !== 0">({{ lifetimeDataExcludedCount }} Filtered Out)</span>
         </span>
-        <div class="mb-0_5rem">
-          <span>Sort method</span>
-          <br />
-          <span class="mr-5">
-            <label for="lifetimeSortDefault" class="ext-opt-label">Default</label>
-            <input id="lifetimeSortDefault" v-model="lifetimeSortMethod" type="radio" value="default" class="ext-opt-check" />
-          </span>
-          <span class="mr-5">
-            <label for="lifetimeSortIV" class="ext-opt-label">Inventory Visualizer</label>
-            <input id="lifetimeSortIV" v-model="lifetimeSortMethod" type="radio" value="iv" class="ext-opt-check" />
-          </span>
-          <span class="mr-5">
-            <label for="lifetimeSortTotalCount" class="ext-opt-label">Total Count</label>
-            <input id="lifetimeSortTotalCount" v-model="lifetimeSortMethod" type="radio" value="count" class="ext-opt-check" />
-          </span>
-          <span class="mr-5">
-            <label for="lifetimeSortRandom" class="ext-opt-label">Random</label>
-            <input id="lifetimeSortRandom" v-model="lifetimeSortMethod" type="radio" value="random" class="ext-opt-check" />
-          </span>
-        </div>
-        <div>
-          <div class="mb-0_5rem">
-            <span>Options</span>
-            <br />
-            <span class="mr-5">
-              <label for="lifetimeDataPerShip" class="ext-opt-label">Show 'Average Drops per Ship'</label>
-              <input id="lifetimeDataPerShip" v-model="lifetimeShowDropsPerShip" type="checkbox" class="ext-opt-check" />
-            </span>
-            <span v-if="lifetimeAllowExpectedTotals">
-              <label for="lifetimeExpectedTotals" class="ext-opt-label">Show 'Expected Total Drops'</label>
-              <input
-                id="lifetimeExpectedTotals"
-                v-model="lifetimeShowExpectedTotalsPref"
-                type="checkbox"
-                :disabled="!mennoDataLoaded"
-                class="ext-opt-check"
-              />
-            </span>
-          </div>
-          <DropDisplayContainer
-            v-if="!lifetimeDataBeingFiltered && lifetimeData != null && !lifetimeDataBeingLoaded"
-            :data="lifetimeData"
-            ledger-type="lifetime"
-            :lifetime-show-per-ship="lifetimeShowDropsPerShip"
-            :show-expected-drops="lifetimeShowExpectedTotals"
-          />
-          <div v-else class="max-w-full items-center">
-            <hr class="mt-1rem mb-1rem w-full" />
-            <span class="mt-0_5rem p-0_5rem text-lg">Lifetime data is being compiled, please wait...</span><br />
-            <img :src="'images/loading.gif'" alt="Loading..." class="xl-ico" />
-          </div>
+        <DropDisplayContainer
+          v-if="!lifetimeDataBeingFiltered && lifetimeData != null && !lifetimeDataBeingLoaded"
+          :data="lifetimeData"
+          ledger-type="lifetime"
+          :lifetime-show-per-ship="lifetimeShowDropsPerShip"
+          :show-expected-drops="lifetimeShowExpectedTotals"
+        />
+        <div v-else class="max-w-full items-center">
+          <hr class="mt-1rem mb-1rem w-full" />
+          <span class="mt-0_5rem p-0_5rem text-lg">Lifetime data is being compiled, please wait...</span><br />
+          <img :src="'images/loading.gif'" alt="Loading..." class="xl-ico" />
         </div>
       </div>
     </div>
@@ -257,7 +241,7 @@ import { useAppState } from '../composables/useAppState'
 import { useMennoData } from '../composables/useMennoData'
 import { useFilters } from '../composables/useFilters'
 import { useDropdownSelector } from '../composables/useDropdownSelector'
-import { maskEid } from '../composables/useSettings'
+import { screenshotSafety } from '../composables/useSettings'
 import type {
   DatabaseMission,
   MissionDrop,
@@ -269,6 +253,7 @@ import FullFilter from '../components/FullFilter.vue'
 import NoDataFallback from '../components/NoDataFallback.vue'
 import SearchOverSelector from '../components/SearchOverSelector.vue'
 import DropDisplayContainer, { type LedgerData } from '../components/DropDisplayContainer.vue'
+import SegmentedProgressBar, { type ProgressSegment } from '../components/SegmentedProgressBar.vue'
 
 // Shared state
 
@@ -384,6 +369,82 @@ const isProgressSpinning = computed(
     lifetimeState.value === LifetimeLoadState.FilteringIds ||
     lifetimeState.value === LifetimeLoadState.LoadingMissionData,
 )
+
+type LifetimeSegmentStatus = 'pending' | 'active' | 'done' | 'failed' | 'skipped'
+
+const hadFilteringPhase = ref(false)
+const lastActivePhase = ref<LifetimeLoadState>(LifetimeLoadState.Idle)
+
+
+watch(lifetimeState, (s) => {
+  if (s === LifetimeLoadState.FetchingIds) {
+    hadFilteringPhase.value = false
+    lastActivePhase.value = LifetimeLoadState.Idle
+  }
+  if (s === LifetimeLoadState.FilteringIds) hadFilteringPhase.value = true
+  if (
+    s !== LifetimeLoadState.Failed &&
+    s !== LifetimeLoadState.FailedTooFast &&
+    s !== LifetimeLoadState.Success &&
+    s !== LifetimeLoadState.Idle
+  ) {
+    lastActivePhase.value = s
+  }
+})
+
+function resolveLifetimeSegments(
+  s: LifetimeLoadState,
+  hadFilter: boolean,
+  lastPhase: LifetimeLoadState,
+): { seg1: LifetimeSegmentStatus, seg2: LifetimeSegmentStatus, seg3: LifetimeSegmentStatus } {
+  const seg2Done: LifetimeSegmentStatus = hadFilter ? 'done' : 'skipped'
+  const failed = s === LifetimeLoadState.Failed || s === LifetimeLoadState.FailedTooFast
+  if (s === LifetimeLoadState.FetchingIds) return { seg1: 'active', seg2: 'pending', seg3: 'pending' }
+  if (s === LifetimeLoadState.FilteringIds) return { seg1: 'done', seg2: 'active', seg3: 'pending' }
+  if (s === LifetimeLoadState.LoadingMissionData) return { seg1: 'done', seg2: seg2Done, seg3: 'active' }
+  if (s === LifetimeLoadState.Success) return { seg1: 'done', seg2: seg2Done, seg3: 'done' }
+  if (failed) {
+    if (lastPhase === LifetimeLoadState.LoadingMissionData) return { seg1: 'done', seg2: seg2Done, seg3: 'failed' }
+    if (lastPhase === LifetimeLoadState.FilteringIds) return { seg1: 'done', seg2: 'failed', seg3: 'pending' }
+    return { seg1: 'failed', seg2: 'pending', seg3: 'pending' }
+  }
+  return { seg1: 'pending', seg2: 'pending', seg3: 'pending' }
+}
+
+const lifetimeSegmentStates = computed(() => {
+  const s = lifetimeState.value
+  const p = lifetimeDataLoadedProgress.value
+  const { seg1, seg2, seg3 } = resolveLifetimeSegments(s, hadFilteringPhase.value, lastActivePhase.value)
+
+  let filterPct = 0
+  if (s === LifetimeLoadState.FilteringIds && p.totalCount > 0) {
+    filterPct = Math.round((p.loadedCount / p.totalCount) * 100)
+  } else if (seg2 === 'done') {
+    filterPct = 100
+  }
+  const filterPulsing = seg2 === 'active' && filterPct === 0
+  const visibleFilterPct = seg2 === 'active' ? Math.max(filterPct, 3) : filterPct
+
+  let loadPct = 0
+  if (s === LifetimeLoadState.LoadingMissionData && p.totalCount > 0) {
+    loadPct = Math.round((p.loadedCount / p.totalCount) * 100)
+  } else if (seg3 === 'done') {
+    loadPct = 100
+  }
+  const loadPulsing = seg3 === 'active' && loadPct === 0
+  const visibleLoadPct = seg3 === 'active' ? Math.max(loadPct, 3) : loadPct
+
+  return { seg1, seg2, seg3, filterPct: visibleFilterPct, filterPulsing, loadPct: visibleLoadPct, loadPulsing }
+})
+
+const lifetimeProgressSegments = computed((): ProgressSegment[] => {
+  const { seg1, seg2, seg3, filterPct, filterPulsing, loadPct, loadPulsing } = lifetimeSegmentStates.value
+  return [
+    { label: 'IDs', status: seg1, color: 'blue', pulsing: seg1 === 'active' },
+    { label: 'Filter', status: seg2, color: 'violet', widthPct: filterPct, pulsing: filterPulsing },
+    { label: 'Load', status: seg3, color: 'green', widthPct: loadPct, pulsing: loadPulsing },
+  ]
+})
 
 const statusColor = computed(() => {
   switch (lifetimeState.value) {
@@ -531,6 +592,7 @@ const {
 
 // View-specific filter state
 const hideLifetimeFilter = ref(false)
+const hideLifetimeOptions = ref(false)
 
 // "Has exactly one" watchers for Menno data
 const lifetimeHasExactlyOneTarget = ref(false)
@@ -598,10 +660,16 @@ function mergeItems(bucket: LifetimeBucket, item: LifetimeDrop, missionInfo: Dat
   }
 }
 
-async function getSpecificMissionDataForLifetime(eid: string, missionId: string) {
-  const missionInfo = await globalThis.getMissionInfo(eid, missionId)
+async function getSpecificMissionDataForLifetime(
+  eid: string,
+  missionId: string,
+  dropCache: Record<string, MissionDrop[]> | null,
+  missionCache: DatabaseMission[] | null,
+) {
+  const missionInfo = missionCache?.find((m) => m.missionId === missionId)
+    ?? await globalThis.getMissionInfo(eid, missionId)
   if (missionInfo.ship == null || missionInfo.ship < 0 || !missionInfo.missionId) return null
-  const allDrops = await globalThis.getShipDrops(eid, missionId)
+  const allDrops = dropCache?.[missionId] ?? await globalThis.getShipDrops(eid, missionId)
   if (allDrops == null) return null
 
   const toLifetime = (list: MissionDrop[]): LifetimeDrop[] =>
@@ -698,29 +766,40 @@ async function viewLifetimeDataOfEid(filterLoad: boolean) {
   lifetimeState.value = LifetimeLoadState.LoadingMissionData
   lifetimeDataLoadedProgress.value = { percentageDone: '0%', loadedCount: 0, totalCount: ids.length }
 
+  // Bulk-fetch all drops and missions in two round-trips instead of N×2 relay calls
+  const [dropCache, missionCache] = await Promise.all([
+    globalThis.getAllPlayerDrops(selectedLifetimeAccount.value!),
+    globalThis.viewMissionsOfEid(selectedLifetimeAccount.value!),
+  ])
+
   let firstMatches: number[] | null = null
   let nonMatch = false
+  let pos = 0
   for (const id of ids) {
-    const mission = await getSpecificMissionDataForLifetime(selectedLifetimeAccount.value!, id)
-    if (mission == null) continue
-    const mi = mission.missionInfo
-    if (firstMatches == null) {
-      firstMatches = [mi.ship, mi.durationType, mi.level, mi.targetInt]
+    pos++
+    const mission = await getSpecificMissionDataForLifetime(selectedLifetimeAccount.value!, id, dropCache, missionCache)
+    if (mission != null) {
+      const mi = mission.missionInfo
+      if (firstMatches == null) {
+        firstMatches = [mi.ship, mi.durationType, mi.level, mi.targetInt]
+      }
+      if (!nonMatch) {
+        if (firstMatches[0] !== mi.ship) firstMatches[0] = -1
+        if (firstMatches[1] !== mi.durationType) firstMatches[1] = -1
+        if (firstMatches[2] !== mi.level) firstMatches[2] = -1
+        if (firstMatches[3] !== mi.targetInt) firstMatches[3] = -1
+        nonMatch = firstMatches.includes(-1)
+      }
+      mission.artifacts.forEach((d) => mergeItems(artifactsBucket, d, mi))
+      mission.stones.forEach((d) => mergeItems(stonesBucket, d, mi))
+      mission.stoneFragments.forEach((d) => mergeItems(stoneFragmentsBucket, d, mi))
+      mission.ingredients.forEach((d) => mergeItems(ingredientsBucket, d, mi))
     }
-    if (!nonMatch) {
-      if (firstMatches[0] !== mi.ship) firstMatches[0] = -1
-      if (firstMatches[1] !== mi.durationType) firstMatches[1] = -1
-      if (firstMatches[2] !== mi.level) firstMatches[2] = -1
-      if (firstMatches[3] !== mi.targetInt) firstMatches[3] = -1
-      nonMatch = firstMatches.includes(-1)
-    }
-    mission.artifacts.forEach((d) => mergeItems(artifactsBucket, d, mi))
-    mission.stones.forEach((d) => mergeItems(stonesBucket, d, mi))
-    mission.stoneFragments.forEach((d) => mergeItems(stoneFragmentsBucket, d, mi))
-    mission.ingredients.forEach((d) => mergeItems(ingredientsBucket, d, mi))
-
-    lifetimeDataLoadedProgress.value.percentageDone = `${((ids.indexOf(id) + 1) / ids.length) * 100}%`
-    lifetimeDataLoadedProgress.value.loadedCount++
+    lifetimeDataLoadedProgress.value.percentageDone = `${(pos / ids.length) * 100}%`
+    lifetimeDataLoadedProgress.value.loadedCount = pos
+    // Yield to the browser task queue every 50 iterations so the progress bar
+    // actually repaints during the loop rather than only at the end.
+    if (pos % 50 === 0) await new Promise<void>((r) => setTimeout(r, 0))
   }
 
   reSortLifetime()

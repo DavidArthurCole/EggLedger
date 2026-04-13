@@ -110,7 +110,13 @@ hr {
   @apply rounded-md bg-darkest;
 
   &:focus {
-    @apply ring-blue-500 border-blue-500;
+    outline: none;
+    box-shadow: none;
+  }
+
+  &:focus-visible {
+    @apply ring-1 ring-blue-500 ring-offset-0;
+    outline: none;
   }
 
   &:disabled {
@@ -225,7 +231,7 @@ input[type=number] {
 }
 
 .ledger-input-overlay {
-  @apply absolute top-0 left-0 w-full px-3 py-2 truncate border border-transparent text-sm text-gray-300 tabular-nums z-_20;
+  @apply absolute top-0 left-0 w-full px-3 py-2 truncate border border-transparent text-sm text-gray-300 tabular-nums z-3 pointer-events-none;
 }
 
 .ledger-af-link {

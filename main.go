@@ -294,20 +294,45 @@ func initNominalShipCapacities() {
 }
 
 func viewMissionsOfId(ctx context.Context, eid string) ([]DatabaseMission, error) {
-
 	_nominalShipCapacitiesOnce.Do(initNominalShipCapacities)
 
-	//Get list of complete missions from the DB
+	// Fast path: if all missions have been backfilled with migration-6 filter
+	// columns, build the list from DB columns only (no payload decompression).
+	pending, countErr := db.CountPendingFilterCols(ctx, eid)
+	if countErr == nil && pending == 0 {
+		metas, err := db.RetrievePlayerMissionMeta(ctx, eid)
+		if err != nil {
+			log.Error(err)
+			return nil, err
+		}
+		missions := make([]DatabaseMission, 0, len(metas))
+		for _, meta := range metas {
+			missions = append(missions, missionMetaToDBMission(meta))
+		}
+		return missions, nil
+	}
+
+	// Slow path: decompress and decode every payload (used before backfill runs).
 	completeMissions, err := db.RetrievePlayerCompleteMissions(ctx, eid)
 	if err != nil {
 		log.Error(err)
 		return nil, err
 	}
-	//Array of LoadedMission
 	missionArr := []DatabaseMission{}
-
 	for _, completeMission := range completeMissions {
 		missionArr = append(missionArr, compileMissionInformation(completeMission))
+	}
+
+	// Kick off a background backfill so the next View call uses the fast path.
+	// This is the one-time migration for users who view without fetching first.
+	if countErr == nil && pending > 0 {
+		go func() {
+			if _, err := db.ResolvePendingFilterCols(
+				context.Background(), eid, computeMissionFilterCols, nil,
+			); err != nil {
+				log.Errorf("background filter col backfill for %s: %s", eid, err)
+			}
+		}()
 	}
 
 	return missionArr, nil
@@ -591,6 +616,22 @@ func main() {
 		_storage.SetScreenshotSafety(flag)
 	})
 
+	ui.MustBind("getShowMissionProgress", func() bool {
+		return _storage.GetShowMissionProgress()
+	})
+
+	ui.MustBind("setShowMissionProgress", func(flag bool) {
+		_storage.SetShowMissionProgress(flag)
+	})
+
+	ui.MustBind("getCollapseOlderSections", func() bool {
+		return _storage.GetCollapseOlderSections()
+	})
+
+	ui.MustBind("setCollapseOlderSections", func(flag bool) {
+		_storage.SetCollapseOlderSections(flag)
+	})
+
 	ui.MustBind("getWorkerCount", func() int {
 		return _storage.GetWorkerCount()
 	})
@@ -631,6 +672,8 @@ func main() {
 	ui.MustBind("getDurationConfigs", handleGetDurationConfigs)
 
 	ui.MustBind("getShipDrops", handleGetShipDrops)
+
+	ui.MustBind("getAllPlayerDrops", handleGetAllPlayerDrops)
 
 	ui.MustBind("getMissionInfo", handleGetMissionInfo)
 

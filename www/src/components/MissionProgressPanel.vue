@@ -1,5 +1,9 @@
 <template>
-  <div v-if="processes.length > 0" class="flex flex-col gap-1 overflow-y-auto max-h-48 flex-shrink-0">
+  <div
+    v-if="processes.length > 0"
+    class="flex flex-col gap-1 flex-shrink-0"
+    :class="processes.length >= 3 ? 'overflow-y-auto max-h-48' : ''"
+  >
     <div
       v-for="proc in processes"
       :key="proc.id"
@@ -47,22 +51,7 @@
           :key="i"
           class="whitespace-pre"
         >
-          <template v-for="(seg, j) in parseLogSegments(maskEid(entry.text))" :key="j">
-            <img
-              v-if="seg.type === 'image'"
-              :src="seg.src"
-              style="display: inline; height: 1em; vertical-align: middle"
-              alt=""
-            />
-            <span
-              v-else-if="seg.type === 'text' && seg.color"
-              :style="'color: ' + seg.color"
-            >{{ seg.text }}</span>
-            <span
-              v-else
-              :class="entry.isError ? 'text-red-700' : 'text-gray-400'"
-            >{{ seg.text }}</span>
-          </template>
+          <LogLine :text="entry.text" :is-error="entry.isError" default-class="text-gray-400" />
         </div>
       </div>
     </div>
@@ -72,8 +61,7 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted } from 'vue'
 import type { ProcessSnapshot } from '../types/bridge'
-import { parseLogSegments } from '../composables/useLogRenderer'
-import { maskEid } from '../composables/useSettings'
+import LogLine from './LogLine.vue'
 
 const props = defineProps<{
   processes: ProcessSnapshot[]
@@ -104,10 +92,12 @@ function toggle(id: string) {
   expandedIds.value = next
 }
 
-// Auto-expand all currently running processes.
+// Auto-expand running processes only when there are fewer than 3 total.
+// At 3+ the panel becomes a scrolled list and expanding all would be unmanageable.
 watch(
   () => props.processes,
   (procs) => {
+    if (procs.length >= 3) return
     const running = procs.filter((p) => p.status === 'running')
     if (running.length === 0) return
     const next = new Set(expandedIds.value)

@@ -2,10 +2,10 @@
   <div v-show="mounted" class="h-full flex flex-col space-y-3 pb-3 bg-darker">
     <TabBar :tabs="tabList" v-model:active-tab="activeTab" />
 
-    <SettingsView v-show="activeTab === 'Settings'" />
     <LedgerView v-show="activeTab === 'Ledger'" />
     <MissionDataView v-show="activeTab === 'Mission Data'" />
     <LifetimeDataView v-show="activeTab === 'Lifetime Data'" />
+    <SettingsView v-show="activeTab === 'Settings'" />
     <AboutView v-show="activeTab === 'About'" />
 
     <footer class="flex-shrink-0 text-center text-sm text-gray-500">
@@ -56,6 +56,7 @@ const {
 const { mennoRefreshing, mennoIsAutoRefresh, mennoProgress, checkRefreshNeeded, refresh, load } = useMennoData()
 
 const tabList = ['Ledger', 'Mission Data', 'Lifetime Data', 'Settings', 'About']
+
 const mounted = ref(false)
 const updateModalDismissed = ref(false)
 

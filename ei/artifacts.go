@@ -52,7 +52,49 @@ func (a *ArtifactSpec) DropEffectString() string {
 	if a.Rarity == nil || int(*a.Rarity) >= len(row) {
 		return ""
 	}
-	return row[*a.Rarity]
+	v := row[*a.Rarity]
+	if v == "" {
+		return ""
+	}
+	return "[" + v + "]"
+}
+
+// CombinedEffectString returns a display string for the tooltip that combines
+// the artifact's specific value with its generic benefit description.
+// Special !! values (which carry their own full display string) are returned as-is.
+// Normal values are substituted into the generic benefit template where [^b] appears.
+func (a *ArtifactSpec) CombinedEffectString() string {
+	if a.Name == nil {
+		return ""
+	}
+	effects, ok := ledgerdata.Config.ArtifactEffects[a.Name.String()]
+	if !ok || a.Level == nil || int(*a.Level) >= len(effects) {
+		return ""
+	}
+	row := effects[*a.Level]
+	if a.Rarity == nil || int(*a.Rarity) >= len(row) {
+		return ""
+	}
+	v := row[*a.Rarity]
+	if v == "" {
+		return ""
+	}
+	if strings.HasPrefix(v, "!!") {
+		return v
+	}
+	generic := a.GenericBenefitString()
+	if generic != "" {
+		if strings.Contains(generic, "[^b]") {
+			return strings.Replace(generic, "[^b]", "["+v+"]", 1)
+		}
+		if strings.Contains(generic, "[+^b]") {
+			return strings.Replace(generic, "[+^b]", "[+"+v+"]", 1)
+		}
+		if strings.Contains(generic, "[-^b]") {
+			return strings.Replace(generic, "[-^b]", "[-"+v+"]", 1)
+		}
+	}
+	return "[" + v + "]"
 }
 
 func (a *ArtifactSpec) DisplayTierName(includeSpace bool) string {
