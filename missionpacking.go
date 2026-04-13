@@ -25,8 +25,9 @@ type DatabaseMission struct {
 	IsBuggedCap      bool                         `json:"isBuggedCap"`
 	Target           string                       `json:"target"`
 	TargetInt        int32                        `json:"targetInt"`
-	MissionType      int32                        `json:"missionType"`
-	MissionTypeString string                      `json:"missionTypeString"`
+	MissionType       int32                        `json:"missionType"`
+	MissionTypeString string                       `json:"missionTypeString"`
+	ShipEnumString    string                       `json:"shipEnumString"`
 }
 
 // durationStringFromSecs converts a float64 duration in seconds to a compact
@@ -125,6 +126,7 @@ func missionMetaToDBMission(meta db.MissionMeta) DatabaseMission {
 		TargetInt:         targetInt,
 		MissionType:       meta.MissionType,
 		MissionTypeString: missionType.Display(),
+		ShipEnumString:    ship.String(),
 	}
 }
 
@@ -160,6 +162,7 @@ func compileMissionInformation(completeMissionResponse *ei.CompleteMissionRespon
 		Target:            properTargetName(info.TargetArtifact),
 		MissionType:       int32(info.GetType()),
 		MissionTypeString: info.GetType().Display(),
+		ShipEnumString:    info.Ship.String(),
 	}
 	if missionInst.Target == "" {
 		missionInst.TargetInt = -1

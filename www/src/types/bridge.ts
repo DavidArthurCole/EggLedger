@@ -48,6 +48,8 @@ export interface DatabaseMission {
   missionType: number
   /** Display string e.g. "Home" or "Virtue" */
   missionTypeString: string
+  /** Proto enum name e.g. "ATREGGIES" - used for ship icon path */
+  shipEnumString: string
 }
 
 export interface MissionDrop {

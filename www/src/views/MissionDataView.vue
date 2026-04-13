@@ -21,132 +21,27 @@
     />
 
     <!-- Single mission overlay -->
-    <div v-show="boolMissionBeingViewed" class="top-click-detect mission-view-overlay overlay-mission">
-      <div class="inner-click-detect max-w-70vw max-h-90vh overflow-auto bg-dark rounded-lg relative p-1rem" @click.stop>
-        <button class="detect-trigger hover:text-gray-500 close-button" @click="closeMissionOverlay">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-        <ShipDisplay
-          v-if="viewMissionData && viewMissionData.missionInfo != null"
-          :view-mission-data="viewMissionData"
-          :is-multi="false"
-          :show-expected-drops="showExpectedDropsPerShip"
-          @view="(val: string) => viewSpecificMission(val)"
-        />
-      </div>
-    </div>
+    <MissionOverlay
+      mode="single"
+      :open="boolMissionBeingViewed"
+      :mission-data="viewMissionData"
+      :show-expected-drops="showExpectedDropsPerShip"
+      @close="closeMissionOverlay"
+      @view="(val: string) => viewSpecificMission(val)"
+    />
 
     <!-- Multi-mission overlay -->
-    <div v-show="multiMissionOverlayOpen" class="top-click-detect mission-view-overlay overlay-multi-mission">
-      <div class="inner-click-detect max-w-90vw max-h-90vh bg-dark rounded-lg relative p-1rem" @click.stop>
-        <button class="detect-trigger hover:text-gray-500 close-button" @click="closeMultiMissionOverlay">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-        <div v-if="rowViewBeingLoaded" class="text-center px-8 py-4 min-w-60">
-          <div class="mt-0_5rem text-center text-xl text-gray-400">Multi-Mission View Loading</div>
-          <hr class="mt-1rem mb-1rem w-full" />
-          <img :src="'images/loading.gif'" alt="Loading..." class="xl-ico" />
-          <div class="mt-3 text-sm text-gray-400">
-            Loading mission
-            <span class="text-gray-200 font-semibold">{{ missionsBeingViewed.length + 1 }}</span>
-            of
-            <span class="text-gray-200 font-semibold">{{ multiViewTotalToLoad }}</span>
-          </div>
-          <div class="mt-2 w-full bg-darker rounded-full h-1.5 overflow-hidden">
-            <div
-              class="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
-              :style="{ width: multiViewTotalToLoad > 0 ? ((missionsBeingViewed.length / multiViewTotalToLoad) * 100) + '%' : '0%' }"
-            />
-          </div>
-        </div>
-        <div v-else class="max-w-90vw max-h-80vh overflow-auto">
-          <div class="flex justify-center gap-2 mb-3">
-            <button
-              type="button"
-              :class="multiViewDisplayMode === 'separate' ? 'text-blue-400 ledger-underline font-semibold' : 'text-gray-500 hover:text-gray-300'"
-              class="text-sm"
-              @click="multiViewDisplayMode = 'separate'"
-            >Separate</button>
-            <span class="text-gray-600 text-sm">|</span>
-            <button
-              type="button"
-              :class="multiViewDisplayMode === 'combined' ? 'text-blue-400 ledger-underline font-semibold' : 'text-gray-500 hover:text-gray-300'"
-              class="text-sm"
-              @click="multiViewDisplayMode = 'combined'"
-            >Combined</button>
-          </div>
-
-          <!-- Separate mode: side-by-side columns -->
-          <div v-if="multiViewDisplayMode === 'separate'" class="flex justify-between gap-2 mb-4">
-            <div
-              v-for="(missionData, missionDataIndex) in multiViewMissionData"
-              :key="missionDataIndex"
-              :class="'w-1/' + multiViewMissionData.length"
-              class="bg-darkerer rounded-lg py-2"
-            >
-              <ShipDisplay
-                v-if="missionData && missionData.missionInfo != null"
-                :is-first="missionDataIndex === 0"
-                :is-last="missionDataIndex === multiViewMissionData.length - 1"
-                :view-mission-data="missionData"
-                :is-multi="true"
-                :show-expected-drops="showExpectedDropsPerShip"
-                :ship-count="multiViewMissionData.length"
-              />
-            </div>
-          </div>
-
-          <!-- Combined mode: merged drop pool with ship summary -->
-          <div v-else class="px-7rem text-gray-300 text-center">
-            <div class="flex flex-wrap justify-center gap-x-3 gap-y-2 mb-3 text-xs">
-              <div
-                v-for="(missionData, i) in multiViewMissionData"
-                :key="i"
-                class="flex flex-col items-center bg-darkerer rounded px-2 py-1"
-              >
-                <div>
-                  <span :class="'text-duration-' + missionData.missionInfo.durationType">{{ missionData.missionInfo.shipString }}</span>
-                  <span v-if="missionData.missionInfo.level > 0" class="text-goldenstar ml-1">{{ '★'.repeat(missionData.missionInfo.level) }}</span>
-                </div>
-                <div
-                  v-if="missionData.missionInfo.target && missionData.missionInfo.target.toUpperCase() !== 'UNKNOWN'"
-                  class="text-gray-400"
-                >
-                  {{ properCaseTarget(missionData.missionInfo.target) }}
-                </div>
-                <div class="text-gray-500">
-                  {{ missionData.missionInfo.capacity }}
-                  <span v-if="missionData.missionInfo.isBuggedCap" class="text-buggedcap ml-1">0.6x</span>
-                  <span v-else-if="missionData.missionInfo.isDubCap" class="text-dubcap ml-1">{{ missionData.capacityModifier }}x</span>
-                </div>
-              </div>
-            </div>
-            <drop-display-container
-              ledger-type="mission"
-              :data="combinedMissionDropData"
-              :show-expected-drops="false"
-            />
-          </div>
-
-          <div class="mt-2 text-xs text-gray-300 text-center">
-            Hover mouse over an item to show details.<br />
-            Click to open the relevant
-            <a
-              target="_blank"
-              href="https://wasmegg-carpet.netlify.app/artifact-explorer/"
-              class="ledger-underline"
-              @click.prevent="openUrl('https://wasmegg-carpet.netlify.app/artifact-explorer/')"
-            >
-              artifact explorer
-            </a> page.
-          </div>
-        </div>
-      </div>
-    </div>
+    <MissionOverlay
+      mode="multi"
+      :open="multiMissionOverlayOpen"
+      :multi-mission-data="multiViewMissionData"
+      :is-loading="rowViewBeingLoaded"
+      :drop-cache-preloading="dropCachePreloading"
+      :total-to-load="multiViewTotalToLoad"
+      :loaded-count="missionsBeingViewed.length"
+      :show-expected-drops="showExpectedDropsPerShip"
+      @close="closeMultiMissionOverlay"
+    />
 
     <!-- Account selector -->
     <form
@@ -396,12 +291,12 @@ import type {
 } from '../types/bridge'
 import FullFilter from '../components/FullFilter.vue'
 import SearchOverSelector from '../components/SearchOverSelector.vue'
-import ShipDisplay from '../components/ShipDisplay.vue'
-import DropDisplayContainer from '../components/DropDisplayContainer.vue'
 import NoDataFallback from '../components/NoDataFallback.vue'
 import SegmentedProgressBar, { type ProgressSegment } from '../components/SegmentedProgressBar.vue'
 import OptionsPanel from '../components/OptionsPanel.vue'
 import MissionResultsTable from '../components/MissionResultsTable.vue'
+import MissionOverlay from '../components/MissionOverlay.vue'
+import type { ViewMissionData, InnerDrop, MennoConfigItem } from '../types/missionView'
 
 // Shared state
 
@@ -409,45 +304,7 @@ const { existingData, activeTab } = useAppState()
 const { mennoDataLoaded, getMennoData, load: loadMennoData } = useMennoData()
 const { isFetching } = useFetch()
 
-// A view-mission-data object - used by ShipDisplay.
-// Matches ShipDisplay's ViewMissionData interface (extends LedgerData).
-interface MennoConfigItem {
-  artifactConfiguration: {
-    artifactType: { id: number }
-    artifactLevel: number
-    artifactRarity: { id: number }
-  }
-  totalDrops: number
-}
-interface ViewMissionDataMennoData {
-  configs: MennoConfigItem[]
-  totalDropsCount: number
-}
-interface ViewMissionData {
-  missionInfo: DatabaseMission & { targetInt?: number }
-  artifacts: InnerDrop[]
-  stones: InnerDrop[]
-  stoneFragments: InnerDrop[]
-  ingredients: InnerDrop[]
-  launchDT: Date
-  returnDT: Date
-  durationStr: string
-  capacityModifier: number | string
-  prevMission: string | null
-  nextMission: string | null
-  missionCount?: number
-  mennoData: ViewMissionDataMennoData
-}
-
-interface InnerDrop extends MissionDrop {
-  count: number
-  protoName?: string
-  displayName?: string
-}
-
-// ───────────────────────────────────────────────────────────────────────────────
 // Account selector state
-// ───────────────────────────────────────────────────────────────────────────────
 
 const selectedMissionAccount = ref<string | null>(null)
 
@@ -643,102 +500,28 @@ const boolMissionBeingViewed = ref(false)
 const multiViewMissionData = ref<ViewMissionData[]>([])
 const missionsBeingViewed = ref<string[]>([])
 const rowViewBeingLoaded = ref(false)
+const dropCachePreloading = ref(false)
 const multiViewFreeSelectIds = ref<string[]>([])
 const multiMissionOverlayOpen = ref(false)
-const multiViewDisplayMode = ref<'separate' | 'combined'>('separate')
 const multiViewTotalToLoad = ref(0)
 
-function mergeDropArrays(arrays: InnerDrop[][]): InnerDrop[] {
-  const map = new Map<string, InnerDrop>()
-  for (const arr of arrays) {
-    for (const item of arr) {
-      const key = `${item.id}_${item.level}_${item.rarity}`
-      const existing = map.get(key)
-      if (existing) {
-        existing.count += item.count
-      } else {
-        map.set(key, { ...item })
-      }
-    }
-  }
-  return Array.from(map.values())
-}
-
-const combinedMissionDropData = computed(() => ({
-  artifacts: mergeDropArrays(multiViewMissionData.value.map((m) => m.artifacts)),
-  stones: mergeDropArrays(multiViewMissionData.value.map((m) => m.stones)),
-  ingredients: mergeDropArrays(multiViewMissionData.value.map((m) => m.ingredients)),
-  stoneFragments: mergeDropArrays(multiViewMissionData.value.map((m) => m.stoneFragments)),
-  mennoData: { configs: [], totalDropsCount: 0 },
-  missionCount: multiViewMissionData.value.length,
-}))
-
 function closeMissionOverlay() {
-  const el = document.querySelector('.overlay-mission') as HTMLElement | null
-  if (el) {
-    el.style.display = 'none'
-    el.classList.add('hidden')
-  }
   viewMissionData.value = null
   missionBeingViewed.value = null
   boolMissionBeingViewed.value = false
 }
 function openMissionOverlay() {
-  const el = document.querySelector('.overlay-mission') as HTMLElement | null
-  if (el) {
-    el.style.display = 'flex'
-    el.classList.remove('hidden')
-  }
   boolMissionBeingViewed.value = true
-}
-function handleMultiKeyDown(event: KeyboardEvent) {
-  if (event.key === 'Escape') {
-    closeMultiMissionOverlay()
-  }
 }
 
 function closeMultiMissionOverlay() {
-  const el = document.querySelector('.overlay-multi-mission') as HTMLElement | null
-  if (el) {
-    el.style.display = 'none'
-    el.classList.add('hidden')
-  }
   multiMissionOverlayOpen.value = false
   multiViewMissionData.value = []
   missionsBeingViewed.value = []
-  globalThis.removeEventListener('keydown', handleMultiKeyDown)
 }
 function openMultiMissionOverlay() {
-  const el = document.querySelector('.overlay-multi-mission') as HTMLElement | null
-  if (el) {
-    el.style.display = 'flex'
-    el.classList.remove('hidden')
-  }
-  multiViewDisplayMode.value = 'separate'
   multiMissionOverlayOpen.value = true
-  globalThis.addEventListener('keydown', handleMultiKeyDown)
 }
-
-function handleKeyDown(event: KeyboardEvent) {
-  if (!boolMissionBeingViewed.value) return
-  event.preventDefault()
-  event.stopPropagation()
-  if (event.key === 'Escape') {
-    closeMissionOverlay()
-    return
-  }
-  const data = viewMissionData.value
-  if (!data) return
-  if (event.key === 'ArrowLeft' && data.prevMission) {
-    viewSpecificMission(data.prevMission as string)
-  } else if (event.key === 'ArrowRight' && data.nextMission) {
-    viewSpecificMission(data.nextMission as string)
-  }
-}
-watch(boolMissionBeingViewed, () => {
-  if (boolMissionBeingViewed.value) globalThis.addEventListener('keydown', handleKeyDown)
-  else globalThis.removeEventListener('keydown', handleKeyDown)
-})
 
 // Fetch mission + view logic
 
@@ -875,7 +658,9 @@ async function viewRowOfMissions(missionIds: string[]) {
   missionsBeingViewed.value = []
   multiViewMissionData.value = []
   multiViewTotalToLoad.value = missionIds.length
+  dropCachePreloading.value = true
   const dropCache = await globalThis.getAllPlayerDrops(loadedEid.value ?? '')
+  dropCachePreloading.value = false
   for (const missionId of missionIds) {
     const data = await viewSpecificMission(missionId, true, dropCache)
     if (data !== false) {
@@ -888,6 +673,13 @@ async function viewRowOfMissions(missionIds: string[]) {
 
 function openUrl(url: string) {
   globalThis.openURL(url)
+}
+
+function formatShortDate(date: Date): string {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
 }
 
 function properCaseTarget(target: string): string {

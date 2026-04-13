@@ -6,38 +6,40 @@
     <div
       v-else
       id="missionListDiv"
-      class="mt-0_5rem px-2 py-1 overflow-y-auto shadow-sm block text-xs font-mono text-gray-500 bg-darkest rounded-md"
+      class="mt-0_5rem px-2 py-1 shadow-sm block text-xs font-mono text-gray-500 bg-darkest rounded-md"
     >
-      <div class="bg-darkest w-full">
-        <span class="text-xl">
-          Missions
-          <button
-            v-if="filteredMissions && filteredMissions.length !== 0"
-            id="toggleResultsButton"
-            class="text-xl toggle-link"
-            type="button"
-            @click="$emit('toggle-elements', $event)"
-          >
-            {{ allVisible ? 'Collapse All' : 'Expand All' }}
-          </button>
-        </span>
-        <hr class="mb-0_5rem w-full" />
-        <div v-if="multiViewMode === 'free' && multiViewFreeSelectIds.length > 0" class="flex items-center gap-2 mb-2">
-          <button
-            type="button"
-            class="px-3 py-1 rounded-md border border-green-700 text-sm font-medium text-green-400 bg-transparent hover:bg-green-950/50"
-            @click="$emit('trigger-row-view')"
-          >
-            View Selected ({{ multiViewFreeSelectIds.length }})
-          </button>
-          <button
-            type="button"
-            class="px-3 py-1 rounded-md border border-gray-600 text-sm font-medium text-gray-400 bg-transparent hover:bg-darker"
-            @click="$emit('deselect-all')"
-          >
-            Deselect All
-          </button>
+      <div class="sticky top-0 z-10 bg-darkest -mx-2 px-2 pt-1 pb-1">
+        <div class="flex items-baseline gap-2 flex-wrap">
+          <span class="text-xl">
+            Missions
+            <button
+              v-if="filteredMissions && filteredMissions.length !== 0"
+              id="toggleResultsButton"
+              class="text-xl toggle-link"
+              type="button"
+              @click="$emit('toggle-elements', $event)"
+            >
+              {{ allVisible ? 'Collapse All' : 'Expand All' }}
+            </button>
+          </span>
+          <div v-if="multiViewMode === 'free' && multiViewFreeSelectIds.length > 0" class="flex items-center gap-2">
+            <button
+              type="button"
+              class="px-3 py-1 rounded-md border border-green-700 text-sm font-medium text-green-400 bg-transparent hover:bg-green-950/50"
+              @click="$emit('trigger-row-view')"
+            >
+              View Selected ({{ multiViewFreeSelectIds.length }})
+            </button>
+            <button
+              type="button"
+              class="px-3 py-1 rounded-md border border-gray-600 text-sm font-medium text-gray-400 bg-transparent hover:bg-darker"
+              @click="$emit('deselect-all')"
+            >
+              Deselect All
+            </button>
+          </div>
         </div>
+        <hr class="mt-0_5rem mb-0_5rem w-full" />
       </div>
       <template v-for="(yearVF, yearIndex) in groupedMissions" :key="yearIndex">
         <span class="text-lg font-bold mr-0_5rem ledger-underline">{{ groupedArrays.year[yearIndex].year }}</span>

@@ -2,57 +2,64 @@
     <div
         :class="(isMulti ? ((isFirst ? ' pl-7rem' : ' pl-3rem') + (isLast ? ' pr-7rem' : ' pr-3rem')) : 'overflow-auto pl-7rem pr-7rem' ) + ' text-gray-300 text-center' + ( (shipCount ?? 0) > 3 ? ' min-w-30vw' : '') "
     >
-        <!-- Header information about the mission -->
-        <span :class="'text-duration-' + missionInfo.durationType">
-            {{ missionInfo.shipString }}
-        </span><br />
-        <span
-            v-if="missionInfo.level && missionInfo.level > 0"
-            class="text-star text-goldenstar"
-        >
-            {{ "★".repeat(missionInfo.level) }}
-        </span>
-        <br v-if="missionInfo.level && missionInfo.level > 0" />
-        <span>Launched: {{ formatDate(viewMissionData.launchDT) }}</span> <br />
-        <span>Returned: {{ formatDate(viewMissionData.returnDT) }}</span> <br />
-        <span>Duration: {{ viewMissionData.durationStr }}</span> <br />
-        <span class="flex flex-row items-center justify-center">
-        <span :class="((missionInfo.isDubCap || missionInfo.isBuggedCap) ? 'mr-0_5rem' : '')">Capacity: {{ missionInfo.capacity }} </span>
-            <span v-if="missionInfo.isBuggedCap" class="max-w-32 flex py-1 bugged-cap-span items-center justify-center flex-1">
-                <img alt="Skull Emoji" :src="'images/skull.png'" class="w-6 mr-0_5rem">
-                <span
-                    class="text-xs font-bold"
-                    @mouseenter="(e) => showTooltip('bugged', e)"
-                    @mouseleave="hideTooltip"
-                >
-                    0.6x Capacity
+        <!-- Ship info container -->
+        <div class="rounded-md px-4 py-2 mb-3 mx-auto" style="background: rgba(120, 128, 138, 0.12); width: fit-content;">
+            <img
+                v-if="missionInfo.shipEnumString"
+                :src="'images/ships/' + missionInfo.shipEnumString + '.png'"
+                :alt="missionInfo.shipString"
+                class="w-12 h-12 object-contain mx-auto mb-2"
+            />
+            <span :class="'text-duration-' + missionInfo.durationType">
+                {{ missionInfo.shipString }}
+            </span><br />
+            <span
+                v-if="missionInfo.level && missionInfo.level > 0"
+                class="text-star text-goldenstar"
+            >
+                {{ "★".repeat(missionInfo.level) }}
+            </span>
+            <br v-if="missionInfo.level && missionInfo.level > 0" />
+            <span>Launched: {{ formatDate(viewMissionData.launchDT) }}</span> <br />
+            <span>Returned: {{ formatDate(viewMissionData.returnDT) }}</span> <br />
+            <span>Duration: {{ viewMissionData.durationStr }}</span> <br />
+            <span class="flex flex-row items-center justify-center">
+                <span :class="((missionInfo.isDubCap || missionInfo.isBuggedCap) ? 'mr-0_5rem' : '')">Capacity: {{ missionInfo.capacity }} </span>
+                <span v-if="missionInfo.isBuggedCap" class="max-w-32 flex py-1 bugged-cap-span items-center justify-center flex-1">
+                    <img alt="Skull Emoji" :src="'images/skull.png'" class="w-6 mr-0_5rem">
+                    <span
+                        class="text-xs font-bold"
+                        @mouseenter="(e) => showTooltip('bugged', e)"
+                        @mouseleave="hideTooltip"
+                    >
+                        0.6x Capacity
+                    </span>
+                </span>
+                <span v-if="!missionInfo.isBuggedCap && missionInfo.isDubCap" class="max-w-28 flex py-1 double-cap-span items-center justify-center flex-1">
+                    <img alt="Artifact Crate" :src="'images/icon_afx_chest_2.png'" class="w-6 mr-0_5rem">
+                    <span
+                        class="text-xs font-bold"
+                        @mouseenter="(e) => showTooltip('dubcap', e)"
+                        @mouseleave="hideTooltip"
+                    >
+                        {{viewMissionData.capacityModifier}}x Capacity
+                    </span>
                 </span>
             </span>
-            <span v-if="!missionInfo.isBuggedCap && missionInfo.isDubCap" class="max-w-28 flex py-1 double-cap-span items-center justify-center flex-1">
-                <img alt="Artifact Crate" :src="'images/icon_afx_chest_2.png'" class="w-6 mr-0_5rem">
-                <span
-                    class="text-xs font-bold"
-                    @mouseenter="(e) => showTooltip('dubcap', e)"
-                    @mouseleave="hideTooltip"
-                >
-                    {{viewMissionData.capacityModifier}}x Capacity
-                </span>
-            </span>
-        </span>
-        <div v-if="missionInfo.target != '' && missionInfo.target.toUpperCase() != 'UNKNOWN'">
-            <div class="items-center justify-center flex">
-                <span>Sensor Target: </span>
-                <div class="ml-1 text-center text-xs rounded-full w-max px-1.5 py-0.5 text-gray-400 bg-darkerer font-semibold">
-                    {{ properCase(missionInfo.target.replaceAll("_", " ")) }}
+            <div v-if="missionInfo.target != '' && missionInfo.target.toUpperCase() != 'UNKNOWN'">
+                <div class="items-center justify-center flex mt-1">
+                    <span>Sensor Target: </span>
+                    <div class="ml-1 text-center text-xs rounded-full w-max px-1.5 py-0.5 text-gray-400 bg-darkerer font-semibold">
+                        {{ properCase(missionInfo.target.replaceAll("_", " ")) }}
+                    </div>
                 </div>
             </div>
-            <br/>
         </div>
-
 
         <drop-display-container
             ledger-type="mission" :data="viewMissionData"
             :show-expected-drops="showExpectedDrops"
+            :use-containers="true"
         ></drop-display-container>
 
         <!-- Shamelessly stolen straight from MK2's source code, with mobile note removed -->
@@ -120,6 +127,7 @@
     interface MissionInfo {
         durationType: number;
         shipString: string;
+        shipEnumString: string;
         level: number;
         isDubCap: boolean;
         isBuggedCap: boolean;
@@ -176,7 +184,6 @@
         methods: {
             properCase(string: string) {
               string = string.toLowerCase();
-              // Capitalize the first letter of each word, unless it is 'of' or 'the'
               const words = string.split(" ");
               for (let i = 0; i < words.length; i++) {
                 if (words[i] !== "of" && words[i] !== "the") {
@@ -197,7 +204,7 @@
             },
             formatDate(date: Date){
                 const year = date.getFullYear();
-                const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are zero based
+                const month = String(date.getMonth() + 1).padStart(2, '0');
                 const day = String(date.getDate()).padStart(2, '0');
                 const hours = String(date.getHours()).padStart(2, '0');
                 const minutes = String(date.getMinutes()).padStart(2, '0');
