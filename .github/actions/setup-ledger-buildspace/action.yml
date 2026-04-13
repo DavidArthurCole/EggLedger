@@ -35,6 +35,13 @@ runs:
       run: |
         brew install protobuf protoc-gen-go dos2unix || true
 
+    - name: Install Windows build dependencies
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        choco install make dos2unix protobuf -y --no-progress
+        go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+
     - name: Build
       shell: bash
       run: |
