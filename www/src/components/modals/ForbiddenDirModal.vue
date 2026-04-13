@@ -1,7 +1,7 @@
 <template>
   <div
     v-if="visible"
-    class="flex-1 flex flex-col w-full mx-auto px-4 space-y-3 overflow-y-scroll bg-darker"
+    class="view-layout overflow-y-scroll"
   >
     <div class="text-sm text-gray-400 space-y-1">
       <p class="text-red-700">

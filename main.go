@@ -1,25 +1,32 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"embed"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"image"
+	"image/png"
 	"io/fs"
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/DavidArthurCole/EggLedger/api"
 	"github.com/DavidArthurCole/EggLedger/db"
 	"github.com/DavidArthurCole/EggLedger/ei"
 	"github.com/DavidArthurCole/EggLedger/eiafx"
+	"github.com/DavidArthurCole/EggLedger/ledgerdata"
 	"github.com/DavidArthurCole/EggLedger/platform"
 	"github.com/davidarthurcole/lorca"
 	log "github.com/sirupsen/logrus"
@@ -47,7 +54,6 @@ var (
 	_appIsTranslocated bool
 
 	_devMode               = os.Getenv("DEV_MODE") != ""
-	_eiAfxConfigErr        = eiafx.LoadConfig()
 	_eiAfxConfigMissions   []*ei.ArtifactsConfigurationResponse_MissionParameters
 	_eiAfxConfigArtis      []*ei.ArtifactsConfigurationResponse_ArtifactParameters
 	_nominalShipCapacities = map[ei.MissionInfo_Spaceship]map[ei.MissionInfo_DurationType][]float32{}
@@ -57,6 +63,8 @@ var (
 
 	_forceMennoRefresh bool
 	_forceUpdateCheck  bool
+	_debugCompression  bool
+	_launchedBrowser   string
 
 	_processRegistry             *ProcessRegistry
 	_updateKnownAccounts         func([]Account)
@@ -65,6 +73,10 @@ var (
 	_updateMennoDownloadProgress func(MennoDownloadProgress)
 	_updateExportedFiles         func([]string)
 	_emitMessage                 func(string, bool)
+
+	_nominalShipCapacitiesOnce sync.Once
+	_possibleTargetsOnce       sync.Once
+	_possibleArtifactsOnce     sync.Once
 )
 
 const (
@@ -87,6 +99,15 @@ func (u UI) MustBind(name string, f interface{}) {
 	if err != nil {
 		log.Fatal("MustBind err: ", err)
 	}
+}
+
+func (u UI) pushJSON(fn string, data any) {
+	encoded, err := json.Marshal(data)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	u.Eval(fmt.Sprintf("window.%s(%s)", fn, encoded))
 }
 
 type AppState string
@@ -115,12 +136,6 @@ type DatabaseAccount struct {
 	MissionCount int    `json:"missionCount"`
 	EBString     string `json:"ebString"`
 	AccountColor string `json:"accountColor"`
-}
-
-type RawPossibleTarget struct {
-	Name        ei.ArtifactSpec_Name `json:"name"`
-	DisplayName string               `json:"displayName"`
-	ImageString string               `json:"imageString"`
 }
 
 type PossibleTarget struct {
@@ -246,18 +261,18 @@ func init() {
 		})
 	}
 
-	if _eiAfxConfigErr != nil {
-		log.Fatal("_eiAfxConfigErr: ", _eiAfxConfigErr)
-	} else {
-		_eiAfxConfigMissions = eiafx.Config.MissionParameters
-		_eiAfxConfigArtis = eiafx.Config.ArtifactParameters
-		initNominalShipCapacities()
+	if err := eiafx.LoadConfig(); err != nil {
+		log.Fatal("eiafx.LoadConfig: ", err)
+	}
+	_eiAfxConfigMissions = eiafx.Config.MissionParameters
+	_eiAfxConfigArtis = eiafx.Config.ArtifactParameters
+
+	if err := ledgerdata.LoadConfig(_internalDir); err != nil {
+		log.Fatal("ledgerdata.LoadConfig: ", err)
 	}
 
 	dataInit()
 	storageInit()
-	initPossibleTargets()
-	initPossibleArtifacts()
 }
 
 func initNominalShipCapacities() {
@@ -280,9 +295,7 @@ func initNominalShipCapacities() {
 
 func viewMissionsOfId(ctx context.Context, eid string) ([]DatabaseMission, error) {
 
-	if len(_nominalShipCapacities) == 0 {
-		initNominalShipCapacities()
-	}
+	_nominalShipCapacitiesOnce.Do(initNominalShipCapacities)
 
 	//Get list of complete missions from the DB
 	completeMissions, err := db.RetrievePlayerCompleteMissions(ctx, eid)
@@ -309,66 +322,16 @@ func properTargetName(name *ei.ArtifactSpec_Name) string {
 }
 
 func initPossibleTargets() {
-	PossibleTargetsRaw := []RawPossibleTarget{
-		{Name: ei.ArtifactSpec_UNKNOWN, DisplayName: "Untargeted", ImageString: "none.png"},
-		{Name: ei.ArtifactSpec_BOOK_OF_BASAN, DisplayName: "Books of Basan", ImageString: "bob_target.png"},
-		{Name: ei.ArtifactSpec_TACHYON_DEFLECTOR, DisplayName: "Tachyon Deflectors", ImageString: "deflector_target.png"},
-		{Name: ei.ArtifactSpec_SHIP_IN_A_BOTTLE, DisplayName: "Ships in a Bottle", ImageString: "siab_target.png"},
-		{Name: ei.ArtifactSpec_TITANIUM_ACTUATOR, DisplayName: "Titanium Actuators", ImageString: "actuator_target.png"},
-		{Name: ei.ArtifactSpec_DILITHIUM_MONOCLE, DisplayName: "Dilithium Monocles", ImageString: "monocle_target.png"},
-		{Name: ei.ArtifactSpec_QUANTUM_METRONOME, DisplayName: "Quantum Metronomes", ImageString: "metronome_target.png"},
-		{Name: ei.ArtifactSpec_PHOENIX_FEATHER, DisplayName: "Phoenix Feathers", ImageString: "feather_target.png"},
-		{Name: ei.ArtifactSpec_THE_CHALICE, DisplayName: "Chalices", ImageString: "chalice_target.png"},
-		{Name: ei.ArtifactSpec_INTERSTELLAR_COMPASS, DisplayName: "Interstellar Compasses", ImageString: "compass_target.png"},
-		{Name: ei.ArtifactSpec_CARVED_RAINSTICK, DisplayName: "Carved Rainsticks", ImageString: "rainstick_target.png"},
-		{Name: ei.ArtifactSpec_BEAK_OF_MIDAS, DisplayName: "Beaks of Midas", ImageString: "beak_target.png"},
-		{Name: ei.ArtifactSpec_MERCURYS_LENS, DisplayName: "Mercury's Lenses", ImageString: "lens_target.png"},
-		{Name: ei.ArtifactSpec_NEODYMIUM_MEDALLION, DisplayName: "Neodymium Medallions", ImageString: "medallion_target.png"},
-		{Name: ei.ArtifactSpec_ORNATE_GUSSET, DisplayName: "Gussets", ImageString: "gusset_target.png"},
-		{Name: ei.ArtifactSpec_TUNGSTEN_ANKH, DisplayName: "Tungsten Ankhs", ImageString: "ankh_target.png"},
-		{Name: ei.ArtifactSpec_AURELIAN_BROOCH, DisplayName: "Aurelian Brooches", ImageString: "brooch_target.png"},
-		{Name: ei.ArtifactSpec_VIAL_MARTIAN_DUST, DisplayName: "Vials of Martian Dust", ImageString: "vial_target.png"},
-		{Name: ei.ArtifactSpec_DEMETERS_NECKLACE, DisplayName: "Demeters Necklaces", ImageString: "necklace_target.png"},
-		{Name: ei.ArtifactSpec_LUNAR_TOTEM, DisplayName: "Lunar Totems", ImageString: "totem_target.png"},
-		{Name: ei.ArtifactSpec_PUZZLE_CUBE, DisplayName: "Puzzle Cubes", ImageString: "cube_target.png"},
-		{Name: ei.ArtifactSpec_PROPHECY_STONE, DisplayName: "Prophecy Stones", ImageString: "prophecy_target.png"},
-		{Name: ei.ArtifactSpec_CLARITY_STONE, DisplayName: "Clarity Stones", ImageString: "clarity_target.png"},
-		{Name: ei.ArtifactSpec_DILITHIUM_STONE, DisplayName: "Dilithium Stones", ImageString: "dilithium_target.png"},
-		{Name: ei.ArtifactSpec_LIFE_STONE, DisplayName: "Life Stones", ImageString: "life_target.png"},
-		{Name: ei.ArtifactSpec_QUANTUM_STONE, DisplayName: "Quantum Stones", ImageString: "quantum_target.png"},
-		{Name: ei.ArtifactSpec_SOUL_STONE, DisplayName: "Soul Stones", ImageString: "soul_target.png"},
-		{Name: ei.ArtifactSpec_TERRA_STONE, DisplayName: "Terra Stones", ImageString: "terra_target.png"},
-		{Name: ei.ArtifactSpec_TACHYON_STONE, DisplayName: "Tachyon Stones", ImageString: "tachyon_target.png"},
-		{Name: ei.ArtifactSpec_LUNAR_STONE, DisplayName: "Lunar Stones", ImageString: "lunar_target.png"},
-		{Name: ei.ArtifactSpec_SHELL_STONE, DisplayName: "Shell Stones", ImageString: "shell_target.png"},
-		{Name: ei.ArtifactSpec_SOLAR_TITANIUM, DisplayName: "Solar Titanium", ImageString: "titanium_target.png"},
-		{Name: ei.ArtifactSpec_TAU_CETI_GEODE, DisplayName: "Geodes", ImageString: "geode_target.png"},
-		{Name: ei.ArtifactSpec_GOLD_METEORITE, DisplayName: "Gold Meteorites", ImageString: "gold_target.png"},
-		{Name: ei.ArtifactSpec_PROPHECY_STONE_FRAGMENT, DisplayName: "Prophecy Stone Fragments", ImageString: "prophecy_frag_target.png"},
-		{Name: ei.ArtifactSpec_CLARITY_STONE_FRAGMENT, DisplayName: "Clarity Stone Fragments", ImageString: "clarity_frag_target.png"},
-		{Name: ei.ArtifactSpec_LIFE_STONE_FRAGMENT, DisplayName: "Life Stone Fragments", ImageString: "life_frag_target.png"},
-		{Name: ei.ArtifactSpec_TERRA_STONE_FRAGMENT, DisplayName: "Terra Stone Fragments", ImageString: "terra_frag_target.png"},
-		{Name: ei.ArtifactSpec_DILITHIUM_STONE_FRAGMENT, DisplayName: "Dilithium Stone Fragments", ImageString: "dilithium_frag_target.png"},
-		{Name: ei.ArtifactSpec_SOUL_STONE_FRAGMENT, DisplayName: "Soul Stone Fragments", ImageString: "soul_frag_target.png"},
-		{Name: ei.ArtifactSpec_QUANTUM_STONE_FRAGMENT, DisplayName: "Quantum Stone Fragments", ImageString: "quantum_frag_target.png"},
-		{Name: ei.ArtifactSpec_TACHYON_STONE_FRAGMENT, DisplayName: "Tachyon Stone Fragments", ImageString: "tachyon_frag_target.png"},
-		{Name: ei.ArtifactSpec_SHELL_STONE_FRAGMENT, DisplayName: "Shell Stone Fragments", ImageString: "shell_frag_target.png"},
-		{Name: ei.ArtifactSpec_LUNAR_STONE_FRAGMENT, DisplayName: "Lunar Stone Fragments", ImageString: "lunar_frag_target.png"},
-	}
-
-	// Convert the array to PossibleTarget
 	possibleTargets := []PossibleTarget{
 		{DisplayName: "None (Pre 1.27)", Id: -1, ImageString: "none.png"},
 	}
-	for _, rawTarget := range PossibleTargetsRaw {
-		possibleTarget := PossibleTarget{
-			DisplayName: rawTarget.DisplayName,
-			Id:          int32(rawTarget.Name),
-			ImageString: rawTarget.ImageString,
-		}
-		possibleTargets = append(possibleTargets, possibleTarget)
+	for _, target := range ledgerdata.Config.ArtifactTargets {
+		possibleTargets = append(possibleTargets, PossibleTarget{
+			DisplayName: target.DisplayName,
+			Id:          int32(ei.ArtifactSpec_Name_value[target.Name]),
+			ImageString: target.ImageString,
+		})
 	}
-
 	_possibleTargets = possibleTargets
 }
 
@@ -409,7 +372,9 @@ func initPossibleArtifacts() {
 func main() {
 	flag.BoolVar(&_forceMennoRefresh, "force-menno-refresh", false, "treat menno data as stale regardless of last refresh time")
 	flag.BoolVar(&_forceUpdateCheck, "force-update-check", false, "bypass the 12-hour update-check cooldown")
+	flag.BoolVar(&_debugCompression, "debug-compression", false, "log Content-Encoding headers on API responses to check if the server is gzip-compressing")
 	flag.Parse()
+	api.DebugCompression = _debugCompression
 
 	if _devMode {
 		log.Info("starting app in dev mode")
@@ -417,19 +382,9 @@ func main() {
 
 	prefBrowserPath := _storage.PreferredChromiumPath
 	browser := lorca.LocateChrome(prefBrowserPath)
+	_launchedBrowser = browser
 	if prefBrowserPath != browser {
 		_storage.SetPreferredChromiumPath("")
-	}
-	if browser == "" {
-		lorca.PromptDownload()
-		log.Fatal("unable to locate a supported browser")
-		return
-	}
-
-	// Firefox support is temporarily disabled. If LocateChrome fell back to
-	// Firefox (no Chromium-family browser installed), treat it as not found.
-	if strings.Contains(strings.ToLower(browser), "firefox") {
-		browser = ""
 	}
 	if browser == "" {
 		lorca.PromptDownload()
@@ -458,7 +413,8 @@ func main() {
 		resolutionPrefs := _storage.GetDefaultResolution()
 		return resolutionPrefs[0], resolutionPrefs[1]
 	}()
-	u, err := lorca.New("", "", browser, widthPreference, heightPreference, args...)
+	appIconPath := buildAppIconPath()
+	u, err := lorca.New("", "", browser, widthPreference, heightPreference, appIconPath, args...)
 	if err != nil {
 		log.Fatal("lorca err: ", err)
 	}
@@ -466,39 +422,19 @@ func main() {
 	defer ui.Close()
 
 	_updateKnownAccounts = func(accounts []Account) {
-		encoded, err := json.Marshal(accounts)
-		if err != nil {
-			log.Error(err)
-			return
-		}
-		ui.Eval(fmt.Sprintf("window.updateKnownAccounts(%s)", encoded))
+		ui.pushJSON("updateKnownAccounts", accounts)
 	}
 	_updateState = func(state AppState) {
 		ui.Eval(fmt.Sprintf("window.updateState('%s')", state))
 	}
 	_updateMissionProgress = func(progress MissionProgress) {
-		encoded, err := json.Marshal(progress)
-		if err != nil {
-			log.Error(err)
-			return
-		}
-		ui.Eval(fmt.Sprintf("window.updateMissionProgress(%s)", encoded))
+		ui.pushJSON("updateMissionProgress", progress)
 	}
 	_updateMennoDownloadProgress = func(progress MennoDownloadProgress) {
-		encoded, err := json.Marshal(progress)
-		if err != nil {
-			log.Error(err)
-			return
-		}
-		ui.Eval(fmt.Sprintf("window.updateMennoDownloadProgress(%s)", encoded))
+		ui.pushJSON("updateMennoDownloadProgress", progress)
 	}
 	_updateExportedFiles = func(files []string) {
-		encoded, err := json.Marshal(files)
-		if err != nil {
-			log.Error(err)
-			return
-		}
-		ui.Eval(fmt.Sprintf("window.updateExportedFiles(%s)", encoded))
+		ui.pushJSON("updateExportedFiles", files)
 	}
 	_emitMessage = func(message string, isError bool) {
 		encoded, err := json.Marshal(message)
@@ -510,12 +446,7 @@ func main() {
 	}
 
 	updateProcesses := func(snapshots []ProcessSnapshot) {
-		encoded, err := json.Marshal(snapshots)
-		if err != nil {
-			log.Error(err)
-			return
-		}
-		ui.Eval(fmt.Sprintf("window.updateProcesses(%s)", encoded))
+		ui.pushJSON("updateProcesses", snapshots)
 	}
 	_processRegistry = NewProcessRegistry(updateProcesses)
 	_processRegistry.Start(context.Background())
@@ -554,6 +485,24 @@ func main() {
 
 	ui.MustBind("getPreferredBrowser", func() string {
 		return _storage.PreferredChromiumPath
+	})
+
+	ui.MustBind("getLoadedBrowser", func() string {
+		return _launchedBrowser
+	})
+
+	ui.MustBind("restartApp", func() {
+		executable, err := os.Executable()
+		if err != nil {
+			log.Errorf("restartApp: %v", err)
+			return
+		}
+		cmd := exec.Command(executable, os.Args[1:]...)
+		if err := cmd.Start(); err != nil {
+			log.Errorf("restartApp: failed to start new instance: %v", err)
+			return
+		}
+		ui.Close()
 	})
 
 	ui.MustBind("setAutoRefreshMennoPreference", func(flag bool) {
@@ -616,18 +565,7 @@ func main() {
 		_storage.SetWorkerCountWarningRead(flag)
 	})
 
-	ui.MustBind("getMaxQuality", func() float32 {
-		maxQuality := float32(0)
-		for _, mission := range _eiAfxConfigMissions {
-			for _, duration := range mission.GetDurations() {
-				compedMaxQuality := float32(duration.GetMaxQuality()) + (duration.GetLevelQualityBump() * float32(len(mission.LevelMissionRequirements)))
-				if compedMaxQuality > maxQuality {
-					maxQuality = compedMaxQuality
-				}
-			}
-		}
-		return maxQuality
-	})
+	ui.MustBind("getMaxQuality", getMaxQuality)
 
 	ui.MustBind("getAutoRetryPreference", func() bool {
 		return _storage.GetRetryFailedMissions()
@@ -662,18 +600,12 @@ func main() {
 	})
 
 	ui.MustBind("getAfxConfigs", func() []PossibleArtifact {
-		if len(_possibleArtifacts) == 0 {
-			initPossibleArtifacts()
-		}
-
+		_possibleArtifactsOnce.Do(initPossibleArtifacts)
 		return _possibleArtifacts
 	})
 
 	ui.MustBind("getPossibleTargets", func() []PossibleTarget {
-		if len(_possibleTargets) == 0 {
-			initPossibleArtifacts()
-		}
-
+		_possibleTargetsOnce.Do(initPossibleTargets)
 		return _possibleTargets
 	})
 
@@ -805,4 +737,79 @@ func main() {
 	if err := db.CloseDB(); err != nil {
 		log.Fatalf("Failed to close database: %v", err)
 	}
+}
+
+// buildAppIconPath scales the embedded icon-64.png to 32x32 (matching
+// LR_DEFAULTSIZE's SM_CXICON request), wraps it as a PNG-in-ICO file on disk,
+// and returns its path so lorca can apply it to a Firefox window via
+// WM_SETICON.  Returns an empty string on any failure (lorca falls back to
+// PE resource 1 or skips icon setup on non-Windows platforms).
+func buildAppIconPath() string {
+	pngData, err := fs.ReadFile(_fs, "www/dist/images/icon-64.png")
+	if err != nil {
+		return ""
+	}
+
+	// Decode the source PNG.
+	src, err := png.Decode(bytes.NewReader(pngData))
+	if err != nil {
+		return ""
+	}
+	srcBounds := src.Bounds()
+
+	// Scale to 32x32 via center-pixel sampling so the ICO entry matches the
+	// size that LoadImageW requests when LR_DEFAULTSIZE is set (SM_CXICON = 32).
+	const dstW, dstH = 32, 32
+	dst := image.NewNRGBA(image.Rect(0, 0, dstW, dstH))
+	scaleX := srcBounds.Dx() / dstW
+	scaleY := srcBounds.Dy() / dstH
+	if scaleX < 1 {
+		scaleX = 1
+	}
+	if scaleY < 1 {
+		scaleY = 1
+	}
+	for dy := 0; dy < dstH; dy++ {
+		for dx := 0; dx < dstW; dx++ {
+			sx := srcBounds.Min.X + dx*scaleX + scaleX/2
+			sy := srcBounds.Min.Y + dy*scaleY + scaleY/2
+			dst.Set(dx, dy, src.At(sx, sy))
+		}
+	}
+
+	// Re-encode as PNG.
+	var scaledBuf bytes.Buffer
+	if err := png.Encode(&scaledBuf, dst); err != nil {
+		return ""
+	}
+	scaledPNG := scaledBuf.Bytes()
+
+	// PNG-in-ICO layout: 6-byte ICONDIR + 16-byte ICONDIRENTRY + PNG bytes.
+	const hdrSize = 22
+	ico := make([]byte, hdrSize+len(scaledPNG))
+
+	// ICONDIR
+	ico[2] = 1 // idType = ICO
+	ico[4] = 1 // idCount = 1
+
+	// ICONDIRENTRY
+	ico[6] = dstW // bWidth
+	ico[7] = dstH // bHeight
+	// bColorCount = 0, bReserved = 0
+	ico[10] = 1  // wPlanes (uint16 LE) = 1
+	ico[12] = 32 // wBitCount (uint16 LE) = 32
+	sz := uint32(len(scaledPNG))
+	ico[14] = byte(sz)
+	ico[15] = byte(sz >> 8)
+	ico[16] = byte(sz >> 16)
+	ico[17] = byte(sz >> 24)
+	ico[18] = hdrSize // dwImageOffset (low byte; upper 3 bytes already 0)
+
+	copy(ico[hdrSize:], scaledPNG)
+
+	icoPath := filepath.Join(_internalDir, "icon.ico")
+	if err := os.WriteFile(icoPath, ico, 0644); err != nil {
+		return ""
+	}
+	return icoPath
 }

@@ -49,51 +49,61 @@
       .underline {
         text-decoration: underline;
       }
+
+      ol {
+        padding-left: 1.5rem;
+      }
+
+      ol li {
+        margin: 0.5rem 0;
+      }
     </style>
   </head>
   <body>
     <h1>EggLedger installation/upgrade instructions</h1>
     <p>
-      Before you run the app for the first time, including when you just downloaded a new version,
-      you need to do the following to mark the app as safe, otherwise the app won&rsquo;t function
-      correctly thanks to draconian security measures of macOS:
+      When you first launch EggLedger, macOS will block it because the app is not signed with a
+      recognized developer certificate. Follow these steps to allow it to run:
     </p>
-    <ul>
+    <ol>
       <li>
-        <span class="text-green-500 font-semibold"
-          >Right click on the <span class="underline">preflight</span> script, choose
-          &ldquo;Open&rdquo; and let the script run.</span
-        >
-        EggLedger.app must be in the same directory, don&rsquo;t move it anywhere at this point.
+        <span class="font-semibold">Double-click EggLedger.app.</span> macOS will show a dialog
+        saying the app &ldquo;cannot be opened because Apple cannot verify it.&rdquo; Click
+        <span class="font-semibold">Done</span> to dismiss the dialog &mdash; do not try to open
+        it from this dialog.
       </li>
-    </ul>
-    <p>You should be able to launch the app normally now.</p>
+      <li>
+        Open <span class="font-semibold">System Settings &rarr; Privacy &amp; Security</span>.
+        Scroll down to the Security section. You should see a message about EggLedger being
+        blocked, with an <span class="font-semibold">Open Anyway</span> button next to it. Click
+        <span class="font-semibold">Open Anyway</span>.
+        <div class="warning-box">
+          <p>
+            The <span class="font-semibold">Open Anyway</span> button disappears after
+            approximately one hour. If you do not see it, try launching EggLedger.app again first
+            to re-trigger the block, then return to Privacy &amp; Security.
+          </p>
+        </div>
+      </li>
+      <li>
+        macOS will show a follow-up security confirmation dialog. Click
+        <span class="font-semibold">Open</span> to confirm.
+      </li>
+    </ol>
+    <p>EggLedger will now launch normally. You only need to do this once per version.</p>
     <div class="info-box">
       <h2>If you&rsquo;re upgrading to a new version</h2>
       <p>
-        You should
-        <span class="font-semibold">drag EggLedger.app to where the old version is</span>, and
-        overwrite the old app bundle. This ensures the new version can find your existing data
-        without redownloading everything.
-      </p>
-    </div>
-    <div class="warning-box">
-      <p>
-        If you encounter the &ldquo;<span class="font-semibold underline"
-          >&hellip; cannot be opened because the developer cannot be verified</span
-        >&rdquo; error when launching either preflight or EggLedger.app,
-        <span class="font-semibold"
-          >instead of double clicking, right click on the script or app and choose
-          &ldquo;Open&rdquo;.</span
-        >
-        The error occurs because the programs are not signed with a recognized developer certificate
-        (only available to developers enrolled in Apple&rsquo;s paid Developer Program).
+        <span class="font-semibold">Drag EggLedger.app to where the old version is</span> and
+        overwrite the old app bundle. This ensures the new version finds your existing data without
+        redownloading everything. You will need to repeat the Privacy &amp; Security steps above
+        for each new version.
       </p>
     </div>
     <p>
-      You can also move the entire folder containing EggLedger.app to anywhere you like. Do NOT move
+      You can move the entire folder containing EggLedger.app to anywhere you like. Do NOT move
       the app separately to a shared folder like /Applications; the app writes data to the folder
-      where EggLedger.app resides, you don&rsquo;t want to pollute a shared folder.
+      where EggLedger.app resides, and you don&rsquo;t want to pollute a shared folder.
     </p>
   </body>
 </html>

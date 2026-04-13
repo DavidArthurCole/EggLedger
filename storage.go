@@ -43,7 +43,7 @@ type Account struct {
 	AccountColor string `json:"accountColor"`
 	SeString     string `json:"seString"`
 	PeCount      int    `json:"peCount"`
-	EotCount     int    `json:"eotCount"`
+	TeCount      int    `json:"teCount"`
 }
 
 var _storage AppStorage

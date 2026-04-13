@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -99,8 +101,11 @@ func checkIfRefreshMennoDataIsNeeded() bool {
 
 func refreshMennoData(onProgress func(MennoDownloadProgress)) (err error) {
 
-	// Fetch the data from the Menno server.
-	resp, err := http.Get("https://eggincdatacollection.azurewebsites.net/api/GetAllData")
+	// Signal that we are connecting before the request goes out.
+	onProgress(MennoDownloadProgress{Phase: "connecting"})
+
+	// Fetch the gzipped data from the Menno server.
+	resp, err := http.Get("https://eggincdatacollectionsa.blob.core.windows.net/mission-data/all-data.json.gz")
 	if err != nil {
 		_storage.SetLastMennoDataRefreshAt(time.Time{}) // Reset time to allow for a new refresh.
 		fmt.Println(err)
@@ -108,26 +113,27 @@ func refreshMennoData(onProgress func(MennoDownloadProgress)) (err error) {
 	}
 	defer resp.Body.Close()
 
-	// Read response in chunks, emitting progress after each chunk.
+	// Read compressed response in chunks, emitting progress after each chunk.
 	startTime := time.Now()
-	totalBytes := resp.ContentLength // -1 if unknown
-	var buf []byte
+	totalBytes := resp.ContentLength // compressed size, -1 if unknown
+	var compressedBuf []byte
 	chunk := make([]byte, 32*1024)
 	for {
 		n, readErr := resp.Body.Read(chunk)
 		if n > 0 {
-			buf = append(buf, chunk[:n]...)
+			compressedBuf = append(compressedBuf, chunk[:n]...)
 			elapsed := time.Since(startTime).Seconds()
 			var speedBps float64
 			if elapsed > 0 {
-				speedBps = float64(len(buf)) / elapsed
+				speedBps = float64(len(compressedBuf)) / elapsed
 			}
 			etaSeconds := -1.0
 			if totalBytes > 0 && speedBps > 0 {
-				etaSeconds = float64(totalBytes-int64(len(buf))) / speedBps
+				etaSeconds = float64(totalBytes-int64(len(compressedBuf))) / speedBps
 			}
 			onProgress(MennoDownloadProgress{
-				BytesRead:  int64(len(buf)),
+				Phase:      "downloading",
+				BytesRead:  int64(len(compressedBuf)),
 				TotalBytes: totalBytes,
 				SpeedBps:   speedBps,
 				ETASeconds: etaSeconds,
@@ -142,7 +148,27 @@ func refreshMennoData(onProgress func(MennoDownloadProgress)) (err error) {
 			return readErr
 		}
 	}
-	body := buf
+
+	// Signal that decompression is starting.
+	onProgress(MennoDownloadProgress{Phase: "unzipping"})
+
+	// Decompress the gzipped body.
+	gr, err := gzip.NewReader(bytes.NewReader(compressedBuf))
+	if err != nil {
+		_storage.SetLastMennoDataRefreshAt(time.Time{})
+		fmt.Println(err)
+		return err
+	}
+	defer gr.Close()
+	body, err := io.ReadAll(gr)
+	if err != nil {
+		_storage.SetLastMennoDataRefreshAt(time.Time{})
+		fmt.Println(err)
+		return err
+	}
+
+	// Signal that disk IO is starting.
+	onProgress(MennoDownloadProgress{Phase: "saving"})
 
 	// Unmarshal
 	var result interface{}
@@ -194,6 +220,8 @@ func refreshMennoData(onProgress func(MennoDownloadProgress)) (err error) {
 }
 
 type MennoDownloadProgress struct {
+	// "connecting" | "downloading" | "saving"
+	Phase      string  `json:"phase"`
 	BytesRead  int64   `json:"bytesRead"`
 	TotalBytes int64   `json:"totalBytes"`
 	SpeedBps   float64 `json:"speedBps"`

@@ -1,4 +1,7 @@
-.PHONY: check build protobuf dev-app dist frontend typecheck lint
+.PHONY: check build protobuf dev-app dist frontend typecheck lint sync-proto sync-eiafx
+
+EIINC_PROTOS_DIR ?= ../EggIncProtos
+EIINC_TOOLS_DIR  ?= ../EggIncAPITools
 
 check:
 	bash scripts/check-deps.sh
@@ -20,6 +23,13 @@ lint:
 
 protobuf:
 	protoc --proto_path=. --go_out=paths=source_relative:. ei/ei.proto
+
+sync-proto:
+	bash scripts/sync-proto.sh "$(EIINC_PROTOS_DIR)"
+
+sync-eiafx:
+	@if [ -z "$(EID)" ]; then echo "Usage: make sync-eiafx EID=EI0000000000000000"; exit 1; fi
+	bash scripts/sync-eiafx.sh "$(EIINC_TOOLS_DIR)" "$(EID)"
 
 dev-app: build
 	echo EggLedger | DEV_MODE=1 entr -r ./dist/EggLedger

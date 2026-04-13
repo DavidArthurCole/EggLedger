@@ -5,17 +5,18 @@ const resolutionY = ref(0)
 const scalingFactor = ref(1)
 const startInFullscreen = ref(false)
 const preferredBrowser = ref<string | null>(null)
+const loadedBrowser = ref<string | null>(null)
 const allBrowsers = ref<string[]>([])
 const autoRefreshMenno = ref(false)
 const autoRetry = ref(false)
 const hideTimeoutErrors = ref(false)
 const defaultViewMode = ref('default')
 const workerCount = ref(1)
-const screenshotSafety = ref(false)
+export const screenshotSafety = ref(false)
 
 export function maskEid(s: string): string {
   if (!screenshotSafety.value) return s
-  return s.replaceAll(/EI\d{16}/g, 'EI\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022')
+  return s.replaceAll(/EI\d{16}/g, 'EI****************')
 }
 
 export function useSettings() {
@@ -26,6 +27,7 @@ export function useSettings() {
     scalingFactor.value = await globalThis.getDefaultScalingFactor()
     startInFullscreen.value = await globalThis.getStartInFullscreen()
     preferredBrowser.value = await globalThis.getPreferredBrowser()
+    loadedBrowser.value = await globalThis.getLoadedBrowser()
     autoRefreshMenno.value = await globalThis.getAutoRefreshMennoPreference()
     autoRetry.value = await globalThis.getAutoRetryPreference()
     hideTimeoutErrors.value = await globalThis.getHideTimeoutErrors()
@@ -57,7 +59,7 @@ export function useSettings() {
 
   return {
     resolutionX, resolutionY, scalingFactor, startInFullscreen,
-    preferredBrowser, allBrowsers, autoRefreshMenno, autoRetry, hideTimeoutErrors, defaultViewMode,
+    preferredBrowser, loadedBrowser, allBrowsers, autoRefreshMenno, autoRetry, hideTimeoutErrors, defaultViewMode,
     workerCount,
     screenshotSafety,
     loadSettings, setPreferredBrowser, refreshBrowserList,

@@ -1,5 +1,5 @@
 <template>
-  <div class="flex-1 flex flex-col overflow-hidden">
+  <div class="flex-1 min-h-0 flex flex-col overflow-hidden">
     <!-- Forbidden/translocated warnings -->
     <TranslocationModal :visible="appIsTranslocated" />
     <ForbiddenDirModal :visible="appIsInForbiddenDirectory && !appIsTranslocated" />
@@ -7,7 +7,7 @@
     <!-- Main ledger UI -->
     <div
       v-if="!appIsInForbiddenDirectory && !appIsTranslocated"
-      class="flex-1 flex flex-col w-full mx-auto px-4 space-y-3 overflow-hidden bg-darker"
+      class="view-layout overflow-hidden"
     >
     <div>
       <form
@@ -17,42 +17,45 @@
         @submit="onSubmit"
       >
         <div ref="playerIdSelectRef" class="tooltip-custom relative flex-grow focus-within:z-10">
-          <div v-if="selectedAccount?.nickname" class="ledger-input-overlay">
+          <div v-if="selectedAccount?.nickname || (screenshotSafety && playerId)" class="ledger-input-overlay">
             <span class="whitespace-pre">{{ maskEid(playerId) }}</span>
-            (<span :style="'color: #' + (selectedAccount.accountColor ?? '')">
-              {{ selectedAccount.nickname }} {{ selectedAccount.ebString ?? '???' }}
-            </span>
-            <template v-if="selectedAccount.seString">
-              <span class="text-gray-400">&nbsp;·</span>
-              <img :src="'images/soul_egg.png'" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="">
-              <span style="color:#a855f7">{{ selectedAccount.seString }} SE</span>
-              <span class="text-gray-400"> ·</span>
-              <img :src="'images/prophecy_egg.png'" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="">
-              <span style="color:#eab308">{{ selectedAccount.peCount }} PE</span>
-              <template v-if="selectedAccount.eotCount">
+            <template v-if="selectedAccount?.nickname">
+              (<span :style="'color: #' + (selectedAccount?.accountColor ?? '')">
+                {{ selectedAccount?.nickname }} {{ selectedAccount?.ebString ?? '???' }}
+              </span>
+              <template v-if="selectedAccount?.seString">
+                <span class="text-gray-400">&nbsp;·</span>
+                <img :src="'images/soul_egg.png'" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="">
+                <span style="color:#a855f7">{{ selectedAccount?.seString }} SE</span>
                 <span class="text-gray-400"> ·</span>
-                <img :src="'images/truth_egg.png'" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="">
-                <span style="color:#c831ff">{{ selectedAccount.eotCount }} EoT</span>
-              </template>
-            </template>)
+                <img :src="'images/prophecy_egg.png'" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="">
+                <span style="color:#eab308">{{ selectedAccount?.peCount }} PE</span>
+                <template v-if="selectedAccount?.teCount">
+                  <span class="text-gray-400"> ·</span>
+                  <img :src="'images/truth_egg.png'" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="">
+                  <span style="color:#c831ff">{{ selectedAccount?.teCount }} TE</span>
+                </template>
+              </template>)
+            </template>
           </div>
           <div v-if="!isPlayerIdValid" class="ledger-input-overlay">
             <span class="whitespace-pre">
-              {{ playerId }} ( <span class="text-red-700">Invalid EID: {{ getEidProblem(playerId) }}</span> )
+              <template v-if="!screenshotSafety">{{ playerId }} </template>(<span class="text-red-700">Invalid EID: {{ getEidProblem(playerId) }}</span>)
             </span>
           </div>
           <input
             id="playerIdInput"
             type="text"
             :class="'drop-select ' + (isPlayerIdValid ? 'border-gray-300' : 'border-red-700')"
+            :style="(selectedAccount?.nickname || (screenshotSafety && playerId)) ? { color: 'transparent', caretColor: '#9ca3af' } : undefined"
             placeholder="EI1234567890123456"
             :value="playerId"
             @focus="openPlayerIdDropdown"
             @input="(e) => (playerId = (e.target as HTMLInputElement).value)"
           />
           <ul
-            v-if="playerIdDropdownOpen && knownAccounts.length > 0"
-            class="ledger-list focus:outline-none sm:text-sm"
+            v-if="playerIdDropdownOpen && (knownAccounts?.length ?? 0) > 0"
+            class="ledger-list"
             tabindex="-1"
           >
             <li
@@ -73,10 +76,10 @@
                 <span class="text-gray-400"> ·</span>
                 <img :src="'images/prophecy_egg.png'" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="">
                 <span style="color:#eab308">{{ account.peCount }} PE</span>
-                <template v-if="account.eotCount">
+                <template v-if="account.teCount">
                   <span class="text-gray-400"> ·</span>
                   <img :src="'images/truth_egg.png'" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="">
-                  <span style="color:#c831ff">{{ account.eotCount }} EoT</span>
+                  <span style="color:#c831ff">{{ account.teCount }} TE</span>
                 </template>
               </template>)
             </li>
@@ -195,7 +198,7 @@
 
     <div
       ref="messagesRef"
-      class="flex-1 px-2 py-1 overflow-auto shadow-sm block text-xs font-mono text-gray-400 bg-darkest rounded-md"
+      class="flex-1 min-h-0 px-2 py-1 overflow-auto shadow-sm block text-xs font-mono text-gray-400 bg-darkest rounded-md"
     >
       <div v-for="(message, i) in logMessages" :key="i" class="whitespace-pre">
         <span :class="message.isError ? 'text-red-700' : 'text-green-700'">{{ hhmmss(new Date()) }}|</span>
@@ -226,7 +229,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useAppState } from '../composables/useAppState'
 import { useFetch } from '../composables/useFetch'
 import { parseLogSegments } from '../composables/useLogRenderer'
-import { maskEid } from '../composables/useSettings'
+import { maskEid, screenshotSafety } from '../composables/useSettings'
 import { useDropdownSelector } from '../composables/useDropdownSelector'
 import { AppState } from '../types/bridge'
 import ForbiddenDirModal from '../components/modals/ForbiddenDirModal.vue'
@@ -246,7 +249,7 @@ const {
 
 const { progress, fetchPlayerData, stopFetching } = useFetch()
 
-const playerId = ref<string>(knownAccounts.value[0]?.id ?? '')
+const playerId = ref<string>(knownAccounts.value?.[0]?.id ?? '')
 const messagesRef = ref<HTMLElement | null>(null)
 
 const missionProcesses = computed(() =>
@@ -268,7 +271,7 @@ function normalizePlayerId(id: string): string {
 
 const isPlayerIdValid = computed(() => /(^$)|(^EI\d{16}$)/.test(normalizePlayerId(playerId.value)))
 const selectedAccount = computed(
-  () => knownAccounts.value.find((acc) => acc.id === normalizePlayerId(playerId.value)) ?? null,
+  () => knownAccounts.value?.find((acc) => acc.id === normalizePlayerId(playerId.value)) ?? null,
 )
 
 const idle = computed(() => {

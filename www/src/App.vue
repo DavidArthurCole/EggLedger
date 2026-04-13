@@ -1,5 +1,5 @@
 <template>
-  <div v-show="mounted" class="h-stretch flex flex-col space-y-3 pb-3 bg-darker">
+  <div v-show="mounted" class="h-full flex flex-col space-y-3 pb-3 bg-darker">
     <TabBar :tabs="tabList" v-model:active-tab="activeTab" />
 
     <SettingsView v-show="activeTab === 'Settings'" />
@@ -62,13 +62,12 @@ const updateModalDismissed = ref(false)
 onMounted(async () => {
   await initAppState()
   registerShortcuts()
+  mounted.value = true
 
-  // Auto-refresh Menno data if needed
+  // Auto-refresh Menno data if needed - runs after UI is visible
   if (await checkRefreshNeeded()) {
     await refresh(true)
   }
   await load()
-
-  mounted.value = true
 })
 </script>

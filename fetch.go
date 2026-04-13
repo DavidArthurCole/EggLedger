@@ -128,15 +128,15 @@ func runFetchPipeline(w *worker, playerId string) {
 	game := backup.GetGame()
 	seSuffix := AbbreviateFloat(game.GetSoulEggsD())
 	peCount := int(game.GetEggsOfProphecy())
-	totalEoT := 0
+	totalTE := 0
 	if virtue := backup.GetVirtue(); virtue != nil {
 		for _, v := range virtue.GetEovEarned() {
-			totalEoT += int(v)
+			totalTE += int(v)
 		}
 	}
 	breakdownMsg := ""
-	if totalEoT > 0 {
-		breakdownMsg += fmt.Sprintf("  [img:truth_egg.png] &c831ff<%d EoT>", totalEoT)
+	if totalTE > 0 {
+		breakdownMsg += fmt.Sprintf("  [img:truth_egg.png] &c831ff<%d TE>", totalTE)
 	}
 	breakdownMsg += fmt.Sprintf("  [img:soul_egg.png] &a855f7<%s SE>  [img:prophecy_egg.png] &eab308<%d PE>", seSuffix, peCount)
 	pinfo(breakdownMsg)
@@ -156,7 +156,7 @@ func runFetchPipeline(w *worker, playerId string) {
 	} else {
 		perror("backup is from unknown time")
 	}
-	_storage.AddKnownAccount(Account{Id: playerId, Nickname: nickname, EBString: ebString, AccountColor: roleColor, SeString: seSuffix, PeCount: peCount, EotCount: totalEoT})
+	_storage.AddKnownAccount(Account{Id: playerId, Nickname: nickname, EBString: ebString, AccountColor: roleColor, SeString: seSuffix, PeCount: peCount, TeCount: totalTE})
 	_storage.Lock()
 	_updateKnownAccounts(_storage.KnownAccounts)
 	_storage.Unlock()

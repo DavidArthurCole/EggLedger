@@ -12,7 +12,7 @@ export interface Account {
   accountColor: string
   seString: string
   peCount: number
-  eotCount: number
+  teCount: number
 }
 
 export interface DatabaseAccount {
@@ -44,9 +44,9 @@ export interface DatabaseMission {
   target: string
   /** ei.ArtifactSpec_Name enum value, or -1 */
   targetInt: number
-  /** ei.MissionInfo_MissionType enum value: 0=Standard, 1=Virtue */
+  /** ei.MissionInfo_MissionType enum value: 0=Home, 1=Virtue */
   missionType: number
-  /** Display string e.g. "Standard" or "Virtue" */
+  /** Display string e.g. "Home" or "Virtue" */
   missionTypeString: string
 }
 
@@ -143,15 +143,17 @@ export interface ProcessSnapshot {
   label: string
   status: 'running' | 'done' | 'failed'
   /** Per-process log entries */
-  logs: ProcessLogEntry[]
+  logs: readonly ProcessLogEntry[]
   /** Unix milliseconds */
   startTimestamp: number
   /** "overall" | "mission" */
   kind: string
-  segments: SegmentStatus[]
+  segments: readonly SegmentStatus[]
 }
 
 export interface MennoDownloadProgress {
+  /** "connecting" | "downloading" | "unzipping" | "saving" */
+  phase: string
   /** bytes downloaded so far */
   bytesRead: number
   /** total bytes; -1 if Content-Length was not provided */
@@ -186,6 +188,8 @@ declare global {
   function setDefaultResolution(x: number, y: number): Promise<void>
   function setPreferredBrowser(path: string): Promise<boolean>
   function getPreferredBrowser(): Promise<string>
+  function getLoadedBrowser(): Promise<string>
+  function restartApp(): Promise<void>
   function getDetectedBrowsers(): Promise<string[]>
   function getAutoRefreshMennoPreference(): Promise<boolean>
   function setAutoRefreshMennoPreference(flag: boolean): Promise<void>

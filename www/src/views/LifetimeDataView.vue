@@ -1,5 +1,5 @@
 <template>
-  <div class="flex-1 flex flex-col w-full mx-auto px-4 space-y-3 overflow-hidden bg-darker">
+  <div class="view-layout overflow-hidden">
     <!-- Target filter overlay -->
     <SearchOverSelector
       v-if="targetFilterMenuOpen"
@@ -49,10 +49,10 @@
             <span class="text-gray-400"> ·</span>
             <img :src="'images/prophecy_egg.png'" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="">
             <span style="color:#eab308">{{ selectedLifetimeKnownAccount.peCount }} PE</span>
-            <template v-if="selectedLifetimeKnownAccount.eotCount">
+            <template v-if="selectedLifetimeKnownAccount.teCount">
               <span class="text-gray-400"> ·</span>
               <img :src="'images/truth_egg.png'" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="">
-              <span style="color:#c831ff">{{ selectedLifetimeKnownAccount.eotCount }} EoT</span>
+              <span style="color:#c831ff">{{ selectedLifetimeKnownAccount.teCount }} TE</span>
             </template>
           </template>)
         </div>
@@ -67,7 +67,7 @@
         />
         <ul
           v-if="accountDropdownOpen && objectedExistingData.length > 0"
-          class="ledger-list focus:outline-none sm:text-sm"
+          class="ledger-list"
           tabindex="-1"
         >
           <li
@@ -83,7 +83,7 @@
         </ul>
       </div>
       <button
-        class="-ml-px relative w-20 text-center space-x-2 px-4 py-2 border border-gray-300 text-sm font-medium rounded-r-md text-gray-400 filter-button"
+        class="view-form-button"
         type="submit"
         :disabled="
           !selectedLifetimeAccount ||
@@ -108,7 +108,7 @@
           />
           <span :class="statusColor">{{ statusText }}</span>
         </div>
-        <div class="h-3 relative rounded-full overflow-hidden mt-1">
+        <div class="progress-track mt-1">
           <div class="w-full h-full bg-dark absolute"></div>
           <div
             v-if="lifetimeState === LifetimeLoadState.Failed || lifetimeState === LifetimeLoadState.FailedTooFast"
@@ -126,7 +126,7 @@
     <!-- Filter panel -->
     <div
       v-if="doesDataExist"
-      class="min-h-7 px-2 py-1 text-gray-400 bg-darkest rounded-md tabular-nums overflow-auto mt-0_75rem"
+      class="filter-panel"
     >
       <span
         v-if="(lifetimeData != null && !lifetimeDataBeingLoaded) || lifetimeDataBeingFiltered"
@@ -166,7 +166,7 @@
         <button
           id="lifetime-filter-apply-button"
           type="submit"
-          class="mt-0_5rem mr-1rem -ml-px relative p-0.5 text-center space-x-2 px-3 py-1 border border-gray-300 text-sm font-medium rounded-md text-gray-400 bg-darkerer hover:bg-dark_tab_hover disabled:opacity-50 disabled:hover:darker_tab_hover disabled:hover:cursor-not-allowed focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+          class="apply-filter-button"
           :disabled="lifetimeDataBeingFiltered || !filterHasChanged"
         >
           Apply Filter
@@ -177,7 +177,7 @@
     <!-- Data display -->
     <div
       v-if="doesDataExist"
-      class="flex-1 px-2 py-1 overflow-auto shadow-sm block text-xs font-mono text-gray-300 bg-darkest rounded-md text-center"
+      class="flex-1 min-h-0 px-2 py-1 overflow-auto shadow-sm block text-xs font-mono text-gray-300 bg-darkest rounded-md text-center"
     >
       <div
         v-if="(lifetimeData != null && !lifetimeDataBeingLoaded) || lifetimeDataBeingFiltered"
@@ -355,7 +355,7 @@ const selectedLifetimeAccountData = computed(
   () => accountById(selectedLifetimeAccount.value),
 )
 const selectedLifetimeKnownAccount = computed(
-  () => knownAccounts.value.find((acc) => acc.id === selectedLifetimeAccount.value) ?? null,
+  () => knownAccounts.value?.find((acc) => acc.id === selectedLifetimeAccount.value) ?? null,
 )
 
 // Lifetime load state
@@ -500,10 +500,10 @@ function reSortLifetime() {
         return sortGroupAlreadyCombed
     }
   })()
-  ld.artifacts = sortFn(ld.artifacts as unknown as DropLike[]) as unknown as LifetimeDrop[]
-  ld.stones = sortFn(ld.stones as unknown as DropLike[]) as unknown as LifetimeDrop[]
-  ld.stoneFragments = sortFn(ld.stoneFragments as unknown as DropLike[]) as unknown as LifetimeDrop[]
-  ld.ingredients = sortFn(ld.ingredients as unknown as DropLike[]) as unknown as LifetimeDrop[]
+  ld.artifacts = sortFn([...ld.artifacts] as unknown as DropLike[]) as unknown as LifetimeDrop[]
+  ld.stones = sortFn([...ld.stones] as unknown as DropLike[]) as unknown as LifetimeDrop[]
+  ld.stoneFragments = sortFn([...ld.stoneFragments] as unknown as DropLike[]) as unknown as LifetimeDrop[]
+  ld.ingredients = sortFn([...ld.ingredients] as unknown as DropLike[]) as unknown as LifetimeDrop[]
 }
 
 // Artifact/mission configs (loaded in onMounted, passed to useFilters)

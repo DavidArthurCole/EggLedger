@@ -51,9 +51,9 @@ func (b *Backup) GetEarningsBonus() float64 {
 	totalSE := float64(game.GetSoulEggsD())
 	seBonus := soulEggBonus * totalSE
 
-	totalEoTEarned := Sum(virtue.EovEarned, func(v uint32) float64 { return float64(v) })
-	eotFactor := math.Pow(1.01, totalEoTEarned)
+	totalTEEarned := Sum(virtue.EovEarned, func(v uint32) float64 { return float64(v) })
+	teFactor := math.Pow(1.01, totalTEEarned)
 
-	result := peBonus * seBonus * eotFactor
+	result := peBonus * seBonus * teFactor
 	return float64(result)
 }
