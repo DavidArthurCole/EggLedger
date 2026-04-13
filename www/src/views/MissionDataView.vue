@@ -308,85 +308,17 @@
       v-if="doesDataExist"
       class="min-h-7 max-h-50 px-2 py-2 text-sm text-gray-400 bg-darkest rounded-md tabular-nums overflow-auto mt-0_75rem"
     >
-      <div v-if="hasAnyFilterableData">
-        <div>
-          <span class="mr-0_5rem section-heading">Options</span>
-          <button
-            id="toggleOptionsButtonVM"
-            class="text-base toggle-link"
-            type="button"
-            @click="toggleOptions"
-          >
-            {{ hideOptions ? 'Show' : 'Hide' }}
-          </button>
-        </div>
-        <div v-if="!hideOptions">
-          <span class="opt-span">
-            <label for="viewByDateCB" class="ext-opt-label">Separate missions by day</label>
-            <input id="viewByDateCB" type="checkbox" v-model="viewByDate" class="ext-opt-check" />
-          </span>
-          <span class="opt-span">
-            <label for="viewMissionTimesCB" class="ext-opt-label">Show launch times</label>
-            <input id="viewMissionTimesCB" type="checkbox" v-model="viewMissionTimes" class="ext-opt-check" />
-          </span>
-          <span class="opt-span">
-            <label for="recolorDCCB" class="ext-opt-label">Re-color dubcaps</label>
-            <input id="recolorDCCB" type="checkbox" v-model="recolorDC" class="ext-opt-check" />
-          </span>
-          <span class="opt-span">
-            <label for="recolorBCCB" class="ext-opt-label">Re-color bugged-caps</label>
-            <input id="recolorBCCB" type="checkbox" v-model="recolorBC" class="ext-opt-check" />
-          </span>
-          <span class="opt-span">
-            <label for="showExpectedDropsPerShip" class="ext-opt-label">Show "Expected Drops Per Ship"</label>
-            <input
-              id="showExpectedDropsPerShip"
-              type="checkbox"
-              :disabled="!mennoDataLoaded"
-              v-model="showExpectedDropsPerShip"
-              class="ext-opt-check"
-            />
-          </span>
-          <div>
-            <span class="section-heading">Multi-View Method</span><br />
-            <span class="opt-span">
-              <label for="multiViewOffCB" class="ext-opt-label">Off</label>
-              <input id="multiViewOffCB" type="radio" v-model="multiViewMode" value="off" class="ext-opt-check" />
-            </span>
-            <span class="opt-span">
-              <label for="multiViewRowCB" class="ext-opt-label">Row/Date Select</label>
-              <input id="multiViewRowCB" type="radio" v-model="multiViewMode" value="row" class="ext-opt-check" />
-            </span>
-            <span class="opt-span">
-              <label for="multiViewFreeCB" class="ext-opt-label">Free Select</label>
-              <input id="multiViewFreeCB" type="radio" v-model="multiViewMode" value="free" class="ext-opt-check" />
-            </span>
-          </div>
-          <div>
-            <span class="section-heading">Drops Sort Method</span><br />
-            <span class="opt-span">
-              <label for="viewMissionSortDefault" class="ext-opt-label">Default</label>
-              <input
-                id="viewMissionSortDefault"
-                type="radio"
-                v-model="viewMissionSortMethod"
-                value="default"
-                class="ext-opt-check"
-              />
-            </span>
-            <span class="opt-span">
-              <label for="viewMissionSortIV" class="ext-opt-label">Inventory Visualizer</label>
-              <input
-                id="viewMissionSortIV"
-                type="radio"
-                v-model="viewMissionSortMethod"
-                value="iv"
-                class="ext-opt-check"
-              />
-            </span>
-          </div>
-        </div>
-      </div>
+      <OptionsPanel
+        :has-any-filterable-data="hasAnyFilterableData"
+        :menno-data-loaded="mennoDataLoaded"
+        v-model:view-by-date="viewByDate"
+        v-model:view-mission-times="viewMissionTimes"
+        v-model:recolor-d-c="recolorDC"
+        v-model:recolor-b-c="recolorBC"
+        v-model:show-expected-drops-per-ship="showExpectedDropsPerShip"
+        v-model:multi-view-mode="multiViewMode"
+        v-model:view-mission-sort-method="viewMissionSortMethod"
+      />
     </div>
 
     <!-- Mission type tabs: only shown when loaded missions include both Home and Virtue -->
@@ -414,157 +346,25 @@
       v-if="doesDataExist"
       class="flex-1 min-h-0 px-2 overflow-auto shadow-sm bg-darkest rounded-md mt-0_75rem"
     >
-      <div ref="resultsDiv" v-if="hasAnyFilterableData">
-        <div class="filter-form text-lg" v-if="filteredMissions && filteredMissions.length === 0">
-          <span class="mt-0_5rem ml-1rem">No missions to display.</span>
-        </div>
-        <div
-          v-else
-          id="missionListDiv"
-          class="mt-0_5rem px-2 py-1 overflow-y-auto shadow-sm block text-xs font-mono text-gray-500 bg-darkest rounded-md"
-        >
-          <div class="bg-darkest w-full">
-            <span class="text-xl">
-              Missions
-              <button
-                v-if="filteredMissions && filteredMissions.length !== 0"
-                id="toggleResultsButton"
-                class="text-xl toggle-link"
-                type="button"
-                @click="toggleElements($event)"
-              >
-                {{ allVisible ? 'Collapse All' : 'Expand All' }}
-              </button>
-            </span>
-            <hr class="mb-0_5rem w-full" />
-            <div v-if="multiViewMode === 'free' && multiViewFreeSelectIds.length > 0" class="flex items-center gap-2 mb-2">
-              <button
-                type="button"
-                class="px-3 py-1 rounded-md border border-green-700 text-sm font-medium text-green-400 bg-transparent hover:bg-green-950/50"
-                @click="triggerRowView()"
-              >
-                View Selected ({{ multiViewFreeSelectIds.length }})
-              </button>
-              <button
-                type="button"
-                class="px-3 py-1 rounded-md border border-gray-600 text-sm font-medium text-gray-400 bg-transparent hover:bg-darker"
-                @click="multiViewFreeSelectIds = []"
-              >
-                Deselect All
-              </button>
-            </div>
-          </div>
-          <template v-for="(yearVF, yearIndex) in groupedMissions" :key="yearIndex">
-            <span class="text-lg font-bold mr-0_5rem ledger-underline">{{ groupedArrays.year[yearIndex].year }}</span>
-            <button
-              class="tb-c text-lg toggle-link"
-              type="button"
-              @click="toggleElements($event, groupedArrays.year[yearIndex])"
-            >
-              {{ groupedArrays.year[yearIndex].enabled ? 'Collapse' : 'Expand' }}
-            </button>
-            <template v-if="groupedArrays.year[yearIndex].enabled">
-              <div
-                v-for="(monthVF, monthIndex) in yearVF"
-                :key="monthIndex"
-              >
-                <div class="mt-1rem ml-2rem">
-                  <span class="text-base font-bold mr-0_5rem ledger-underline">
-                    {{ groupedArrays.year[yearIndex].year }}-{{ groupedArrays.month[yearIndex][monthIndex].month }}
-                  </span>
-                  <button
-                    class="tb-c text-base toggle-link"
-                    type="button"
-                    @click="toggleElements($event, groupedArrays.year[yearIndex], groupedArrays.month[yearIndex][monthIndex])"
-                  >
-                    {{ groupedArrays.month[yearIndex][monthIndex].enabled ? 'Collapse' : 'Expand' }}
-                  </button>
-                  <template v-if="groupedArrays.month[yearIndex][monthIndex].enabled">
-                    <div
-                      v-for="(dayVF, dayIndex) in monthVF"
-                      :key="dayIndex"
-                    >
-                      <div class="mt-1rem ml-2rem">
-                        <span
-                          v-if="viewByDate"
-                          class="text-sm font-bold ledger-underline"
-                        >
-                          {{ groupedArrays.year[yearIndex].year }}-{{ groupedArrays.month[yearIndex][monthIndex].month }}-{{ groupedArrays.day[yearIndex][monthIndex][dayIndex].day }}
-                        </span>
-                        <button
-                          v-if="viewByDate"
-                          class="tb-c text-sm mr-0_5rem toggle-link"
-                          type="button"
-                          @click="toggleElements($event, groupedArrays.year[yearIndex], groupedArrays.month[yearIndex][monthIndex], groupedArrays.day[yearIndex][monthIndex][dayIndex])"
-                        >
-                          {{ groupedArrays.day[yearIndex][monthIndex][dayIndex].enabled ? 'Collapse' : 'Expand' }}
-                        </button>
-                        <div class="mt-1rem mission-grid">
-                          <button
-                            v-if="isDayRowVisible(yearIndex, monthIndex, dayIndex) && multiViewMode === 'row'"
-                            :class="'hover:text-gray-600 rounded-md hover:ledger-underline text-xs font-bold btn btn-outline-dark bg-transparent mission-row-view' + (dayVF.length > 3 ? ' mission-row-view-longer' : '')"
-                            @click="triggerRowView(yearIndex, monthIndex, dayIndex)"
-                          >
-                            <span class="text-xs">View row</span>
-                          </button>
-                          <div :class="'mission-grid ' + (multiViewMode === 'row' ? 'mission-items-view' : 'mission-items-full')">
-                            <template v-if="isDayRowVisible(yearIndex, monthIndex, dayIndex)">
-                            <div
-                              v-for="(mission, missionIndex) in dayVF"
-                              :key="missionIndex"
-                              class="text-sm mission-item-3"
-                              :data-missionid="mission.missionId"
-                            >
-                              <input
-                                v-if="multiViewMode === 'free'"
-                                type="checkbox"
-                                class="ext-opt-check mr-0_5rem"
-                                :value="mission"
-                                :id="'multiViewMissionCb_' + mission.missionId"
-                                :checked="multiViewFreeSelectIds.includes(mission.missionId)"
-                                @change="(e) => { e.preventDefault(); handleMultiViewSelection(e, mission.missionId); }"
-                              />
-                              <button
-                                class="text-sm mr-5 font-bold btn btn-outline-dark bg-transparent"
-                                type="button"
-                                @click="viewSpecificMission(mission.missionId)"
-                              >
-                                <span v-if="!viewByDate" :class="getShipColorText(mission)">
-                                  {{
-                                    groupedArrays.year[yearIndex].year + '-' +
-                                    (groupedArrays.month[yearIndex][monthIndex].month < 10 ? '0' : '') + groupedArrays.month[yearIndex][monthIndex].month + '-' +
-                                    (groupedArrays.day[yearIndex][monthIndex][dayIndex].day < 10 ? '0' : '') + groupedArrays.day[yearIndex][monthIndex][dayIndex].day
-                                  }}
-                                </span>
-                                <span v-show="viewMissionTimes" :class="getShipColorText(mission, true)">
-                                  {{ ' ' + hhmmss(ledgerDate(mission.launchDT)) }}
-                                </span>
-                                <span class="text-gray-400 ml-0_5rem">
-                                  <span :class="'text-duration-' + mission.durationType">{{ mission.shipString }}</span>
-                                  <span v-if="mission.level != null && mission.level > 0">
-                                    ({{ mission.level }}<span class="text-goldenstar">&#9733;</span>)
-                                  </span>
-                                  <TargetDisplay :target="mission.target" />
-                                </span>
-                              </button>
-                            </div>
-                            </template>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </template>
-                </div>
-              </div>
-            </template>
-            <br />
-            <hr
-              v-if="groupedArrays.year[yearIndex].enabled && yearIndex !== groupedArrays.year.length - 1"
-              class="pt-3rem pb-3rem invisible mt-1"
-            />
-          </template>
-        </div>
-      </div>
+      <MissionResultsTable
+        v-if="hasAnyFilterableData"
+        :grouped-missions="groupedMissions"
+        :grouped-arrays="groupedArrays"
+        :all-visible="allVisible"
+        :view-by-date="viewByDate"
+        :view-mission-times="viewMissionTimes"
+        :recolor-d-c="recolorDC"
+        :recolor-b-c="recolorBC"
+        :multi-view-mode="multiViewMode"
+        :multi-view-free-select-ids="multiViewFreeSelectIds"
+        :filtered-missions="filteredMissions"
+        :mission-being-viewed="missionBeingViewed"
+        @view-mission="viewSpecificMission($event)"
+        @toggle-elements="toggleElements"
+        @multi-view-selection="handleMultiViewSelection"
+        @trigger-row-view="triggerRowView"
+        @deselect-all="multiViewFreeSelectIds = []"
+      />
     </div>
 
     <!-- No data fallback -->
@@ -580,6 +380,13 @@ import { useFetch } from '../composables/useFetch'
 import { useFilters } from '../composables/useFilters'
 import { useDropdownSelector } from '../composables/useDropdownSelector'
 import { screenshotSafety, collapseOlderSections } from '../composables/useSettings'
+import {
+  type DropLike,
+  sortGroupAlreadyCombed,
+  sortedGroupedSpecType,
+  inventoryVisualizerSort,
+} from '../composables/useMissionSorting'
+import { useMissionListGrouping } from '../composables/useMissionListGrouping'
 import type {
   DatabaseMission,
   MissionDrop,
@@ -591,35 +398,16 @@ import FullFilter from '../components/FullFilter.vue'
 import SearchOverSelector from '../components/SearchOverSelector.vue'
 import ShipDisplay from '../components/ShipDisplay.vue'
 import DropDisplayContainer from '../components/DropDisplayContainer.vue'
-import TargetDisplay from '../components/TargetDisplay.vue'
 import NoDataFallback from '../components/NoDataFallback.vue'
 import SegmentedProgressBar, { type ProgressSegment } from '../components/SegmentedProgressBar.vue'
+import OptionsPanel from '../components/OptionsPanel.vue'
+import MissionResultsTable from '../components/MissionResultsTable.vue'
 
 // Shared state
 
 const { existingData, activeTab } = useAppState()
 const { mennoDataLoaded, getMennoData, load: loadMennoData } = useMennoData()
 const { isFetching } = useFetch()
-
-// Types local to this view
-
-interface GroupedYear {
-  year: number
-  enabled: boolean
-}
-interface GroupedMonth {
-  month: number
-  enabled: boolean
-}
-interface GroupedDay {
-  day: number
-  enabled: boolean
-}
-interface GroupedArrays {
-  year: GroupedYear[]
-  month: GroupedMonth[][]
-  day: GroupedDay[][][]
-}
 
 // A view-mission-data object - used by ShipDisplay.
 // Matches ShipDisplay's ViewMissionData interface (extends LedgerData).
@@ -726,125 +514,18 @@ const hasBothMissionTypes = computed(() => {
 watch(hasBothMissionTypes, (val) => {
   if (!val) missionTypeTab.value = null
 })
-const groupedArrays = ref<GroupedArrays>({ year: [], month: [], day: [] })
-const allVisible = ref(true)
-
-const resultsDiv = ref<HTMLElement | null>(null)
-
 const tabFilteredMissions = computed(() => {
   if (missionTypeTab.value === null || filteredMissions.value === null) return filteredMissions.value
   return filteredMissions.value.filter((m) => m.missionType === missionTypeTab.value)
 })
 
-const hasAnyFilterableData = computed(() => {
-  if (groupedMissions.value && Object.keys(groupedMissions.value).length > 0) return true
-  if (
-    filteredMissions.value != null &&
-    allLoadedMissions.value != null &&
-    filteredMissions.value.length !== allLoadedMissions.value.length
-  ) return true
-  return false
-})
-
-// groupedArrays is updated alongside groupedMissions to reset expand-collapse state
-// when filters change. The assignment below is an intentional side effect.
-// Single O(N) pass: group missions year → month → day rather than repeated filter scans.
-const groupedMissions = computed(() => {
-  const fm = tabFilteredMissions.value
-  if (fm == null || fm.length === 0) return [] as DatabaseMission[][][][]
-
-  // Build a nested Map: year → month → day → missions[] in one pass
-  const dateMap = new Map<number, Map<number, Map<number, DatabaseMission[]>>>()
-  for (const mission of fm) {
-    const d = ledgerDate(mission.launchDT)
-    const y = d.getFullYear()
-    const mo = d.getMonth() + 1
-    const da = d.getDate()
-    if (!dateMap.has(y)) dateMap.set(y, new Map())
-    const ym = dateMap.get(y)!
-    if (!ym.has(mo)) ym.set(mo, new Map())
-    const md = ym.get(mo)!
-    if (!md.has(da)) md.set(da, [])
-    md.get(da)!.push(mission)
-  }
-
-  const uniqueYears = [...dateMap.keys()].sort((a, b) => b - a)
-  const uniqueMonthsArr = uniqueYears.map((y) => [...dateMap.get(y)!.keys()].sort((a, b) => b - a))
-  const uniqueDaysArr = uniqueYears.map((y, yi) =>
-    uniqueMonthsArr[yi].map((mo) => [...dateMap.get(y)!.get(mo)!.keys()].sort((a, b) => b - a)),
-  )
-
-  const collapse = collapseOlderSections.value
-  // eslint-disable-next-line vue/no-side-effects-in-computed-properties
-  groupedArrays.value.year = uniqueYears.map((year, yi) => ({ year, enabled: !collapse || yi === 0 }))
-  // eslint-disable-next-line vue/no-side-effects-in-computed-properties
-  groupedArrays.value.month = uniqueMonthsArr.map((months, yi) =>
-    months.map((month) => ({ month, enabled: !collapse || yi === 0 })),
-  )
-  // eslint-disable-next-line vue/no-side-effects-in-computed-properties
-  groupedArrays.value.day = uniqueDaysArr.map((year, yi) =>
-    year.map((month) => month.map((day) => ({ day, enabled: !collapse || yi === 0 }))),
-  )
-  // eslint-disable-next-line vue/no-side-effects-in-computed-properties
-  allVisible.value = !collapse || uniqueYears.length <= 1
-
-  return uniqueYears.map((y, yi) =>
-    uniqueMonthsArr[yi].map((mo, mi) =>
-      uniqueDaysArr[yi][mi].map((da) => [...dateMap.get(y)!.get(mo)!.get(da)!].reverse()),
-    ),
-  )
-})
-
-function isDayRowVisible(yearIndex: number, monthIndex: number, dayIndex: number): boolean {
-  if (viewByDate.value) return groupedArrays.value.day[yearIndex][monthIndex][dayIndex].enabled
-  return groupedArrays.value.month[yearIndex][monthIndex].enabled
-}
-
-// eslint-disable-next-line sonarjs/cognitive-complexity
-function toggleElements(
-  _event: Event,
-  passedYear?: GroupedYear,
-  passedMonth?: GroupedMonth,
-  passedDay?: GroupedDay,
-) {
-  const yA = groupedArrays.value.year
-  const mA = groupedArrays.value.month
-  const dA = groupedArrays.value.day
-  if (passedYear) {
-    const yearObj = yA[yA.indexOf(passedYear)]
-    if (passedMonth) {
-      const yIdx = yA.indexOf(passedYear)
-      const monthObj = mA[yIdx][mA[yIdx].indexOf(passedMonth)]
-      if (passedDay) {
-        const mIdx = mA[yIdx].indexOf(passedMonth)
-        const dayObj = dA[yIdx][mIdx][dA[yIdx][mIdx].indexOf(passedDay)]
-        dayObj.enabled = !dayObj.enabled
-      } else monthObj.enabled = !monthObj.enabled
-    } else yearObj.enabled = !yearObj.enabled
-  } else {
-    allVisible.value = !allVisible.value
-    for (let yi = 0; yi < yA.length; yi++) {
-      yA[yi].enabled = allVisible.value
-      for (let mi = 0; mi < mA[yi].length; mi++) {
-        mA[yi][mi].enabled = allVisible.value
-        for (const day of dA[yi][mi]) {
-          day.enabled = allVisible.value
-        }
-      }
-    }
-  }
-}
-
-// ───────────────────────────────────────────────────────────────────────────────
 // Viewing option state
-// ───────────────────────────────────────────────────────────────────────────────
 
 const viewByDate = ref(false)
 const viewMissionTimes = ref(true)
 const recolorDC = ref(false)
 const recolorBC = ref(false)
 const showExpectedDropsPerShip = ref(true)
-const hideOptions = ref(false)
 const hideFilter = ref(false)
 const multiViewMode = ref<'off' | 'row' | 'free'>('off')
 const viewMissionSortMethod = ref<'default' | 'iv'>('default')
@@ -853,26 +534,9 @@ watch(mennoDataLoaded, () => {
   if (!mennoDataLoaded.value) showExpectedDropsPerShip.value = false
 })
 
-function toggleOptions(event: Event) {
-  event.preventDefault()
-  hideOptions.value = !hideOptions.value
-}
 function toggleFilter(event: Event) {
   event.preventDefault()
   hideFilter.value = !hideFilter.value
-}
-
-function getShipColorText(missionData: DatabaseMission, altMode = false): string {
-  if (missionBeingViewed.value === missionData.missionId) {
-    return altMode ? 'text-selectedmissiondarker' : 'text-selectedmission'
-  }
-  if (recolorBC.value && missionData.isBuggedCap) {
-    return altMode ? 'text-buggedcapdarker' : 'text-buggedcap'
-  }
-  if (recolorDC.value && missionData.isDubCap) {
-    return altMode ? 'text-dubcapdarker' : 'text-dubcap'
-  }
-  return altMode ? 'text-gray-500' : 'text-gray-400'
 }
 
 // Artifact/mission configs (loaded in onMounted, passed to useFilters)
@@ -920,6 +584,19 @@ const {
   artifactConfigs,
 })
 
+const { groupedArrays, allVisible, groupedMissions, toggleElements } =
+  useMissionListGrouping(tabFilteredMissions, ledgerDate, collapseOlderSections, viewByDate)
+
+const hasAnyFilterableData = computed(() => {
+  if (groupedMissions.value && Object.keys(groupedMissions.value).length > 0) return true
+  if (
+    filteredMissions.value != null &&
+    allLoadedMissions.value != null &&
+    filteredMissions.value.length !== allLoadedMissions.value.length
+  ) return true
+  return false
+})
+
 // Filter warning state (unique to this view)
 
 const filterApplyTime = ref('')
@@ -954,14 +631,6 @@ async function applyFilter() {
   dataBeingFiltered.value = false
 }
 
-function hhmmss(date: Date): string {
-  return `${date.getHours().toString().padStart(2, '0')}:${date
-    .getMinutes()
-    .toString()
-    .padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`
-}
-
-// ───────────────────────────────────────────────────────────────────────────────
 // Mission view overlay state (single and multi)
 // ───────────────────────────────────────────────────────────────────────────────
 
@@ -1069,67 +738,7 @@ watch(boolMissionBeingViewed, () => {
   else globalThis.removeEventListener('keydown', handleKeyDown)
 })
 
-// ───────────────────────────────────────────────────────────────────────────────
-// Sorting helpers for mission drops
-// ───────────────────────────────────────────────────────────────────────────────
-
-interface DropLike {
-  id: number
-  name: string
-  level: number
-  rarity: number
-  quality: number
-  ivOrder: number
-  specType: string
-  count?: number
-}
-
-function groupedSpecType(collection: DropLike[]): Record<string, DropLike> {
-  return collection.reduce((acc, obj) => {
-    const key = obj.name + '_' + obj.level + '_' + obj.specType + '_' + obj.rarity
-    if (acc[key]) {
-      (acc[key].count as number)++
-    } else {
-      acc[key] = obj
-      acc[key].count = 1
-    }
-    return acc
-  }, {} as Record<string, DropLike>)
-}
-
-function sortGroupAlreadyCombed<T extends DropLike>(collection: T[]): T[] {
-  return collection
-    .sort((a, b) => {
-      if (a.level > b.level) return -1
-      if (a.level < b.level) return 1
-      if (a.rarity > b.rarity) return -1
-      if (a.rarity < b.rarity) return 1
-      if (a.id > b.id) return -1
-      if (a.id < b.id) return 1
-      if (a.quality < b.quality) return -1
-      if (a.quality > b.quality) return 1
-      return 0
-    })
-    .reverse()
-}
-function sortedGroupedSpecType<T extends DropLike>(collection: T[]): T[] {
-  return sortGroupAlreadyCombed(Object.values(groupedSpecType(collection as unknown as DropLike[])) as T[])
-}
-function inventoryVisualizerSort<T extends DropLike>(collection: T[]): T[] {
-  return collection.sort((a, b) => {
-    if (a.rarity > b.rarity) return -1
-    if (a.rarity < b.rarity) return 1
-    if (a.ivOrder > b.ivOrder) return -1
-    if (a.ivOrder < b.ivOrder) return 1
-    if (a.level > b.level) return -1
-    if (a.level < b.level) return 1
-    return 0
-  })
-}
-
-// ───────────────────────────────────────────────────────────────────────────────
 // Fetch mission + view logic
-// ───────────────────────────────────────────────────────────────────────────────
 
 async function onViewSubmit(event: Event) {
   event.preventDefault()
