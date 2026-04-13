@@ -158,17 +158,19 @@
             <div
               class="h-full transition-all duration-300 rounded-sm"
               :class="[
-                segmentStates.seg2 === 'skipped' ? 'bg-gray-600' :
                 segmentStates.seg2 === 'active' || segmentStates.seg2 === 'done' ? 'bg-green-500' :
+                segmentStates.seg2 === 'skipped' ? '' :
                 'bg-transparent',
                 segmentStates.missionPulsing ? 'animate-pulse' : '',
               ]"
-              :style="{
-                width:
-                  segmentStates.seg2 === 'pending' ? '0%' :
-                  segmentStates.seg2 === 'active' ? `${segmentStates.missionPct}%` :
-                  '100%',
-              }"
+              :style="segmentStates.seg2 === 'skipped'
+                ? { width: '100%', backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(16,185,129,0.3) 3px, rgba(16,185,129,0.3) 5px)' }
+                : {
+                  width:
+                    segmentStates.seg2 === 'pending' ? '0%' :
+                    segmentStates.seg2 === 'active' ? `${segmentStates.missionPct}%` :
+                    '100%',
+                }"
             ></div>
           </div>
           <!-- Segment 3: Export (amber) -->

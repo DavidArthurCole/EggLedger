@@ -70,8 +70,8 @@ function resolveColor(color: string): string {
 
 function resolveColorRgba(color: string, alpha: number): string {
   const base = resolveColor(color)
-  // base is "rgb(r g b)" - convert to rgba
-  return base.replace('rgb(', 'rgba(').replace(')', `, ${alpha})`)
+  // base is "rgb(r g b)" - use CSS Color Level 4 slash syntax: "rgb(r g b / alpha)"
+  return base.replace(')', ` / ${alpha})`)
 }
 
 function segmentBarStyle(seg: ProgressSegment): Record<string, string> {

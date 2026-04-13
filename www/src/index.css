@@ -111,10 +111,12 @@ hr {
 
   &:focus {
     outline: none;
+    box-shadow: none;
   }
 
   &:focus-visible {
-    @apply ring-1 ring-blue-500 border-blue-500;
+    @apply ring-1 ring-blue-500 ring-offset-0;
+    outline: none;
   }
 
   &:disabled {

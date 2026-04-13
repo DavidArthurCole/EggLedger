@@ -63,7 +63,7 @@
             </div>
             <button
               v-if="captureButtonActive"
-              class="apply-filter-button !bg-blue-700 !text-white hover:!bg-blue-600 !border-blue-500 ml-0_5rem mt-0_5rem self-start"
+              class="apply-filter-button !bg-blue-700 !text-white hover:!bg-blue-600 !border-blue-500 !ml-1rem mb-2_5rem !mt-0 !mr-0"
               @click="captureFromCurrent"
             >Capture from Current</button>
           </div>
@@ -268,29 +268,25 @@ const {
 const workerCountWarningRead = ref(false)
 const hideWorkerWarning = ref(false)
 
-const windowWidth = ref(globalThis.innerWidth)
-const windowHeight = ref(globalThis.innerHeight)
+const windowOuterWidth = ref(globalThis.outerWidth)
+const windowOuterHeight = ref(globalThis.outerHeight)
 const windowDpr = ref(globalThis.devicePixelRatio)
 
 function onResize() {
-  windowWidth.value = globalThis.innerWidth
-  windowHeight.value = globalThis.innerHeight
+  windowOuterWidth.value = globalThis.outerWidth
+  windowOuterHeight.value = globalThis.outerHeight
   windowDpr.value = globalThis.devicePixelRatio
 }
 
-// Physical pixel dimensions - what lorca uses for window sizing.
-const physicalWidth = computed(() => Math.round(windowWidth.value * windowDpr.value))
-const physicalHeight = computed(() => Math.round(windowHeight.value * windowDpr.value))
-
 const captureButtonActive = computed(() =>
-  resolutionX.value !== physicalWidth.value ||
-  resolutionY.value !== physicalHeight.value ||
+  resolutionX.value !== windowOuterWidth.value ||
+  resolutionY.value !== windowOuterHeight.value ||
   scalingFactor.value !== windowDpr.value,
 )
 
 function captureFromCurrent() {
-  resolutionX.value = physicalWidth.value
-  resolutionY.value = physicalHeight.value
+  resolutionX.value = windowOuterWidth.value
+  resolutionY.value = windowOuterHeight.value
   scalingFactor.value = globalThis.devicePixelRatio
 }
 
