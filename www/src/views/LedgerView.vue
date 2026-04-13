@@ -223,27 +223,7 @@
     >
       <div v-for="(message, i) in logMessages" :key="i" class="whitespace-pre">
         <span :class="message.isError ? 'text-red-700' : 'text-green-700'">{{ hhmmss(new Date(message.timestamp)) }}|</span>
-        <template v-for="(segment, j) in parseLogSegments(maskEid(message.message))" :key="j">
-          <img
-            v-if="segment.type === 'image'"
-            :src="segment.src"
-            style="display: inline; height: 1em; vertical-align: middle"
-            alt=""
-          />
-          <span
-            v-else-if="segment.type === 'eid-bar'"
-            class="inline-block rounded-sm bg-current select-none"
-            style="width: 16ch; height: 0.8em; vertical-align: -0.05em;"
-          ></span>
-          <span
-            v-else-if="segment.type === 'text' && segment.color"
-            :style="'color: ' + segment.color"
-          >{{ segment.text }}</span>
-          <span
-            v-else-if="segment.type === 'text'"
-            :class="message.isError ? 'text-red-700' : ''"
-          >{{ segment.text }}</span>
-        </template>
+        <LogLine :text="message.message" :is-error="message.isError" />
       </div>
     </div>
   </div>
@@ -254,8 +234,8 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useAppState } from '../composables/useAppState'
 import { useFetch } from '../composables/useFetch'
-import { parseLogSegments } from '../composables/useLogRenderer'
-import { maskEid, screenshotSafety, showMissionProgress } from '../composables/useSettings'
+import { screenshotSafety, showMissionProgress } from '../composables/useSettings'
+import LogLine from '../components/LogLine.vue'
 import { useDropdownSelector } from '../composables/useDropdownSelector'
 import { AppState } from '../types/bridge'
 import ForbiddenDirModal from '../components/modals/ForbiddenDirModal.vue'
