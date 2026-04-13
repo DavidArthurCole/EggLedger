@@ -185,10 +185,31 @@
             ></div>
           </div>
         </div>
-        <div class="flex mt-0.5 text-gray-600" style="font-size: 0.6rem">
-          <div class="flex-1 text-center">Save</div>
-          <div class="flex-1 text-center">Missions</div>
-          <div class="flex-1 text-center">Export</div>
+        <div class="flex mt-0.5" style="font-size: 0.6rem">
+          <div
+            class="flex-1 text-center"
+            :class="[
+              segmentStates.seg1 === 'active' ? 'text-blue-500 animate-pulse' :
+              segmentStates.seg1 === 'done' ? 'text-blue-500' :
+              'text-gray-600',
+            ]"
+          >Save</div>
+          <div
+            class="flex-1 text-center"
+            :class="[
+              segmentStates.seg2 === 'active' ? 'text-green-500 animate-pulse' :
+              segmentStates.seg2 === 'done' ? 'text-green-500' :
+              'text-gray-600',
+            ]"
+          >Missions</div>
+          <div
+            class="flex-1 text-center"
+            :class="[
+              segmentStates.seg3 === 'active' ? 'text-amber-500 animate-pulse' :
+              segmentStates.seg3 === 'done' ? 'text-amber-500' :
+              'text-gray-600',
+            ]"
+          >Export</div>
         </div>
       </template>
 
