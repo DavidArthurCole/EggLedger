@@ -241,7 +241,7 @@ import { useAppState } from '../composables/useAppState'
 import { useMennoData } from '../composables/useMennoData'
 import { useFilters } from '../composables/useFilters'
 import { useDropdownSelector } from '../composables/useDropdownSelector'
-import { screenshotSafety } from '../composables/useSettings'
+import { screenshotSafety, defaultViewMode } from '../composables/useSettings'
 import type {
   DatabaseMission,
   MissionDrop,
@@ -481,7 +481,9 @@ const statusText = computed(() => {
 // Sorting options
 // ───────────────────────────────────────────────────────────────────────────────
 
-const lifetimeSortMethod = ref<'default' | 'iv' | 'count' | 'random'>('default')
+const lifetimeSortMethod = ref<'default' | 'iv' | 'count' | 'random'>(
+  (defaultViewMode.value as 'default' | 'iv' | 'count' | 'random') ?? 'default',
+)
 const lifetimeShowDropsPerShip = ref(false)
 const lifetimeAllowExpectedTotals = ref(false)
 const lifetimeShowExpectedTotalsPref = ref(false)

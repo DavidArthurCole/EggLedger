@@ -305,7 +305,7 @@
 
     <!-- Options panel -->
     <div
-      v-if="doesDataExist"
+      v-if="doesDataExist && allLoadedMissions != null && !eidMissionsBeingLoaded"
       class="min-h-7 max-h-50 px-2 py-2 text-sm text-gray-400 bg-darkest rounded-md tabular-nums overflow-auto mt-0_75rem"
     >
       <OptionsPanel
@@ -379,7 +379,7 @@ import { useMennoData } from '../composables/useMennoData'
 import { useFetch } from '../composables/useFetch'
 import { useFilters } from '../composables/useFilters'
 import { useDropdownSelector } from '../composables/useDropdownSelector'
-import { screenshotSafety, collapseOlderSections } from '../composables/useSettings'
+import { screenshotSafety, collapseOlderSections, defaultViewMode } from '../composables/useSettings'
 import {
   type DropLike,
   sortGroupAlreadyCombed,
@@ -528,7 +528,9 @@ const recolorBC = ref(false)
 const showExpectedDropsPerShip = ref(true)
 const hideFilter = ref(false)
 const multiViewMode = ref<'off' | 'row' | 'free'>('off')
-const viewMissionSortMethod = ref<'default' | 'iv'>('default')
+const viewMissionSortMethod = ref<'default' | 'iv'>(
+  (defaultViewMode.value as 'default' | 'iv') ?? 'default',
+)
 
 watch(mennoDataLoaded, () => {
   if (!mennoDataLoaded.value) showExpectedDropsPerShip.value = false

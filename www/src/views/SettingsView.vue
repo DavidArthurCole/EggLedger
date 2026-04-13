@@ -139,14 +139,14 @@
           <span class="section-heading">Parallel Download Workers</span><br />
           <div class="mt-0_5rem pl-0_5rem">
             <!-- Worker count callout above selected segment -->
-            <div class="relative h-6 select-none">
+            <div class="relative h-6 select-none w-4/5">
               <span
                 class="absolute text-sm font-bold font-mono -translate-x-1/2"
                 :style="{ left: `${(workerCount - 0.5) * 10}%` }"
                 :class="workerCount <= 4 ? 'text-green-400' : workerCount <= 7 ? 'text-orange-400' : 'text-red-400'"
               >{{ workerCount }}</span>
             </div>
-            <div class="flex gap-px w-full cursor-pointer">
+            <div class="flex gap-px w-4/5 cursor-pointer">
               <div
                 v-for="i in 10"
                 :key="i"
@@ -158,7 +158,7 @@
                 @click="workerCount = i"
               ></div>
             </div>
-            <div class="flex text-xs mt-0_25rem select-none w-full">
+            <div class="flex text-xs mt-0_25rem select-none w-4/5">
               <span class="text-green-500" style="width: 40%">Safe</span>
               <span class="text-orange-400 text-center" style="width: 30%">Caution</span>
               <span class="text-red-500 text-right" style="width: 30%">Risky</span>
