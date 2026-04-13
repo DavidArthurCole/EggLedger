@@ -591,6 +591,14 @@ func main() {
 		_storage.SetScreenshotSafety(flag)
 	})
 
+	ui.MustBind("getShowMissionProgress", func() bool {
+		return _storage.GetShowMissionProgress()
+	})
+
+	ui.MustBind("setShowMissionProgress", func(flag bool) {
+		_storage.SetShowMissionProgress(flag)
+	})
+
 	ui.MustBind("getWorkerCount", func() int {
 		return _storage.GetWorkerCount()
 	})

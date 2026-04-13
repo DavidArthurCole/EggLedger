@@ -1,12 +1,20 @@
 export type LogSegment =
   | { type: 'text'; text: string; color?: string }
   | { type: 'image'; src: string }
+  | { type: 'eid-bar' }
 
 export function parseLogSegments(message: string): LogSegment[] {
   const segments: LogSegment[] = []
   let remaining = message
 
   while (remaining.length > 0) {
+    // [eid-bar] token
+    if (remaining.startsWith('[eid-bar]')) {
+      segments.push({ type: 'eid-bar' })
+      remaining = remaining.slice('[eid-bar]'.length)
+      continue
+    }
+
     // [img:filename] token
     const imgMatch = /^\[img:([^\]]+)\]/.exec(remaining)
     if (imgMatch) {
@@ -24,7 +32,7 @@ export function parseLogSegments(message: string): LogSegment[] {
     }
 
     // Plain text: consume up to the next token or end of string
-    const nextToken = remaining.search(/\[img:|&[0-9a-fA-F]{6}</)
+    const nextToken = remaining.search(/\[eid-bar\]|\[img:|&[0-9a-fA-F]{6}</)
     if (nextToken === -1) {
       segments.push({ type: 'text', text: remaining })
       break

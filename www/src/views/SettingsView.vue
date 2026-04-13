@@ -154,6 +154,16 @@
           <label for="screenshotSafetyCheckbox" class="ext-opt-label">Mask player IDs (EIDs) wherever they appear on screen</label>
         </div>
         <div class="mt-0_5rem">
+          <span class="section-heading">Mission Progress Panel</span><br />
+          <input
+            id="showMissionProgressCheckbox"
+            type="checkbox"
+            class="ext-opt-check mr-0_5rem"
+            v-model="showMissionProgress"
+          />
+          <label for="showMissionProgressCheckbox" class="ext-opt-label">Show individual mission progress during fetching</label>
+        </div>
+        <div class="mt-0_5rem">
           <span class="section-heading">Parallel Download Workers</span><br />
           <div class="flex items-center mt-0_5rem pl-0_5rem gap-2">
             <input
@@ -206,6 +216,7 @@ const {
   defaultViewMode,
   workerCount,
   screenshotSafety,
+  showMissionProgress,
   loadSettings,
   setPreferredBrowser,
   refreshBrowserList,

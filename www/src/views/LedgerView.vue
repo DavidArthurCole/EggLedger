@@ -215,7 +215,7 @@
 
     </div>
 
-    <MissionProgressPanel :processes="missionProcesses" />
+    <MissionProgressPanel v-if="showMissionProgress" :processes="missionProcesses" />
 
     <div
       ref="messagesRef"
@@ -230,6 +230,11 @@
             style="display: inline; height: 1em; vertical-align: middle"
             alt=""
           />
+          <span
+            v-else-if="segment.type === 'eid-bar'"
+            class="inline-block rounded-sm bg-current select-none"
+            style="width: 16ch; height: 0.8em; vertical-align: -0.05em;"
+          ></span>
           <span
             v-else-if="segment.type === 'text' && segment.color"
             :style="'color: ' + segment.color"
@@ -250,7 +255,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useAppState } from '../composables/useAppState'
 import { useFetch } from '../composables/useFetch'
 import { parseLogSegments } from '../composables/useLogRenderer'
-import { maskEid, screenshotSafety } from '../composables/useSettings'
+import { maskEid, screenshotSafety, showMissionProgress } from '../composables/useSettings'
 import { useDropdownSelector } from '../composables/useDropdownSelector'
 import { AppState } from '../types/bridge'
 import ForbiddenDirModal from '../components/modals/ForbiddenDirModal.vue'

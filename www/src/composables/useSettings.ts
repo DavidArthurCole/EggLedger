@@ -13,10 +13,11 @@ const hideTimeoutErrors = ref(false)
 const defaultViewMode = ref('default')
 const workerCount = ref(1)
 export const screenshotSafety = ref(false)
+export const showMissionProgress = ref(true)
 
 export function maskEid(s: string): string {
   if (!screenshotSafety.value) return s
-  return s.replaceAll(/EI\d{16}/g, 'EI****************')
+  return s.replaceAll(/EI\d{16}/g, 'EI[eid-bar]')
 }
 
 export function useSettings() {
@@ -34,6 +35,7 @@ export function useSettings() {
     defaultViewMode.value = await globalThis.getDefaultViewMode()
     workerCount.value = await globalThis.getWorkerCount()
     screenshotSafety.value = await globalThis.getScreenshotSafety()
+    showMissionProgress.value = await globalThis.getShowMissionProgress()
   }
 
   watch(resolutionX, () => globalThis.setDefaultResolution(resolutionX.value, resolutionY.value))
@@ -46,6 +48,7 @@ export function useSettings() {
   watch(defaultViewMode, () => globalThis.setDefaultViewMode(defaultViewMode.value))
   watch(workerCount, () => globalThis.setWorkerCount(workerCount.value))
   watch(screenshotSafety, () => globalThis.setScreenshotSafety(screenshotSafety.value))
+  watch(showMissionProgress, () => globalThis.setShowMissionProgress(showMissionProgress.value))
 
   async function setPreferredBrowser(path: string) {
     if (await globalThis.setPreferredBrowser(path)) {
@@ -62,6 +65,7 @@ export function useSettings() {
     preferredBrowser, loadedBrowser, allBrowsers, autoRefreshMenno, autoRetry, hideTimeoutErrors, defaultViewMode,
     workerCount,
     screenshotSafety,
+    showMissionProgress,
     loadSettings, setPreferredBrowser, refreshBrowserList,
   }
 }

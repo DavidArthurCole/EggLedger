@@ -203,6 +203,8 @@ declare global {
   function setHideTimeoutErrors(flag: boolean): Promise<void>
   function getScreenshotSafety(): Promise<boolean>
   function setScreenshotSafety(flag: boolean): Promise<void>
+  function getShowMissionProgress(): Promise<boolean>
+  function setShowMissionProgress(flag: boolean): Promise<void>
   function getWorkerCount(): Promise<number>
   function setWorkerCount(count: number): Promise<void>
   function filterWarningRead(): Promise<boolean>

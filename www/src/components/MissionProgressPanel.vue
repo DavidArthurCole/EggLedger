@@ -55,6 +55,11 @@
               alt=""
             />
             <span
+              v-else-if="seg.type === 'eid-bar'"
+              class="inline-block rounded-sm bg-current select-none"
+              style="width: 16ch; height: 0.8em; vertical-align: -0.05em;"
+            ></span>
+            <span
               v-else-if="seg.type === 'text' && seg.color"
               :style="'color: ' + seg.color"
             >{{ seg.text }}</span>
