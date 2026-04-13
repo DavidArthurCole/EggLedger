@@ -110,7 +110,11 @@ hr {
   @apply rounded-md bg-darkest;
 
   &:focus {
-    @apply ring-blue-500 border-blue-500;
+    outline: none;
+  }
+
+  &:focus-visible {
+    @apply ring-1 ring-blue-500 border-blue-500;
   }
 
   &:disabled {

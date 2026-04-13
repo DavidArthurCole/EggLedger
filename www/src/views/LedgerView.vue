@@ -114,7 +114,7 @@
         </div>
       </template>
       <template v-else-if="appState === AppState.FetchingMissions">
-        <div class="text-yellow-400">Fetching missions...</div>
+        <div class="text-yellow-400">Fetching missions... <span v-if="progress?.currentMission" class="text-gray-400 italic">{{ progress.currentMission }}</span></div>
         <div>
           <span class="text-green-400">{{ progress?.finished ?? 0 }}</span>
           <span class="text-gray-400"> / {{ progress?.total ?? 0 }}  ETA {{ etaStr }}</span>
@@ -122,17 +122,16 @@
         <div v-if="(progress?.failed ?? 0) > 0 || (progress?.retried ?? 0) > 0">
           <span v-if="(progress?.failed ?? 0) > 0" class="text-red-500">{{ progress?.failed }} failed</span>
           <span v-if="(progress?.failed ?? 0) > 0 && (progress?.retried ?? 0) > 0" class="text-gray-400"> · </span>
-          <span v-if="(progress?.retried ?? 0) > 0" class="text-yellow-400">{{ progress?.retried }} retried</span>
+          <span v-if="(progress?.retried ?? 0) > 0" class="text-orange-400">{{ progress?.retried }} to retry</span>
         </div>
-        <div v-if="progress?.currentMission" class="text-gray-400 italic">{{ progress.currentMission }}</div>
       </template>
       <template v-else-if="appState === AppState.ExportingData">Exporting data...</template>
       <template v-else-if="appState === AppState.Success">
         Successfully exported to:
         <div class="grid gap-x-2" style="grid-template-columns: repeat(2, max-content)">
           <template v-for="file in exportedFiles" :key="file">
-            <button class="file-link" @click="openFile(file)">{{ file }}</button>
-            <button class="url-link truncate" @click="openFileInFolder(file)">open in folder</button>
+            <button class="file-link p-0" @click="openFile(file)"><template v-if="screenshotSafety"><template v-for="(part, partIdx) in splitMaskedPath(file)" :key="partIdx"><span v-if="part.mask" class="inline-block rounded-sm bg-current select-none" style="width: 16ch; height: 0.8em; vertical-align: -0.05em;"></span><template v-else>{{ part.text }}</template></template></template><template v-else>{{ file }}</template></button>
+            <button class="url-link truncate p-0" @click="openFileInFolder(file)">open in folder</button>
           </template>
         </div>
       </template>
@@ -259,6 +258,20 @@ const {
   open: openPlayerIdDropdown,
   close: closePlayerIdDropdown,
 } = useDropdownSelector((id) => { playerId.value = id })
+
+function splitMaskedPath(path: string): Array<{ text?: string; mask?: boolean }> {
+  const parts: Array<{ text?: string; mask?: boolean }> = []
+  const regex = /EI(\d{16})/g
+  let lastIndex = 0
+  let match: RegExpExecArray | null
+  while ((match = regex.exec(path)) !== null) {
+    if (match.index > lastIndex) parts.push({ text: path.slice(lastIndex, match.index) })
+    parts.push({ text: 'EI' }, { mask: true })
+    lastIndex = match.index + match[0].length
+  }
+  if (lastIndex < path.length) parts.push({ text: path.slice(lastIndex) })
+  return parts
+}
 
 function normalizePlayerId(id: string): string {
   id = id.trim()

@@ -31,13 +31,24 @@ export function useAppState() {
 
     // Register Go-to-JS callbacks
     globalThis.updateKnownAccounts = (accounts) => { knownAccounts.value = accounts ?? [] }
-    globalThis.updateState = (state) => { appState.value = state as AppState }
+    globalThis.updateState = (state) => {
+      appState.value = state as AppState
+      if (state === AppState.Success) {
+        void globalThis.getExistingData().then((data) => { existingData.value = data })
+      }
+    }
     globalThis.updateMissionProgress = () => {}   // overridden in useFetch
     globalThis.updateExportedFiles = (files) => { exportedFiles.value = files }
     globalThis.emitMessage = (message, isError) => {
       logMessages.value.push({ message, isError, timestamp: Date.now() })
     }
-    globalThis.updateProcesses = (processes) => { processLogs.value = processes }
+    globalThis.updateProcesses = (processes) => {
+      let pruned = processes
+      if (pruned.length > 5) {
+        pruned = pruned.filter((p) => p.status !== 'done')
+      }
+      processLogs.value = pruned
+    }
   }
 
   return {

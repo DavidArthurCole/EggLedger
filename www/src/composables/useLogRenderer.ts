@@ -26,7 +26,13 @@ export function parseLogSegments(message: string): LogSegment[] {
     // &rrggbb<text> color token
     const colorMatch = /^&([0-9a-fA-F]{6})<([^>]*)>/.exec(remaining)
     if (colorMatch) {
-      segments.push({ type: 'text', text: colorMatch[2], color: '#' + colorMatch[1] })
+      const color = '#' + colorMatch[1]
+      const content = colorMatch[2]
+      const parts = content.split('[eid-bar]')
+      for (let i = 0; i < parts.length; i++) {
+        if (parts[i]) segments.push({ type: 'text', text: parts[i], color })
+        if (i < parts.length - 1) segments.push({ type: 'eid-bar' })
+      }
       remaining = remaining.slice(colorMatch[0].length)
       continue
     }

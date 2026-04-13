@@ -624,6 +624,14 @@ func main() {
 		_storage.SetShowMissionProgress(flag)
 	})
 
+	ui.MustBind("getCollapseOlderSections", func() bool {
+		return _storage.GetCollapseOlderSections()
+	})
+
+	ui.MustBind("setCollapseOlderSections", func(flag bool) {
+		_storage.SetCollapseOlderSections(flag)
+	})
+
 	ui.MustBind("getWorkerCount", func() int {
 		return _storage.GetWorkerCount()
 	})
@@ -664,6 +672,8 @@ func main() {
 	ui.MustBind("getDurationConfigs", handleGetDurationConfigs)
 
 	ui.MustBind("getShipDrops", handleGetShipDrops)
+
+	ui.MustBind("getAllPlayerDrops", handleGetAllPlayerDrops)
 
 	ui.MustBind("getMissionInfo", handleGetMissionInfo)
 

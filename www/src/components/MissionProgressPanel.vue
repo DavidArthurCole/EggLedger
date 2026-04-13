@@ -2,7 +2,7 @@
   <div
     v-if="processes.length > 0"
     class="flex flex-col gap-1 flex-shrink-0"
-    :class="processes.length >= 3 ? 'overflow-y-auto max-h-24' : ''"
+    :class="processes.length >= 3 ? 'overflow-y-auto max-h-48' : ''"
   >
     <div
       v-for="proc in processes"

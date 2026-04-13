@@ -14,6 +14,7 @@ const defaultViewMode = ref('default')
 const workerCount = ref(1)
 export const screenshotSafety = ref(false)
 export const showMissionProgress = ref(true)
+export const collapseOlderSections = ref(true)
 
 export function maskEid(s: string): string {
   if (!screenshotSafety.value) return s
@@ -36,6 +37,7 @@ export function useSettings() {
     workerCount.value = await globalThis.getWorkerCount()
     screenshotSafety.value = await globalThis.getScreenshotSafety()
     showMissionProgress.value = await globalThis.getShowMissionProgress()
+    collapseOlderSections.value = await globalThis.getCollapseOlderSections()
   }
 
   watch(resolutionX, () => globalThis.setDefaultResolution(resolutionX.value, resolutionY.value))
@@ -49,6 +51,7 @@ export function useSettings() {
   watch(workerCount, () => globalThis.setWorkerCount(workerCount.value))
   watch(screenshotSafety, () => globalThis.setScreenshotSafety(screenshotSafety.value))
   watch(showMissionProgress, () => globalThis.setShowMissionProgress(showMissionProgress.value))
+  watch(collapseOlderSections, () => globalThis.setCollapseOlderSections(collapseOlderSections.value))
 
   async function setPreferredBrowser(path: string) {
     if (await globalThis.setPreferredBrowser(path)) {
@@ -66,6 +69,7 @@ export function useSettings() {
     workerCount,
     screenshotSafety,
     showMissionProgress,
+    collapseOlderSections,
     loadSettings, setPreferredBrowser, refreshBrowserList,
   }
 }

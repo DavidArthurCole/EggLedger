@@ -95,6 +95,57 @@ func handleGetDurationConfigs() []PossibleMission {
 	return possibleMissions
 }
 
+// handleGetAllPlayerDrops returns a map of missionId -> drops for every mission
+// the player has stored, using a single bulk DB read instead of N individual queries.
+func handleGetAllPlayerDrops(playerId string) map[string][]MissionDrop {
+	missions, err := db.RetrievePlayerCompleteMissions(context.Background(), playerId)
+	if err != nil {
+		log.Error(err)
+		return nil
+	}
+	result := make(map[string][]MissionDrop, len(missions))
+	for _, completeMission := range missions {
+		missionId := completeMission.GetInfo().GetIdentifier()
+		shipDrops := []MissionDrop{}
+		for _, drop := range completeMission.Artifacts {
+			spec := drop.GetSpec()
+			var foundQuality float64
+			for _, artifact := range _eiAfxConfigArtis {
+				if artifact.Spec == spec {
+					foundQuality = *artifact.BaseQuality
+					break
+				}
+			}
+			missionDrop := MissionDrop{
+				Id:       int32(spec.GetName()),
+				Name:     ei.ArtifactSpec_Name_name[int32(spec.GetName())],
+				GameName: spec.CasedName(),
+				Level:    int32(*drop.Spec.Level),
+				Rarity:   int32(*drop.Spec.Rarity),
+				Quality:  foundQuality,
+				IVOrder:  int32(spec.Name.InventoryVisualizerOrder()),
+			}
+			switch {
+			case strings.Contains(missionDrop.Name, "_FRAGMENT"):
+				missionDrop.SpecType = "StoneFragment"
+			case strings.Contains(missionDrop.Name, "_STONE"):
+				missionDrop.SpecType = "Stone"
+				missionDrop.EffectString = spec.CombinedEffectString()
+			case strings.Contains(missionDrop.Name, "GOLD_METEORITE"),
+				strings.Contains(missionDrop.Name, "SOLAR_TITANIUM"),
+				strings.Contains(missionDrop.Name, "TAU_CETI_GEODE"):
+				missionDrop.SpecType = "Ingredient"
+			default:
+				missionDrop.SpecType = "Artifact"
+				missionDrop.EffectString = spec.CombinedEffectString()
+			}
+			shipDrops = append(shipDrops, missionDrop)
+		}
+		result[missionId] = shipDrops
+	}
+	return result
+}
+
 func handleGetShipDrops(playerId, missionId string) []MissionDrop {
 	completeMission, err := db.RetrieveCompleteMission(context.Background(), playerId, missionId)
 	if err != nil {
@@ -126,14 +177,14 @@ func handleGetShipDrops(playerId, missionId string) []MissionDrop {
 			missionDrop.SpecType = "StoneFragment"
 		case strings.Contains(missionDrop.Name, "_STONE"):
 			missionDrop.SpecType = "Stone"
-			missionDrop.EffectString = spec.DropEffectString()
+			missionDrop.EffectString = spec.CombinedEffectString()
 		case strings.Contains(missionDrop.Name, "GOLD_METEORITE"),
 			strings.Contains(missionDrop.Name, "SOLAR_TITANIUM"),
 			strings.Contains(missionDrop.Name, "TAU_CETI_GEODE"):
 			missionDrop.SpecType = "Ingredient"
 		default:
 			missionDrop.SpecType = "Artifact"
-			missionDrop.EffectString = spec.DropEffectString()
+			missionDrop.EffectString = spec.CombinedEffectString()
 		}
 		shipDrops = append(shipDrops, missionDrop)
 	}

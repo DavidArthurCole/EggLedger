@@ -35,6 +35,7 @@ type AppStorage struct {
 	WorkerCount             int       `json:"worker_count"`
 	ScreenshotSafety        bool      `json:"screenshot_safety"`
 	ShowMissionProgress     bool      `json:"show_mission_progress"`
+	CollapseOlderSections   bool      `json:"collapse_older_sections"`
 }
 
 type Account struct {
@@ -171,6 +172,11 @@ func (s *AppStorage) loadFromDB() {
 	} else {
 		s.ShowMissionProgress = true
 	}
+	if v, ok := settings["collapse_older_sections"]; ok {
+		s.CollapseOlderSections, _ = strconv.ParseBool(v)
+	} else {
+		s.CollapseOlderSections = true
+	}
 }
 
 // persistAllToDB writes every field to the settings table in one transaction.
@@ -198,6 +204,7 @@ func (s *AppStorage) persistAllToDB() {
 		"worker_count":               strconv.Itoa(s.WorkerCount),
 		"screenshot_safety":          strconv.FormatBool(s.ScreenshotSafety),
 		"show_mission_progress":      strconv.FormatBool(s.ShowMissionProgress),
+		"collapse_older_sections":    strconv.FormatBool(s.CollapseOlderSections),
 	}
 	s.Unlock()
 	if err := db.SetSettings(context.Background(), settings); err != nil {
@@ -414,4 +421,17 @@ func (s *AppStorage) GetShowMissionProgress() bool {
 	s.Lock()
 	defer s.Unlock()
 	return s.ShowMissionProgress
+}
+
+func (s *AppStorage) SetCollapseOlderSections(flag bool) {
+	s.Lock()
+	s.CollapseOlderSections = flag
+	s.Unlock()
+	go s.dbSet("collapse_older_sections", strconv.FormatBool(flag))
+}
+
+func (s *AppStorage) GetCollapseOlderSections() bool {
+	s.Lock()
+	defer s.Unlock()
+	return s.CollapseOlderSections
 }

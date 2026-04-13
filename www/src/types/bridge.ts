@@ -205,6 +205,8 @@ declare global {
   function setScreenshotSafety(flag: boolean): Promise<void>
   function getShowMissionProgress(): Promise<boolean>
   function setShowMissionProgress(flag: boolean): Promise<void>
+  function getCollapseOlderSections(): Promise<boolean>
+  function setCollapseOlderSections(flag: boolean): Promise<void>
   function getWorkerCount(): Promise<number>
   function setWorkerCount(count: number): Promise<void>
   function filterWarningRead(): Promise<boolean>
@@ -231,6 +233,7 @@ declare global {
   function viewMissionsOfEid(eid: string): Promise<DatabaseMission[]>
   function getMissionInfo(playerId: string, missionId: string): Promise<DatabaseMission>
   function getShipDrops(playerId: string, shipId: string): Promise<MissionDrop[]>
+  function getAllPlayerDrops(playerId: string): Promise<Record<string, MissionDrop[]>>
 
   // Fetch pipeline
   function fetchPlayerData(playerId: string): Promise<void>

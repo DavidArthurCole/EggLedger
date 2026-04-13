@@ -52,7 +52,24 @@
           <img :src="'images/loading.gif'" alt="Loading..." class="xl-ico" />
         </div>
         <div v-else class="max-w-90vw max-h-80vh overflow-auto">
-          <div class="flex justify-between mb-4">
+          <div class="flex justify-center gap-2 mb-3">
+            <button
+              type="button"
+              :class="multiViewDisplayMode === 'separate' ? 'text-blue-400 ledger-underline font-semibold' : 'text-gray-500 hover:text-gray-300'"
+              class="text-sm"
+              @click="multiViewDisplayMode = 'separate'"
+            >Separate</button>
+            <span class="text-gray-600 text-sm">|</span>
+            <button
+              type="button"
+              :class="multiViewDisplayMode === 'combined' ? 'text-blue-400 ledger-underline font-semibold' : 'text-gray-500 hover:text-gray-300'"
+              class="text-sm"
+              @click="multiViewDisplayMode = 'combined'"
+            >Combined</button>
+          </div>
+
+          <!-- Separate mode: side-by-side columns -->
+          <div v-if="multiViewDisplayMode === 'separate'" class="flex justify-between mb-4">
             <div
               v-for="(missionData, missionDataIndex) in multiViewMissionData"
               :key="missionDataIndex"
@@ -69,6 +86,25 @@
               />
             </div>
           </div>
+
+          <!-- Combined mode: merged drop pool with ship summary -->
+          <div v-else class="px-7rem text-gray-300 text-center">
+            <div class="flex flex-wrap justify-center gap-x-4 gap-y-1 mb-3 text-xs text-gray-400">
+              <span
+                v-for="(missionData, i) in multiViewMissionData"
+                :key="i"
+              >
+                <span :class="'text-duration-' + missionData.missionInfo.durationType">{{ missionData.missionInfo.shipString }}</span>
+                <span class="text-gray-600 ml-1">({{ missionData.missionInfo.capacity }})</span>
+              </span>
+            </div>
+            <drop-display-container
+              ledger-type="mission"
+              :data="combinedMissionDropData"
+              :show-expected-drops="false"
+            />
+          </div>
+
           <div class="mt-2 text-xs text-gray-300 text-center">
             Hover mouse over an item to show details.<br />
             Click to open the relevant
@@ -145,17 +181,24 @@
       </button>
     </form>
 
+    <!-- Mission load progress -->
+    <SegmentedProgressBar
+      v-if="doesDataExist"
+      :active="eidMissionsBeingLoaded"
+      :segments="missionLoadSegments"
+      :status-text="missionLoadStatusText"
+      :is-spinning="eidMissionsBeingLoaded"
+    />
+
     <!-- Filter panel -->
     <div
-      v-if="doesDataExist"
+      v-if="doesDataExist && hasAnyFilterableData"
       class="filter-panel"
     >
       <span
-        v-if="hasAnyFilterableData"
         class="mr-0_5rem h-20 font-bold text-gray-400"
       >Filter</span>
       <button
-        v-if="hasAnyFilterableData"
         id="toggleFilterButton"
         class="text-base toggle-link"
         type="button"
@@ -164,7 +207,7 @@
         {{ hideFilter ? 'Show' : 'Hide' }}
       </button>
       <form
-        v-if="!hideFilter && hasAnyFilterableData"
+        v-if="!hideFilter"
         id="filterFormVM"
         name="filterFormVM"
         class="filter-form text-xs"
@@ -502,7 +545,7 @@ import { useMennoData } from '../composables/useMennoData'
 import { useFetch } from '../composables/useFetch'
 import { useFilters } from '../composables/useFilters'
 import { useDropdownSelector } from '../composables/useDropdownSelector'
-import { screenshotSafety } from '../composables/useSettings'
+import { screenshotSafety, collapseOlderSections } from '../composables/useSettings'
 import type {
   DatabaseMission,
   MissionDrop,
@@ -513,8 +556,10 @@ import type {
 import FullFilter from '../components/FullFilter.vue'
 import SearchOverSelector from '../components/SearchOverSelector.vue'
 import ShipDisplay from '../components/ShipDisplay.vue'
+import DropDisplayContainer from '../components/DropDisplayContainer.vue'
 import TargetDisplay from '../components/TargetDisplay.vue'
 import NoDataFallback from '../components/NoDataFallback.vue'
+import SegmentedProgressBar, { type ProgressSegment } from '../components/SegmentedProgressBar.vue'
 
 // Shared state
 
@@ -593,6 +638,25 @@ const {
 const eidMissionsBeingLoaded = ref(false)
 const loadedEid = ref<string | null>(null)
 
+function missionLoadStatus(): ProgressSegment['status'] {
+  if (eidMissionsBeingLoaded.value) return 'active'
+  if (loadedEid.value !== null) return 'done'
+  return 'pending'
+}
+
+const missionLoadSegments = computed((): ProgressSegment[] => [
+  {
+    label: 'Loading',
+    status: missionLoadStatus(),
+    color: 'blue',
+    pulsing: eidMissionsBeingLoaded.value,
+  },
+])
+
+const missionLoadStatusText = computed(() =>
+  eidMissionsBeingLoaded.value ? 'Loading mission data...' : 'Done',
+)
+
 const doesDataExist = computed(() => existingData.value.length > 0)
 
 const objectedExistingData = computed(() => {
@@ -649,55 +713,50 @@ const hasAnyFilterableData = computed(() => {
 })
 
 // groupedArrays is updated alongside groupedMissions to reset expand-collapse state
-// when filters change. The three assignments below are intentional side effects.
+// when filters change. The assignment below is an intentional side effect.
+// Single O(N) pass: group missions year → month → day rather than repeated filter scans.
 const groupedMissions = computed(() => {
   const fm = tabFilteredMissions.value
   if (fm == null || fm.length === 0) return [] as DatabaseMission[][][][]
 
-  const uniqueYears = [...new Set(fm.map((mission) => ledgerDate(mission.launchDT).getFullYear()))].reverse()
+  // Build a nested Map: year → month → day → missions[] in one pass
+  const dateMap = new Map<number, Map<number, Map<number, DatabaseMission[]>>>()
+  for (const mission of fm) {
+    const d = ledgerDate(mission.launchDT)
+    const y = d.getFullYear()
+    const mo = d.getMonth() + 1
+    const da = d.getDate()
+    if (!dateMap.has(y)) dateMap.set(y, new Map())
+    const ym = dateMap.get(y)!
+    if (!ym.has(mo)) ym.set(mo, new Map())
+    const md = ym.get(mo)!
+    if (!md.has(da)) md.set(da, [])
+    md.get(da)!.push(mission)
+  }
+
+  const uniqueYears = [...dateMap.keys()].sort((a, b) => b - a)
+  const uniqueMonthsArr = uniqueYears.map((y) => [...dateMap.get(y)!.keys()].sort((a, b) => b - a))
+  const uniqueDaysArr = uniqueYears.map((y, yi) =>
+    uniqueMonthsArr[yi].map((mo) => [...dateMap.get(y)!.get(mo)!.keys()].sort((a, b) => b - a)),
+  )
+
+  const collapse = collapseOlderSections.value
   // eslint-disable-next-line vue/no-side-effects-in-computed-properties
-  groupedArrays.value.year = uniqueYears.map((year) => ({ year, enabled: true }))
-
-  const uniqueMonthsArr = uniqueYears.map((year) =>
-    [...new Set(
-      fm
-        .filter((mission) => ledgerDate(mission.launchDT).getFullYear() === year)
-        .map((mission) => ledgerDate(mission.launchDT).getMonth() + 1),
-    )].reverse(),
+  groupedArrays.value.year = uniqueYears.map((year, yi) => ({ year, enabled: !collapse || yi === 0 }))
+  // eslint-disable-next-line vue/no-side-effects-in-computed-properties
+  groupedArrays.value.month = uniqueMonthsArr.map((months, yi) =>
+    months.map((month) => ({ month, enabled: !collapse || yi === 0 })),
   )
   // eslint-disable-next-line vue/no-side-effects-in-computed-properties
-  groupedArrays.value.month = uniqueMonthsArr.map((months) =>
-    months.map((month) => ({ month, enabled: true })),
-  )
-
-  const uniqueDaysArr = uniqueYears.map((year, yearIndex) =>
-    uniqueMonthsArr[yearIndex].map((month) =>
-      [...new Set(
-        fm
-          .filter((mission) => {
-            const d = ledgerDate(mission.launchDT)
-            return d.getFullYear() === year && d.getMonth() === month - 1
-          })
-          .map((mission) => ledgerDate(mission.launchDT).getDate()),
-      )].reverse(),
-    ),
+  groupedArrays.value.day = uniqueDaysArr.map((year, yi) =>
+    year.map((month) => month.map((day) => ({ day, enabled: !collapse || yi === 0 }))),
   )
   // eslint-disable-next-line vue/no-side-effects-in-computed-properties
-  groupedArrays.value.day = uniqueDaysArr.map((year) =>
-    year.map((month) => month.map((day) => ({ day, enabled: true }))),
-  )
+  allVisible.value = !collapse || uniqueYears.length <= 1
 
-  const missionsForDay = (year: number, month: number, day: number) =>
-    fm
-      .filter((mission) => {
-        const d = ledgerDate(mission.launchDT)
-        return d.getFullYear() === year && d.getMonth() === month - 1 && d.getDate() === day
-      })
-      .reverse()
-
-  return uniqueYears.map((year, yearIndex) =>
-    uniqueMonthsArr[yearIndex].map((month, monthIndex) =>
-      uniqueDaysArr[yearIndex][monthIndex].map((day) => missionsForDay(year, month, day)),
+  return uniqueYears.map((y, yi) =>
+    uniqueMonthsArr[yi].map((mo, mi) =>
+      uniqueDaysArr[yi][mi].map((da) => [...dateMap.get(y)!.get(mo)!.get(da)!].reverse()),
     ),
   )
 })
@@ -881,6 +940,32 @@ const missionsBeingViewed = ref<string[]>([])
 const rowViewBeingLoaded = ref(false)
 const multiViewFreeSelectIds = ref<string[]>([])
 const multiMissionOverlayOpen = ref(false)
+const multiViewDisplayMode = ref<'separate' | 'combined'>('separate')
+
+function mergeDropArrays(arrays: InnerDrop[][]): InnerDrop[] {
+  const map = new Map<string, InnerDrop>()
+  for (const arr of arrays) {
+    for (const item of arr) {
+      const key = `${item.id}_${item.level}_${item.rarity}`
+      const existing = map.get(key)
+      if (existing) {
+        existing.count += item.count
+      } else {
+        map.set(key, { ...item })
+      }
+    }
+  }
+  return Array.from(map.values())
+}
+
+const combinedMissionDropData = computed(() => ({
+  artifacts: mergeDropArrays(multiViewMissionData.value.map((m) => m.artifacts)),
+  stones: mergeDropArrays(multiViewMissionData.value.map((m) => m.stones)),
+  ingredients: mergeDropArrays(multiViewMissionData.value.map((m) => m.ingredients)),
+  stoneFragments: mergeDropArrays(multiViewMissionData.value.map((m) => m.stoneFragments)),
+  mennoData: { configs: [], totalDropsCount: 0 },
+  missionCount: multiViewMissionData.value.length,
+}))
 
 function closeMissionOverlay() {
   const el = document.querySelector('.overlay-mission') as HTMLElement | null
@@ -900,6 +985,12 @@ function openMissionOverlay() {
   }
   boolMissionBeingViewed.value = true
 }
+function handleMultiKeyDown(event: KeyboardEvent) {
+  if (event.key === 'Escape') {
+    closeMultiMissionOverlay()
+  }
+}
+
 function closeMultiMissionOverlay() {
   const el = document.querySelector('.overlay-multi-mission') as HTMLElement | null
   if (el) {
@@ -909,6 +1000,7 @@ function closeMultiMissionOverlay() {
   multiMissionOverlayOpen.value = false
   multiViewMissionData.value = []
   missionsBeingViewed.value = []
+  globalThis.removeEventListener('keydown', handleMultiKeyDown)
 }
 function openMultiMissionOverlay() {
   const el = document.querySelector('.overlay-multi-mission') as HTMLElement | null
@@ -916,13 +1008,19 @@ function openMultiMissionOverlay() {
     el.style.display = 'flex'
     el.classList.remove('hidden')
   }
+  multiViewDisplayMode.value = 'separate'
   multiMissionOverlayOpen.value = true
+  globalThis.addEventListener('keydown', handleMultiKeyDown)
 }
 
 function handleKeyDown(event: KeyboardEvent) {
   if (!boolMissionBeingViewed.value) return
   event.preventDefault()
   event.stopPropagation()
+  if (event.key === 'Escape') {
+    closeMissionOverlay()
+    return
+  }
   const data = viewMissionData.value
   if (!data) return
   if (event.key === 'ArrowLeft' && data.prevMission) {
