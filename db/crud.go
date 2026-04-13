@@ -50,17 +50,58 @@ func InsertBackup(ctx context.Context, playerId string, timestamp float64, paylo
 	})
 }
 
-func InsertCompleteMission(ctx context.Context, playerId string, missionId string, startTimestamp float64, completePayload []byte, missionType int32) error {
+// MissionFilterCols holds precomputed values for the indexed filter columns
+// added in migration 6. These avoid full payload decompression for list queries.
+type MissionFilterCols struct {
+	Ship            int32
+	DurationType    int32
+	Level           int32
+	Capacity        int32
+	IsDubCap        bool
+	IsBuggedCap     bool
+	Target          int32
+	ReturnTimestamp float64
+}
+
+// MissionMeta is a lightweight mission record built purely from DB columns,
+// without decompressing the payload blob.
+type MissionMeta struct {
+	MissionId       string
+	StartTimestamp  float64
+	ReturnTimestamp float64
+	Ship            int32
+	DurationType    int32
+	Level           int32
+	Capacity        int32
+	IsDubCap        bool
+	IsBuggedCap     bool
+	Target          int32
+	MissionType     int32
+}
+
+func InsertCompleteMission(ctx context.Context, playerId string, missionId string, startTimestamp float64, completePayload []byte, missionType int32, cols MissionFilterCols) error {
 	action := fmt.Sprintf("insert mission %s for player %s into database", missionId, playerId)
 	compressedPayload, err := compress(completePayload)
 	if err != nil {
 		return errors.Wrap(err, action)
 	}
+	isDubCapInt := 0
+	if cols.IsDubCap {
+		isDubCapInt = 1
+	}
+	isBuggedCapInt := 0
+	if cols.IsBuggedCap {
+		isBuggedCapInt = 1
+	}
 	return DoDBOperation(ctx, func(ctx context.Context, db *sql.DB) error {
 		return transact(ctx, action, func(tx *sql.Tx) error {
 			_, err := tx.ExecContext(ctx, `INSERT INTO
-				mission(player_id, mission_id, start_timestamp, complete_payload, mission_type)
-				VALUES (?, ?, ?, ?, ?);`, playerId, missionId, startTimestamp, compressedPayload, missionType)
+				mission(player_id, mission_id, start_timestamp, complete_payload, mission_type,
+				        ship, duration_type, level, capacity, is_dub_cap, is_bugged_cap, target, return_timestamp)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+				playerId, missionId, startTimestamp, compressedPayload, missionType,
+				cols.Ship, cols.DurationType, cols.Level, cols.Capacity,
+				isDubCapInt, isBuggedCapInt, cols.Target, cols.ReturnTimestamp)
 			if err != nil {
 				return err
 			}
@@ -201,6 +242,182 @@ func CountPendingMissionTypes(ctx context.Context, playerId string) (int, error)
 		})
 	})
 	return count, err
+}
+
+// CountPendingFilterCols returns the number of missions for a player that have
+// ship = -1, meaning the migration-6 filter columns have not yet been populated.
+func CountPendingFilterCols(ctx context.Context, playerId string) (int, error) {
+	action := fmt.Sprintf("count pending filter columns for player %s", playerId)
+	var count int
+	err := DoDBOperation(ctx, func(ctx context.Context, db *sql.DB) error {
+		return transact(ctx, action, func(tx *sql.Tx) error {
+			row := tx.QueryRowContext(ctx,
+				`SELECT COUNT(*) FROM mission WHERE player_id = ? AND ship = -1;`,
+				playerId)
+			return row.Scan(&count)
+		})
+	})
+	return count, err
+}
+
+// ResolvePendingFilterCols decodes the stored payload for every mission with
+// ship = -1 and updates all migration-6 filter columns using the provided
+// computeFn. Returns the number of missions updated.
+//
+// computeFn receives the start timestamp and decoded CompleteMissionResponse
+// and must return (MissionFilterCols, ok). If ok is false the mission is skipped.
+//
+// progressFn, if non-nil, is called after each decode with (done, total).
+func ResolvePendingFilterCols(
+	ctx context.Context,
+	playerId string,
+	computeFn func(startTimestamp float64, resp *ei.CompleteMissionResponse) (MissionFilterCols, bool),
+	progressFn func(done, total int),
+) (int, error) {
+	action := fmt.Sprintf("resolve pending filter columns for player %s", playerId)
+
+	type pendingRow struct {
+		missionId         string
+		startTimestamp    float64
+		compressedPayload []byte
+	}
+	var pending []pendingRow
+
+	err := DoDBOperation(ctx, func(ctx context.Context, db *sql.DB) error {
+		return transact(ctx, action, func(tx *sql.Tx) error {
+			rows, err := tx.QueryContext(ctx,
+				`SELECT mission_id, start_timestamp, complete_payload FROM mission
+				 WHERE player_id = ? AND ship = -1;`,
+				playerId)
+			if err != nil {
+				return err
+			}
+			defer rows.Close()
+			for rows.Next() {
+				var r pendingRow
+				if err := rows.Scan(&r.missionId, &r.startTimestamp, &r.compressedPayload); err != nil {
+					return err
+				}
+				pending = append(pending, r)
+			}
+			return rows.Err()
+		})
+	})
+	if err != nil {
+		return 0, errors.Wrap(err, action)
+	}
+	if len(pending) == 0 {
+		return 0, nil
+	}
+
+	total := len(pending)
+
+	type resolvedRow struct {
+		missionId string
+		cols      MissionFilterCols
+	}
+	var updates []resolvedRow
+
+	for i, r := range pending {
+		payload, derr := decompress(r.compressedPayload)
+		if derr != nil {
+			log.Warnf("resolve filter cols: decompress %s: %s", r.missionId, derr)
+			if progressFn != nil {
+				progressFn(i+1, total)
+			}
+			continue
+		}
+		resp, derr := api.DecodeCompleteMissionPayload(payload)
+		if derr != nil {
+			log.Warnf("resolve filter cols: decode %s: %s", r.missionId, derr)
+			if progressFn != nil {
+				progressFn(i+1, total)
+			}
+			continue
+		}
+		cols, ok := computeFn(r.startTimestamp, resp)
+		if ok {
+			updates = append(updates, resolvedRow{missionId: r.missionId, cols: cols})
+		}
+		if progressFn != nil {
+			progressFn(i+1, total)
+		}
+	}
+
+	if len(updates) == 0 {
+		return 0, nil
+	}
+
+	err = DoDBOperation(ctx, func(ctx context.Context, db *sql.DB) error {
+		return transact(ctx, action, func(tx *sql.Tx) error {
+			for _, u := range updates {
+				isDubCapInt := 0
+				if u.cols.IsDubCap {
+					isDubCapInt = 1
+				}
+				isBuggedCapInt := 0
+				if u.cols.IsBuggedCap {
+					isBuggedCapInt = 1
+				}
+				if _, serr := tx.ExecContext(ctx,
+					`UPDATE mission SET
+					 ship = ?, duration_type = ?, level = ?, capacity = ?,
+					 is_dub_cap = ?, is_bugged_cap = ?, target = ?, return_timestamp = ?
+					 WHERE player_id = ? AND mission_id = ?;`,
+					u.cols.Ship, u.cols.DurationType, u.cols.Level, u.cols.Capacity,
+					isDubCapInt, isBuggedCapInt, u.cols.Target, u.cols.ReturnTimestamp,
+					playerId, u.missionId,
+				); serr != nil {
+					return serr
+				}
+			}
+			return nil
+		})
+	})
+	if err != nil {
+		return 0, errors.Wrap(err, action)
+	}
+	return len(updates), nil
+}
+
+// RetrievePlayerMissionMeta returns lightweight mission records for a player
+// built purely from DB columns (no payload decompression). Only missions where
+// ship != -1 (i.e. migration-6 columns are populated) are returned.
+func RetrievePlayerMissionMeta(ctx context.Context, playerId string) ([]MissionMeta, error) {
+	action := fmt.Sprintf("retrieve mission meta for player %s from database", playerId)
+	var metas []MissionMeta
+	err := DoDBOperation(ctx, func(ctx context.Context, db *sql.DB) error {
+		return transact(ctx, action, func(tx *sql.Tx) error {
+			rows, err := tx.QueryContext(ctx,
+				`SELECT mission_id, start_timestamp, return_timestamp,
+				        ship, duration_type, level, capacity,
+				        is_dub_cap, is_bugged_cap, target, mission_type
+				 FROM mission
+				 WHERE player_id = ? AND ship != -1
+				 ORDER BY start_timestamp;`,
+				playerId)
+			if err != nil {
+				return err
+			}
+			defer rows.Close()
+			for rows.Next() {
+				var m MissionMeta
+				var isDubCapInt, isBuggedCapInt int
+				if err := rows.Scan(
+					&m.MissionId, &m.StartTimestamp, &m.ReturnTimestamp,
+					&m.Ship, &m.DurationType, &m.Level, &m.Capacity,
+					&isDubCapInt, &isBuggedCapInt, &m.Target, &m.MissionType,
+				); err != nil {
+					return err
+				}
+				m.IsDubCap = isDubCapInt != 0
+				m.IsBuggedCap = isBuggedCapInt != 0
+				metas = append(metas, m)
+			}
+			return rows.Err()
+		})
+	})
+	return metas, err
 }
 
 // ResolvePendingMissionTypes decodes the stored payload for every mission with

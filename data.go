@@ -96,7 +96,9 @@ func fetchCompleteMissionWithContext(ctx context.Context, playerId string, missi
 	track("Decode", "done")
 	track("Store", "active")
 	missionType := int32(resp.GetInfo().GetType())
-	err = db.InsertCompleteMission(ctx, playerId, missionId, startTimestamp, payload, missionType)
+	_nominalShipCapacitiesOnce.Do(initNominalShipCapacities)
+	cols, _ := computeMissionFilterCols(startTimestamp, resp)
+	err = db.InsertCompleteMission(ctx, playerId, missionId, startTimestamp, payload, missionType, cols)
 	if err != nil {
 		track("Store", "failed")
 		return resp, err

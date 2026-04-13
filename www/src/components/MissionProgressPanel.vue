@@ -1,5 +1,9 @@
 <template>
-  <div v-if="processes.length > 0" class="flex flex-col gap-1 overflow-y-auto max-h-48 flex-shrink-0">
+  <div
+    v-if="processes.length > 0"
+    class="flex flex-col gap-1 flex-shrink-0"
+    :class="processes.length >= 3 ? 'overflow-y-auto max-h-24' : ''"
+  >
     <div
       v-for="proc in processes"
       :key="proc.id"
@@ -88,10 +92,12 @@ function toggle(id: string) {
   expandedIds.value = next
 }
 
-// Auto-expand all currently running processes.
+// Auto-expand running processes only when there are fewer than 3 total.
+// At 3+ the panel becomes a scrolled list and expanding all would be unmanageable.
 watch(
   () => props.processes,
   (procs) => {
+    if (procs.length >= 3) return
     const running = procs.filter((p) => p.status === 'running')
     if (running.length === 0) return
     const next = new Set(expandedIds.value)

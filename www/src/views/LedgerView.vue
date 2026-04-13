@@ -185,30 +185,21 @@
             ></div>
           </div>
         </div>
-        <div class="flex mt-0.5" style="font-size: 0.6rem">
+        <div class="flex mt-0.5 text-gray-600" style="font-size: 0.6rem">
           <div
             class="flex-1 text-center"
-            :class="[
-              segmentStates.seg1 === 'active' ? 'text-blue-500 animate-pulse' :
-              segmentStates.seg1 === 'done' ? 'text-blue-500' :
-              'text-gray-600',
-            ]"
+            :class="segmentStates.seg1 === 'active' ? 'animate-pulse' : ''"
+            :style="segmentStates.seg1 !== 'pending' ? 'color: rgb(59 130 246)' : ''"
           >Save</div>
           <div
             class="flex-1 text-center"
-            :class="[
-              segmentStates.seg2 === 'active' ? 'text-green-500 animate-pulse' :
-              segmentStates.seg2 === 'done' ? 'text-green-500' :
-              'text-gray-600',
-            ]"
+            :class="segmentStates.missionPulsing ? 'animate-pulse' : ''"
+            :style="(segmentStates.seg2 === 'active' || segmentStates.seg2 === 'done') ? 'color: rgb(16 185 129)' : ''"
           >Missions</div>
           <div
             class="flex-1 text-center"
-            :class="[
-              segmentStates.seg3 === 'active' ? 'text-amber-500 animate-pulse' :
-              segmentStates.seg3 === 'done' ? 'text-amber-500' :
-              'text-gray-600',
-            ]"
+            :class="segmentStates.seg3 === 'active' ? 'animate-pulse' : ''"
+            :style="segmentStates.seg3 !== 'pending' ? 'color: rgb(245 158 11)' : ''"
           >Export</div>
         </div>
       </template>

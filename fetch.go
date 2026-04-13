@@ -222,6 +222,40 @@ func runFetchPipeline(w *worker, playerId string) {
 		}
 	}
 
+	// One-time backfill pass: populate migration-6 filter columns (ship,
+	// duration_type, level, etc.) for any cached missions that predate this
+	// feature. Decodes locally stored payloads - no API calls.
+	_nominalShipCapacitiesOnce.Do(initNominalShipCapacities)
+	pendingFilterCols, pfcErr := db.CountPendingFilterCols(context.Background(), playerId)
+	if pfcErr != nil {
+		log.Error(pfcErr)
+		pendingFilterCols = 0
+	}
+	if pendingFilterCols > 0 {
+		pinfo(fmt.Sprintf("indexing filter columns for &148c32<%d> cached missions", pendingFilterCols))
+		if checkInterrupt() {
+			return
+		}
+		resolved, resErr := db.ResolvePendingFilterCols(
+			context.Background(),
+			playerId,
+			computeMissionFilterCols,
+			func(done, total int) {
+				_updateMissionProgress(MissionProgress{
+					Total:              total,
+					Finished:           done,
+					FinishedPercentage: fmt.Sprintf("%.1f%%", float64(done)/float64(total)*100),
+				})
+			},
+		)
+		if resErr != nil {
+			perror(resErr)
+			// Non-fatal: continue even if backfill fails.
+		} else if resolved > 0 {
+			pinfo(fmt.Sprintf("indexed filter columns for &148c32<%d> missions", resolved))
+		}
+	}
+
 	// Build label lookup for progress display: identifier -> "Ship · Duration"
 	missionLabelByID := make(map[string]string)
 	for _, mission := range missions {
@@ -246,7 +280,8 @@ func runFetchPipeline(w *worker, playerId string) {
 			currentMissionMu.Lock()
 			label := currentMission
 			currentMissionMu.Unlock()
-			remainingBatches := (total - finished + workerCount - 1) / workerCount
+			wc := _storage.GetWorkerCount()
+			remainingBatches := (total - finished + wc - 1) / wc
 			_updateMissionProgress(MissionProgress{
 				Total:                   total,
 				Finished:                finished,
@@ -277,7 +312,8 @@ func runFetchPipeline(w *worker, playerId string) {
 		tryFailedAgain := _storage.GetRetryFailedMissions()
 
 	MissionsLoop:
-		for i := 0; i < total; i += workerCount {
+		for i := 0; i < total; {
+			workerCount = _storage.GetWorkerCount()
 			if i != 0 {
 				select {
 				case <-ctx.Done():
@@ -306,6 +342,7 @@ func runFetchPipeline(w *worker, playerId string) {
 						failureMu.Unlock()
 					}, &wg, finishedCh)
 			}
+			i += workerCount
 		}
 		wg.Wait()
 

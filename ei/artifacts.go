@@ -52,7 +52,11 @@ func (a *ArtifactSpec) DropEffectString() string {
 	if a.Rarity == nil || int(*a.Rarity) >= len(row) {
 		return ""
 	}
-	return row[*a.Rarity]
+	v := row[*a.Rarity]
+	if v == "" {
+		return ""
+	}
+	return "[" + v + "]"
 }
 
 func (a *ArtifactSpec) DisplayTierName(includeSpace bool) string {
