@@ -38,8 +38,7 @@ dist: frontend protobuf dist-windows dist-mac dist-linux dist-mac-arm
 
 dist-windows: init frontend protobuf
 	dos2unix ./scripts/build-windows.sh
-	chmod +x ./scripts/build-windows.sh
-	./scripts/build-windows.sh
+	bash ./scripts/build-windows.sh
 
 dist-linux: init frontend protobuf
 	dos2unix ./scripts/build-linux.sh

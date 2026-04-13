@@ -29,7 +29,7 @@ jobs:
             artifact: dist/EggLedger-mac-arm64.zip
             artifact_name: EggLedger-mac-arm64
           - target: windows
-            os: ubuntu-latest
+            os: windows-latest
             artifact: dist/EggLedger.exe
             artifact_name: EggLedger-windows
 
