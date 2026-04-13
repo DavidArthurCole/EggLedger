@@ -287,14 +287,14 @@ func runFetchPipeline(w *worker, playerId string) {
 			}
 			batchEnd := min(i+workerCount, total)
 			currentMissionMu.Lock()
-			currentMission = missionLabelByID[newMissionIds[i]]
+			currentMission = fmt.Sprintf("%s · %s", missionLabelByID[newMissionIds[i]], unixToTime(newMissionStartTimestamps[i]).Format("2006-01-02"))
 			currentMissionMu.Unlock()
 			for j := i; j < batchEnd; j++ {
 				id := newMissionIds[j]
 				ts := newMissionStartTimestamps[j]
 				wg.Add(1)
 				go fetchOneMission(w.ctx, playerId, id, ts,
-					id, missionLabelByID[id],
+					id, fmt.Sprintf("%s · %s", missionLabelByID[id], unixToTime(ts).Format("2006-01-02")),
 					_storage.GetHideTimeoutErrors(), perror,
 					func() {
 						failureMu.Lock()
@@ -329,7 +329,7 @@ func runFetchPipeline(w *worker, playerId string) {
 					ts := fm.startTimestamp
 					wg.Add(1)
 					go fetchOneMission(w.ctx, playerId, id, ts,
-						id+"-retry", missionLabelByID[id]+" (retry)",
+						id+"-retry", fmt.Sprintf("%s · %s (retry)", missionLabelByID[id], unixToTime(ts).Format("2006-01-02")),
 						_storage.GetHideTimeoutErrors(), perror,
 						func() {
 							failureMu.Lock()
@@ -444,8 +444,7 @@ func runFetchPipeline(w *worker, playerId string) {
 	}()
 
 	if exportsUnchanged {
-		log.Info("exports unchanged, using last exported files and deleting new ones")
-		_emitMessage("exports identical with existing data files, reusing", false)
+		pinfo("exports identical with existing data files, reusing")
 		err = os.Remove(xlsxFile)
 		if err != nil {
 			log.Errorf("error removing %s: %s", xlsxFile, err)
@@ -488,6 +487,7 @@ func fetchOneMission(
 	tracker := func(name, status string) { missionProc.SetSegment(name, status) }
 	_, err := fetchCompleteMissionWithContext(ctx, playerId, missionId, startTimestamp, tracker)
 	if err != nil {
+		missionProc.Log(err.Error(), true)
 		missionProc.MarkFailed()
 		isTimeout := strings.Contains(err.Error(), "timeout after")
 		if !isTimeout || !hideTimeouts {
@@ -495,6 +495,7 @@ func fetchOneMission(
 		}
 		onError()
 	} else {
+		missionProc.Log("done.", false)
 		missionProc.MarkDone()
 	}
 	finishedCh <- struct{}{}
