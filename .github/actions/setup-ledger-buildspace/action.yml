@@ -39,7 +39,7 @@ runs:
       if: runner.os == 'Windows'
       shell: pwsh
       run: |
-        choco install make dos2unix protobuf -y --no-progress
+        choco install make dos2unix protoc -y --no-progress
         go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 
     - name: Build
