@@ -137,29 +137,31 @@
         </div>
         <div class="mt-0_5rem">
           <span class="section-heading">Parallel Download Workers</span><br />
-          <div class="flex items-start mt-0_5rem pl-0_5rem gap-3">
-            <div class="flex-1">
-              <div class="flex gap-px w-full cursor-pointer">
-                <div
-                  v-for="i in 10"
-                  :key="i"
-                  class="flex-1 h-4 rounded-sm"
-                  :class="[
-                    i <= 4 ? 'bg-green-600' : i <= 7 ? 'bg-orange-500' : 'bg-red-600',
-                    i > workerCount ? 'opacity-20' : '',
-                  ]"
-                  @click="workerCount = i"
-                ></div>
-              </div>
-              <div class="flex text-xs mt-0_25rem select-none w-full">
-                <span class="text-green-500" style="width: 40%">Safe</span>
-                <span class="text-orange-400 text-center" style="width: 30%">Caution</span>
-                <span class="text-red-500 text-right" style="width: 30%">Risky</span>
-              </div>
+          <div class="mt-0_5rem pl-0_5rem">
+            <!-- Worker count callout above selected segment -->
+            <div class="relative h-6 select-none">
+              <span
+                class="absolute text-sm font-bold font-mono -translate-x-1/2"
+                :style="{ left: `${(workerCount - 0.5) * 10}%` }"
+                :class="workerCount <= 4 ? 'text-green-400' : workerCount <= 7 ? 'text-orange-400' : 'text-red-400'"
+              >{{ workerCount }}</span>
             </div>
-            <div class="flex items-center gap-1 flex-shrink-0">
-              <span class="font-mono font-bold text-sm text-gray-300">{{ workerCount }}</span>
-              <span class="text-gray-500 text-xs">workers</span>
+            <div class="flex gap-px w-full cursor-pointer">
+              <div
+                v-for="i in 10"
+                :key="i"
+                class="flex-1 h-4 rounded-sm"
+                :class="[
+                  i <= 4 ? 'bg-green-600' : i <= 7 ? 'bg-orange-500' : 'bg-red-600',
+                  i > workerCount ? 'opacity-20' : '',
+                ]"
+                @click="workerCount = i"
+              ></div>
+            </div>
+            <div class="flex text-xs mt-0_25rem select-none w-full">
+              <span class="text-green-500" style="width: 40%">Safe</span>
+              <span class="text-orange-400 text-center" style="width: 30%">Caution</span>
+              <span class="text-red-500 text-right" style="width: 30%">Risky</span>
             </div>
           </div>
           <div
