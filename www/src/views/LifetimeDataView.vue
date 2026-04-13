@@ -177,7 +177,7 @@
     <!-- Data display -->
     <div
       v-if="doesDataExist"
-      class="flex-1 px-2 py-1 overflow-auto shadow-sm block text-xs font-mono text-gray-300 bg-darkest rounded-md text-center"
+      class="flex-1 min-h-0 px-2 py-1 overflow-auto shadow-sm block text-xs font-mono text-gray-300 bg-darkest rounded-md text-center"
     >
       <div
         v-if="(lifetimeData != null && !lifetimeDataBeingLoaded) || lifetimeDataBeingFiltered"
@@ -355,7 +355,7 @@ const selectedLifetimeAccountData = computed(
   () => accountById(selectedLifetimeAccount.value),
 )
 const selectedLifetimeKnownAccount = computed(
-  () => knownAccounts.value.find((acc) => acc.id === selectedLifetimeAccount.value) ?? null,
+  () => knownAccounts.value?.find((acc) => acc.id === selectedLifetimeAccount.value) ?? null,
 )
 
 // Lifetime load state

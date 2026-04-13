@@ -342,7 +342,7 @@
     <!-- Mission tree -->
     <div
       v-if="doesDataExist"
-      class="flex-1 px-2 overflow-auto shadow-sm bg-darkest rounded-md mt-0_75rem"
+      class="flex-1 min-h-0 px-2 overflow-auto shadow-sm bg-darkest rounded-md mt-0_75rem"
     >
       <div ref="resultsDiv" v-if="hasAnyFilterableData">
         <div class="filter-form text-lg" v-if="filteredMissions && filteredMissions.length === 0">

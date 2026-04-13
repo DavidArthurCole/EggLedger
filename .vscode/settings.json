@@ -6,5 +6,6 @@
     },
     "sonarlint.analyzerProperties": {
         "sonar.exclusions": "**/ei/ei.pb.go,**/ei/ei.proto"
-    }
+    },
+    "C_Cpp.errorSquiggles": "disabled"
 }

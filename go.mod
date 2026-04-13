@@ -3,7 +3,7 @@ module github.com/DavidArthurCole/EggLedger
 go 1.25.0
 
 require (
-	github.com/davidarthurcole/lorca v0.3.1
+	github.com/davidarthurcole/lorca v0.3.3
 	github.com/dustin/go-humanize v1.0.1
 	github.com/golang-migrate/migrate/v4 v4.19.1
 	github.com/hashicorp/go-version v1.6.0
@@ -37,5 +37,3 @@ require (
 )
 
 require golang.org/x/text v0.33.0
-
-replace github.com/davidarthurcole/lorca => C:/Users/david/source/repos/lorca

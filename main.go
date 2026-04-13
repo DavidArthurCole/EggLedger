@@ -1,11 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"embed"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"image"
+	"image/png"
 	"io/fs"
 	"net"
 	"net/http"
@@ -410,7 +413,8 @@ func main() {
 		resolutionPrefs := _storage.GetDefaultResolution()
 		return resolutionPrefs[0], resolutionPrefs[1]
 	}()
-	u, err := lorca.New("", "", browser, widthPreference, heightPreference, args...)
+	appIconPath := buildAppIconPath()
+	u, err := lorca.New("", "", browser, widthPreference, heightPreference, appIconPath, args...)
 	if err != nil {
 		log.Fatal("lorca err: ", err)
 	}
@@ -733,4 +737,79 @@ func main() {
 	if err := db.CloseDB(); err != nil {
 		log.Fatalf("Failed to close database: %v", err)
 	}
+}
+
+// buildAppIconPath scales the embedded icon-64.png to 32x32 (matching
+// LR_DEFAULTSIZE's SM_CXICON request), wraps it as a PNG-in-ICO file on disk,
+// and returns its path so lorca can apply it to a Firefox window via
+// WM_SETICON.  Returns an empty string on any failure (lorca falls back to
+// PE resource 1 or skips icon setup on non-Windows platforms).
+func buildAppIconPath() string {
+	pngData, err := fs.ReadFile(_fs, "www/dist/images/icon-64.png")
+	if err != nil {
+		return ""
+	}
+
+	// Decode the source PNG.
+	src, err := png.Decode(bytes.NewReader(pngData))
+	if err != nil {
+		return ""
+	}
+	srcBounds := src.Bounds()
+
+	// Scale to 32x32 via center-pixel sampling so the ICO entry matches the
+	// size that LoadImageW requests when LR_DEFAULTSIZE is set (SM_CXICON = 32).
+	const dstW, dstH = 32, 32
+	dst := image.NewNRGBA(image.Rect(0, 0, dstW, dstH))
+	scaleX := srcBounds.Dx() / dstW
+	scaleY := srcBounds.Dy() / dstH
+	if scaleX < 1 {
+		scaleX = 1
+	}
+	if scaleY < 1 {
+		scaleY = 1
+	}
+	for dy := 0; dy < dstH; dy++ {
+		for dx := 0; dx < dstW; dx++ {
+			sx := srcBounds.Min.X + dx*scaleX + scaleX/2
+			sy := srcBounds.Min.Y + dy*scaleY + scaleY/2
+			dst.Set(dx, dy, src.At(sx, sy))
+		}
+	}
+
+	// Re-encode as PNG.
+	var scaledBuf bytes.Buffer
+	if err := png.Encode(&scaledBuf, dst); err != nil {
+		return ""
+	}
+	scaledPNG := scaledBuf.Bytes()
+
+	// PNG-in-ICO layout: 6-byte ICONDIR + 16-byte ICONDIRENTRY + PNG bytes.
+	const hdrSize = 22
+	ico := make([]byte, hdrSize+len(scaledPNG))
+
+	// ICONDIR
+	ico[2] = 1 // idType = ICO
+	ico[4] = 1 // idCount = 1
+
+	// ICONDIRENTRY
+	ico[6] = dstW // bWidth
+	ico[7] = dstH // bHeight
+	// bColorCount = 0, bReserved = 0
+	ico[10] = 1  // wPlanes (uint16 LE) = 1
+	ico[12] = 32 // wBitCount (uint16 LE) = 32
+	sz := uint32(len(scaledPNG))
+	ico[14] = byte(sz)
+	ico[15] = byte(sz >> 8)
+	ico[16] = byte(sz >> 16)
+	ico[17] = byte(sz >> 24)
+	ico[18] = hdrSize // dwImageOffset (low byte; upper 3 bytes already 0)
+
+	copy(ico[hdrSize:], scaledPNG)
+
+	icoPath := filepath.Join(_internalDir, "icon.ico")
+	if err := os.WriteFile(icoPath, ico, 0644); err != nil {
+		return ""
+	}
+	return icoPath
 }

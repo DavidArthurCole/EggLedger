@@ -1,6 +1,6 @@
 <template>
   <div class="view-layout overflow-y-scroll">
-    <div class="flex-1 px-3 py-2 overflow-auto shadow-sm block text-sm font-mono text-gray-400 bg-darkest rounded-md">
+    <div class="flex-1 min-h-0 px-3 py-2 overflow-auto shadow-sm block text-sm font-mono text-gray-400 bg-darkest rounded-md">
       <div class="w-full pl-0_5rem pr-0_5rem">
         <span class="text-base">
           Preferred browser for Ledger (<span class="text-gray-300 text-sm">effective on restart</span>)

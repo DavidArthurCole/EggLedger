@@ -1,5 +1,5 @@
 <template>
-  <div class="flex-1 flex flex-col overflow-hidden">
+  <div class="flex-1 min-h-0 flex flex-col overflow-hidden">
     <!-- Forbidden/translocated warnings -->
     <TranslocationModal :visible="appIsTranslocated" />
     <ForbiddenDirModal :visible="appIsInForbiddenDirectory && !appIsTranslocated" />
@@ -54,7 +54,7 @@
             @input="(e) => (playerId = (e.target as HTMLInputElement).value)"
           />
           <ul
-            v-if="playerIdDropdownOpen && knownAccounts.length > 0"
+            v-if="playerIdDropdownOpen && (knownAccounts?.length ?? 0) > 0"
             class="ledger-list"
             tabindex="-1"
           >
@@ -198,7 +198,7 @@
 
     <div
       ref="messagesRef"
-      class="flex-1 px-2 py-1 overflow-auto shadow-sm block text-xs font-mono text-gray-400 bg-darkest rounded-md"
+      class="flex-1 min-h-0 px-2 py-1 overflow-auto shadow-sm block text-xs font-mono text-gray-400 bg-darkest rounded-md"
     >
       <div v-for="(message, i) in logMessages" :key="i" class="whitespace-pre">
         <span :class="message.isError ? 'text-red-700' : 'text-green-700'">{{ hhmmss(new Date()) }}|</span>
@@ -249,7 +249,7 @@ const {
 
 const { progress, fetchPlayerData, stopFetching } = useFetch()
 
-const playerId = ref<string>(knownAccounts.value[0]?.id ?? '')
+const playerId = ref<string>(knownAccounts.value?.[0]?.id ?? '')
 const messagesRef = ref<HTMLElement | null>(null)
 
 const missionProcesses = computed(() =>
@@ -271,7 +271,7 @@ function normalizePlayerId(id: string): string {
 
 const isPlayerIdValid = computed(() => /(^$)|(^EI\d{16}$)/.test(normalizePlayerId(playerId.value)))
 const selectedAccount = computed(
-  () => knownAccounts.value.find((acc) => acc.id === normalizePlayerId(playerId.value)) ?? null,
+  () => knownAccounts.value?.find((acc) => acc.id === normalizePlayerId(playerId.value)) ?? null,
 )
 
 const idle = computed(() => {

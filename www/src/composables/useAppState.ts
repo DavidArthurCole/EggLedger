@@ -22,7 +22,7 @@ export function useAppState() {
     appDirectory.value = await globalThis.appDirectory()
     appIsInForbiddenDirectory.value = await globalThis.appIsInForbiddenDirectory()
     appIsTranslocated.value = await globalThis.appIsTranslocated()
-    knownAccounts.value = await globalThis.knownAccounts()
+    knownAccounts.value = (await globalThis.knownAccounts()) ?? []
     existingData.value = await globalThis.getExistingData()
 
     const [hasUpdate, releaseNotes] = await globalThis.checkForUpdates()
@@ -30,7 +30,7 @@ export function useAppState() {
     appReleaseNotes.value = releaseNotes
 
     // Register Go-to-JS callbacks
-    globalThis.updateKnownAccounts = (accounts) => { knownAccounts.value = accounts }
+    globalThis.updateKnownAccounts = (accounts) => { knownAccounts.value = accounts ?? [] }
     globalThis.updateState = (state) => { appState.value = state as AppState }
     globalThis.updateMissionProgress = () => {}   // overridden in useFetch
     globalThis.updateExportedFiles = (files) => { exportedFiles.value = files }
