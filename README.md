@@ -15,7 +15,7 @@
 ## What's new in 2.0
 
 - **Vue 3 + TypeScript frontend** - the entire UI was rewritten in Vue 3 with TypeScript for better maintainability and type safety.
-- **Virtue mission support** - Virtue missions are fetched, displayed, and exported. Mission type filtering and type-column separators are available in the ledger view. Earnings bonus calculations include the Egg of Tomorrow (Virtue/TE) factor.
+- **Virtue mission support** - Virtue missions are fetched, displayed, and exported. Mission type filtering and type-column separators are available in the ledger view. Earnings bonus calculations include the Egg of Truth (Virtue/TE) factor.
 - **Worker parallelization** - missions are fetched using a configurable number of parallel workers. A rate-limit warning is shown if the interval is too aggressive.
 - **Screenshot Safety mode** - a setting to blur EIDs and sensitive data when the app is visible on screen.
 - **Per-process progress bars** - each worker shows its own live progress. Menno data download shows phase, bytes downloaded, speed, and ETA.
