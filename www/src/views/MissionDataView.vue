@@ -46,10 +46,22 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
-        <div v-if="rowViewBeingLoaded" class="text-center">
+        <div v-if="rowViewBeingLoaded" class="text-center px-8 py-4 min-w-60">
           <div class="mt-0_5rem text-center text-xl text-gray-400">Multi-Mission View Loading</div>
           <hr class="mt-1rem mb-1rem w-full" />
           <img :src="'images/loading.gif'" alt="Loading..." class="xl-ico" />
+          <div class="mt-3 text-sm text-gray-400">
+            Loading mission
+            <span class="text-gray-200 font-semibold">{{ missionsBeingViewed.length + 1 }}</span>
+            of
+            <span class="text-gray-200 font-semibold">{{ multiViewTotalToLoad }}</span>
+          </div>
+          <div class="mt-2 w-full bg-darker rounded-full h-1.5 overflow-hidden">
+            <div
+              class="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
+              :style="{ width: multiViewTotalToLoad > 0 ? ((missionsBeingViewed.length / multiViewTotalToLoad) * 100) + '%' : '0%' }"
+            />
+          </div>
         </div>
         <div v-else class="max-w-90vw max-h-80vh overflow-auto">
           <div class="flex justify-center gap-2 mb-3">
@@ -69,11 +81,12 @@
           </div>
 
           <!-- Separate mode: side-by-side columns -->
-          <div v-if="multiViewDisplayMode === 'separate'" class="flex justify-between mb-4">
+          <div v-if="multiViewDisplayMode === 'separate'" class="flex justify-between gap-2 mb-4">
             <div
               v-for="(missionData, missionDataIndex) in multiViewMissionData"
               :key="missionDataIndex"
               :class="'w-1/' + multiViewMissionData.length"
+              class="bg-darkerer rounded-lg py-2"
             >
               <ShipDisplay
                 v-if="missionData && missionData.missionInfo != null"
@@ -422,17 +435,24 @@
               >
                 {{ allVisible ? 'Collapse All' : 'Expand All' }}
               </button>
-              <button
-                v-if="multiViewMode === 'free' && multiViewFreeSelectIds.length > 0"
-                class="text-xl view-multi-link"
-                type="button"
-                @click="triggerRowView()"
-              >
-                View Selected Missions
-                <span class="text-gray-500">(</span>{{ multiViewFreeSelectIds.length }}<span class="text-gray-500">)</span>
-              </button>
             </span>
             <hr class="mb-0_5rem w-full" />
+            <div v-if="multiViewMode === 'free' && multiViewFreeSelectIds.length > 0" class="flex items-center gap-2 mb-2">
+              <button
+                type="button"
+                class="px-3 py-1 rounded-md border border-green-700 text-sm font-medium text-green-400 bg-transparent hover:bg-green-950/50"
+                @click="triggerRowView()"
+              >
+                View Selected ({{ multiViewFreeSelectIds.length }})
+              </button>
+              <button
+                type="button"
+                class="px-3 py-1 rounded-md border border-gray-600 text-sm font-medium text-gray-400 bg-transparent hover:bg-darker"
+                @click="multiViewFreeSelectIds = []"
+              >
+                Deselect All
+              </button>
+            </div>
           </div>
           <template v-for="(yearVF, yearIndex) in groupedMissions" :key="yearIndex">
             <span class="text-lg font-bold mr-0_5rem ledger-underline">{{ groupedArrays.year[yearIndex].year }}</span>
@@ -955,6 +975,7 @@ const rowViewBeingLoaded = ref(false)
 const multiViewFreeSelectIds = ref<string[]>([])
 const multiMissionOverlayOpen = ref(false)
 const multiViewDisplayMode = ref<'separate' | 'combined'>('separate')
+const multiViewTotalToLoad = ref(0)
 
 function mergeDropArrays(arrays: InnerDrop[][]): InnerDrop[] {
   const map = new Map<string, InnerDrop>()
@@ -1242,6 +1263,7 @@ async function viewRowOfMissions(missionIds: string[]) {
   openMultiMissionOverlay()
   missionsBeingViewed.value = []
   multiViewMissionData.value = []
+  multiViewTotalToLoad.value = missionIds.length
   const dropCache = await globalThis.getAllPlayerDrops(loadedEid.value ?? '')
   for (const missionId of missionIds) {
     const data = await viewSpecificMission(missionId, true, dropCache)

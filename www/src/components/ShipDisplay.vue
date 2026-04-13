@@ -49,32 +49,6 @@
             <br/>
         </div>
 
-        <!-- Previous mission -->
-        <button
-            v-if="!isMulti"
-            v-bind:disabled="viewMissionData.prevMission == null"
-            v-on:click="$emit('view', viewMissionData.prevMission)"
-            title="Previous mission"
-            class="disabled:hover:cursor-not-allowed absolute left-0 top-1/2 transform -translate-y-1/2 pl-2 rounded-md text-gray-400 focus:outline-none z-10 disabled:text-gray-500 hover:text-gray-500"
-        >
-            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7">
-                </path>
-            </svg>
-        </button>
-        <!-- Next mission -->
-        <button
-            v-if="!isMulti"
-            v-bind:disabled="viewMissionData.nextMission == null"
-            v-on:click="$emit('view', viewMissionData.nextMission)"
-            title="Next mission"
-            class="disabled:hover:cursor-not-allowed absolute right-0 top-1/2 transform -translate-y-1/2 pr-2 rounded-md text-gray-400 focus:outline-none z-10 disabled:text-gray-500 hover:text-gray-500"
-        >
-            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
-                </path>
-            </svg>
-        </button>
 
         <drop-display-container
             ledger-type="mission" :data="viewMissionData"
@@ -90,6 +64,28 @@
         </div>
     </div>
     <Teleport to="body">
+        <button
+            v-if="!isMulti"
+            :disabled="viewMissionData.prevMission == null"
+            @click="$emit('view', viewMissionData.prevMission)"
+            title="Previous mission"
+            class="disabled:cursor-not-allowed fixed left-2 top-1/2 -translate-y-1/2 rounded-md text-gray-400 focus:outline-none z-50 disabled:text-gray-600 hover:text-gray-200"
+        >
+            <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+        </button>
+        <button
+            v-if="!isMulti"
+            :disabled="viewMissionData.nextMission == null"
+            @click="$emit('view', viewMissionData.nextMission)"
+            title="Next mission"
+            class="disabled:cursor-not-allowed fixed right-2 top-1/2 -translate-y-1/2 rounded-md text-gray-400 focus:outline-none z-50 disabled:text-gray-600 hover:text-gray-200"
+        >
+            <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+        </button>
         <Transition name="tooltip-fade">
             <div
                 v-if="activeTooltip === 'bugged'"
