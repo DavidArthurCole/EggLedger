@@ -16,6 +16,12 @@ runs:
         cache: true
         cache-dependency-path: go.sum
 
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: lts/*
+        cache: npm
+
     - name: Install Linux/Windows build dependencies
       if: runner.os == 'Linux'
       shell: bash
