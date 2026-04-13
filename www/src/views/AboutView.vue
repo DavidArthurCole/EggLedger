@@ -1,6 +1,15 @@
 <template>
   <div class="flex-1 w-full mx-auto px-4 overflow-y-auto">
     <div class="text-sm text-gray-400 space-y-2">
+      <div class="flex items-center gap-3 p-3 rounded-lg bg-yellow-950/40 border border-yellow-700/40">
+        <p class="flex-1 text-yellow-200/70 text-xs">EggLedger is free - if it's saved you time, consider buying me a coffee!</p>
+        <a
+          v-external-link
+          href="https://buymeacoffee.com/davidarthurcole"
+          target="_blank"
+          class="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-yellow-400 hover:bg-yellow-300 text-gray-900 text-xs font-semibold transition-colors"
+        >&#x2615; Buy me a coffee</a>
+      </div>
       <p class="space-x-3">
         <a
           v-external-link
