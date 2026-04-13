@@ -5,6 +5,7 @@
 <p align="center">
   <a href="https://github.com/DavidArthurCole/EggLedger/releases"><img src="assets/download.svg" alt="download"></a>
   <a href="https://wasmegg-carpet.netlify.app/"><img src="assets/more-tools.svg" alt="more tools"></a>
+  <a href="https://github.com/DavidArthurCole/EggLedger/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/DavidArthurCole/EggLedger/ci.yml?branch=master" alt="Build Status"></a>
 </p>
 
 **EggLedger** helps export your Egg, Inc. spaceship mission data, including loot from each mission, to .xlsx (Excel) and .csv formats for further analysis. It is an extension to the [rockets tracker](https://wasmegg-carpet.netlify.app/rockets-tracker/), answering questions like "from which mission did I obtain this legendary artifact?" and "how many of this item dropped from my ships?" which can't be answered there due to technical or UI limitations.
