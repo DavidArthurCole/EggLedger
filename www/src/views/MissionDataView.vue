@@ -22,7 +22,7 @@
 
     <!-- Single mission overlay -->
     <div v-show="boolMissionBeingViewed" class="top-click-detect mission-view-overlay overlay-mission">
-      <div class="inner-click-detect max-w-70vw max-h-90vh overflow-auto bg-dark rounded-lg relative p-1rem">
+      <div class="inner-click-detect max-w-70vw max-h-90vh overflow-auto bg-dark rounded-lg relative p-1rem" @click.stop>
         <button class="detect-trigger hover:text-gray-500 close-button" @click="closeMissionOverlay">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -40,7 +40,7 @@
 
     <!-- Multi-mission overlay -->
     <div v-show="multiMissionOverlayOpen" class="top-click-detect mission-view-overlay overlay-multi-mission">
-      <div class="inner-click-detect max-w-90vw max-h-90vh bg-dark rounded-lg relative p-1rem">
+      <div class="inner-click-detect max-w-90vw max-h-90vh bg-dark rounded-lg relative p-1rem" @click.stop>
         <button class="detect-trigger hover:text-gray-500 close-button" @click="closeMultiMissionOverlay">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -89,14 +89,28 @@
 
           <!-- Combined mode: merged drop pool with ship summary -->
           <div v-else class="px-7rem text-gray-300 text-center">
-            <div class="flex flex-wrap justify-center gap-x-4 gap-y-1 mb-3 text-xs text-gray-400">
-              <span
+            <div class="flex flex-wrap justify-center gap-x-3 gap-y-2 mb-3 text-xs">
+              <div
                 v-for="(missionData, i) in multiViewMissionData"
                 :key="i"
+                class="flex flex-col items-center bg-darkerer rounded px-2 py-1"
               >
-                <span :class="'text-duration-' + missionData.missionInfo.durationType">{{ missionData.missionInfo.shipString }}</span>
-                <span class="text-gray-600 ml-1">({{ missionData.missionInfo.capacity }})</span>
-              </span>
+                <div>
+                  <span :class="'text-duration-' + missionData.missionInfo.durationType">{{ missionData.missionInfo.shipString }}</span>
+                  <span v-if="missionData.missionInfo.level > 0" class="text-goldenstar ml-1">{{ '★'.repeat(missionData.missionInfo.level) }}</span>
+                </div>
+                <div
+                  v-if="missionData.missionInfo.target && missionData.missionInfo.target.toUpperCase() !== 'UNKNOWN'"
+                  class="text-gray-400"
+                >
+                  {{ properCaseTarget(missionData.missionInfo.target) }}
+                </div>
+                <div class="text-gray-500">
+                  {{ missionData.missionInfo.capacity }}
+                  <span v-if="missionData.missionInfo.isBuggedCap" class="text-buggedcap ml-1">0.6x</span>
+                  <span v-else-if="missionData.missionInfo.isDubCap" class="text-dubcap ml-1">{{ missionData.capacityModifier }}x</span>
+                </div>
+              </div>
             </div>
             <drop-display-container
               ledger-type="mission"
@@ -1113,10 +1127,10 @@ async function doViewMissionsOfEid() {
   eidMissionsBeingLoaded.value = false
 }
 
-async function getSpecificMissionData(eid: string, missionId: string, extendedInfo: boolean): Promise<ViewMissionData | null> {
+async function getSpecificMissionData(eid: string, missionId: string, extendedInfo: boolean, dropCache: Record<string, MissionDrop[]> | null = null): Promise<ViewMissionData | null> {
   const missionInfo = await globalThis.getMissionInfo(eid, missionId)
   if (missionInfo.ship == null || missionInfo.ship < 0 || !missionInfo.missionId) return null
-  const allDrops = await globalThis.getShipDrops(eid, missionId)
+  const allDrops = dropCache?.[missionId] ?? await globalThis.getShipDrops(eid, missionId)
   if (allDrops == null) return null
 
   const artifacts = allDrops.filter((drop) => drop.specType === 'Artifact') as InnerDrop[]
@@ -1145,9 +1159,9 @@ async function getSpecificMissionData(eid: string, missionId: string, extendedIn
   return base
 }
 
-async function viewSpecificMission(missionId: string, returnValues = false): Promise<ViewMissionData | false> {
+async function viewSpecificMission(missionId: string, returnValues = false, dropCache: Record<string, MissionDrop[]> | null = null): Promise<ViewMissionData | false> {
   if (isFetching.value) return false
-  const newMissionViewData = await getSpecificMissionData(loadedEid.value ?? '', missionId, true)
+  const newMissionViewData = await getSpecificMissionData(loadedEid.value ?? '', missionId, true, dropCache)
   if (newMissionViewData == null) return false
   const sortFn =
     viewMissionSortMethod.value === 'iv' ? inventoryVisualizerSort : sortGroupAlreadyCombed
@@ -1228,8 +1242,9 @@ async function viewRowOfMissions(missionIds: string[]) {
   openMultiMissionOverlay()
   missionsBeingViewed.value = []
   multiViewMissionData.value = []
+  const dropCache = await globalThis.getAllPlayerDrops(loadedEid.value ?? '')
   for (const missionId of missionIds) {
-    const data = await viewSpecificMission(missionId, true)
+    const data = await viewSpecificMission(missionId, true, dropCache)
     if (data !== false) {
       multiViewMissionData.value.push(data)
       missionsBeingViewed.value.push(missionId)
@@ -1240,6 +1255,15 @@ async function viewRowOfMissions(missionIds: string[]) {
 
 function openUrl(url: string) {
   globalThis.openURL(url)
+}
+
+function properCaseTarget(target: string): string {
+  return target
+    .toLowerCase()
+    .replaceAll('_', ' ')
+    .split(' ')
+    .map((w, i) => (i > 0 && (w === 'of' || w === 'the') ? w : w.charAt(0).toUpperCase() + w.slice(1)))
+    .join(' ')
 }
 
 // ───────────────────────────────────────────────────────────────────────────────

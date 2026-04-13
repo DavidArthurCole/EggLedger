@@ -20,30 +20,22 @@
         <span :class="((missionInfo.isDubCap || missionInfo.isBuggedCap) ? 'mr-0_5rem' : '')">Capacity: {{ missionInfo.capacity }} </span>
             <span v-if="missionInfo.isBuggedCap" class="max-w-32 flex py-1 bugged-cap-span items-center justify-center flex-1">
                 <img alt="Skull Emoji" :src="'images/skull.png'" class="w-6 mr-0_5rem">
-                <span class="tooltip-custom text-xs font-bold">
+                <span
+                    class="text-xs font-bold"
+                    @mouseenter="(e) => showTooltip('bugged', e)"
+                    @mouseleave="hideTooltip"
+                >
                     0.6x Capacity
-                    <span class="font-normal text-sm text-gray-400 tooltiptext-custom speech-bubble">
-                        This ship was launched during <br>the
-                        <span class="text-buggedcap">
-                            0.6x Capacity "Event"
-                        </span>
-                        and <i>may have</i> returned<br />
-                        with fewer artifacts than normal.
-                    </span>
                 </span>
             </span>
             <span v-if="!missionInfo.isBuggedCap && missionInfo.isDubCap" class="max-w-28 flex py-1 double-cap-span items-center justify-center flex-1">
                 <img alt="Artifact Crate" :src="'images/icon_afx_chest_2.png'" class="w-6 mr-0_5rem">
-                <span class="tooltip-custom text-xs font-bold">
+                <span
+                    class="text-xs font-bold"
+                    @mouseenter="(e) => showTooltip('dubcap', e)"
+                    @mouseleave="hideTooltip"
+                >
                     {{viewMissionData.capacityModifier}}x Capacity
-                    <span class="font-normal text-sm text-gray-400 tooltiptext-custom speech-bubble">
-                        This ship was launched during a<br />
-                        <span class="text-dubcap">
-                            {{viewMissionData.capacityModifier}}x Capacity Event
-                        </span>
-                        and returned with<br />
-                        more artifacts than normal.
-                    </span>
                 </span>
             </span>
         </span>
@@ -97,6 +89,32 @@
             </a> page.
         </div>
     </div>
+    <Teleport to="body">
+        <Transition name="tooltip-fade">
+            <div
+                v-if="activeTooltip === 'bugged'"
+                class="tooltip-floating"
+                :style="tooltipStyle"
+            >
+                This ship was launched during <br>the
+                <span class="text-buggedcap">0.6x Capacity "Event"</span>
+                and <i>may have</i> returned<br />
+                with fewer artifacts than normal.
+            </div>
+        </Transition>
+        <Transition name="tooltip-fade">
+            <div
+                v-if="activeTooltip === 'dubcap'"
+                class="tooltip-floating"
+                :style="tooltipStyle"
+            >
+                This ship was launched during a<br />
+                <span class="text-dubcap">{{ viewMissionData.capacityModifier }}x Capacity Event</span>
+                and returned with<br />
+                more artifacts than normal.
+            </div>
+        </Transition>
+    </Teleport>
 </template>
 
 <script lang="ts">
@@ -141,9 +159,22 @@
             isFirst: Boolean,
             isLast: Boolean,
         },
+        data() {
+            return {
+                activeTooltip: '',
+                tooltipX: 0,
+                tooltipY: 0,
+            };
+        },
         computed: {
             missionInfo(): MissionInfo {
                 return this.viewMissionData.missionInfo;
+            },
+            tooltipStyle(): Record<string, string> {
+                return {
+                    left: this.tooltipX + 'px',
+                    top: this.tooltipY + 'px',
+                };
             },
         },
         methods: {
@@ -158,6 +189,15 @@
               }
               const finalString = words.join(" ");
               return finalString.charAt(0).toUpperCase() + finalString.slice(1);
+            },
+            showTooltip(which: string, e: MouseEvent) {
+                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                this.activeTooltip = which;
+                this.tooltipX = rect.left + rect.width / 2;
+                this.tooltipY = rect.top;
+            },
+            hideTooltip() {
+                this.activeTooltip = '';
             },
             formatDate(date: Date){
                 const year = date.getFullYear();

@@ -384,6 +384,28 @@ input[type=number] {
   background-color: rgba(33, 37, 41, 0.95);
 }
 
+.tooltip-fade-enter-active,
+.tooltip-fade-leave-active {
+  transition: opacity 0.12s ease;
+}
+
+.tooltip-fade-enter-from,
+.tooltip-fade-leave-to {
+  opacity: 0;
+}
+
+.tooltip-floating {
+  @apply whitespace-nowrap text-center text-gray-300;
+  position: fixed;
+  z-index: 9999;
+  border: 1px solid #ccc;
+  padding: 10px;
+  border-radius: 4px;
+  background-color: rgba(33, 37, 41, 0.95);
+  pointer-events: none;
+  transform: translateX(-50%) translateY(calc(-100% - 10px));
+}
+
 .speech-bubble {
   @apply relative;
   padding: 10px;

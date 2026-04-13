@@ -47,7 +47,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { nextTick, onMounted, ref } from 'vue'
 
 interface SelectorItem {
   value: string
@@ -73,6 +73,12 @@ const emit = defineEmits<{
 }>()
 
 const selectedItem = ref<SelectorItem | null>(null)
+
+onMounted(() => {
+  nextTick(() => {
+    document.getElementById(searchInputId())?.focus()
+  })
+})
 
 function searchInputId(): string {
   return (props.ledgerType ?? '') + '-search' + (props.isLifetime ? '-lifetime' : '')
