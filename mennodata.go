@@ -173,17 +173,18 @@ func refreshMennoData(onProgress func(MennoDownloadProgress)) (err error) {
 	// Signal that disk IO is starting.
 	onProgress(MennoDownloadProgress{Phase: "saving"})
 
-	// Decode into typed struct to catch schema drift early.
-	var data MennoData
-	if err := json.Unmarshal(body, &data); err != nil {
+	// Decode into typed slice to catch schema drift early.
+	// The Menno endpoint returns a raw JSON array of ConfigurationItem.
+	var items []ConfigurationItem
+	if err := json.Unmarshal(body, &items); err != nil {
 		_storage.SetLastMennoDataRefreshAt(time.Time{})
 		return wrap(errors.Wrap(err, "failed to decode Menno data response"))
 	}
-	if len(data.ConfigurationItems) == 0 {
+	if len(items) == 0 {
 		_storage.SetLastMennoDataRefreshAt(time.Time{})
 		return wrap(errors.New("Menno data response was empty or schema has changed"))
 	}
-	encoded, err := json.Marshal(data.ConfigurationItems)
+	encoded, err := json.Marshal(items)
 	if err != nil {
 		_storage.SetLastMennoDataRefreshAt(time.Time{})
 		return wrap(errors.Wrap(err, "failed to re-encode Menno data"))
