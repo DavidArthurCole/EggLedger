@@ -67,6 +67,9 @@
           </div>
         </div>
         <div class="mt-0_5rem pl-0_5rem">
+          <button class="apply-filter-button" @click="captureFromCurrent">Capture from Current</button>
+        </div>
+        <div class="mt-0_5rem pl-0_5rem">
           <input
             id="startInFullscreenCheckbox"
             type="checkbox"
@@ -219,6 +222,12 @@ const {
 
 const workerCountWarningRead = ref(false)
 const hideWorkerWarning = ref(false)
+
+function captureFromCurrent() {
+  resolutionX.value = globalThis.innerWidth
+  resolutionY.value = globalThis.innerHeight
+  scalingFactor.value = globalThis.devicePixelRatio
+}
 
 function restartApp() {
   globalThis.restartApp()
