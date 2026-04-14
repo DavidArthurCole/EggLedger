@@ -192,17 +192,6 @@
       <div class="px-2 py-2 text-sm text-gray-400 bg-darker rounded-md tabular-nums overflow-auto">
         <span class="mr-0_5rem font-bold text-lg text-gray-400 ledger-underline">Display</span><br />
         <div class="mt-0_5rem">
-          <span class="section-heading">Default Drop-Sort Method</span><br />
-          <span class="opt-span">
-            <label for="dvmDefault" class="ext-opt-label">Default</label>
-            <input id="dvmDefault" type="radio" v-model="defaultViewMode" value="default" class="ext-opt-check" />
-          </span>
-          <span class="opt-span">
-            <label for="dvmIv" class="ext-opt-label">Inventory Visualizer</label>
-            <input id="dvmIv" type="radio" v-model="defaultViewMode" value="iv" class="ext-opt-check" />
-          </span>
-        </div>
-        <div class="mt-0_5rem">
           <span class="section-heading">Screenshot Safety</span><br />
           <input
             id="screenshotSafetyCheckbox"
@@ -254,7 +243,6 @@ const {
   autoRefreshMenno,
   autoRetry,
   hideTimeoutErrors,
-  defaultViewMode,
   workerCount,
   screenshotSafety,
   showMissionProgress,

@@ -12,9 +12,9 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-const _downloadURL = "https://raw.githubusercontent.com/DavidArthurCole/EggLedger/master/eiafx/eiafx-config.json"
+const _downloadURL = "https://raw.githubusercontent.com/DavidArthurCole/EggLedger/master/eiafx/eiafx-config-min.json"
 
-// tryDownloadFresh attempts to download a fresh copy of eiafx-config.json
+// tryDownloadFresh attempts to download a fresh copy of eiafx-config-min.json
 // and write it to cacheFile. Called in a goroutine - never blocks startup.
 // Failures are logged as warnings; the embedded fallback remains active.
 func tryDownloadFresh(cacheFile string) {
