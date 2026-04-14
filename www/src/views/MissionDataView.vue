@@ -388,17 +388,22 @@ const hideFilter = ref(false)
 const multiViewMode = ref<'off' | 'row' | 'free'>('off')
 const viewMissionSortMethod = ref<'default' | 'iv'>('default')
 
+// Suppress setter calls while loading initial values from Go in onMounted.
+// Without this, every ref that differs from its default triggers a redundant
+// write-back to Go storage immediately after being read from it.
+let settingsLoaded = false
+
 watch(mennoDataLoaded, () => {
   if (!mennoDataLoaded.value) showExpectedDropsPerShip.value = false
 })
 
-watch(viewByDate, (val) => globalThis.setMissionViewByDate(val))
-watch(viewMissionTimes, (val) => globalThis.setMissionViewTimes(val))
-watch(recolorDC, (val) => globalThis.setMissionRecolorDC(val))
-watch(recolorBC, (val) => globalThis.setMissionRecolorBC(val))
-watch(showExpectedDropsPerShip, (val) => globalThis.setMissionShowExpectedDrops(val))
-watch(multiViewMode, (val) => globalThis.setMissionMultiViewMode(val))
-watch(viewMissionSortMethod, (val) => globalThis.setDefaultViewMode(val))
+watch(viewByDate, (val) => { if (settingsLoaded) globalThis.setMissionViewByDate(val) })
+watch(viewMissionTimes, (val) => { if (settingsLoaded) globalThis.setMissionViewTimes(val) })
+watch(recolorDC, (val) => { if (settingsLoaded) globalThis.setMissionRecolorDC(val) })
+watch(recolorBC, (val) => { if (settingsLoaded) globalThis.setMissionRecolorBC(val) })
+watch(showExpectedDropsPerShip, (val) => { if (settingsLoaded) globalThis.setMissionShowExpectedDrops(val) })
+watch(multiViewMode, (val) => { if (settingsLoaded) globalThis.setMissionMultiViewMode(val) })
+watch(viewMissionSortMethod, (val) => { if (settingsLoaded) globalThis.setMissionSortMethod(val) })
 
 function toggleFilter(event: Event) {
   event.preventDefault()
@@ -711,7 +716,8 @@ onMounted(async () => {
   recolorBC.value = await globalThis.getMissionRecolorBC()
   showExpectedDropsPerShip.value = await globalThis.getMissionShowExpectedDrops()
   multiViewMode.value = (await globalThis.getMissionMultiViewMode()) as 'off' | 'row' | 'free'
-  viewMissionSortMethod.value = (await globalThis.getDefaultViewMode()) as 'default' | 'iv'
+  viewMissionSortMethod.value = (await globalThis.getMissionSortMethod()) as 'default' | 'iv'
+  settingsLoaded = true
 
   artifactConfigs.value = await globalThis.getAfxConfigs()
   maxQuality.value = await globalThis.getMaxQuality()

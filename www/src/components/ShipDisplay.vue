@@ -59,6 +59,7 @@
             ledger-type="mission" :data="viewMissionData"
             :show-expected-drops="showExpectedDrops"
             :use-containers="true"
+            :ship-count="shipCount"
         ></drop-display-container>
 
         <!-- Shamelessly stolen straight from MK2's source code, with mobile note removed -->

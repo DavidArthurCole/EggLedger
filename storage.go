@@ -16,34 +16,37 @@ import (
 type AppStorage struct {
 	sync.Mutex
 
-	KnownAccounts           []Account `json:"known_accounts"`
-	LastMennoDataRefreshAt  time.Time `json:"last_menno_data_refresh_at"`
-	LastUpdateCheckAt       time.Time `json:"last_update_check_at"`
-	KnownLatestReleaseNotes string    `json:"known_latest_release_notes"`
-	KnownLatestVersion      string    `json:"known_latest_version"`
-	FilterWarningRead       bool      `json:"filter_warning_read"`
-	WorkerCountWarningRead  bool      `json:"worker_count_warning_read"`
-	PreferredChromiumPath   string    `json:"preferred_chromium_path"`
-	AutoRefreshMennoPref    bool      `json:"auto_refresh_menno_pref"`
-	DefaultViewMode         string    `json:"default_view_mode"`
-	DefaultResolutionX      int       `json:"default_resolution_x"`
-	DefaultResolutionY      int       `json:"default_resolution_y"`
-	DefaultScalingFactor    float64   `json:"default_scaling_factor"`
-	StartInFullscreen       bool      `json:"start_in_fullscreen"`
-	RetryFailedMissions     bool      `json:"retry_failed_missions"`
-	HideTimeoutErrors       bool      `json:"hide_timeout_errors"`
-	WorkerCount             int       `json:"worker_count"`
-	ScreenshotSafety        bool      `json:"screenshot_safety"`
-	ShowMissionProgress     bool      `json:"show_mission_progress"`
-	CollapseOlderSections   bool      `json:"collapse_older_sections"`
-	AdvancedDropFilter       bool   `json:"advanced_drop_filter"`
-	MissionViewByDate        bool   `json:"mission_view_by_date"`
-	MissionViewTimes         bool   `json:"mission_view_times"`
-	MissionRecolorDC         bool   `json:"mission_recolor_dc"`
-	MissionRecolorBC         bool   `json:"mission_recolor_bc"`
-	MissionShowExpectedDrops bool   `json:"mission_show_expected_drops"`
-	MissionMultiViewMode     string `json:"mission_multi_view_mode"`
-	lastKnownGoodApiVersion  string
+	KnownAccounts              []Account `json:"known_accounts"`
+	LastMennoDataRefreshAt     time.Time `json:"last_menno_data_refresh_at"`
+	LastUpdateCheckAt          time.Time `json:"last_update_check_at"`
+	KnownLatestReleaseNotes    string    `json:"known_latest_release_notes"`
+	KnownLatestVersion         string    `json:"known_latest_version"`
+	FilterWarningRead          bool      `json:"filter_warning_read"`
+	WorkerCountWarningRead     bool      `json:"worker_count_warning_read"`
+	PreferredChromiumPath      string    `json:"preferred_chromium_path"`
+	AutoRefreshMennoPref       bool      `json:"auto_refresh_menno_pref"`
+	DefaultResolutionX         int       `json:"default_resolution_x"`
+	DefaultResolutionY         int       `json:"default_resolution_y"`
+	DefaultScalingFactor       float64   `json:"default_scaling_factor"`
+	StartInFullscreen          bool      `json:"start_in_fullscreen"`
+	RetryFailedMissions        bool      `json:"retry_failed_missions"`
+	HideTimeoutErrors          bool      `json:"hide_timeout_errors"`
+	WorkerCount                int       `json:"worker_count"`
+	ScreenshotSafety           bool      `json:"screenshot_safety"`
+	ShowMissionProgress        bool      `json:"show_mission_progress"`
+	CollapseOlderSections      bool      `json:"collapse_older_sections"`
+	AdvancedDropFilter         bool      `json:"advanced_drop_filter"`
+	MissionViewByDate          bool      `json:"mission_view_by_date"`
+	MissionViewTimes           bool      `json:"mission_view_times"`
+	MissionRecolorDC           bool      `json:"mission_recolor_dc"`
+	MissionRecolorBC           bool      `json:"mission_recolor_bc"`
+	MissionShowExpectedDrops   bool      `json:"mission_show_expected_drops"`
+	MissionMultiViewMode       string    `json:"mission_multi_view_mode"`
+	MissionSortMethod          string    `json:"mission_sort_method"`
+	LifetimeSortMethod         string    `json:"lifetime_sort_method"`
+	LifetimeShowDropsPerShip   bool      `json:"lifetime_show_drops_per_ship"`
+	LifetimeShowExpectedTotals bool      `json:"lifetime_show_expected_totals"`
+	lastKnownGoodApiVersion    string
 }
 
 type Account struct {
@@ -146,9 +149,6 @@ func (s *AppStorage) loadFromDB() {
 	if v, ok := settings["auto_refresh_menno_pref"]; ok {
 		s.AutoRefreshMennoPref, _ = strconv.ParseBool(v)
 	}
-	if v, ok := settings["default_view_mode"]; ok {
-		s.DefaultViewMode = v
-	}
 	if v, ok := settings["default_resolution_x"]; ok {
 		s.DefaultResolutionX, _ = strconv.Atoi(v)
 	}
@@ -212,6 +212,22 @@ func (s *AppStorage) loadFromDB() {
 	} else {
 		s.MissionMultiViewMode = "off"
 	}
+	if v, ok := settings["mission_sort_method"]; ok && v != "" {
+		s.MissionSortMethod = v
+	} else {
+		s.MissionSortMethod = "default"
+	}
+	if v, ok := settings["lifetime_sort_method"]; ok && v != "" {
+		s.LifetimeSortMethod = v
+	} else {
+		s.LifetimeSortMethod = "default"
+	}
+	if v, ok := settings["lifetime_show_drops_per_ship"]; ok {
+		s.LifetimeShowDropsPerShip, _ = strconv.ParseBool(v)
+	}
+	if v, ok := settings["lifetime_show_expected_totals"]; ok {
+		s.LifetimeShowExpectedTotals, _ = strconv.ParseBool(v)
+	}
 	if v, ok := settings["last_known_good_api_version"]; ok {
 		s.lastKnownGoodApiVersion = v
 	}
@@ -223,33 +239,36 @@ func (s *AppStorage) persistAllToDB() {
 	s.Lock()
 	accountsJSON, _ := json.Marshal(s.KnownAccounts)
 	settings := map[string]string{
-		"known_accounts":             string(accountsJSON),
-		"last_menno_data_refresh_at": s.LastMennoDataRefreshAt.Format(time.RFC3339Nano),
-		"last_update_check_at":       s.LastUpdateCheckAt.Format(time.RFC3339Nano),
-		"known_latest_release_notes": s.KnownLatestReleaseNotes,
-		"known_latest_version":       s.KnownLatestVersion,
-		"filter_warning_read":        strconv.FormatBool(s.FilterWarningRead),
-		"worker_count_warning_read":  strconv.FormatBool(s.WorkerCountWarningRead),
-		"preferred_chromium_path":    s.PreferredChromiumPath,
-		"auto_refresh_menno_pref":    strconv.FormatBool(s.AutoRefreshMennoPref),
-		"default_view_mode":          s.DefaultViewMode,
-		"default_resolution_x":       strconv.Itoa(s.DefaultResolutionX),
-		"default_resolution_y":       strconv.Itoa(s.DefaultResolutionY),
-		"default_scaling_factor":     strconv.FormatFloat(s.DefaultScalingFactor, 'f', -1, 64),
-		"start_in_fullscreen":        strconv.FormatBool(s.StartInFullscreen),
-		"retry_failed_missions":      strconv.FormatBool(s.RetryFailedMissions),
-		"hide_timeout_errors":        strconv.FormatBool(s.HideTimeoutErrors),
-		"worker_count":               strconv.Itoa(s.WorkerCount),
-		"screenshot_safety":          strconv.FormatBool(s.ScreenshotSafety),
-		"show_mission_progress":      strconv.FormatBool(s.ShowMissionProgress),
-		"collapse_older_sections":    strconv.FormatBool(s.CollapseOlderSections),
-		"advanced_drop_filter":         strconv.FormatBool(s.AdvancedDropFilter),
-		"mission_view_by_date":         strconv.FormatBool(s.MissionViewByDate),
-		"mission_view_times":           strconv.FormatBool(s.MissionViewTimes),
-		"mission_recolor_dc":           strconv.FormatBool(s.MissionRecolorDC),
-		"mission_recolor_bc":           strconv.FormatBool(s.MissionRecolorBC),
-		"mission_show_expected_drops":  strconv.FormatBool(s.MissionShowExpectedDrops),
-		"mission_multi_view_mode":      s.MissionMultiViewMode,
+		"known_accounts":                string(accountsJSON),
+		"last_menno_data_refresh_at":    s.LastMennoDataRefreshAt.Format(time.RFC3339Nano),
+		"last_update_check_at":          s.LastUpdateCheckAt.Format(time.RFC3339Nano),
+		"known_latest_release_notes":    s.KnownLatestReleaseNotes,
+		"known_latest_version":          s.KnownLatestVersion,
+		"filter_warning_read":           strconv.FormatBool(s.FilterWarningRead),
+		"worker_count_warning_read":     strconv.FormatBool(s.WorkerCountWarningRead),
+		"preferred_chromium_path":       s.PreferredChromiumPath,
+		"auto_refresh_menno_pref":       strconv.FormatBool(s.AutoRefreshMennoPref),
+		"default_resolution_x":          strconv.Itoa(s.DefaultResolutionX),
+		"default_resolution_y":          strconv.Itoa(s.DefaultResolutionY),
+		"default_scaling_factor":        strconv.FormatFloat(s.DefaultScalingFactor, 'f', -1, 64),
+		"start_in_fullscreen":           strconv.FormatBool(s.StartInFullscreen),
+		"retry_failed_missions":         strconv.FormatBool(s.RetryFailedMissions),
+		"hide_timeout_errors":           strconv.FormatBool(s.HideTimeoutErrors),
+		"worker_count":                  strconv.Itoa(s.WorkerCount),
+		"screenshot_safety":             strconv.FormatBool(s.ScreenshotSafety),
+		"show_mission_progress":         strconv.FormatBool(s.ShowMissionProgress),
+		"collapse_older_sections":       strconv.FormatBool(s.CollapseOlderSections),
+		"advanced_drop_filter":          strconv.FormatBool(s.AdvancedDropFilter),
+		"mission_view_by_date":          strconv.FormatBool(s.MissionViewByDate),
+		"mission_view_times":            strconv.FormatBool(s.MissionViewTimes),
+		"mission_recolor_dc":            strconv.FormatBool(s.MissionRecolorDC),
+		"mission_recolor_bc":            strconv.FormatBool(s.MissionRecolorBC),
+		"mission_show_expected_drops":   strconv.FormatBool(s.MissionShowExpectedDrops),
+		"mission_multi_view_mode":       s.MissionMultiViewMode,
+		"mission_sort_method":           s.MissionSortMethod,
+		"lifetime_sort_method":          s.LifetimeSortMethod,
+		"lifetime_show_drops_per_ship":  strconv.FormatBool(s.LifetimeShowDropsPerShip),
+		"lifetime_show_expected_totals": strconv.FormatBool(s.LifetimeShowExpectedTotals),
 	}
 	s.Unlock()
 	if err := db.SetSettings(context.Background(), settings); err != nil {
@@ -320,13 +339,6 @@ func (s *AppStorage) SetAutoRefreshMennoPref(flag bool) {
 	s.AutoRefreshMennoPref = flag
 	s.Unlock()
 	go s.dbSet("auto_refresh_menno_pref", strconv.FormatBool(flag))
-}
-
-func (s *AppStorage) SetDefaultViewMode(mode string) {
-	s.Lock()
-	s.DefaultViewMode = mode
-	s.Unlock()
-	go s.dbSet("default_view_mode", mode)
 }
 
 func (s *AppStorage) SetDefaultResolution(x, y int) {
@@ -586,4 +598,62 @@ func (s *AppStorage) GetMissionMultiViewMode() string {
 		return "off"
 	}
 	return s.MissionMultiViewMode
+}
+
+func (s *AppStorage) GetMissionSortMethod() string {
+	s.Lock()
+	defer s.Unlock()
+	if s.MissionSortMethod == "" {
+		return "default"
+	}
+	return s.MissionSortMethod
+}
+
+func (s *AppStorage) SetMissionSortMethod(mode string) {
+	s.Lock()
+	s.MissionSortMethod = mode
+	s.Unlock()
+	go s.dbSet("mission_sort_method", mode)
+}
+
+func (s *AppStorage) SetLifetimeSortMethod(mode string) {
+	s.Lock()
+	s.LifetimeSortMethod = mode
+	s.Unlock()
+	go s.dbSet("lifetime_sort_method", mode)
+}
+
+func (s *AppStorage) GetLifetimeSortMethod() string {
+	s.Lock()
+	defer s.Unlock()
+	if s.LifetimeSortMethod == "" {
+		return "default"
+	}
+	return s.LifetimeSortMethod
+}
+
+func (s *AppStorage) SetLifetimeShowDropsPerShip(flag bool) {
+	s.Lock()
+	s.LifetimeShowDropsPerShip = flag
+	s.Unlock()
+	go s.dbSet("lifetime_show_drops_per_ship", strconv.FormatBool(flag))
+}
+
+func (s *AppStorage) GetLifetimeShowDropsPerShip() bool {
+	s.Lock()
+	defer s.Unlock()
+	return s.LifetimeShowDropsPerShip
+}
+
+func (s *AppStorage) SetLifetimeShowExpectedTotals(flag bool) {
+	s.Lock()
+	s.LifetimeShowExpectedTotals = flag
+	s.Unlock()
+	go s.dbSet("lifetime_show_expected_totals", strconv.FormatBool(flag))
+}
+
+func (s *AppStorage) GetLifetimeShowExpectedTotals() bool {
+	s.Lock()
+	defer s.Unlock()
+	return s.LifetimeShowExpectedTotals
 }

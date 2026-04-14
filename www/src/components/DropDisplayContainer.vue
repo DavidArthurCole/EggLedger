@@ -83,7 +83,7 @@
             },
             getMissionCount(): number {
                 if(this.ledgerType === 'lifetime') return this.data.missionCount ?? 1;
-                else return 1;
+                else return this.shipCount ?? 1;
             },
         },
         props: {
@@ -102,6 +102,7 @@
                 type: Boolean,
                 default: false,
             },
+            shipCount: Number,
         },
     });
 

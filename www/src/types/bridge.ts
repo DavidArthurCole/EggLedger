@@ -223,6 +223,14 @@ declare global {
   function setMissionShowExpectedDrops(flag: boolean): Promise<void>
   function getMissionMultiViewMode(): Promise<string>
   function setMissionMultiViewMode(mode: string): Promise<void>
+  function getMissionSortMethod(): Promise<string>
+  function setMissionSortMethod(mode: string): Promise<void>
+  function getLifetimeSortMethod(): Promise<string>
+  function setLifetimeSortMethod(mode: string): Promise<void>
+  function getLifetimeShowDropsPerShip(): Promise<boolean>
+  function setLifetimeShowDropsPerShip(flag: boolean): Promise<void>
+  function getLifetimeShowExpectedTotals(): Promise<boolean>
+  function setLifetimeShowExpectedTotals(flag: boolean): Promise<void>
   function getWorkerCount(): Promise<number>
   function setWorkerCount(count: number): Promise<void>
   function filterWarningRead(): Promise<boolean>

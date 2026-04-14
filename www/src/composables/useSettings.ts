@@ -10,7 +10,6 @@ const allBrowsers = ref<string[]>([])
 const autoRefreshMenno = ref(false)
 const autoRetry = ref(false)
 const hideTimeoutErrors = ref(false)
-export const defaultViewMode = ref('default')
 const workerCount = ref(1)
 export const screenshotSafety = ref(false)
 export const showMissionProgress = ref(true)
@@ -34,7 +33,6 @@ export function useSettings() {
     autoRefreshMenno.value = await globalThis.getAutoRefreshMennoPreference()
     autoRetry.value = await globalThis.getAutoRetryPreference()
     hideTimeoutErrors.value = await globalThis.getHideTimeoutErrors()
-    defaultViewMode.value = await globalThis.getDefaultViewMode()
     workerCount.value = await globalThis.getWorkerCount()
     screenshotSafety.value = await globalThis.getScreenshotSafety()
     showMissionProgress.value = await globalThis.getShowMissionProgress()
@@ -49,7 +47,6 @@ export function useSettings() {
   watch(autoRefreshMenno, () => globalThis.setAutoRefreshMennoPreference(autoRefreshMenno.value))
   watch(autoRetry, () => globalThis.setAutoRetryPreference(autoRetry.value))
   watch(hideTimeoutErrors, () => globalThis.setHideTimeoutErrors(hideTimeoutErrors.value))
-  watch(defaultViewMode, () => globalThis.setDefaultViewMode(defaultViewMode.value))
   watch(workerCount, () => globalThis.setWorkerCount(workerCount.value))
   watch(screenshotSafety, () => globalThis.setScreenshotSafety(screenshotSafety.value))
   watch(showMissionProgress, () => globalThis.setShowMissionProgress(showMissionProgress.value))
@@ -68,7 +65,7 @@ export function useSettings() {
 
   return {
     resolutionX, resolutionY, scalingFactor, startInFullscreen,
-    preferredBrowser, loadedBrowser, allBrowsers, autoRefreshMenno, autoRetry, hideTimeoutErrors, defaultViewMode,
+    preferredBrowser, loadedBrowser, allBrowsers, autoRefreshMenno, autoRetry, hideTimeoutErrors,
     workerCount,
     screenshotSafety,
     showMissionProgress,

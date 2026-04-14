@@ -241,7 +241,7 @@ import { useAppState } from '../composables/useAppState'
 import { useMennoData } from '../composables/useMennoData'
 import { useFilters } from '../composables/useFilters'
 import { useDropdownSelector } from '../composables/useDropdownSelector'
-import { screenshotSafety, defaultViewMode } from '../composables/useSettings'
+import { screenshotSafety } from '../composables/useSettings'
 import type {
   DatabaseMission,
   MissionDrop,
@@ -481,9 +481,9 @@ const statusText = computed(() => {
 // Sorting options
 // ───────────────────────────────────────────────────────────────────────────────
 
-const lifetimeSortMethod = ref<'default' | 'iv' | 'count' | 'random'>(
-  (defaultViewMode.value as 'default' | 'iv' | 'count' | 'random') ?? 'default',
-)
+let settingsLoaded = false
+
+const lifetimeSortMethod = ref<'default' | 'iv' | 'count' | 'random'>('default')
 const lifetimeShowDropsPerShip = ref(false)
 const lifetimeAllowExpectedTotals = ref(false)
 const lifetimeShowExpectedTotalsPref = ref(false)
@@ -491,7 +491,12 @@ const lifetimeShowExpectedTotals = computed(
   () => lifetimeAllowExpectedTotals.value && lifetimeShowExpectedTotalsPref.value,
 )
 
-watch(lifetimeSortMethod, () => reSortLifetime())
+watch(lifetimeSortMethod, (val) => {
+  reSortLifetime()
+  if (settingsLoaded) globalThis.setLifetimeSortMethod(val)
+})
+watch(lifetimeShowDropsPerShip, (val) => { if (settingsLoaded) globalThis.setLifetimeShowDropsPerShip(val) })
+watch(lifetimeShowExpectedTotalsPref, (val) => { if (settingsLoaded) globalThis.setLifetimeShowExpectedTotals(val) })
 watch(mennoDataLoaded, () => {
   if (!mennoDataLoaded.value) lifetimeShowExpectedTotalsPref.value = false
 })
@@ -855,6 +860,11 @@ onMounted(async () => {
   possibleTargets.value = await globalThis.getPossibleTargets()
 
   await loadMennoData()
+
+  lifetimeSortMethod.value = (await globalThis.getLifetimeSortMethod()) as 'default' | 'iv' | 'count' | 'random'
+  lifetimeShowDropsPerShip.value = await globalThis.getLifetimeShowDropsPerShip()
+  lifetimeShowExpectedTotalsPref.value = await globalThis.getLifetimeShowExpectedTotals()
+  settingsLoaded = true
 
   // Pre-cache filter value options
   getFilterValueOptions('ship')

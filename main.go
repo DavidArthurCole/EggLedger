@@ -690,6 +690,35 @@ func main() {
 		_storage.SetMissionMultiViewMode(mode)
 	})
 
+	ui.MustBind("getMissionSortMethod", func() string {
+		return _storage.GetMissionSortMethod()
+	})
+
+	ui.MustBind("setMissionSortMethod", func(mode string) {
+		_storage.SetMissionSortMethod(mode)
+	})
+
+	ui.MustBind("getLifetimeSortMethod", func() string {
+		return _storage.GetLifetimeSortMethod()
+	})
+	ui.MustBind("setLifetimeSortMethod", func(mode string) {
+		_storage.SetLifetimeSortMethod(mode)
+	})
+
+	ui.MustBind("getLifetimeShowDropsPerShip", func() bool {
+		return _storage.GetLifetimeShowDropsPerShip()
+	})
+	ui.MustBind("setLifetimeShowDropsPerShip", func(flag bool) {
+		_storage.SetLifetimeShowDropsPerShip(flag)
+	})
+
+	ui.MustBind("getLifetimeShowExpectedTotals", func() bool {
+		return _storage.GetLifetimeShowExpectedTotals()
+	})
+	ui.MustBind("setLifetimeShowExpectedTotals", func(flag bool) {
+		_storage.SetLifetimeShowExpectedTotals(flag)
+	})
+
 	ui.MustBind("getWorkerCount", func() int {
 		return _storage.GetWorkerCount()
 	})
@@ -792,20 +821,6 @@ func main() {
 	})
 
 	ui.MustBind("secondsSinceLastMennoUpdate", handleSecondsSinceLastMennoUpdate)
-
-	ui.MustBind("getDefaultViewMode", func() string {
-		_storage.Lock()
-		viewMode := _storage.DefaultViewMode
-		_storage.Unlock()
-		if len(viewMode) == 0 {
-			viewMode = "default"
-		}
-		return viewMode
-	})
-
-	ui.MustBind("setDefaultViewMode", func(viewMode string) {
-		_storage.SetDefaultViewMode(viewMode)
-	})
 
 	ui.MustBind("loadMennoData", handleLoadMennoData)
 

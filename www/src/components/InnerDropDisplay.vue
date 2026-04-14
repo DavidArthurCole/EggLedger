@@ -1,5 +1,5 @@
 <template>
-    <div :class="getRepeatClass()">
+    <div :class="getRepeatClass()" :style="getRepeatStyle()">
         <div :class="getInnerRepeatClass()" v-for="item in itemArray" :key="item.id + '_' + item.level + '_' + item.rarity">
             <a v-external-link :class="getAClass(item)"
                 target="_blank" :href="afExplorerName(item, getSpecPathOffset(item))"
@@ -135,11 +135,14 @@
         methods: {
             getRepeatClass(): string {
                 if(this.ledgerType === 'lifetime') return this.options?.noJustify ? 'ledger-af-repeat-lifetime-alt' : 'ledger-af-repeat-lifetime';
-                else if (this.missionCount != null && this.missionCount > 1) {
-                    const width = Math.max(28, Math.min(42, 70 - (this.missionCount - 1) * 7));
-                    return `max-w-${width}vw ledger-af-repeat`;
+                return 'ledger-af-repeat';
+            },
+            getRepeatStyle(): Record<string, string> {
+                if (this.ledgerType !== 'lifetime' && this.missionCount != null && this.missionCount > 1) {
+                    const width = Math.max(28, 42 - (this.missionCount - 1) * 7);
+                    return { maxWidth: `${width}vw` };
                 }
-                else return 'ledger-af-repeat';
+                return {};
             },
             getInnerRepeatClass(): string {
                 if(this.ledgerType === 'lifetime') return 'af-view-rep-lifetime';
