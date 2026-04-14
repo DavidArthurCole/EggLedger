@@ -135,6 +135,10 @@
         methods: {
             getRepeatClass(): string {
                 if(this.ledgerType === 'lifetime') return this.options?.noJustify ? 'ledger-af-repeat-lifetime-alt' : 'ledger-af-repeat-lifetime';
+                else if (this.missionCount != null && this.missionCount > 1) {
+                    const width = Math.max(28, Math.min(42, 70 - (this.missionCount - 1) * 7));
+                    return `max-w-${width}vw ledger-af-repeat`;
+                }
                 else return 'ledger-af-repeat';
             },
             getInnerRepeatClass(): string {

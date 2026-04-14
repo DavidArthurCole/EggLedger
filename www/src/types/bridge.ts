@@ -211,6 +211,18 @@ declare global {
   function setCollapseOlderSections(flag: boolean): Promise<void>
   function getAdvancedDropFilter(): Promise<boolean>
   function setAdvancedDropFilter(flag: boolean): Promise<void>
+  function getMissionViewByDate(): Promise<boolean>
+  function setMissionViewByDate(flag: boolean): Promise<void>
+  function getMissionViewTimes(): Promise<boolean>
+  function setMissionViewTimes(flag: boolean): Promise<void>
+  function getMissionRecolorDC(): Promise<boolean>
+  function setMissionRecolorDC(flag: boolean): Promise<void>
+  function getMissionRecolorBC(): Promise<boolean>
+  function setMissionRecolorBC(flag: boolean): Promise<void>
+  function getMissionShowExpectedDrops(): Promise<boolean>
+  function setMissionShowExpectedDrops(flag: boolean): Promise<void>
+  function getMissionMultiViewMode(): Promise<string>
+  function setMissionMultiViewMode(mode: string): Promise<void>
   function getWorkerCount(): Promise<number>
   function setWorkerCount(count: number): Promise<void>
   function filterWarningRead(): Promise<boolean>

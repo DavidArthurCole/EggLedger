@@ -1,55 +1,54 @@
 <template>
     <div
-        :class="(isMulti ? ((isFirst ? ' pl-7rem' : ' pl-3rem') + (isLast ? ' pr-7rem' : ' pr-3rem')) : 'overflow-auto pl-7rem pr-7rem' ) + ' text-gray-300 text-center' + ( (shipCount ?? 0) > 3 ? ' min-w-30vw' : '') "
+        :class="(isMulti ? ((isFirst ? ' pl-7rem' : ' pl-3rem') + (isLast ? ' pr-7rem' : ' pr-3rem')) : '' ) + ' text-gray-300 text-center' + ( (shipCount ?? 0) > 3 ? ' min-w-30vw' : '') "
     >
-        <!-- Ship info container -->
-        <div class="rounded-md px-4 py-2 mb-3 mx-auto" style="background: rgba(120, 128, 138, 0.12); width: fit-content;">
-            <img
-                v-if="missionInfo.shipEnumString"
-                :src="'images/ships/' + missionInfo.shipEnumString + '.png'"
-                :alt="missionInfo.shipString"
-                class="w-12 h-12 object-contain mx-auto mb-2"
-            />
-            <span :class="'text-duration-' + missionInfo.durationType">
-                {{ missionInfo.shipString }}
-            </span><br />
-            <span
-                v-if="missionInfo.level && missionInfo.level > 0"
-                class="text-star text-goldenstar"
+        <!-- Ship info container: two cards side by side -->
+        <div class="flex flex-row gap-2 mb-3 mx-auto items-center" style="width: fit-content;">
+            <!-- Capacity badge slot - always reserves space so name card never shifts.
+                 Content is hidden when no special capacity event applies. -->
+            <div
+                :class="missionInfo.isBuggedCap ? 'bugged-cap-span' : (missionInfo.isDubCap ? 'double-cap-span' : '')"
+                :style="{ visibility: (missionInfo.isBuggedCap || missionInfo.isDubCap) ? 'visible' : 'hidden' }"
+                class="flex items-center py-1 px-1.5 self-center"
             >
-                {{ "★".repeat(missionInfo.level) }}
-            </span>
-            <br v-if="missionInfo.level && missionInfo.level > 0" />
-            <span>Launched: {{ formatDate(viewMissionData.launchDT) }}</span> <br />
-            <span>Returned: {{ formatDate(viewMissionData.returnDT) }}</span> <br />
-            <span>Duration: {{ viewMissionData.durationStr }}</span> <br />
-            <span class="flex flex-row items-center justify-center">
-                <span :class="((missionInfo.isDubCap || missionInfo.isBuggedCap) ? 'mr-0_5rem' : '')">Capacity: {{ missionInfo.capacity }} </span>
-                <span v-if="missionInfo.isBuggedCap" class="max-w-32 flex py-1 bugged-cap-span items-center justify-center flex-1">
-                    <img alt="Skull Emoji" :src="'images/skull.png'" class="w-6 mr-0_5rem">
-                    <span
-                        class="text-xs font-bold"
-                        @mouseenter="(e) => showTooltip('bugged', e)"
-                        @mouseleave="hideTooltip"
-                    >
-                        0.6x Capacity
-                    </span>
+                <img
+                    :alt="missionInfo.isBuggedCap ? 'Skull Emoji' : 'Artifact Crate'"
+                    :src="missionInfo.isBuggedCap ? 'images/skull.png' : 'images/icon_afx_chest_2.png'"
+                    class="w-5 mr-0_5rem"
+                >
+                <span
+                    class="text-xs font-bold whitespace-nowrap"
+                    @mouseenter="(e) => showTooltip(missionInfo.isBuggedCap ? 'bugged' : 'dubcap', e)"
+                    @mouseleave="hideTooltip"
+                >{{ missionInfo.isBuggedCap ? '0.6x Capacity' : (viewMissionData.capacityModifier + 'x Capacity') }}</span>
+            </div>
+            <!-- Left card: identity -->
+            <div class="rounded-md px-4 py-2 flex flex-col items-center justify-center" style="background: rgba(120, 128, 138, 0.12);">
+                <img
+                    v-if="missionInfo.shipEnumString"
+                    :src="'images/ships/' + missionInfo.shipEnumString + '.png'"
+                    :alt="missionInfo.shipString"
+                    class="w-12 h-12 object-contain mb-2"
+                />
+                <span :class="'text-duration-' + missionInfo.durationType">
+                    {{ missionInfo.shipString }}
                 </span>
-                <span v-if="!missionInfo.isBuggedCap && missionInfo.isDubCap" class="max-w-28 flex py-1 double-cap-span items-center justify-center flex-1">
-                    <img alt="Artifact Crate" :src="'images/icon_afx_chest_2.png'" class="w-6 mr-0_5rem">
-                    <span
-                        class="text-xs font-bold"
-                        @mouseenter="(e) => showTooltip('dubcap', e)"
-                        @mouseleave="hideTooltip"
-                    >
-                        {{viewMissionData.capacityModifier}}x Capacity
-                    </span>
+                <span
+                    v-if="missionInfo.level && missionInfo.level > 0"
+                    class="text-star text-goldenstar"
+                >
+                    {{ "★".repeat(missionInfo.level) }}
                 </span>
-            </span>
-            <div v-if="missionInfo.target != '' && missionInfo.target.toUpperCase() != 'UNKNOWN'">
-                <div class="items-center justify-center flex mt-1">
-                    <span>Sensor Target: </span>
-                    <div class="ml-1 text-center text-xs rounded-full w-max px-1.5 py-0.5 text-gray-400 bg-darkerer font-semibold">
+            </div>
+            <!-- Right card: mission details -->
+            <div class="rounded-md px-4 py-2 flex flex-col justify-center text-left text-sm" style="background: rgba(120, 128, 138, 0.12);">
+                <div>Launched: {{ formatDate(viewMissionData.launchDT) }}</div>
+                <div>Returned: {{ formatDate(viewMissionData.returnDT) }}</div>
+                <div>Duration: {{ viewMissionData.durationStr }}</div>
+                <div>Capacity: {{ missionInfo.capacity }}</div>
+                <div v-if="missionInfo.target != '' && missionInfo.target.toUpperCase() != 'UNKNOWN'" class="flex items-center gap-1 mt-1">
+                    <span>Sensor Target:</span>
+                    <div class="text-xs rounded-full w-max px-1.5 py-0.5 text-gray-400 bg-darkerer font-semibold">
                         {{ properCase(missionInfo.target.replaceAll("_", " ")) }}
                     </div>
                 </div>
@@ -63,7 +62,7 @@
         ></drop-display-container>
 
         <!-- Shamelessly stolen straight from MK2's source code, with mobile note removed -->
-        <div v-if="!isMulti" class="mt-2 text-xs text-gray-300 text-center">
+        <div v-if="!isMulti && !hideFooterTip" class="mt-2 text-xs text-gray-300 text-center">
             Hover mouse over an item to show details.<br />
             Click to open the relevant <a target="_blank" v-external-link href="https://wasmegg-carpet.netlify.app/artifact-explorer/" class="ledger-underline">
             artifact explorer
@@ -71,28 +70,6 @@
         </div>
     </div>
     <Teleport to="body">
-        <button
-            v-if="!isMulti"
-            :disabled="viewMissionData.prevMission == null"
-            @click="$emit('view', viewMissionData.prevMission)"
-            title="Previous mission"
-            class="disabled:cursor-not-allowed fixed left-2 top-1/2 -translate-y-1/2 rounded-md text-gray-400 focus:outline-none z-50 disabled:text-gray-600 hover:text-gray-200"
-        >
-            <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-            </svg>
-        </button>
-        <button
-            v-if="!isMulti"
-            :disabled="viewMissionData.nextMission == null"
-            @click="$emit('view', viewMissionData.nextMission)"
-            title="Next mission"
-            class="disabled:cursor-not-allowed fixed right-2 top-1/2 -translate-y-1/2 rounded-md text-gray-400 focus:outline-none z-50 disabled:text-gray-600 hover:text-gray-200"
-        >
-            <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-            </svg>
-        </button>
         <Transition name="tooltip-fade">
             <div
                 v-if="activeTooltip === 'bugged'"
@@ -162,6 +139,7 @@
             shipCount: Number,
             isFirst: Boolean,
             isLast: Boolean,
+            hideFooterTip: Boolean,
         },
         data() {
             return {

@@ -6,20 +6,64 @@
     class="mission-view-overlay overlay-mission"
     @click.self="$emit('close')"
   >
-    <div class="max-w-70vw max-h-90vh overflow-auto bg-dark rounded-lg relative p-1rem" @click.stop>
-      <button class="close-button" type="button" @click="$emit('close')">
+    <div class="w-60vw max-h-95vh bg-dark rounded-lg relative flex flex-col" @click.stop>
+      <!-- Close button -->
+      <button
+        class="absolute top-2 right-2 z-10 rounded-md text-gray-400 hover:text-gray-200 focus:outline-none"
+        type="button"
+        @click="$emit('close')"
+      >
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
         </svg>
       </button>
-      <div class="bg-darkerer rounded-lg py-2">
-        <ShipDisplay
-          v-if="missionData && missionData.missionInfo != null"
-          :view-mission-data="missionData"
-          :is-multi="false"
-          :show-expected-drops="showExpectedDrops"
-          @view="(val: string) => $emit('view', val)"
-        />
+      <!-- Left arrow -->
+      <button
+        :disabled="!missionData?.prevMission"
+        @click="missionData?.prevMission && $emit('view', missionData.prevMission)"
+        title="Previous mission"
+        class="disabled:cursor-not-allowed absolute left-2 top-1/2 -translate-y-1/2 z-10 rounded-md text-gray-400 focus:outline-none disabled:text-gray-600 hover:text-gray-200"
+      >
+        <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
+      </button>
+      <!-- Right arrow -->
+      <button
+        :disabled="!missionData?.nextMission"
+        @click="missionData?.nextMission && $emit('view', missionData.nextMission)"
+        title="Next mission"
+        class="disabled:cursor-not-allowed absolute right-2 top-1/2 -translate-y-1/2 z-10 rounded-md text-gray-400 focus:outline-none disabled:text-gray-600 hover:text-gray-200"
+      >
+        <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+        </svg>
+      </button>
+      <!-- Scrollable content -->
+      <div class="overflow-auto flex-1 min-h-0 pt-8 px-10 pb-2">
+        <div class="bg-darkerer rounded-lg py-2">
+          <ShipDisplay
+            v-if="missionData && missionData.missionInfo != null"
+            :view-mission-data="missionData"
+            :is-multi="false"
+            :hide-footer-tip="true"
+            :show-expected-drops="showExpectedDrops"
+            @view="(val: string) => $emit('view', val)"
+          />
+        </div>
+      </div>
+      <!-- Tip - pinned below scroll area in the bg-dark zone -->
+      <div class="text-xs text-gray-300 text-center flex-shrink-0 pb-2">
+        Hover mouse over an item to show details.<br />
+        Click to open the relevant
+        <a
+          target="_blank"
+          href="https://wasmegg-carpet.netlify.app/artifact-explorer/"
+          class="ledger-underline"
+          @click.prevent="openUrl('https://wasmegg-carpet.netlify.app/artifact-explorer/')"
+        >
+          artifact explorer
+        </a> page.
       </div>
     </div>
   </div>
@@ -31,7 +75,7 @@
     class="mission-view-overlay overlay-multi-mission"
     @click.self="$emit('close')"
   >
-    <div class="max-w-90vw max-h-90vh bg-dark rounded-lg relative p-1rem" @click.stop>
+    <div :class="(isLoading ? 'min-w-40vw max-w-40vw' : 'min-w-60vw max-w-85vw') + ' max-h-95vh bg-dark rounded-lg relative p-1rem flex flex-col'" @click.stop>
       <button class="close-button" type="button" @click="$emit('close')">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -63,8 +107,9 @@
       </div>
 
       <!-- Loaded content -->
-      <div v-else class="max-w-90vw max-h-80vh overflow-auto">
-        <div class="flex justify-center mb-3">
+      <div v-else class="flex flex-col flex-1 min-h-0">
+        <!-- Toggle - pinned above scroll area -->
+        <div class="flex justify-center mb-3 flex-shrink-0">
           <div class="flex bg-darkerer border border-gray-700 rounded-md p-0.5 text-sm gap-0.5">
             <button
               type="button"
@@ -81,13 +126,13 @@
           </div>
         </div>
 
-        <!-- Separate mode -->
-        <div v-if="displayMode === 'separate'" class="flex justify-between gap-2 mb-4">
+        <!-- Separate mode - scrollable, fills remaining height -->
+        <div v-if="displayMode === 'separate'" class="flex justify-between gap-2 flex-1 min-h-0 overflow-auto mb-3">
           <div
             v-for="(missionData, i) in multiMissionData"
             :key="i"
-            :class="'w-1/' + multiMissionData!.length"
-            class="bg-darkerer rounded-lg py-2"
+            :class="'h-full w-1/' + multiMissionData!.length"
+            class="bg-darkerer rounded-lg py-2 flex-shrink-0"
           >
             <ShipDisplay
               v-if="missionData && missionData.missionInfo != null"
@@ -101,8 +146,8 @@
           </div>
         </div>
 
-        <!-- Combined mode -->
-        <div v-else class="bg-darkerer rounded-lg p-3 text-gray-300 text-center">
+        <!-- Combined mode - scrollable, fills remaining height -->
+        <div v-else class="bg-darkerer rounded-lg p-3 text-gray-300 text-center flex-1 min-h-0 overflow-auto mb-3">
           <div class="flex flex-wrap justify-center gap-x-3 gap-y-2 mb-4">
             <div
               v-for="(missionData, i) in multiMissionData"
@@ -145,7 +190,8 @@
           />
         </div>
 
-        <div class="mt-2 text-xs text-gray-300 text-center">
+        <!-- Hover text - pinned below scroll area -->
+        <div class="text-xs text-gray-300 text-center flex-shrink-0">
           Hover mouse over an item to show details.<br />
           Click to open the relevant
           <a
@@ -167,6 +213,7 @@ import { ref, computed, watch, onUnmounted } from 'vue'
 import type { ViewMissionData, InnerDrop } from '../types/missionView'
 import ShipDisplay from './ShipDisplay.vue'
 import DropDisplayContainer from './DropDisplayContainer.vue'
+import { type DropLike, sortGroupAlreadyCombed, inventoryVisualizerSort } from '../composables/useMissionSorting'
 
 const props = defineProps<{
   mode: 'single' | 'multi'
@@ -178,6 +225,7 @@ const props = defineProps<{
   totalToLoad?: number
   loadedCount?: number
   showExpectedDrops?: boolean
+  sortMethod?: 'default' | 'iv'
 }>()
 
 const emit = defineEmits<{
@@ -210,11 +258,13 @@ function mergeDropArrays(arrays: InnerDrop[][]): InnerDrop[] {
 
 const combinedDropData = computed(() => {
   const missions = props.multiMissionData ?? []
+  const sortFn = props.sortMethod === 'iv' ? inventoryVisualizerSort : sortGroupAlreadyCombed
+  const sort = (arr: InnerDrop[]) => sortFn(arr as unknown as DropLike[]) as unknown as InnerDrop[]
   return {
-    artifacts: mergeDropArrays(missions.map((m) => m.artifacts)),
-    stones: mergeDropArrays(missions.map((m) => m.stones)),
-    ingredients: mergeDropArrays(missions.map((m) => m.ingredients)),
-    stoneFragments: mergeDropArrays(missions.map((m) => m.stoneFragments)),
+    artifacts: sort(mergeDropArrays(missions.map((m) => m.artifacts))),
+    stones: sort(mergeDropArrays(missions.map((m) => m.stones))),
+    ingredients: sort(mergeDropArrays(missions.map((m) => m.ingredients))),
+    stoneFragments: sort(mergeDropArrays(missions.map((m) => m.stoneFragments))),
     mennoData: { configs: [], totalDropsCount: 0 },
     missionCount: missions.length,
   }
@@ -266,10 +316,8 @@ watch(() => props.open, (val) => {
   if (props.mode === 'single') {
     if (val) globalThis.addEventListener('keydown', handleSingleKeyDown)
     else globalThis.removeEventListener('keydown', handleSingleKeyDown)
-  } else {
-    if (val) globalThis.addEventListener('keydown', handleMultiKeyDown)
-    else globalThis.removeEventListener('keydown', handleMultiKeyDown)
-  }
+  } else if (val) globalThis.addEventListener('keydown', handleMultiKeyDown)
+  else globalThis.removeEventListener('keydown', handleMultiKeyDown)
 })
 
 onUnmounted(() => {

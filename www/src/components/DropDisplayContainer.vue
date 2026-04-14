@@ -1,7 +1,7 @@
 <template>
     <div
         v-if="useContainers"
-        class="rounded-md px-2 pt-1 pb-0 mb-2"
+        class="rounded-md px-2 pt-1 pb-0 mb-2 ml-2rem mr-2rem"
         style="background: rgba(120, 128, 138, 0.12)"
     >
         <drop-display

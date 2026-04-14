@@ -36,8 +36,14 @@ type AppStorage struct {
 	ScreenshotSafety        bool      `json:"screenshot_safety"`
 	ShowMissionProgress     bool      `json:"show_mission_progress"`
 	CollapseOlderSections   bool      `json:"collapse_older_sections"`
-	AdvancedDropFilter      bool      `json:"advanced_drop_filter"`
-	lastKnownGoodApiVersion string
+	AdvancedDropFilter       bool   `json:"advanced_drop_filter"`
+	MissionViewByDate        bool   `json:"mission_view_by_date"`
+	MissionViewTimes         bool   `json:"mission_view_times"`
+	MissionRecolorDC         bool   `json:"mission_recolor_dc"`
+	MissionRecolorBC         bool   `json:"mission_recolor_bc"`
+	MissionShowExpectedDrops bool   `json:"mission_show_expected_drops"`
+	MissionMultiViewMode     string `json:"mission_multi_view_mode"`
+	lastKnownGoodApiVersion  string
 }
 
 type Account struct {
@@ -182,6 +188,30 @@ func (s *AppStorage) loadFromDB() {
 	if v, ok := settings["advanced_drop_filter"]; ok {
 		s.AdvancedDropFilter, _ = strconv.ParseBool(v)
 	}
+	if v, ok := settings["mission_view_by_date"]; ok {
+		s.MissionViewByDate, _ = strconv.ParseBool(v)
+	}
+	if v, ok := settings["mission_view_times"]; ok {
+		s.MissionViewTimes, _ = strconv.ParseBool(v)
+	} else {
+		s.MissionViewTimes = true
+	}
+	if v, ok := settings["mission_recolor_dc"]; ok {
+		s.MissionRecolorDC, _ = strconv.ParseBool(v)
+	}
+	if v, ok := settings["mission_recolor_bc"]; ok {
+		s.MissionRecolorBC, _ = strconv.ParseBool(v)
+	}
+	if v, ok := settings["mission_show_expected_drops"]; ok {
+		s.MissionShowExpectedDrops, _ = strconv.ParseBool(v)
+	} else {
+		s.MissionShowExpectedDrops = true
+	}
+	if v, ok := settings["mission_multi_view_mode"]; ok && v != "" {
+		s.MissionMultiViewMode = v
+	} else {
+		s.MissionMultiViewMode = "off"
+	}
 	if v, ok := settings["last_known_good_api_version"]; ok {
 		s.lastKnownGoodApiVersion = v
 	}
@@ -213,7 +243,13 @@ func (s *AppStorage) persistAllToDB() {
 		"screenshot_safety":          strconv.FormatBool(s.ScreenshotSafety),
 		"show_mission_progress":      strconv.FormatBool(s.ShowMissionProgress),
 		"collapse_older_sections":    strconv.FormatBool(s.CollapseOlderSections),
-		"advanced_drop_filter":        strconv.FormatBool(s.AdvancedDropFilter),
+		"advanced_drop_filter":         strconv.FormatBool(s.AdvancedDropFilter),
+		"mission_view_by_date":         strconv.FormatBool(s.MissionViewByDate),
+		"mission_view_times":           strconv.FormatBool(s.MissionViewTimes),
+		"mission_recolor_dc":           strconv.FormatBool(s.MissionRecolorDC),
+		"mission_recolor_bc":           strconv.FormatBool(s.MissionRecolorBC),
+		"mission_show_expected_drops":  strconv.FormatBool(s.MissionShowExpectedDrops),
+		"mission_multi_view_mode":      s.MissionMultiViewMode,
 	}
 	s.Unlock()
 	if err := db.SetSettings(context.Background(), settings); err != nil {
@@ -469,4 +505,85 @@ func (s *AppStorage) SetLastKnownGoodApiVersion(v string) {
 	s.lastKnownGoodApiVersion = v
 	s.Unlock()
 	go s.dbSet("last_known_good_api_version", v)
+}
+
+func (s *AppStorage) SetMissionViewByDate(flag bool) {
+	s.Lock()
+	s.MissionViewByDate = flag
+	s.Unlock()
+	go s.dbSet("mission_view_by_date", strconv.FormatBool(flag))
+}
+
+func (s *AppStorage) GetMissionViewByDate() bool {
+	s.Lock()
+	defer s.Unlock()
+	return s.MissionViewByDate
+}
+
+func (s *AppStorage) SetMissionViewTimes(flag bool) {
+	s.Lock()
+	s.MissionViewTimes = flag
+	s.Unlock()
+	go s.dbSet("mission_view_times", strconv.FormatBool(flag))
+}
+
+func (s *AppStorage) GetMissionViewTimes() bool {
+	s.Lock()
+	defer s.Unlock()
+	return s.MissionViewTimes
+}
+
+func (s *AppStorage) SetMissionRecolorDC(flag bool) {
+	s.Lock()
+	s.MissionRecolorDC = flag
+	s.Unlock()
+	go s.dbSet("mission_recolor_dc", strconv.FormatBool(flag))
+}
+
+func (s *AppStorage) GetMissionRecolorDC() bool {
+	s.Lock()
+	defer s.Unlock()
+	return s.MissionRecolorDC
+}
+
+func (s *AppStorage) SetMissionRecolorBC(flag bool) {
+	s.Lock()
+	s.MissionRecolorBC = flag
+	s.Unlock()
+	go s.dbSet("mission_recolor_bc", strconv.FormatBool(flag))
+}
+
+func (s *AppStorage) GetMissionRecolorBC() bool {
+	s.Lock()
+	defer s.Unlock()
+	return s.MissionRecolorBC
+}
+
+func (s *AppStorage) SetMissionShowExpectedDrops(flag bool) {
+	s.Lock()
+	s.MissionShowExpectedDrops = flag
+	s.Unlock()
+	go s.dbSet("mission_show_expected_drops", strconv.FormatBool(flag))
+}
+
+func (s *AppStorage) GetMissionShowExpectedDrops() bool {
+	s.Lock()
+	defer s.Unlock()
+	return s.MissionShowExpectedDrops
+}
+
+func (s *AppStorage) SetMissionMultiViewMode(mode string) {
+	s.Lock()
+	s.MissionMultiViewMode = mode
+	s.Unlock()
+	go s.dbSet("mission_multi_view_mode", mode)
+}
+
+func (s *AppStorage) GetMissionMultiViewMode() string {
+	s.Lock()
+	defer s.Unlock()
+	if s.MissionMultiViewMode == "" {
+		return "off"
+	}
+	return s.MissionMultiViewMode
 }

@@ -648,6 +648,48 @@ func main() {
 		_storage.SetAdvancedDropFilter(flag)
 	})
 
+	ui.MustBind("getMissionViewByDate", func() bool {
+		return _storage.GetMissionViewByDate()
+	})
+	ui.MustBind("setMissionViewByDate", func(flag bool) {
+		_storage.SetMissionViewByDate(flag)
+	})
+
+	ui.MustBind("getMissionViewTimes", func() bool {
+		return _storage.GetMissionViewTimes()
+	})
+	ui.MustBind("setMissionViewTimes", func(flag bool) {
+		_storage.SetMissionViewTimes(flag)
+	})
+
+	ui.MustBind("getMissionRecolorDC", func() bool {
+		return _storage.GetMissionRecolorDC()
+	})
+	ui.MustBind("setMissionRecolorDC", func(flag bool) {
+		_storage.SetMissionRecolorDC(flag)
+	})
+
+	ui.MustBind("getMissionRecolorBC", func() bool {
+		return _storage.GetMissionRecolorBC()
+	})
+	ui.MustBind("setMissionRecolorBC", func(flag bool) {
+		_storage.SetMissionRecolorBC(flag)
+	})
+
+	ui.MustBind("getMissionShowExpectedDrops", func() bool {
+		return _storage.GetMissionShowExpectedDrops()
+	})
+	ui.MustBind("setMissionShowExpectedDrops", func(flag bool) {
+		_storage.SetMissionShowExpectedDrops(flag)
+	})
+
+	ui.MustBind("getMissionMultiViewMode", func() string {
+		return _storage.GetMissionMultiViewMode()
+	})
+	ui.MustBind("setMissionMultiViewMode", func(mode string) {
+		_storage.SetMissionMultiViewMode(mode)
+	})
+
 	ui.MustBind("getWorkerCount", func() int {
 		return _storage.GetWorkerCount()
 	})

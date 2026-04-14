@@ -40,6 +40,7 @@
       :total-to-load="multiViewTotalToLoad"
       :loaded-count="missionsBeingViewed.length"
       :show-expected-drops="showExpectedDropsPerShip"
+      :sort-method="viewMissionSortMethod"
       @close="closeMultiMissionOverlay"
     />
 
@@ -274,7 +275,7 @@ import { useMennoData } from '../composables/useMennoData'
 import { useFetch } from '../composables/useFetch'
 import { useFilters } from '../composables/useFilters'
 import { useDropdownSelector } from '../composables/useDropdownSelector'
-import { screenshotSafety, collapseOlderSections, defaultViewMode } from '../composables/useSettings'
+import { screenshotSafety, collapseOlderSections } from '../composables/useSettings'
 import {
   type DropLike,
   sortGroupAlreadyCombed,
@@ -385,13 +386,19 @@ const recolorBC = ref(false)
 const showExpectedDropsPerShip = ref(true)
 const hideFilter = ref(false)
 const multiViewMode = ref<'off' | 'row' | 'free'>('off')
-const viewMissionSortMethod = ref<'default' | 'iv'>(
-  (defaultViewMode.value as 'default' | 'iv') ?? 'default',
-)
+const viewMissionSortMethod = ref<'default' | 'iv'>('default')
 
 watch(mennoDataLoaded, () => {
   if (!mennoDataLoaded.value) showExpectedDropsPerShip.value = false
 })
+
+watch(viewByDate, (val) => globalThis.setMissionViewByDate(val))
+watch(viewMissionTimes, (val) => globalThis.setMissionViewTimes(val))
+watch(recolorDC, (val) => globalThis.setMissionRecolorDC(val))
+watch(recolorBC, (val) => globalThis.setMissionRecolorBC(val))
+watch(showExpectedDropsPerShip, (val) => globalThis.setMissionShowExpectedDrops(val))
+watch(multiViewMode, (val) => globalThis.setMissionMultiViewMode(val))
+watch(viewMissionSortMethod, (val) => globalThis.setDefaultViewMode(val))
 
 function toggleFilter(event: Event) {
   event.preventDefault()
@@ -697,6 +704,14 @@ function properCaseTarget(target: string): string {
 
 onMounted(async () => {
   filterWarningRead.value = (await globalThis.filterWarningRead()) ?? false
+
+  viewByDate.value = await globalThis.getMissionViewByDate()
+  viewMissionTimes.value = await globalThis.getMissionViewTimes()
+  recolorDC.value = await globalThis.getMissionRecolorDC()
+  recolorBC.value = await globalThis.getMissionRecolorBC()
+  showExpectedDropsPerShip.value = await globalThis.getMissionShowExpectedDrops()
+  multiViewMode.value = (await globalThis.getMissionMultiViewMode()) as 'off' | 'row' | 'free'
+  viewMissionSortMethod.value = (await globalThis.getDefaultViewMode()) as 'default' | 'iv'
 
   artifactConfigs.value = await globalThis.getAfxConfigs()
   maxQuality.value = await globalThis.getMaxQuality()
