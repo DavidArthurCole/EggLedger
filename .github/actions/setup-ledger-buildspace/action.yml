@@ -22,12 +22,19 @@ runs:
         node-version: lts/*
         cache: npm
 
-    - name: Install Linux/Windows build dependencies
+    - name: Install Linux build dependencies
       if: runner.os == 'Linux'
-      shell: bash
-      run: |
-        sudo apt-get update -qq || true
-        sudo apt-get install -y protobuf-compiler protoc-gen-go dos2unix
+      uses: awalsh128/cache-apt-pkgs-action@latest
+      with:
+        packages: protobuf-compiler protoc-gen-go dos2unix
+        version: 1.0
+
+    - name: Cache macOS Homebrew downloads
+      if: runner.os == 'macOS'
+      uses: actions/cache@v4
+      with:
+        path: ~/Library/Caches/Homebrew/downloads
+        key: brew-protobuf-protoc-gen-go-dos2unix-v1
 
     - name: Install macOS build dependencies
       if: runner.os == 'macOS'
@@ -35,11 +42,27 @@ runs:
       run: |
         brew install protobuf protoc-gen-go dos2unix || true
 
+    - name: Cache Windows Chocolatey packages
+      id: choco-cache
+      if: runner.os == 'Windows'
+      uses: actions/cache@v4
+      with:
+        path: |
+          C:\ProgramData\chocolatey\lib\make
+          C:\ProgramData\chocolatey\lib\dos2unix
+          C:\ProgramData\chocolatey\lib\protoc
+          C:\ProgramData\chocolatey\bin\make.exe
+          C:\ProgramData\chocolatey\bin\dos2unix.exe
+          C:\ProgramData\chocolatey\bin\protoc.exe
+        key: choco-make-dos2unix-protoc-v1
+
     - name: Install Windows build dependencies
       if: runner.os == 'Windows'
       shell: pwsh
       run: |
-        choco install make dos2unix protoc -y --no-progress
+        if ("${{ steps.choco-cache.outputs.cache-hit }}" -ne "true") {
+          choco install make dos2unix protoc -y --no-progress
+        }
         go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 
     - name: Build
