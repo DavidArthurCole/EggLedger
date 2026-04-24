@@ -253,13 +253,14 @@
         :recolor-b-c="recolorBC"
         :multi-view-mode="multiViewMode"
         :multi-view-free-select-ids="multiViewFreeSelectIds"
-        :filtered-missions="filteredMissions"
+        :filtered-missions="tabFilteredMissions"
         :mission-being-viewed="missionBeingViewed"
         @view-mission="viewSpecificMission($event)"
         @toggle-elements="toggleElements"
         @multi-view-selection="handleMultiViewSelection"
         @trigger-row-view="triggerRowView"
         @deselect-all="multiViewFreeSelectIds = []"
+        @select-all="multiViewFreeSelectIds = (tabFilteredMissions ?? []).map(m => m.missionId)"
       />
     </div>
 
@@ -357,7 +358,6 @@ function accountById(id: string | null) {
 }
 
 // Mission list + filter result state
-// ───────────────────────────────────────────────────────────────────────────────
 
 const allLoadedMissions = ref<DatabaseMission[] | null>(null)
 const filteredMissions = ref<DatabaseMission[] | null>(null)
@@ -503,7 +503,6 @@ async function applyFilter() {
 }
 
 // Mission view overlay state (single and multi)
-// ───────────────────────────────────────────────────────────────────────────────
 
 const viewMissionData = ref<ViewMissionData | null>(null)
 const missionBeingViewed = ref<string | null>(null)
@@ -554,8 +553,8 @@ async function doViewMissionsOfEid() {
   eidMissionsBeingLoaded.value = false
 }
 
-async function getSpecificMissionData(eid: string, missionId: string, extendedInfo: boolean, dropCache: Record<string, MissionDrop[]> | null = null): Promise<ViewMissionData | null> {
-  const missionInfo = await globalThis.getMissionInfo(eid, missionId)
+async function getSpecificMissionData(eid: string, missionId: string, extendedInfo: boolean, dropCache: Record<string, MissionDrop[]> | null = null, knownMissionInfo: DatabaseMission | null = null): Promise<ViewMissionData | null> {
+  const missionInfo = knownMissionInfo ?? await globalThis.getMissionInfo(eid, missionId)
   if (missionInfo.ship == null || missionInfo.ship < 0 || !missionInfo.missionId) return null
   const allDrops = dropCache?.[missionId] ?? await globalThis.getShipDrops(eid, missionId)
   if (allDrops == null) return null
@@ -586,9 +585,9 @@ async function getSpecificMissionData(eid: string, missionId: string, extendedIn
   return base
 }
 
-async function viewSpecificMission(missionId: string, returnValues = false, dropCache: Record<string, MissionDrop[]> | null = null): Promise<ViewMissionData | false> {
+async function viewSpecificMission(missionId: string, returnValues = false, dropCache: Record<string, MissionDrop[]> | null = null, knownMissionInfo: DatabaseMission | null = null, mennoCache: Map<string, MennoConfigItem[]> | null = null): Promise<ViewMissionData | false> {
   if (isFetching.value) return false
-  const newMissionViewData = await getSpecificMissionData(loadedEid.value ?? '', missionId, true, dropCache)
+  const newMissionViewData = await getSpecificMissionData(loadedEid.value ?? '', missionId, true, dropCache, knownMissionInfo)
   if (newMissionViewData == null) return false
   const sortFn =
     viewMissionSortMethod.value === 'iv' ? inventoryVisualizerSort : sortGroupAlreadyCombed
@@ -599,14 +598,22 @@ async function viewSpecificMission(missionId: string, returnValues = false, drop
     const mennoShip = mi.ship
     const mennoDuration = mi.durationType
     const mennoLevel = mi.level
-    const mennoConfigItems = await getMennoData(mennoShip, mennoDuration, mennoLevel, mennoTargetInt)
+    const mennoKey = `${mennoShip}_${mennoDuration}_${mennoLevel}_${mennoTargetInt}`
+    let mennoConfigItems: MennoConfigItem[] | null = null
+    if (mennoCache?.has(mennoKey)) {
+      mennoConfigItems = mennoCache.get(mennoKey)!
+    } else {
+      const fetched = await getMennoData(mennoShip, mennoDuration, mennoLevel, mennoTargetInt)
+      mennoConfigItems = fetched as unknown as MennoConfigItem[]
+      mennoCache?.set(mennoKey, mennoConfigItems)
+    }
     if (mennoConfigItems) {
       newMissionViewData.mennoData = {
         totalDropsCount: mennoConfigItems.reduce(
           (acc: number, cur: { totalDrops: number }) => acc + cur.totalDrops,
           0,
         ),
-        configs: mennoConfigItems as unknown as MennoConfigItem[],
+        configs: mennoConfigItems,
       }
     }
   }
@@ -666,15 +673,18 @@ async function viewRowOfMissions(missionIds: string[]) {
     rowViewBeingLoaded.value = false
     return
   }
+  multiViewTotalToLoad.value = missionIds.length
   openMultiMissionOverlay()
   missionsBeingViewed.value = []
   multiViewMissionData.value = []
-  multiViewTotalToLoad.value = missionIds.length
   dropCachePreloading.value = true
   const dropCache = await globalThis.getAllPlayerDrops(loadedEid.value ?? '')
   dropCachePreloading.value = false
+  const missionInfoLookup: Record<string, DatabaseMission> = {}
+  for (const m of allLoadedMissions.value ?? []) missionInfoLookup[m.missionId] = m
+  const mennoCache = new Map<string, MennoConfigItem[]>()
   for (const missionId of missionIds) {
-    const data = await viewSpecificMission(missionId, true, dropCache)
+    const data = await viewSpecificMission(missionId, true, dropCache, missionInfoLookup[missionId] ?? null, mennoCache)
     if (data !== false) {
       multiViewMissionData.value.push(data)
       missionsBeingViewed.value.push(missionId)
@@ -703,9 +713,7 @@ function properCaseTarget(target: string): string {
     .join(' ')
 }
 
-// ───────────────────────────────────────────────────────────────────────────────
 // Lifecycle
-// ───────────────────────────────────────────────────────────────────────────────
 
 onMounted(async () => {
   filterWarningRead.value = (await globalThis.filterWarningRead()) ?? false

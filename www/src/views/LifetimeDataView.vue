@@ -304,9 +304,7 @@ interface LifetimeData extends LedgerData {
   ingredients: LifetimeDrop[]
 }
 
-// ───────────────────────────────────────────────────────────────────────────────
 // Account selector state
-// ───────────────────────────────────────────────────────────────────────────────
 
 const selectedLifetimeAccount = ref<string | null>(null)
 
@@ -344,7 +342,6 @@ const selectedLifetimeKnownAccount = computed(
 )
 
 // Lifetime load state
-// ───────────────────────────────────────────────────────────────────────────────
 
 const lifetimeState = ref<LifetimeLoadState>(LifetimeLoadState.Idle)
 const lifetimeSuccessTime = ref<string | null>(null)
@@ -477,9 +474,7 @@ const statusText = computed(() => {
   }
 })
 
-// ───────────────────────────────────────────────────────────────────────────────
 // Sorting options
-// ───────────────────────────────────────────────────────────────────────────────
 
 let settingsLoaded = false
 
@@ -637,9 +632,7 @@ watch(
   { deep: true },
 )
 
-// ───────────────────────────────────────────────────────────────────────────────
 // Lifetime fetch pipeline
-// ───────────────────────────────────────────────────────────────────────────────
 
 // A tracker keeping a dedupe-Map alongside the array of LifetimeDrop.
 interface LifetimeBucket {
@@ -849,9 +842,7 @@ async function onFilterSubmit(event: Event) {
   await viewLifetimeDataOfEid(true)
 }
 
-// ───────────────────────────────────────────────────────────────────────────────
 // Lifecycle
-// ───────────────────────────────────────────────────────────────────────────────
 
 onMounted(async () => {
   artifactConfigs.value = await globalThis.getAfxConfigs()

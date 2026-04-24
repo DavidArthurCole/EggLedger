@@ -100,7 +100,7 @@
           <div class="mt-2 w-full bg-darker rounded-full h-1.5 overflow-hidden">
             <div
               class="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
-              :style="{ width: (totalToLoad ?? 0) > 0 ? (((loadedCount ?? 0) / (totalToLoad ?? 1)) * 100) + '%' : '0%' }"
+              :style="{ width: (totalToLoad ?? 0) > 0 ? Math.min(100, (((loadedCount ?? 0) + 1) / (totalToLoad ?? 1)) * 100) + '%' : '0%' }"
             />
           </div>
         </template>
@@ -113,7 +113,8 @@
           <div class="flex bg-darkerer border border-gray-700 rounded-md p-0.5 text-sm gap-0.5">
             <button
               type="button"
-              :class="displayMode === 'separate' ? 'bg-dark text-blue-400' : 'text-gray-500 hover:text-gray-300'"
+              :disabled="(multiMissionData?.length ?? 0) > 20"
+              :class="displayMode === 'separate' ? 'bg-dark text-blue-400' : (multiMissionData?.length ?? 0) > 20 ? 'text-gray-600 cursor-not-allowed' : 'text-gray-500 hover:text-gray-300'"
               class="px-3 py-1 rounded focus:outline-none transition-colors"
               @click="displayMode = 'separate'"
             >Separate</button>
@@ -150,7 +151,7 @@
         <div v-else class="bg-darkerer rounded-lg p-3 text-gray-300 text-center flex-1 min-h-0 overflow-auto mb-3">
           <div class="flex flex-wrap justify-center gap-x-3 gap-y-2 mb-4">
             <div
-              v-for="(missionData, i) in multiMissionData"
+              v-for="(missionData, i) in (shipHeaderExpanded ? multiMissionData : multiMissionData?.slice(0, 20))"
               :key="i"
               class="flex flex-col items-center rounded-lg px-3 py-2 min-w-36"
               style="background: rgba(120, 128, 138, 0.12)"
@@ -181,6 +182,15 @@
                 <span v-else-if="missionData.missionInfo.isDubCap" class="text-dubcap">{{ missionData.capacityModifier }}x</span>
               </div>
             </div>
+            <button
+              v-if="!shipHeaderExpanded && (multiMissionData?.length ?? 0) > 20"
+              type="button"
+              class="flex flex-col items-center justify-center rounded-lg px-3 py-2 min-w-36 text-gray-400 hover:text-gray-200 transition-colors"
+              style="background: rgba(120, 128, 138, 0.12)"
+              @click="shipHeaderExpanded = true"
+            >
+              + {{ (multiMissionData?.length ?? 0) - 20 }} more
+            </button>
           </div>
           <drop-display-container
             ledger-type="mission"
@@ -234,9 +244,13 @@ const emit = defineEmits<{
 }>()
 
 const displayMode = ref<'separate' | 'combined'>('separate')
+const shipHeaderExpanded = ref(false)
 
 watch(() => props.open, (val) => {
-  if (val && props.mode === 'multi') displayMode.value = 'separate'
+  if (val && props.mode === 'multi') {
+    displayMode.value = (props.totalToLoad ?? 0) > 5 ? 'combined' : 'separate'
+    shipHeaderExpanded.value = false
+  }
 })
 
 // Merge arrays of drops by id+level+rarity key, summing counts
