@@ -1,0 +1,4 @@
+exclude-labels:
+  - '*'
+exclude-authors:
+  - '*'

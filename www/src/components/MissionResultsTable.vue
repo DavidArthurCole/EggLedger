@@ -22,20 +22,30 @@
               {{ allVisible ? 'Collapse All' : 'Expand All' }}
             </button>
           </span>
-          <div v-if="multiViewMode === 'free' && multiViewFreeSelectIds.length > 0" class="flex items-center gap-2">
+          <div v-if="multiViewMode === 'free'" class="flex items-center gap-2">
+            <template v-if="multiViewFreeSelectIds.length > 0">
+              <button
+                type="button"
+                class="px-3 py-1 rounded-md border border-green-700 text-sm font-medium text-green-400 bg-transparent hover:bg-green-950/50"
+                @click="$emit('trigger-row-view')"
+              >
+                View Selected ({{ multiViewFreeSelectIds.length }})
+              </button>
+              <button
+                type="button"
+                class="px-3 py-1 rounded-md border border-gray-600 text-sm font-medium text-gray-400 bg-transparent hover:bg-darker"
+                @click="$emit('deselect-all')"
+              >
+                Deselect All
+              </button>
+            </template>
             <button
-              type="button"
-              class="px-3 py-1 rounded-md border border-green-700 text-sm font-medium text-green-400 bg-transparent hover:bg-green-950/50"
-              @click="$emit('trigger-row-view')"
-            >
-              View Selected ({{ multiViewFreeSelectIds.length }})
-            </button>
-            <button
+              v-if="filteredMissions && filteredMissions.length > 0 && multiViewFreeSelectIds.length < filteredMissions.length"
               type="button"
               class="px-3 py-1 rounded-md border border-gray-600 text-sm font-medium text-gray-400 bg-transparent hover:bg-darker"
-              @click="$emit('deselect-all')"
+              @click="$emit('select-all')"
             >
-              Deselect All
+              Select All
             </button>
           </div>
         </div>
@@ -180,6 +190,7 @@ defineEmits<{
   'multi-view-selection': [event: Event, missionId: string]
   'trigger-row-view': [yearIndex?: number, monthIndex?: number, dayIndex?: number]
   'deselect-all': []
+  'select-all': []
 }>()
 
 const resultsDiv = ref<HTMLElement | null>(null)
