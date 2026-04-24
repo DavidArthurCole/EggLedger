@@ -22,12 +22,12 @@ runs:
         node-version: lts/*
         cache: npm
 
-    - name: Install Linux/Windows build dependencies
+    - name: Install Linux build dependencies
       if: runner.os == 'Linux'
-      shell: bash
-      run: |
-        sudo apt-get update -qq || true
-        sudo apt-get install -y protobuf-compiler protoc-gen-go dos2unix
+      uses: awalsh128/cache-apt-pkgs-action@latest
+      with:
+        packages: protobuf-compiler protoc-gen-go dos2unix
+        version: 1.0
 
     - name: Install macOS build dependencies
       if: runner.os == 'macOS'
