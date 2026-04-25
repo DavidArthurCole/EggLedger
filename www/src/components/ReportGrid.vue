@@ -1,34 +1,10 @@
 <template>
   <div class="flex-1 min-h-0 overflow-y-auto py-2 px-3 flex flex-col gap-3">
-    <div class="flex items-center justify-end">
-      <div class="flex items-center gap-2">
-        <span v-if="exportAllMessage" class="text-xs text-gray-400 max-w-48 truncate" :title="exportAllMessage">{{ exportAllMessage }}</span>
-        <span v-if="importError" class="text-xs text-red-400">{{ importError }}</span>
-        <button
-          type="button"
-          class="text-xs px-2 py-1 rounded border border-gray-600 text-gray-400 hover:text-gray-300"
-          @click="handleExportAll"
-        >Export All</button>
-        <button
-          type="button"
-          class="text-xs px-2 py-1 rounded border border-gray-600 text-gray-400 hover:text-gray-300"
-          @click="handleImport"
-        >Import</button>
-        <button
-          type="button"
-          class="text-xs px-2 py-1 rounded border"
-          :class="editMode
-            ? 'border-indigo-500 text-indigo-400 hover:text-indigo-300'
-            : 'border-gray-600 text-gray-400 hover:text-gray-300'"
-          @click="editMode = !editMode"
-        >
-          {{ editMode ? 'Done' : 'Edit' }}
-        </button>
-      </div>
-    </div>
+    <span v-if="exportAllMessage" class="text-xs text-gray-400 self-end max-w-48 truncate" :title="exportAllMessage">{{ exportAllMessage }}</span>
+    <span v-if="importError" class="text-xs text-red-400 self-end">{{ importError }}</span>
 
     <div v-if="reports.length === 0" class="text-xs text-gray-500 text-center mt-8">
-      No reports yet. {{ editMode ? 'Add one below.' : 'Enable edit mode to add one.' }}
+      No reports yet. Click + New Report to add one.
     </div>
 
     <div
@@ -106,13 +82,14 @@ import ReportBuilderPanel from './ReportBuilderPanel.vue'
 const props = defineProps<{
   accountId: string
   groupFilter?: string | null
+  editMode?: boolean
 }>()
 
 const { reports, loadReports, deleteReport, reorderReports, executeReport, createReport, updateReport } = useReports()
 const { groups, loadGroups } = useReportGroups()
 const { appState } = useAppState()
 
-const editMode = ref(false)
+const editMode = computed(() => props.editMode ?? false)
 const builderOpen = ref(false)
 const editingDef = ref<ReportDefinition | null>(null)
 const results = ref<Record<string, ReportResult>>({})

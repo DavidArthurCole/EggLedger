@@ -16,7 +16,6 @@ import (
 
 	"github.com/DavidArthurCole/EggLedger/reportdb"
 	"github.com/DavidArthurCole/EggLedger/reports"
-	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 	"github.com/skratchdot/open-golang/open"
 )
@@ -72,6 +71,12 @@ type blobEnvelope struct {
 	Data json.RawMessage `json:"data"`
 }
 
+// authInitResponse is returned by GET /auth/discord.
+type authInitResponse struct {
+	State string `json:"state"`
+	URL   string `json:"url"`
+}
+
 // pollResponse is the shape of a successful GET /auth/poll response.
 type pollResponse struct {
 	Token     string `json:"token"`
@@ -121,15 +126,27 @@ func handleCheckCloudReachable() bool {
 	return checkCloudSyncReachable()
 }
 
-// handleConnectDiscord starts the Discord OAuth2 polling flow. It opens the
-// authorization URL in the system browser and polls /auth/poll?state=<uuid>
-// until the user authenticates or the 5-minute window expires. Fires
-// _onDiscordAuthComplete when done. Returns the auth URL for the UI fallback link.
+// handleConnectDiscord starts the Discord OAuth2 polling flow. It asks the
+// server for the auth URL and state, opens the URL in the system browser, then
+// polls /auth/poll?state=<state> until the user authenticates or the 5-minute
+// window expires. Fires _onDiscordAuthComplete when done. Returns the Discord
+// authorization URL for the UI fallback link.
 func handleConnectDiscord() (string, error) {
-	state := uuid.New().String()
-	authURL := _cloudSyncBaseURL + "/auth/discord?state=" + state
+	client := &http.Client{Timeout: _cloudSyncHTTPTimeout}
+	resp, err := client.Get(_cloudSyncBaseURL + "/auth/discord")
+	if err != nil {
+		return "", fmt.Errorf("connectDiscord: init: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("connectDiscord: server returned %d", resp.StatusCode)
+	}
+	var init authInitResponse
+	if err := json.NewDecoder(resp.Body).Decode(&init); err != nil {
+		return "", fmt.Errorf("connectDiscord: decode: %w", err)
+	}
 
-	if err := open.Start(authURL); err != nil {
+	if err := open.Start(init.URL); err != nil {
 		log.Warnf("cloud sync: could not open browser: %v", err)
 	}
 
@@ -149,9 +166,9 @@ func handleConnectDiscord() (string, error) {
 				}
 				return
 			case <-ticker.C:
-				token, username, avatarURL, err := pollAuthToken(ctx, state)
-				if err != nil {
-					log.Debugf("cloud sync: poll error: %v", err)
+				token, username, avatarURL, pollErr := pollAuthToken(ctx, init.State)
+				if pollErr != nil {
+					log.Debugf("cloud sync: poll error: %v", pollErr)
 					continue
 				}
 				if token == "" {
@@ -169,7 +186,7 @@ func handleConnectDiscord() (string, error) {
 		}
 	}()
 
-	return authURL, nil
+	return init.URL, nil
 }
 
 // pollAuthToken calls GET /auth/poll?state=<state> once.

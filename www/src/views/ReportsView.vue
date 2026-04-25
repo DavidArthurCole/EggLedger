@@ -67,13 +67,13 @@
             type="button"
             class="text-sm px-3 py-1.5 rounded border"
             :class="groupEditMode ? 'border-indigo-500 text-indigo-400' : 'border-gray-700 text-gray-600 hover:text-gray-400'"
-            @click="groupEditMode = !groupEditMode"
+            @click="groupEditMode = !groupEditMode; reportEditMode = !reportEditMode"
           >{{ groupEditMode ? 'Done' : 'Edit' }}</button>
         </div>
       </div>
 
-      <!-- Group management row (edit mode) -->
-      <div v-if="loadedAccountId && groupEditMode" class="flex items-center gap-1.5 px-2 pb-1.5 flex-shrink-0">
+      <!-- Group management row -->
+      <div v-if="loadedAccountId" class="flex items-center gap-1.5 px-2 pt-1.5 pb-1.5 flex-shrink-0">
         <input
           v-if="showNewGroupInput"
           v-model="newGroupName"
@@ -92,7 +92,7 @@
         >+ New Group</button>
       </div>
 
-      <ReportGrid v-if="loadedAccountId" :account-id="loadedAccountId" :group-filter="selectedGroupId" />
+      <ReportGrid v-if="loadedAccountId" :account-id="loadedAccountId" :group-filter="selectedGroupId" :edit-mode="reportEditMode" />
       <div v-else class="h-full flex items-center justify-center">
         <p class="text-xs text-gray-500">Select an account and click Load to view reports.</p>
       </div>
@@ -120,6 +120,7 @@ const loadedAccountId = ref<string | null>(null)
 const doesDataExist = computed(() => existingData.value.length > 0)
 const selectedGroupId = ref<string | null>(null)
 const groupEditMode = ref(false)
+const reportEditMode = ref(false)
 const newGroupName = ref('')
 const editingGroupId = ref<string | null>(null)
 const editingGroupName = ref('')

@@ -10,7 +10,7 @@
       class="view-layout overflow-hidden"
     >
     <div class="flex flex-col items-center gap-2 py-2">
-      <div class="text-xs text-gray-400 min-h-4 text-center">
+      <div class="text-xs text-gray-400 bg-darker border border-gray-700 rounded-lg px-4 py-2 text-center min-h-4">
         <template v-if="activeAccountId && activeAccountInfo">
           <span :style="'color: #' + activeAccountInfo.accountColor" class="font-medium">{{ activeAccountInfo.nickname }}</span>
           <span class="text-gray-500 ml-1.5">{{ activeAccountInfo.ebString }}</span>
