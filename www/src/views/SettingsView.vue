@@ -234,16 +234,17 @@
                 type="text"
                 readonly
                 :value="storagePath || 'Loading...'"
-                class="drop-select-full text-sm bg-darkest font-mono text-gray-300 cursor-default"
+                :size="(storagePath || 'Loading...').length + 2"
+                class="block rounded-md text-sm bg-darkest font-mono text-gray-300 cursor-default border border-gray-600 px-2 py-1 focus:outline-none focus:ring-0 shrink min-w-0"
               />
               <button
                 type="button"
-                class="text-xs px-2 py-0.5 rounded border border-gray-600 bg-gray-700 text-gray-200 hover:bg-gray-600 cursor-pointer flex-shrink-0"
+                class="apply-filter-button !mt-0 !mr-0 !ml-0 flex-shrink-0"
                 @click="openStorageFolder"
               >Open folder</button>
               <button
                 type="button"
-                class="text-xs px-2 py-0.5 rounded border border-gray-600 bg-gray-700 text-gray-200 hover:bg-gray-600 cursor-pointer flex-shrink-0"
+                class="apply-filter-button !mt-0 !mr-0 !ml-0 flex-shrink-0"
                 @click="toggleStorageVisible"
               >{{ storageFolderHidden ? 'Show folder' : 'Hide folder' }}</button>
             </div>
@@ -295,7 +296,7 @@
                 @click="chooseMoveDest"
               >Choose...</button>
             </div>
-            <div class="mt-0_5rem text-xs text-orange-400 border border-orange-700 rounded-md py-2 px-3">
+            <div class="mt-0_5rem text-xs text-orange-400 border border-orange-700 rounded-md py-2 px-3 max-w-[50%]">
               This will restart the app. The old location will NOT be deleted automatically.
             </div>
             <div class="flex flex-row items-center gap-2 mt-0_5rem">

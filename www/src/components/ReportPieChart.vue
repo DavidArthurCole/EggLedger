@@ -1,30 +1,56 @@
 <template>
-  <div class="flex flex-col items-center gap-2 p-1">
-    <svg viewBox="0 0 100 100" class="w-full max-w-32 max-h-32" style="transform: rotate(-90deg)">
+  <div class="flex flex-col items-center gap-1 p-1 w-full h-full">
+    <svg :viewBox="`0 0 ${vw} ${vh}`" class="w-full flex-1 min-h-0 overflow-visible">
+      <!-- Donut segments -->
       <circle
         v-for="(seg, i) in segments"
-        :key="i"
-        cx="50"
-        cy="50"
-        r="40"
+        :key="'seg-' + i"
+        :cx="cx"
+        :cy="cy"
+        :r="r"
         fill="none"
         :stroke="seg.color"
-        stroke-width="18"
-        :stroke-dasharray="`${seg.arc} ${circumference}`"
+        :stroke-width="strokeW"
+        :stroke-dasharray="`${seg.arc} ${circumference - seg.arc}`"
         :stroke-dashoffset="`${circumference - seg.offset}`"
+        style="transform-origin: center; transform: rotate(-90deg)"
       />
+      <!-- Connector lines and labels -->
+      <g v-for="(seg, i) in segments" :key="'lbl-' + i">
+        <line
+          :x1="seg.innerX"
+          :y1="seg.innerY"
+          :x2="seg.elbowX"
+          :y2="seg.elbowY"
+          stroke="#6b7280"
+          stroke-width="0.8"
+        />
+        <line
+          :x1="seg.elbowX"
+          :y1="seg.elbowY"
+          :x2="seg.labelX"
+          :y2="seg.elbowY"
+          stroke="#6b7280"
+          stroke-width="0.8"
+        />
+        <text
+          :x="seg.textX"
+          :y="seg.elbowY"
+          :text-anchor="seg.anchor"
+          dominant-baseline="middle"
+          font-size="5"
+          fill="#9ca3af"
+        >{{ seg.shortLabel }}</text>
+        <text
+          :x="seg.textX"
+          :y="seg.elbowY + 6"
+          :text-anchor="seg.anchor"
+          dominant-baseline="middle"
+          font-size="4.5"
+          fill="#6b7280"
+        >{{ seg.pct.toFixed(1) }}%</text>
+      </g>
     </svg>
-    <div class="w-full flex flex-col gap-0.5 overflow-y-auto max-h-24">
-      <div
-        v-for="(seg, i) in segments"
-        :key="i"
-        class="flex items-center gap-1.5 text-xs text-gray-400"
-      >
-        <span class="w-2 h-2 rounded-full flex-shrink-0" :style="{ backgroundColor: seg.color }" />
-        <span class="truncate flex-1">{{ seg.label }}</span>
-        <span class="text-gray-500 flex-shrink-0">{{ seg.pct.toFixed(1) }}%</span>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -37,9 +63,17 @@ const props = defineProps<{
   color: string
 }>()
 
-const circumference = 2 * Math.PI * 40
+const vw = 180
+const vh = 120
+const cx = vw / 2
+const cy = vh / 2
+const r = 32
+const strokeW = 14
+const circumference = 2 * Math.PI * r
+const outerR = r + strokeW / 2 + 4
+const elbowR = outerR + 8
 
-const MAX_SEGMENTS = 12
+const MAX_SEGMENTS = 10
 
 function hexToHsl(hex: string): [number, number, number] {
   const r = Number.parseInt(hex.slice(1, 3), 16) / 255
@@ -69,6 +103,10 @@ function segmentColors(baseColor: string, count: number): string[] {
   )
 }
 
+function truncateLabel(label: string, maxLen = 14): string {
+  return label.length > maxLen ? label.slice(0, maxLen - 1) + '…' : label
+}
+
 const segments = computed(() => {
   const labels = props.result.labels
   const values = props.result.isFloat ? (props.result.floatValues ?? []) : props.result.values
@@ -87,16 +125,31 @@ const segments = computed(() => {
   let offset = 0
   return items.map((item, i) => {
     const arc = (item.value / total) * circumference
-    const seg = {
+    const midAngle = (offset + arc / 2) / circumference * 2 * Math.PI - Math.PI / 2
+    offset += arc
+
+    const innerX = cx + Math.cos(midAngle) * outerR
+    const innerY = cy + Math.sin(midAngle) * outerR
+    const elbowX = cx + Math.cos(midAngle) * elbowR
+    const elbowY = cy + Math.sin(midAngle) * elbowR
+    const isRight = elbowX >= cx
+    const labelX = isRight ? elbowX + 3 : elbowX - 3
+
+    return {
       label: item.label,
+      shortLabel: truncateLabel(item.label),
       value: item.value,
       arc,
-      offset,
+      offset: offset - arc,
       color: colors[i],
       pct: (item.value / total) * 100,
+      innerX,
+      innerY,
+      elbowX,
+      elbowY,
+      labelX,
+      anchor: isRight ? 'start' : 'end',
     }
-    offset += arc
-    return seg
   })
 })
 </script>

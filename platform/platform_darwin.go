@@ -78,6 +78,18 @@ func ChooseFolder() string {
 	return strings.TrimSpace(string(out))
 }
 
+// ChooseSaveFilePath opens a native save-file dialog via AppleScript.
+// defaultName is the suggested filename. Returns the chosen path, or "" if cancelled.
+func ChooseSaveFilePath(defaultName string) string {
+	script := `POSIX path of (choose file name with prompt "Save as:" default name "` + defaultName + `")`
+	cmd := exec.Command("osascript", "-e", script)
+	out, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
+}
+
 // quoteStringForAppleScript quotes backslashes and double quotes.
 // See "Special String Characters" in
 // https://developer.apple.com/library/archive/documentation/AppleScript/Conceptual/AppleScriptLangGuide/reference/ASLR_classes.html

@@ -888,10 +888,13 @@ func main() {
 	})
 
 	ui.MustBind("openFileInFolder", func(file string) {
-		path := filepath.Join(_rootDir, file)
-		if err := platform.OpenFolderAndSelect(path); err != nil {
-			log.Errorf("opening %s in folder: %s", path, err)
+		if err := platform.OpenFolderAndSelect(file); err != nil {
+			log.Errorf("opening %s in folder: %s", file, err)
 		}
+	})
+
+	ui.MustBind("chooseSaveFilePath", func(defaultName string) string {
+		return platform.ChooseSaveFilePath(defaultName)
 	})
 
 	ui.MustBind("chooseFolderPath", func() string {
@@ -1217,7 +1220,7 @@ func main() {
 		return string(b)
 	})
 
-	ui.MustBind("exportAllReports", func(accountId string) string {
+	ui.MustBind("exportAllReports", func(accountId, destPath string) string {
 		wrap := func(err error) error { return errors.Wrap(err, "exportAllReports") }
 		rows, err := reportdb.RetrieveAccountReports(context.Background(), accountId)
 		if err != nil {
@@ -1249,13 +1252,14 @@ func main() {
 			log.Printf("%+v", wrap(err))
 			return ""
 		}
-		fname := fmt.Sprintf("reports-export-%d.json", time.Now().Unix())
-		fpath := filepath.Join(_rootDir, fname)
-		if err := os.WriteFile(fpath, b, 0644); err != nil {
+		if destPath == "" {
+			destPath = filepath.Join(_internalDir, fmt.Sprintf("reports-export-%d.json", time.Now().Unix()))
+		}
+		if err := os.WriteFile(destPath, b, 0644); err != nil {
 			log.Printf("%+v", wrap(err))
 			return ""
 		}
-		return fpath
+		return destPath
 	})
 
 	ui.MustBind("importReport", func(accountId, jsonStr string) string {

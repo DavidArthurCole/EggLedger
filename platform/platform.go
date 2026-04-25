@@ -39,3 +39,14 @@ func ChooseFolder() string {
 	}
 	return strings.TrimSpace(string(out))
 }
+
+// ChooseSaveFilePath opens a save-file dialog via zenity if available.
+// defaultName is the suggested filename. Returns the chosen path, or "" if cancelled.
+func ChooseSaveFilePath(defaultName string) string {
+	cmd := exec.Command("zenity", "--file-selection", "--save", "--filename="+defaultName, "--title=Save As", "--confirm-overwrite")
+	out, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
+}

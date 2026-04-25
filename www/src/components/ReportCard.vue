@@ -1,12 +1,12 @@
 <template>
-  <div class="bg-dark rounded-lg border border-gray-700 flex flex-col h-full overflow-hidden" :class="{ 'border-indigo-700/50': editMode }">
-    <!-- Centered drag handle (edit mode only) -->
+  <div class="relative bg-dark rounded-lg border border-gray-700 flex flex-col h-full overflow-hidden" :class="{ 'border-indigo-700/50': editMode }">
+    <!-- Drag handle - absolutely positioned so it never shifts layout -->
     <div
       v-if="editMode"
-      class="flex justify-center items-center py-1 cursor-grab active:cursor-grabbing select-none border-b border-gray-700/40"
+      class="absolute top-1.5 left-1/2 -translate-x-1/2 z-10 cursor-grab active:cursor-grabbing select-none"
       title="Drag to reorder"
     >
-      <svg class="w-6 h-3 text-gray-500" viewBox="0 0 24 12" fill="currentColor">
+      <svg class="w-6 h-3 text-gray-600" viewBox="0 0 24 12" fill="currentColor">
         <circle cx="4" cy="3" r="1.5" />
         <circle cx="12" cy="3" r="1.5" />
         <circle cx="20" cy="3" r="1.5" />
@@ -20,10 +20,10 @@
     <div class="flex items-start justify-between gap-2 px-3 pt-3 pb-1.5 border-b border-gray-700/50">
       <div class="min-w-0 flex-1">
         <span class="text-sm font-medium text-gray-200 truncate block">{{ def.name }}</span>
-        <span class="text-xs text-gray-500">{{ subjectLabel }} - {{ modeLabel }}</span>
+        <span class="text-xs text-gray-500">{{ subjectLabel }} - {{ modeLabel }}{{ groupByLabel ? ' - ' + groupByLabel : '' }}</span>
         <span
           v-if="def.description"
-          class="text-xs text-gray-600 truncate block mt-0.5"
+          class="text-xs text-gray-500 truncate block mt-0.5"
           :title="def.description"
         >{{ def.description }}</span>
       </div>
@@ -34,33 +34,6 @@
           @mouseenter="onWeightHover"
           @mouseleave="showWeightTooltip = false"
         >{{ def.weight }}</span>
-        <template v-if="editMode">
-          <button
-            type="button"
-            class="text-gray-400 hover:text-gray-200 px-1 text-xs leading-none"
-            title="Duplicate report"
-            @click="$emit('copy')"
-          >Copy</button>
-          <button
-            type="button"
-            class="text-blue-400 hover:text-blue-300 px-1 text-xs leading-none"
-            @click="$emit('edit')"
-          >Edit</button>
-          <button
-            type="button"
-            class="text-red-500 hover:text-red-400 px-1 text-xs leading-none"
-            @click="$emit('delete')"
-          >&#10005;</button>
-          <select
-            v-if="groups.length > 0"
-            class="text-xs bg-darker border border-gray-700 rounded px-1 py-0.5 text-gray-500 focus:outline-none max-w-24"
-            :value="def.groupId"
-            @change="$emit('setGroup', ($event.target as HTMLSelectElement).value)"
-          >
-            <option value="">No group</option>
-            <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.name }}</option>
-          </select>
-        </template>
       </div>
     </div>
 
@@ -84,22 +57,54 @@
     </div>
 
     <!-- Footer -->
-    <div v-if="!editMode" class="flex justify-end gap-2 px-3 pb-2">
-      <span v-if="filteredResult && filteredResult.labels?.length > 0" class="text-xs text-gray-600 mr-auto">
-        {{ filteredResult.labels.length }} result{{ filteredResult.labels.length === 1 ? '' : 's' }}
-      </span>
-      <button
-        type="button"
-        class="text-xs text-gray-500 hover:text-gray-400 disabled:opacity-40"
-        :disabled="running"
-        @click="$emit('export')"
-      >Export</button>
-      <button
-        type="button"
-        class="text-xs text-indigo-400 hover:text-indigo-300 disabled:opacity-40"
-        :disabled="running"
-        @click="$emit('run')"
-      >Run</button>
+    <div class="flex justify-end items-center gap-2 px-3 pb-2">
+      <template v-if="editMode">
+        <select
+          v-if="groups.length > 0"
+          class="text-xs bg-darker border border-gray-700 rounded px-1 py-0.5 text-gray-500 focus:outline-none max-w-24 mr-auto"
+          :value="def.groupId"
+          @change="$emit('setGroup', ($event.target as HTMLSelectElement).value)"
+        >
+          <option value="">No group</option>
+          <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.name }}</option>
+        </select>
+        <button
+          type="button"
+          class="text-gray-400 hover:text-gray-200 px-1 text-xs leading-none"
+          title="Duplicate report"
+          @click="$emit('copy')"
+        >Copy</button>
+        <button
+          type="button"
+          class="text-blue-400 hover:text-blue-300 px-1 text-xs leading-none"
+          @click="$emit('edit')"
+        >Edit</button>
+        <button
+          type="button"
+          class="text-red-500 hover:text-red-400 px-1 text-xs leading-none"
+          @click="$emit('delete')"
+        >&#10005;</button>
+      </template>
+      <template v-else>
+        <span
+          v-if="filteredResult && filteredResult.labels?.length > 0 && def.displayMode !== 'pie' && def.displayMode !== 'bar' && def.displayMode !== 'line'"
+          class="text-xs text-gray-500 mr-auto"
+        >
+          {{ filteredResult.labels.length }} result{{ filteredResult.labels.length === 1 ? '' : 's' }}
+        </span>
+        <button
+          type="button"
+          class="text-xs text-gray-500 hover:text-gray-400 disabled:opacity-40"
+          :disabled="running"
+          @click="$emit('export')"
+        >Export</button>
+        <button
+          type="button"
+          class="text-xs text-indigo-400 hover:text-indigo-300 disabled:opacity-40"
+          :disabled="running"
+          @click="$emit('run')"
+        >Run</button>
+      </template>
     </div>
   </div>
 
@@ -167,6 +172,24 @@ const modeLabel = computed(() => {
   return props.def.mode === 'time_series' ? 'Time series' : 'Aggregate'
 })
 
+const groupByLabel = computed(() => {
+  const map: Record<string, string> = {
+    ship_type: 'Ship',
+    duration_type: 'Duration',
+    level: 'Level',
+    mission_type: 'Type',
+    mission_target: 'Target',
+    artifact_name: 'Artifact',
+    rarity: 'Rarity',
+    tier: 'Tier',
+    spec_type: 'Spec',
+    time_bucket: '',
+  }
+  const g = props.def.groupBy
+  if (!g || g === 'time_bucket') return ''
+  return map[g] ?? g
+})
+
 const weightClass = computed(() => {
   switch (props.def.weight) {
     case 'HEAVY': return 'bg-red-900/40 text-red-400'
@@ -206,37 +229,44 @@ function customBucketDays(): number {
   }
 }
 
-const weightFactors = computed((): WeightFactor[] => {
+function timeSeriesWeightFactors(): WeightFactor[] {
   const factors: WeightFactor[] = []
-  const isTimeSeries = props.def.mode === 'time_series'
-
-  factors.push({
-    label: isTimeSeries ? 'Mode: Time series (row scan)' : 'Mode: Aggregate (indexed)',
-    colorClass: isTimeSeries ? 'text-yellow-400' : 'text-green-400',
-  })
-
-  if (isTimeSeries) {
-    if (props.def.timeBucket === 'custom') {
-      const days = customBucketDays()
-      factors.push({
-        label: `Bucket window: ${days}d (${days > 90 ? 'large' : 'moderate'})`,
-        colorClass: days > 90 ? 'text-red-400' : 'text-yellow-400',
-      })
-    }
-    const hasDate = checkHasDateFilter()
+  if (props.def.timeBucket === 'custom') {
+    const days = customBucketDays()
     factors.push({
-      label: hasDate ? 'Date filter: Present (limits scan)' : 'Date filter: None (full scan)',
-      colorClass: hasDate ? 'text-green-400' : 'text-red-400',
-    })
-  } else {
-    const hasArtifact = checkHasArtifactScopeFilter()
-    factors.push({
-      label: hasArtifact ? 'Artifact scope filter: Active (join required)' : 'Artifact scope filter: None',
-      colorClass: hasArtifact ? 'text-yellow-400' : 'text-green-400',
+      label: `Bucket window: ${days}d (${days > 90 ? 'large' : 'moderate'})`,
+      colorClass: days > 90 ? 'text-red-400' : 'text-yellow-400',
     })
   }
-
+  const hasDate = checkHasDateFilter()
+  factors.push({
+    label: hasDate ? 'Date filter: Present (limits scan)' : 'Date filter: None (full scan)',
+    colorClass: hasDate ? 'text-green-400' : 'text-red-400',
+  })
   return factors
+}
+
+function aggregateWeightFactors(isArtifacts: boolean): WeightFactor[] {
+  const factors: WeightFactor[] = []
+  if (isArtifacts) {
+    factors.push({ label: 'Subject: Artifact drops (drop table scan)', colorClass: 'text-yellow-400' })
+    if (checkHasArtifactScopeFilter()) {
+      factors.push({ label: 'Artifact filter: Active (limits scan)', colorClass: 'text-green-400' })
+    }
+  } else if (checkHasArtifactScopeFilter()) {
+    factors.push({ label: 'Artifact filter: Active (cross-table join)', colorClass: 'text-yellow-400' })
+  }
+  return factors
+}
+
+const weightFactors = computed((): WeightFactor[] => {
+  const isTimeSeries = props.def.mode === 'time_series'
+  const modeLabel = isTimeSeries ? 'Mode: Time series (row scan)' : 'Mode: Aggregate (indexed)'
+  const modeColor = isTimeSeries ? 'text-yellow-400' : 'text-green-400'
+  const extra = isTimeSeries
+    ? timeSeriesWeightFactors()
+    : aggregateWeightFactors(props.def.subject === 'artifacts')
+  return [{ label: modeLabel, colorClass: modeColor }, ...extra]
 })
 
 const normalizeLabel = computed(() => {

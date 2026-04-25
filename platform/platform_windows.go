@@ -50,6 +50,18 @@ func ChooseFolder() string {
 	return strings.TrimSpace(string(out))
 }
 
+// ChooseSaveFilePath opens a native save-file dialog via PowerShell.
+// defaultName is the suggested filename. Returns the chosen path, or "" if cancelled.
+func ChooseSaveFilePath(defaultName string) string {
+	script := `Add-Type -AssemblyName System.Windows.Forms; $f=New-Object System.Windows.Forms.SaveFileDialog; $f.FileName='` + defaultName + `'; $f.Filter='JSON files (*.json)|*.json|All files (*.*)|*.*'; if($f.ShowDialog() -eq 'OK'){Write-Output $f.FileName}`
+	cmd := exec.Command("powershell", "-NoProfile", "-WindowStyle", "Hidden", "-Command", script)
+	out, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
+}
+
 // Open opens a file or URL in the default application on Windows.
 func Open(target string) error {
 	verb, _ := windows.UTF16PtrFromString("open")

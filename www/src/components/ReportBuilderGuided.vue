@@ -50,11 +50,13 @@
           <span class="flex-1">{{ opt.label }}</span>
         </button>
       </div>
-      <button
-        type="button"
-        class="text-xs text-gray-500 hover:text-gray-400 self-start"
-        @click="goBack"
-      >Back</button>
+      <div class="flex justify-center mt-1">
+        <button
+          type="button"
+          class="px-4 py-1.5 rounded border border-gray-600 bg-darker text-sm text-gray-300 hover:bg-gray-700 hover:text-gray-200"
+          @click="goBack"
+        >Back</button>
+      </div>
     </div>
 
     <!-- Step 3: Any quick filters? -->
@@ -75,17 +77,17 @@
           {{ qf.label }}
         </label>
       </div>
-      <div class="flex gap-2">
+      <div class="flex justify-center gap-3 mt-1">
         <button
           type="button"
-          class="text-xs text-gray-500 hover:text-gray-400"
+          class="px-4 py-1.5 rounded border border-gray-600 bg-darker text-sm text-gray-300 hover:bg-gray-700 hover:text-gray-200"
           @click="goBack"
-        >← Back</button>
+        >Back</button>
         <button
           type="button"
-          class="text-xs text-indigo-400 hover:text-indigo-300"
+          class="px-4 py-1.5 rounded border border-indigo-600 bg-indigo-700 text-sm text-white hover:bg-indigo-600"
           @click="step = 4"
-        >Next →</button>
+        >Next</button>
       </div>
     </div>
 
@@ -99,15 +101,15 @@
         placeholder="Report name"
         @keydown.enter="handleApply"
       />
-      <div class="flex gap-2">
+      <div class="flex justify-center gap-3 mt-1">
         <button
           type="button"
-          class="text-xs text-gray-500 hover:text-gray-400"
+          class="px-4 py-1.5 rounded border border-gray-600 bg-darker text-sm text-gray-300 hover:bg-gray-700 hover:text-gray-200"
           @click="goBack"
-        >← Back</button>
+        >Back</button>
         <button
           type="button"
-          class="px-3 py-1.5 rounded border border-indigo-600 bg-indigo-700 text-xs text-white hover:bg-indigo-600 disabled:opacity-50"
+          class="px-4 py-1.5 rounded border border-indigo-600 bg-indigo-700 text-sm text-white hover:bg-indigo-600 disabled:opacity-50"
           :disabled="!reportName.trim()"
           @click="handleApply"
         >Create Report</button>

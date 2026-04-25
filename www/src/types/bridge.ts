@@ -372,7 +372,8 @@ declare global {
   function reorderReports(idsJSON: string): Promise<boolean>
   function getReportBackfillStatus(): Promise<string>
   function exportReport(id: string): Promise<string>
-  function exportAllReports(accountId: string): Promise<string>
+  function exportAllReports(accountId: string, destPath: string): Promise<string>
+  function chooseSaveFilePath(defaultName: string): Promise<string>
   function importReport(accountId: string, jsonStr: string): Promise<string>
   function getAccountGroups(accountId: string): Promise<string>
   function createReportGroup(accountId: string, name: string): Promise<string>

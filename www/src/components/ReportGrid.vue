@@ -167,7 +167,10 @@ async function handleCopy(def: ReportDefinition) {
 
 async function handleExportAll() {
   exportAllMessage.value = null
-  const path = await globalThis.exportAllReports(props.accountId)
+  const defaultName = `reports-export-${Math.floor(Date.now() / 1000)}.json`
+  const destPath = await globalThis.chooseSaveFilePath(defaultName)
+  if (!destPath) return
+  const path = await globalThis.exportAllReports(props.accountId, destPath)
   if (path) {
     exportAllMessage.value = `Saved to ${path}`
   } else {

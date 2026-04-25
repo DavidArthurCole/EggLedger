@@ -174,7 +174,10 @@ async function handleDeleteGroup(id: string) {
 
 async function handleExportAll() {
   if (!loadedAccountId.value) return
-  const path = await globalThis.exportAllReports(loadedAccountId.value)
+  const defaultName = `reports-export-${Math.floor(Date.now() / 1000)}.json`
+  const destPath = await globalThis.chooseSaveFilePath(defaultName)
+  if (!destPath) return
+  const path = await globalThis.exportAllReports(loadedAccountId.value, destPath)
   if (path) globalThis.openFileInFolder(path)
 }
 
