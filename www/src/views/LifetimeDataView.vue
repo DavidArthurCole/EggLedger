@@ -22,15 +22,6 @@
       @input="(val: string) => (dropSearchTerm = val)"
     />
 
-    <!-- Account selector -->
-    <DatabaseAccountSelector
-      v-if="doesDataExist"
-      :accounts="objectedExistingData"
-      button-label="View"
-      :is-loading="lifetimeDataBeingLoaded"
-      style="margin-top: 0rem !important"
-      @submit="onAccountSelected"
-    />
 
     <!-- Lifetime progress -->
     <SegmentedProgressBar
@@ -189,6 +180,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useAppState } from '../composables/useAppState'
 import { useMennoData } from '../composables/useMennoData'
 import { useFilters } from '../composables/useFilters'
+import { useActiveAccount } from '../composables/useActiveAccount'
 import type {
   DatabaseMission,
   MissionDrop,
@@ -198,7 +190,6 @@ import type {
 } from '../types/bridge'
 import FullFilter from '../components/FullFilter.vue'
 import NoDataFallback from '../components/NoDataFallback.vue'
-import DatabaseAccountSelector from '../components/DatabaseAccountSelector.vue'
 import SearchOverSelector from '../components/SearchOverSelector.vue'
 import DropDisplayContainer, { type LedgerData } from '../components/DropDisplayContainer.vue'
 import SegmentedProgressBar, { type ProgressSegment } from '../components/SegmentedProgressBar.vue'
@@ -207,6 +198,7 @@ import SegmentedProgressBar, { type ProgressSegment } from '../components/Segmen
 
 const { existingData, activeTab } = useAppState()
 const { mennoDataLoaded, getMennoData, load: loadMennoData } = useMennoData()
+const { activeAccountId } = useActiveAccount()
 
 // Types local to this view
 
@@ -252,23 +244,7 @@ interface LifetimeData extends LedgerData {
   ingredients: LifetimeDrop[]
 }
 
-// Account selector state
-
-const selectedLifetimeAccount = ref<string | null>(null)
-
 const doesDataExist = computed(() => existingData.value.length > 0)
-
-const objectedExistingData = computed(() => {
-  return existingData.value
-    .map((account) => ({
-      id: account.id,
-      nickname: account.nickname,
-      missionCount: account.missionCount,
-      ebString: account.ebString && account.ebString !== '' ? account.ebString : '???',
-      accountColor: account.accountColor,
-    }))
-    .sort((a, b) => b.missionCount - a.missionCount)
-})
 
 // Lifetime load state
 
@@ -517,7 +493,7 @@ const {
   openTargetFilterMenu, closeTargetFilterMenu, selectTargetFilter,
 } = useFilters({
   idSuffix: 'lifetime',
-  accountId: selectedLifetimeAccount,
+  accountId: activeAccountId,
   durationConfigs, possibleTargets, maxQuality, artifactConfigs,
 })
 
@@ -626,7 +602,7 @@ function lifetimeHasExactlyOneConfiguration(firstMatches: number[] | null): bool
 
 // eslint-disable-next-line sonarjs/cognitive-complexity
 async function viewLifetimeDataOfEid(filterLoad: boolean) {
-  if (!selectedLifetimeAccount.value) return
+  if (!activeAccountId.value) return
   lifetimeDataBeingFiltered.value = filterLoad
 
   const start = performance.now()
@@ -635,7 +611,7 @@ async function viewLifetimeDataOfEid(filterLoad: boolean) {
   // Fetch mission IDs with a 2.5 second timeout
   const idsJson: string[] | null = await (async () => {
     try {
-      const missionIdsPromise = globalThis.getMissionIds(selectedLifetimeAccount.value!)
+      const missionIdsPromise = globalThis.getMissionIds(activeAccountId.value!)
       const timeoutPromise = new Promise<null>((resolve) => {
         setTimeout(() => resolve(null), 2500)
       })
@@ -657,7 +633,7 @@ async function viewLifetimeDataOfEid(filterLoad: boolean) {
   }
 
   const missions: DatabaseMission[] = shouldFilter
-    ? (await globalThis.viewMissionsOfEid(selectedLifetimeAccount.value!)) ?? []
+    ? (await globalThis.viewMissionsOfEid(activeAccountId.value!)) ?? []
     : []
 
   const idFilter = async (arr: string[], predicate: (id: string) => Promise<boolean>): Promise<string[]> =>
@@ -697,8 +673,8 @@ async function viewLifetimeDataOfEid(filterLoad: boolean) {
 
   // Bulk-fetch all drops and missions in two round-trips instead of N×2 relay calls
   const [dropCache, missionCache] = await Promise.all([
-    globalThis.getAllPlayerDrops(selectedLifetimeAccount.value!),
-    globalThis.viewMissionsOfEid(selectedLifetimeAccount.value!),
+    globalThis.getAllPlayerDrops(activeAccountId.value!),
+    globalThis.viewMissionsOfEid(activeAccountId.value!),
   ])
 
   let firstMatches: number[] | null = null
@@ -706,7 +682,7 @@ async function viewLifetimeDataOfEid(filterLoad: boolean) {
   let pos = 0
   for (const id of ids) {
     pos++
-    const mission = await getSpecificMissionDataForLifetime(selectedLifetimeAccount.value!, id, dropCache, missionCache)
+    const mission = await getSpecificMissionDataForLifetime(activeAccountId.value!, id, dropCache, missionCache)
     if (mission != null) {
       const mi = mission.missionInfo
       if (firstMatches == null) {
@@ -760,11 +736,12 @@ async function viewLifetimeDataOfEid(filterLoad: boolean) {
   lifetimeState.value = LifetimeLoadState.Success
 }
 
-async function onAccountSelected(id: string) {
-  selectedLifetimeAccount.value = id
-  clearFilter()
-  await viewLifetimeDataOfEid(false)
-}
+watch(activeAccountId, (id) => {
+  if (id) {
+    clearFilter()
+    void viewLifetimeDataOfEid(false)
+  }
+}, { immediate: true })
 
 async function onFilterSubmit(event: Event) {
   event.preventDefault()

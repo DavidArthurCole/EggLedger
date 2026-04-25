@@ -31,6 +31,26 @@
         </div>
       </div>
 
+      <!-- Update banner -->
+      <div v-if="appHasUpdate" class="flex items-center gap-3 p-3 rounded-lg bg-blue-950/40 border border-blue-700/40 mt-2">
+        <div class="flex-1 space-y-1">
+          <p class="text-blue-200/80 text-xs font-semibold">Update v{{ appHasUpdate }} available</p>
+          <div v-if="updateInProgress">
+            <p class="text-blue-200/60 text-xs">
+              Downloading...
+              <span v-if="updateProgress.total > 0">{{ Math.round(updateProgress.downloaded / updateProgress.total * 100) }}%</span>
+            </p>
+          </div>
+          <p v-if="updateError" class="text-red-400 text-xs">{{ updateError }}</p>
+        </div>
+        <button
+          v-if="!updateInProgress"
+          type="button"
+          class="flex-shrink-0 inline-flex items-center px-3 py-1.5 rounded-md bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition-colors"
+          @click="startUpdate"
+        >Update now</button>
+      </div>
+
       <!-- Pane grid -->
       <div class="grid grid-cols-2 gap-3 mt-2">
 
@@ -140,6 +160,9 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useAppState } from '../composables/useAppState'
+
+const { appHasUpdate } = useAppState()
 
 const COFFEE_DISMISS_KEY = 'eggl_coffee_dismissed'
 const coffeeDismissed = ref(localStorage.getItem(COFFEE_DISMISS_KEY) === '1')
@@ -147,5 +170,25 @@ const coffeeDismissed = ref(localStorage.getItem(COFFEE_DISMISS_KEY) === '1')
 function dismissCoffee() {
   localStorage.setItem(COFFEE_DISMISS_KEY, '1')
   coffeeDismissed.value = true
+}
+
+const updateInProgress = ref(false)
+const updateProgress = ref({ downloaded: 0, total: 0 })
+const updateError = ref('')
+
+async function startUpdate() {
+  if (!appHasUpdate.value) return
+  updateInProgress.value = true
+  updateError.value = ''
+  globalThis.updateDownloadProgress = (downloaded, total) => {
+    updateProgress.value = { downloaded, total }
+  }
+  try {
+    await globalThis.downloadAndInstallUpdate(appHasUpdate.value)
+    // App will restart - no further action needed
+  } catch (e: unknown) {
+    updateError.value = e instanceof Error ? e.message : String(e)
+    updateInProgress.value = false
+  }
 }
 </script>

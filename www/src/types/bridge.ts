@@ -308,6 +308,9 @@ declare global {
   // Accounts
   function knownAccounts(): Promise<Account[]>
   function getExistingData(): Promise<DatabaseAccount[]>
+  function addAccount(eid: string): Promise<Account>
+  function getActiveAccountId(): Promise<string>
+  function setActiveAccountId(id: string): Promise<void>
 
   // Missions
   function getMaxQuality(): Promise<number>

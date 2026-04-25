@@ -17,6 +17,7 @@ type AppStorage struct {
 	sync.Mutex
 
 	KnownAccounts              []Account `json:"known_accounts"`
+	ActiveAccountId            string    `json:"active_account_id"`
 	LastMennoDataRefreshAt     time.Time `json:"last_menno_data_refresh_at"`
 	LastUpdateCheckAt          time.Time `json:"last_update_check_at"`
 	KnownLatestReleaseNotes    string    `json:"known_latest_release_notes"`
@@ -120,6 +121,9 @@ func (s *AppStorage) loadFromDB() {
 		if err := json.Unmarshal([]byte(v), &s.KnownAccounts); err != nil {
 			log.Warnf("storage: failed to parse known_accounts: %s", err)
 		}
+	}
+	if v, ok := settings["active_account_id"]; ok {
+		s.ActiveAccountId = v
 	}
 	if v, ok := settings["last_menno_data_refresh_at"]; ok && v != "" {
 		if t, err := time.Parse(time.RFC3339Nano, v); err == nil {
@@ -240,6 +244,7 @@ func (s *AppStorage) persistAllToDB() {
 	accountsJSON, _ := json.Marshal(s.KnownAccounts)
 	settings := map[string]string{
 		"known_accounts":                string(accountsJSON),
+		"active_account_id":             s.ActiveAccountId,
 		"last_menno_data_refresh_at":    s.LastMennoDataRefreshAt.Format(time.RFC3339Nano),
 		"last_update_check_at":          s.LastUpdateCheckAt.Format(time.RFC3339Nano),
 		"known_latest_release_notes":    s.KnownLatestReleaseNotes,
@@ -656,4 +661,17 @@ func (s *AppStorage) GetLifetimeShowExpectedTotals() bool {
 	s.Lock()
 	defer s.Unlock()
 	return s.LifetimeShowExpectedTotals
+}
+
+func (s *AppStorage) GetActiveAccountId() string {
+	s.Lock()
+	defer s.Unlock()
+	return s.ActiveAccountId
+}
+
+func (s *AppStorage) SetActiveAccountId(id string) {
+	s.Lock()
+	s.ActiveAccountId = id
+	s.Unlock()
+	go s.dbSet("active_account_id", id)
 }

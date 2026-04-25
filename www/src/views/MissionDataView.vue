@@ -44,14 +44,6 @@
       @close="closeMultiMissionOverlay"
     />
 
-    <!-- Account selector -->
-    <DatabaseAccountSelector
-      v-if="doesDataExist"
-      :accounts="objectedExistingData"
-      button-label="View"
-      :is-loading="eidMissionsBeingLoaded"
-      @submit="onAccountSelected"
-    />
 
     <!-- Mission load progress -->
     <SegmentedProgressBar
@@ -224,6 +216,7 @@ import { useAppState } from '../composables/useAppState'
 import { useMennoData } from '../composables/useMennoData'
 import { useFetch } from '../composables/useFetch'
 import { useFilters } from '../composables/useFilters'
+import { useActiveAccount } from '../composables/useActiveAccount'
 import { collapseOlderSections } from '../composables/useSettings'
 import {
   type DropLike,
@@ -242,7 +235,6 @@ import type {
 import FullFilter from '../components/FullFilter.vue'
 import SearchOverSelector from '../components/SearchOverSelector.vue'
 import NoDataFallback from '../components/NoDataFallback.vue'
-import DatabaseAccountSelector from '../components/DatabaseAccountSelector.vue'
 import SegmentedProgressBar, { type ProgressSegment } from '../components/SegmentedProgressBar.vue'
 import OptionsPanel from '../components/OptionsPanel.vue'
 import MissionResultsTable from '../components/MissionResultsTable.vue'
@@ -254,10 +246,9 @@ import type { ViewMissionData, InnerDrop, MennoConfigItem } from '../types/missi
 const { existingData, activeTab } = useAppState()
 const { mennoDataLoaded, getMennoData, load: loadMennoData } = useMennoData()
 const { isFetching } = useFetch()
+const { activeAccountId } = useActiveAccount()
 
-// Account selector state
-
-const selectedMissionAccount = ref<string | null>(null)
+// Account load state
 
 const eidMissionsBeingLoaded = ref(false)
 const loadedEid = ref<string | null>(null)
@@ -282,23 +273,6 @@ const missionLoadStatusText = computed(() =>
 )
 
 const doesDataExist = computed(() => existingData.value.length > 0)
-
-const objectedExistingData = computed(() => {
-  return existingData.value
-    .map((account) => ({
-      id: account.id,
-      nickname: account.nickname,
-      missionCount: account.missionCount,
-      ebString: account.ebString && account.ebString !== '' ? account.ebString : '???',
-      accountColor: account.accountColor,
-    }))
-    .sort((a, b) => b.missionCount - a.missionCount)
-})
-
-function accountById(id: string | null) {
-  if (id == null) return null
-  return objectedExistingData.value.find((acc) => acc.id === id) ?? null
-}
 
 // Mission list + filter result state
 
@@ -479,22 +453,20 @@ function openMultiMissionOverlay() {
 
 // Fetch mission + view logic
 
-async function onAccountSelected(id: string) {
-  selectedMissionAccount.value = id
+async function loadMissions(id: string) {
   clearFilter()
-  await doViewMissionsOfEid()
-}
-
-async function doViewMissionsOfEid() {
-  if (!selectedMissionAccount.value) return
   filterApplyTime.value = ''
   multiViewFreeSelectIds.value = []
   eidMissionsBeingLoaded.value = true
-  allLoadedMissions.value = await globalThis.viewMissionsOfEid(selectedMissionAccount.value)
+  allLoadedMissions.value = await globalThis.viewMissionsOfEid(id)
   filteredMissions.value = allLoadedMissions.value
-  loadedEid.value = selectedMissionAccount.value
+  loadedEid.value = id
   eidMissionsBeingLoaded.value = false
 }
+
+watch(activeAccountId, (id) => {
+  if (id) void loadMissions(id)
+}, { immediate: true })
 
 async function getSpecificMissionData(eid: string, missionId: string, extendedInfo: boolean, dropCache: Record<string, MissionDrop[]> | null = null, knownMissionInfo: DatabaseMission | null = null): Promise<ViewMissionData | null> {
   const missionInfo = knownMissionInfo ?? await globalThis.getMissionInfo(eid, missionId)

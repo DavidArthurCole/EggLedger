@@ -484,6 +484,10 @@ func main() {
 	flag.BoolVar(&_forceUpdateCheck, "force-update-check", false, "bypass the 12-hour update-check cooldown")
 	flag.BoolVar(&_debugCompression, "debug-compression", false, "log Content-Encoding headers on API responses to check if the server is gzip-compressing")
 	flag.Parse()
+	if _replacePID != 0 && _replacePath != "" {
+		runReplaceMode(_replacePID, _replacePath)
+		return
+	}
 	api.DebugCompression = _debugCompression
 
 	if _devMode {
@@ -530,6 +534,8 @@ func main() {
 	}
 	ui := UI{u}
 	defer ui.Close()
+	_ui = ui
+	ui.MustBind("downloadAndInstallUpdate", handleDownloadAndInstallUpdate)
 
 	_updateKnownAccounts = func(accounts []Account) {
 		ui.pushJSON("updateKnownAccounts", accounts)
@@ -954,6 +960,53 @@ func main() {
 		}
 		ui.Close()
 		return nil
+	})
+
+	ui.MustBind("addAccount", func(eid string) (Account, error) {
+		action := "addAccount"
+		wrap := func(err error) error { return errors.Wrap(err, action) }
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		defer cancel()
+		resp, err := fetchFirstContactWithContext(ctx, eid)
+		if err != nil {
+			return Account{}, wrap(err)
+		}
+		backup := resp.GetBackup()
+		nickname := backup.GetUserName()
+		eb := backup.GetEarningsBonus()
+		roleColor, _, ebAddendum, eb, precision := RoleFromEB(eb)
+		ebString := fmt.Sprintf(fmt.Sprintf("%%.%df", precision), eb) + ebAddendum
+		game := backup.GetGame()
+		seSuffix := AbbreviateFloat(game.GetSoulEggsD())
+		peCount := int(game.GetEggsOfProphecy())
+		totalTE := 0
+		if virtue := backup.GetVirtue(); virtue != nil {
+			for _, v := range virtue.GetEovEarned() {
+				totalTE += int(v)
+			}
+		}
+		acct := Account{
+			Id:           eid,
+			Nickname:     nickname,
+			EBString:     ebString,
+			AccountColor: roleColor,
+			SeString:     seSuffix,
+			PeCount:      peCount,
+			TeCount:      totalTE,
+		}
+		_storage.AddKnownAccount(acct)
+		_storage.Lock()
+		_updateKnownAccounts(_storage.KnownAccounts)
+		_storage.Unlock()
+		return acct, nil
+	})
+
+	ui.MustBind("getActiveAccountId", func() string {
+		return _storage.GetActiveAccountId()
+	})
+
+	ui.MustBind("setActiveAccountId", func(id string) {
+		_storage.SetActiveAccountId(id)
 	})
 
 	ui.MustBind("openURL", func(url string) {

@@ -1,6 +1,9 @@
 <template>
   <div v-show="mounted" class="h-full flex flex-col space-y-3 pb-3 bg-darker">
-    <TabBar :tabs="tabList" v-model:active-tab="activeTab" />
+    <div class="flex items-center flex-shrink-0">
+      <TabBar :tabs="tabList" v-model:active-tab="activeTab" class="flex-1" />
+      <GlobalAccountHeader class="flex-shrink-0 pr-3" />
+    </div>
 
     <LedgerView v-show="activeTab === 'Ledger'" />
     <MissionDataView v-show="activeTab === 'Mission Data'" />
@@ -48,8 +51,10 @@ import AboutView from './views/AboutView.vue'
 import ReportsView from './views/ReportsView.vue'
 import UpdateModal from './components/modals/UpdateModal.vue'
 import MennoLoadingModal from './components/modals/MennoLoadingModal.vue'
+import GlobalAccountHeader from './components/GlobalAccountHeader.vue'
 import { useAppState } from './composables/useAppState'
 import { useMennoData } from './composables/useMennoData'
+import { useActiveAccount } from './composables/useActiveAccount'
 import { registerShortcuts } from './shortcuts'
 
 const {
@@ -62,6 +67,8 @@ const {
   initAppState,
 } = useAppState()
 
+const { initActiveAccount } = useActiveAccount()
+
 const { mennoRefreshing, mennoIsAutoRefresh, mennoProgress, checkRefreshNeeded, refresh, load } = useMennoData()
 
 const tabList = ['Ledger', 'Mission Data', 'Lifetime Data', 'Reports', 'Settings', 'About']
@@ -72,6 +79,7 @@ const apiStaleBannerDismissed = ref(false)
 
 onMounted(async () => {
   await initAppState()
+  await initActiveAccount()
   registerShortcuts()
   mounted.value = true
 

@@ -9,14 +9,6 @@
       :is-spinning="!backfillStatus.done"
     />
 
-    <!-- Account selector -->
-    <DatabaseAccountSelector
-      v-if="doesDataExist"
-      :accounts="existingData"
-      button-label="Load"
-      style="margin-top: 0rem !important"
-      @submit="onViewSubmit"
-    />
 
     <div v-if="!doesDataExist" class="flex-1 flex items-center justify-center">
       <p class="text-xs text-gray-500">No mission data found. Fetch data on the Ledger tab first.</p>
@@ -108,17 +100,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import ReportGrid from '../components/ReportGrid.vue'
-import DatabaseAccountSelector from '../components/DatabaseAccountSelector.vue'
 import SegmentedProgressBar, { type ProgressSegment } from '../components/SegmentedProgressBar.vue'
 import { useAppState } from '../composables/useAppState'
+import { useActiveAccount } from '../composables/useActiveAccount'
 import { useReports } from '../composables/useReports'
 import { useReportGroups } from '../composables/useReportGroups'
 import { readImportFile } from '../utils/reportIO'
 import type { ReportGroup } from '../types/bridge'
 
 const { existingData } = useAppState()
+const { activeAccountId } = useActiveAccount()
 const { backfillStatus, loadReports, refreshBackfillStatus } = useReports()
 const { groups, loadGroups, createGroup, renameGroup, deleteGroup } = useReportGroups()
 
@@ -139,12 +132,16 @@ const backfillSegments = computed<ProgressSegment[]>(() => [{
   pulsing: !backfillStatus.value.done,
 }])
 
-async function onViewSubmit(id: string) {
+async function loadAccountReports(id: string) {
   loadedAccountId.value = id
   await loadReports(id)
   await loadGroups(id)
   selectedGroupId.value = null
 }
+
+watch(activeAccountId, (id) => {
+  if (id) void loadAccountReports(id)
+}, { immediate: true })
 
 async function handleCreateGroup() {
   const name = newGroupName.value.trim()
