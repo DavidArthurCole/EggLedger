@@ -138,6 +138,21 @@
       </div>
     </div>
 
+    <!-- Load button (shown before first load) -->
+    <div
+      v-if="doesDataExist && lifetimeData == null && !lifetimeDataBeingLoaded"
+      class="flex items-center justify-center mt-4"
+    >
+      <button
+        type="button"
+        class="px-6 py-2 text-base font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-500 active:bg-blue-700 disabled:opacity-50"
+        :disabled="!activeAccountId"
+        @click="void viewLifetimeDataOfEid(false)"
+      >
+        Load Lifetime Data
+      </button>
+    </div>
+
     <!-- Data display -->
     <div
       v-if="doesDataExist"
@@ -468,10 +483,13 @@ function reSortLifetime() {
         return sortGroupAlreadyCombed
     }
   })()
-  ld.artifacts = sortFn([...ld.artifacts] as unknown as DropLike[]) as unknown as LifetimeDrop[]
-  ld.stones = sortFn([...ld.stones] as unknown as DropLike[]) as unknown as LifetimeDrop[]
-  ld.stoneFragments = sortFn([...ld.stoneFragments] as unknown as DropLike[]) as unknown as LifetimeDrop[]
-  ld.ingredients = sortFn([...ld.ingredients] as unknown as DropLike[]) as unknown as LifetimeDrop[]
+  lifetimeData.value = {
+    ...ld,
+    artifacts: sortFn([...ld.artifacts] as unknown as DropLike[]) as unknown as LifetimeDrop[],
+    stones: sortFn([...ld.stones] as unknown as DropLike[]) as unknown as LifetimeDrop[],
+    stoneFragments: sortFn([...ld.stoneFragments] as unknown as DropLike[]) as unknown as LifetimeDrop[],
+    ingredients: sortFn([...ld.ingredients] as unknown as DropLike[]) as unknown as LifetimeDrop[],
+  }
 }
 
 // Artifact/mission configs (loaded in onMounted, passed to useFilters)
@@ -736,12 +754,11 @@ async function viewLifetimeDataOfEid(filterLoad: boolean) {
   lifetimeState.value = LifetimeLoadState.Success
 }
 
-watch(activeAccountId, (id) => {
-  if (id) {
-    clearFilter()
-    void viewLifetimeDataOfEid(false)
-  }
-}, { immediate: true })
+watch(activeAccountId, () => {
+  clearFilter()
+  lifetimeData.value = null
+  lifetimeState.value = LifetimeLoadState.Idle
+})
 
 async function onFilterSubmit(event: Event) {
   event.preventDefault()

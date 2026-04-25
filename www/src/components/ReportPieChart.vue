@@ -1,6 +1,6 @@
 <template>
-  <div class="flex flex-col items-center gap-1 p-1 w-full h-full">
-    <svg :viewBox="`0 0 ${vw} ${vh}`" class="w-full flex-1 min-h-0 overflow-visible">
+  <div class="w-full h-full">
+    <svg :viewBox="`0 0 ${vw} ${vh}`" class="w-full h-full" preserveAspectRatio="xMidYMid meet">
       <defs>
         <linearGradient
           v-for="(seg, i) in segments"
@@ -28,7 +28,7 @@
         :stroke-width="strokeW"
         :stroke-dasharray="`${seg.arc} ${circumference - seg.arc}`"
         :stroke-dashoffset="`${circumference - seg.offset}`"
-        style="transform-origin: center; transform: rotate(-90deg)"
+        style="transform-box: fill-box; transform-origin: center; transform: rotate(-90deg)"
       />
       <!-- Connector lines and labels -->
       <g v-for="(seg, i) in segments" :key="'lbl-' + i">
@@ -90,17 +90,17 @@ const props = defineProps<{
 }>()
 
 const vw = 260
-const vh = 200
+const vh = 220
 const cx = vw / 2
 const cy = vh / 2
-const r = 32
-const strokeW = 14
+const r = 50
+const strokeW = 18
 const circumference = 2 * Math.PI * r
-const outerR = r + strokeW / 2 + 4
-const elbowR = outerR + 8
+const outerR = r + strokeW / 2 + 3
+const elbowR = outerR + 16
 
 const MAX_SEGMENTS = 10
-const MIN_LABEL_SPACING = 8
+const MIN_LABEL_SPACING = 14
 
 function hexToHsl(hex: string): [number, number, number] {
   const r = Number.parseInt(hex.slice(1, 3), 16) / 255
@@ -193,7 +193,7 @@ const segments = computed(() => {
     const elbowX = cx + Math.cos(midAngle) * elbowR
     const rawElbowY = cy + Math.sin(midAngle) * elbowR
     const isRight = elbowX >= cx
-    const labelX = isRight ? elbowX + 3 : elbowX - 3
+    const labelX = isRight ? elbowX + 10 : elbowX - 10
     const color = perLabel[item.label] ?? autoColors[i]
 
     return {
@@ -209,12 +209,13 @@ const segments = computed(() => {
       elbowX,
       rawElbowY,
       labelX,
-      textX: isRight ? labelX + 1 : labelX - 1,
+      textX: isRight ? labelX + 1.5 : labelX - 1.5,
       anchor: isRight ? 'start' : 'end',
+      isRight,
     }
   })
 
-  // Spread labels on left and right sides independently to avoid cross-side interference
+  // Split into left and right groups, sort each by rawElbowY
   const leftIndices = raw.map((_, i) => i).filter(i => raw[i].elbowX < cx)
   const rightIndices = raw.map((_, i) => i).filter(i => raw[i].elbowX >= cx)
 
@@ -225,8 +226,12 @@ const segments = computed(() => {
   const rightSpread = spreadLabelPositions(rightOrder.map(i => raw[i].rawElbowY))
 
   const labelYMap: Record<number, number> = {}
-  leftOrder.forEach((segIdx, sortPos) => { labelYMap[segIdx] = leftSpread[sortPos] })
-  rightOrder.forEach((segIdx, sortPos) => { labelYMap[segIdx] = rightSpread[sortPos] })
+  leftOrder.forEach((segIdx, sortPos) => {
+    labelYMap[segIdx] = Math.max(8, Math.min(vh - 8, leftSpread[sortPos]))
+  })
+  rightOrder.forEach((segIdx, sortPos) => {
+    labelYMap[segIdx] = Math.max(8, Math.min(vh - 8, rightSpread[sortPos]))
+  })
 
   return raw.map((seg, i) => ({
     ...seg,
