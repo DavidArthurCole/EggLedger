@@ -121,8 +121,8 @@ func handleGetAllPlayerDrops(playerId string) map[string][]MissionDrop {
 				Id:       int32(spec.GetName()),
 				Name:     ei.ArtifactSpec_Name_name[int32(spec.GetName())],
 				GameName: spec.CasedName(),
-				Level:    int32(*drop.Spec.Level),
-				Rarity:   int32(*drop.Spec.Rarity),
+				Level:    int32(spec.GetLevel()),
+				Rarity:   int32(spec.GetRarity()),
 				Quality:  foundQuality,
 				IVOrder:  int32(spec.Name.InventoryVisualizerOrder()),
 			}
@@ -168,8 +168,8 @@ func handleGetShipDrops(playerId, missionId string) []MissionDrop {
 			Id:       int32(spec.GetName()),
 			Name:     ei.ArtifactSpec_Name_name[int32(spec.GetName())],
 			GameName: spec.CasedName(),
-			Level:    int32(*drop.Spec.Level),
-			Rarity:   int32(*drop.Spec.Rarity),
+			Level:    int32(spec.GetLevel()),
+			Rarity:   int32(spec.GetRarity()),
 			Quality:  foundQuality,
 			IVOrder:  int32(spec.Name.InventoryVisualizerOrder()),
 		}
