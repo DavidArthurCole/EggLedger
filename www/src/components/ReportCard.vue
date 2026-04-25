@@ -98,10 +98,16 @@
     <Transition name="tooltip-fade">
       <div
         v-if="showWeightTooltip"
-        class="tooltip-floating text-sm"
+        class="tooltip-floating"
         :style="{ left: tooltipX + 'px', top: tooltipY + 'px' }"
       >
-        {{ weightDescription }}
+        <div class="text-xs font-semibold text-gray-300 mb-1">{{ def.weight }} - weight factors</div>
+        <div
+          v-for="(factor, i) in weightFactors"
+          :key="i"
+          class="text-xs"
+          :class="factor.colorClass"
+        >{{ factor.label }}</div>
       </div>
     </Transition>
   </Teleport>
@@ -109,7 +115,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import type { ReportDefinition, ReportResult, ReportGroup } from '../types/bridge'
+import type { ReportDefinition, ReportFilterCondition, ReportResult, ReportGroup } from '../types/bridge'
 import ReportBarChart from './ReportBarChart.vue'
 import ReportLineChart from './ReportLineChart.vue'
 import ReportPieChart from './ReportPieChart.vue'
@@ -159,15 +165,68 @@ const weightClass = computed(() => {
   }
 })
 
-const weightDescription = computed(() => {
-  switch (props.def.weight) {
-    case 'HEAVY':
-      return 'HEAVY: Full time-series scan across all mission data (no date filter). May be slow with many missions.'
-    case 'MEDIUM':
-      return 'MEDIUM: Artifact drop query or time-series with date filter. Moderate data volume.'
-    default:
-      return 'LOW: Aggregate query on indexed missions table. Fast.'
+interface WeightFactor {
+  label: string
+  colorClass: string
+}
+
+function checkHasDateFilter(): boolean {
+  const check = (c: ReportFilterCondition) => c.topLevel === 'launchDT' || c.topLevel === 'returnDT'
+  return (
+    props.def.filters.and.some(check) ||
+    props.def.filters.or.some(g => g.some(check))
+  )
+}
+
+function checkHasArtifactScopeFilter(): boolean {
+  const check = (c: ReportFilterCondition) => c.topLevel.startsWith('artifact_')
+  return (
+    props.def.filters.and.some(check) ||
+    props.def.filters.or.some(g => g.some(check))
+  )
+}
+
+function customBucketDays(): number {
+  const n = props.def.customBucketN
+  switch (props.def.customBucketUnit) {
+    case 'day': return n
+    case 'week': return n * 7
+    case 'month': return n * 30
+    default: return n
   }
+}
+
+const weightFactors = computed((): WeightFactor[] => {
+  const factors: WeightFactor[] = []
+  const isTimeSeries = props.def.mode === 'time_series'
+
+  factors.push({
+    label: isTimeSeries ? 'Mode: Time series (row scan)' : 'Mode: Aggregate (indexed)',
+    colorClass: isTimeSeries ? 'text-yellow-400' : 'text-green-400',
+  })
+
+  if (isTimeSeries) {
+    if (props.def.timeBucket === 'custom') {
+      const days = customBucketDays()
+      factors.push({
+        label: `Bucket window: ${days}d (${days > 90 ? 'large' : 'moderate'})`,
+        colorClass: days > 90 ? 'text-red-400' : 'text-yellow-400',
+      })
+    }
+    const hasDate = checkHasDateFilter()
+    factors.push({
+      label: hasDate ? 'Date filter: Present (limits scan)' : 'Date filter: None (full scan)',
+      colorClass: hasDate ? 'text-green-400' : 'text-red-400',
+    })
+  } else {
+    const hasArtifact = checkHasArtifactScopeFilter()
+    factors.push({
+      label: hasArtifact ? 'Artifact scope filter: Active (join required)' : 'Artifact scope filter: None',
+      colorClass: hasArtifact ? 'text-yellow-400' : 'text-green-400',
+    })
+  }
+
+  return factors
 })
 
 const normalizeLabel = computed(() => {

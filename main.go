@@ -565,6 +565,31 @@ func main() {
 		ui.pushJSON("updateProcesses", snapshots)
 	}
 	_processRegistry = NewProcessRegistry(updateProcesses)
+
+	_onDiscordAuthComplete = func(connected bool, username string) {
+		encoded, err := json.Marshal(username)
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		ui.Eval(fmt.Sprintf("window.onDiscordAuthComplete(%t, %s)", connected, encoded))
+	}
+	_onCloudSyncComplete = func(success bool, errMsg string) {
+		encoded, err := json.Marshal(errMsg)
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		ui.Eval(fmt.Sprintf("window.onCloudSyncComplete(%t, %s)", success, encoded))
+	}
+	_onCloudRestoreComplete = func(success bool, errMsg string) {
+		encoded, err := json.Marshal(errMsg)
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		ui.Eval(fmt.Sprintf("window.onCloudRestoreComplete(%t, %s)", success, encoded))
+	}
 	_processRegistry.Start(context.Background())
 
 	reportDBPath := filepath.Join(_internalDir, "reports.db")
@@ -867,6 +892,10 @@ func main() {
 		if err := platform.OpenFolderAndSelect(path); err != nil {
 			log.Errorf("opening %s in folder: %s", path, err)
 		}
+	})
+
+	ui.MustBind("chooseFolderPath", func() string {
+		return platform.ChooseFolder()
 	})
 
 	ui.MustBind("getStoragePath", func() string {
@@ -1407,6 +1436,27 @@ func main() {
 	ui.MustBind("getReportBackfillStatus", func() string {
 		out, _ := json.Marshal(GetBackfillStatus())
 		return string(out)
+	})
+
+	ui.MustBind("checkCloudReachable", handleCheckCloudReachable)
+
+	ui.MustBind("getCloudSyncStatus", func() string {
+		out, _ := json.Marshal(handleGetCloudSyncStatus())
+		return string(out)
+	})
+
+	ui.MustBind("connectDiscord", func() (string, error) {
+		return handleConnectDiscord()
+	})
+
+	ui.MustBind("disconnectCloud", handleDisconnectCloud)
+
+	ui.MustBind("syncToCloud", func() {
+		handleSyncToCloud()
+	})
+
+	ui.MustBind("restoreFromCloud", func() {
+		handleRestoreFromCloud()
 	})
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")

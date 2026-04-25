@@ -5,6 +5,7 @@ package platform
 import (
 	"os/exec"
 	"path/filepath"
+	"strings"
 )
 
 // Hide is a noop on Linux. I don't think there's a unified way to hide files
@@ -26,4 +27,15 @@ func OpenFolderAndSelect(path string) error {
 
 func Open(target string) error {
 	return exec.Command("xdg-open", target).Start()
+}
+
+// ChooseFolder opens a folder picker via zenity if available.
+// Returns the selected path, or "" if cancelled or zenity is not installed.
+func ChooseFolder() string {
+	cmd := exec.Command("zenity", "--file-selection", "--directory", "--title=Choose Folder")
+	out, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
 }

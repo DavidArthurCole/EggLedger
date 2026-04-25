@@ -227,6 +227,16 @@ export interface BackfillStatus {
   progress: number
 }
 
+export interface CloudSyncStatus {
+  connected: boolean
+  username: string
+  avatarUrl: string
+  /** Unix seconds; 0 if never pushed */
+  lastPushAt: number
+  /** Unix seconds; 0 if never pulled */
+  lastPullAt: number
+}
+
 export enum AppState {
   AwaitingInput = 'AwaitingInput',
   FetchingSave = 'FetchingSave',
@@ -331,6 +341,7 @@ declare global {
   function openFile(file: string): Promise<void>
   function openFileInFolder(file: string): Promise<void>
   function openURL(url: string): Promise<void>
+  function chooseFolderPath(): Promise<string>
 
   // Storage management
   function getStoragePath(): Promise<string>
@@ -371,6 +382,13 @@ declare global {
   function exportGroupReports(groupId: string): Promise<string>
   function importGroupReports(accountId: string, jsonStr: string): Promise<string>
 
+  // Cloud sync
+  function checkCloudReachable(): Promise<boolean>
+  function getCloudSyncStatus(): Promise<string>
+  function connectDiscord(): Promise<string>
+  function disconnectCloud(): Promise<void>
+  function syncToCloud(): Promise<void>
+  function restoreFromCloud(): Promise<void>
   // Go-to-JS callbacks (assigned by Vue app, called by Go via lorca)
   var updateKnownAccounts: (accounts: Account[]) => void
   var updateState: (state: string) => void
@@ -380,4 +398,7 @@ declare global {
   var updateExportedFiles: (files: string[]) => void
   var emitMessage: (message: string, isError: boolean) => void
   var updateProcesses: (processes: ProcessSnapshot[]) => void
+  var onDiscordAuthComplete: (connected: boolean, username: string) => void
+  var onCloudSyncComplete: (success: boolean, errMsg: string) => void
+  var onCloudRestoreComplete: (success: boolean, errMsg: string) => void
 }

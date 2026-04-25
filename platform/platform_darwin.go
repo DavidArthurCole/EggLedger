@@ -67,6 +67,17 @@ func Open(target string) error {
 	return exec.Command("open", target).Start()
 }
 
+// ChooseFolder opens a native folder picker dialog via AppleScript.
+// Returns the selected path, or "" if cancelled.
+func ChooseFolder() string {
+	cmd := exec.Command("osascript", "-e", `POSIX path of (choose folder)`)
+	out, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
+}
+
 // quoteStringForAppleScript quotes backslashes and double quotes.
 // See "Special String Characters" in
 // https://developer.apple.com/library/archive/documentation/AppleScript/Conceptual/AppleScriptLangGuide/reference/ASLR_classes.html

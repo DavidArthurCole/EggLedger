@@ -48,6 +48,12 @@ type AppStorage struct {
 	LifetimeShowDropsPerShip   bool      `json:"lifetime_show_drops_per_ship"`
 	LifetimeShowExpectedTotals bool      `json:"lifetime_show_expected_totals"`
 	lastKnownGoodApiVersion    string
+
+	CloudSessionToken      string    `json:"cloud_session_token"`
+	CloudLastPushAt        time.Time `json:"cloud_last_push_at"`
+	CloudLastPullAt        time.Time `json:"cloud_last_pull_at"`
+	CloudDiscordUsername   string    `json:"cloud_discord_username"`
+	CloudDiscordAvatarURL  string    `json:"cloud_discord_avatar_url"`
 }
 
 type Account struct {
@@ -234,6 +240,25 @@ func (s *AppStorage) loadFromDB() {
 	}
 	if v, ok := settings["last_known_good_api_version"]; ok {
 		s.lastKnownGoodApiVersion = v
+	}
+	if v, ok := settings["cloud_session_token"]; ok {
+		s.CloudSessionToken = v
+	}
+	if v, ok := settings["cloud_last_push_at"]; ok && v != "" {
+		if t, err := time.Parse(time.RFC3339Nano, v); err == nil {
+			s.CloudLastPushAt = t
+		}
+	}
+	if v, ok := settings["cloud_last_pull_at"]; ok && v != "" {
+		if t, err := time.Parse(time.RFC3339Nano, v); err == nil {
+			s.CloudLastPullAt = t
+		}
+	}
+	if v, ok := settings["cloud_discord_username"]; ok {
+		s.CloudDiscordUsername = v
+	}
+	if v, ok := settings["cloud_discord_avatar_url"]; ok {
+		s.CloudDiscordAvatarURL = v
 	}
 }
 
@@ -674,4 +699,69 @@ func (s *AppStorage) SetActiveAccountId(id string) {
 	s.ActiveAccountId = id
 	s.Unlock()
 	go s.dbSet("active_account_id", id)
+}
+
+func (s *AppStorage) GetCloudSessionToken() string {
+	s.Lock()
+	defer s.Unlock()
+	return s.CloudSessionToken
+}
+
+func (s *AppStorage) SetCloudSessionToken(token string) {
+	s.Lock()
+	s.CloudSessionToken = token
+	s.Unlock()
+	go s.dbSet("cloud_session_token", token)
+}
+
+func (s *AppStorage) GetCloudLastPushAt() time.Time {
+	s.Lock()
+	defer s.Unlock()
+	return s.CloudLastPushAt
+}
+
+func (s *AppStorage) SetCloudLastPushAt(t time.Time) {
+	s.Lock()
+	s.CloudLastPushAt = t
+	s.Unlock()
+	go s.dbSet("cloud_last_push_at", t.Format(time.RFC3339Nano))
+}
+
+func (s *AppStorage) GetCloudLastPullAt() time.Time {
+	s.Lock()
+	defer s.Unlock()
+	return s.CloudLastPullAt
+}
+
+func (s *AppStorage) SetCloudLastPullAt(t time.Time) {
+	s.Lock()
+	s.CloudLastPullAt = t
+	s.Unlock()
+	go s.dbSet("cloud_last_pull_at", t.Format(time.RFC3339Nano))
+}
+
+func (s *AppStorage) GetCloudDiscordUsername() string {
+	s.Lock()
+	defer s.Unlock()
+	return s.CloudDiscordUsername
+}
+
+func (s *AppStorage) SetCloudDiscordUsername(username string) {
+	s.Lock()
+	s.CloudDiscordUsername = username
+	s.Unlock()
+	go s.dbSet("cloud_discord_username", username)
+}
+
+func (s *AppStorage) GetCloudDiscordAvatarURL() string {
+	s.Lock()
+	defer s.Unlock()
+	return s.CloudDiscordAvatarURL
+}
+
+func (s *AppStorage) SetCloudDiscordAvatarURL(url string) {
+	s.Lock()
+	s.CloudDiscordAvatarURL = url
+	s.Unlock()
+	go s.dbSet("cloud_discord_avatar_url", url)
 }

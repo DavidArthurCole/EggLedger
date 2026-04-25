@@ -1,7 +1,9 @@
 package platform
 
 import (
+	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"golang.org/x/sys/windows"
 )
@@ -34,6 +36,18 @@ func OpenFolderAndSelect(path string) error {
 	lpFile, _ := windows.UTF16PtrFromString("explorer.exe")
 	lpParameters, _ := windows.UTF16PtrFromString("/select," + abspath)
 	return windows.ShellExecute(0, verb, lpFile, lpParameters, nil, windows.SW_SHOW)
+}
+
+// ChooseFolder opens a native folder picker dialog via PowerShell.
+// Returns the selected path, or "" if cancelled.
+func ChooseFolder() string {
+	script := `Add-Type -AssemblyName System.Windows.Forms; $f=New-Object System.Windows.Forms.FolderBrowserDialog; $f.ShowNewFolderButton=$true; if($f.ShowDialog() -eq 'OK'){Write-Output $f.SelectedPath}`
+	cmd := exec.Command("powershell", "-NoProfile", "-WindowStyle", "Hidden", "-Command", script)
+	out, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
 }
 
 // Open opens a file or URL in the default application on Windows.
