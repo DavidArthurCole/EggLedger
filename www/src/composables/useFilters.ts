@@ -10,6 +10,10 @@ import { ref, watch } from 'vue'
 import type { Ref } from 'vue'
 import type { DatabaseMission, PossibleArtifact, PossibleMission, PossibleTarget } from '../types/bridge'
 import { advancedDropFilter } from './useSettings'
+import {
+  getMissionFilterValueOptions as getSharedMissionFilterOptions,
+  getTargetFilterOptions,
+} from '../utils/filterOptions'
 
 export interface FilterCondition {
   topLevel: string
@@ -88,38 +92,12 @@ export function useFilters(options: UseFiltersOptions) {
   }
 
   function getFilterValueOptions(topLevel: string | null): FilterOption[] {
+    if (!topLevel) return []
+    const shared = getSharedMissionFilterOptions(topLevel)
+    if (shared.length > 0) return shared
     switch (topLevel) {
-      case 'ship':
-        return Array.from({ length: 11 }, (_, index) => ({
-          text: [
-            'Chicken One', 'Chicken Nine', 'Chicken Heavy',
-            'BCR', 'Quintillion Chicken', 'Cornish-Hen Corvette',
-            'Galeggtica', 'Defihent', 'Voyegger', 'Henerprise', 'Atreggies Henliner',
-          ][index],
-          value: String(index),
-        }))
-      case 'farm':
-        return Array.from({ length: 2 }, (_, index) => ({
-          text: ['Home', 'Virtue'][index],
-          value: String(index),
-        }))
-      case 'duration':
-        return Array.from({ length: 4 }, (_, index) => ({
-          text: ['Short', 'Standard', 'Extended', 'Tutorial'][index],
-          value: String(index),
-          styleClass: 'text-duration-' + index,
-        }))
-      case 'level':
-        return Array.from({ length: 9 }, (_, index) => ({
-          text: index + '\u2605',
-          value: String(index),
-        }))
       case 'target':
-        return options.possibleTargets.value.map((target) => ({
-          text: target.displayName,
-          value: String(target.id),
-          imagePath: target.imageString,
-        }))
+        return getTargetFilterOptions(options.possibleTargets.value)
       case 'drops': {
         const artifactList = options.artifactConfigs.value
           .filter((a) => a.baseQuality <= options.maxQuality.value)
@@ -173,15 +151,6 @@ export function useFilters(options: UseFiltersOptions) {
 
         return result
       }
-      case 'type':
-        return [
-          { text: 'Home', value: '0' },
-          { text: 'Virtue', value: '1' },
-          { text: 'Unknown', value: '-1' },
-        ]
-      case 'buggedcap':
-      case 'dubcap':
-        return [{ text: 'True', value: 'true' }, { text: 'False', value: 'false' }]
       default:
         return []
     }

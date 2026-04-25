@@ -71,3 +71,8 @@ func DoDBOperation(ctx context.Context, operation func(ctx context.Context, db *
 	// Run the operation
 	return operation(childCtx, _db)
 }
+
+// GetDB returns the open database handle. Must only be called after InitDB.
+func GetDB() *sql.DB {
+	return _db
+}

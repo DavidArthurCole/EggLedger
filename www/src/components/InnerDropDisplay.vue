@@ -21,7 +21,7 @@
         >
             {{ hoveredItem.gameName }} (T{{ hoveredItem.level + Number(getSpecPathOffset(hoveredItem)) }})
             <span v-if="hoveredItem.specType == 'Artifact'" :class="'text-rarity-' + hoveredItem.rarity">
-                {{ ['Common', 'Rare', 'Epic', 'Legendary'][hoveredItem.rarity] }}
+                {{ ['Common', 'Rare', 'Epic', 'Legendary'][hoveredItem.rarity] }} 
             </span>
             × {{ hoveredItem.count }}
             <br v-if="hoveredItem.specType == 'Artifact' || hoveredItem.specType == 'Stone'" />

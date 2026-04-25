@@ -166,6 +166,53 @@ export interface MennoDownloadProgress {
   etaSeconds: number
 }
 
+export interface ReportFilterCondition {
+  topLevel: string
+  op: string
+  val: string
+}
+
+export interface ReportFilters {
+  and: ReportFilterCondition[]
+  or: ReportFilterCondition[][]
+}
+
+export interface ReportDefinition {
+  id: string
+  accountId: string
+  name: string
+  subject: string
+  mode: string
+  displayMode: string
+  groupBy: string
+  timeBucket: string
+  customBucketN: number
+  customBucketUnit: string
+  filters: ReportFilters
+  gridX: number
+  gridY: number
+  gridW: number
+  gridH: number
+  weight: string
+  color: string
+  description: string
+  chartType: string
+  sortOrder: number
+  createdAt: number
+  updatedAt: number
+}
+
+export interface ReportResult {
+  labels: string[]
+  values: number[]
+  weight: string
+}
+
+export interface BackfillStatus {
+  done: boolean
+  progress: number
+}
+
 export enum AppState {
   AwaitingInput = 'AwaitingInput',
   FetchingSave = 'FetchingSave',
@@ -281,6 +328,17 @@ declare global {
   function secondsSinceLastMennoUpdate(): Promise<number>
   function loadMennoData(): Promise<boolean>
   function getMennoData(ship: number, shipDuration: number, shipLevel: number, targetArtifact: number): Promise<ConfigurationItem[]>
+
+  // Reports
+  function createReport(defJSON: string): Promise<string>
+  function updateReport(defJSON: string): Promise<boolean>
+  function deleteReport(id: string): Promise<boolean>
+  function getAccountReports(accountId: string): Promise<string>
+  function executeReport(id: string): Promise<string>
+  function reorderReports(idsJSON: string): Promise<boolean>
+  function getReportBackfillStatus(): Promise<string>
+  function exportReport(id: string): Promise<string>
+  function importReport(accountId: string, jsonStr: string): Promise<string>
 
   // Go-to-JS callbacks (assigned by Vue app, called by Go via lorca)
   var updateKnownAccounts: (accounts: Account[]) => void

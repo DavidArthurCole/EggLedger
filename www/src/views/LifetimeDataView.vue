@@ -23,65 +23,14 @@
     />
 
     <!-- Account selector -->
-    <form
+    <DatabaseAccountSelector
       v-if="doesDataExist"
+      :accounts="objectedExistingData"
+      button-label="View"
+      :is-loading="lifetimeDataBeingLoaded"
       style="margin-top: 0rem !important"
-      id="lifetimeAccountForm"
-      name="lifetimeAccountForm"
-      class="select-form"
-      @submit="onViewSubmit"
-    >
-      <div ref="accountSelectRef" class="relative flex-grow focus-within:z-10">
-        <div
-          v-if="selectedLifetimeAccountData != null"
-          class="ledger-input-overlay"
-        >
-          <span class="whitespace-pre"><template v-if="screenshotSafety">EI<span class="inline-block rounded-sm bg-current select-none" style="width: 16ch; height: 0.8em; vertical-align: -0.05em;"></span></template><template v-else>{{ selectedLifetimeAccountData.id }}</template></span>
-          (<span :style="'color: #' + selectedLifetimeAccountData.accountColor">
-            {{ selectedLifetimeAccountData.nickname }}
-            {{ selectedLifetimeAccountData.ebString }}
-          </span>
-          - {{ selectedLifetimeAccountData.missionCount }} missions)
-        </div>
-        <input
-          id="lifetimeAccountInput"
-          type="text"
-          class="drop-select border-gray-300"
-          placeholder="Select an account"
-          :value="selectedLifetimeAccount ?? ''"
-          @focus="openAccountDropdown"
-          @input="(e) => (selectedLifetimeAccount = (e.target as HTMLInputElement).value)"
-        />
-        <ul
-          v-if="accountDropdownOpen && objectedExistingData.length > 0"
-          class="ledger-list"
-          tabindex="-1"
-        >
-          <li
-            v-for="account in objectedExistingData"
-            :key="account.id"
-            class="drop-opt"
-            @click="closeAccountDropdown(account.id)"
-          >
-            <template v-if="screenshotSafety">EI<span class="inline-block rounded-sm bg-current select-none" style="width: 16ch; height: 0.8em; vertical-align: -0.05em;"></span></template><template v-else>{{ account.id }}</template>
-            (<span :style="'color: #' + account.accountColor">{{ account.nickname }} {{ account.ebString }}</span>
-            - {{ account.missionCount }} missions)
-          </li>
-        </ul>
-      </div>
-      <button
-        class="view-form-button"
-        type="submit"
-        :disabled="
-          !selectedLifetimeAccount ||
-            selectedLifetimeAccount === '' ||
-            selectedLifetimeAccountData == null ||
-            lifetimeDataBeingLoaded
-        "
-      >
-        View
-      </button>
-    </form>
+      @submit="onAccountSelected"
+    />
 
     <!-- Lifetime progress -->
     <SegmentedProgressBar
@@ -240,8 +189,6 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useAppState } from '../composables/useAppState'
 import { useMennoData } from '../composables/useMennoData'
 import { useFilters } from '../composables/useFilters'
-import { useDropdownSelector } from '../composables/useDropdownSelector'
-import { screenshotSafety } from '../composables/useSettings'
 import type {
   DatabaseMission,
   MissionDrop,
@@ -251,13 +198,14 @@ import type {
 } from '../types/bridge'
 import FullFilter from '../components/FullFilter.vue'
 import NoDataFallback from '../components/NoDataFallback.vue'
+import DatabaseAccountSelector from '../components/DatabaseAccountSelector.vue'
 import SearchOverSelector from '../components/SearchOverSelector.vue'
 import DropDisplayContainer, { type LedgerData } from '../components/DropDisplayContainer.vue'
 import SegmentedProgressBar, { type ProgressSegment } from '../components/SegmentedProgressBar.vue'
 
 // Shared state
 
-const { existingData, knownAccounts, activeTab } = useAppState()
+const { existingData, activeTab } = useAppState()
 const { mennoDataLoaded, getMennoData, load: loadMennoData } = useMennoData()
 
 // Types local to this view
@@ -308,13 +256,6 @@ interface LifetimeData extends LedgerData {
 
 const selectedLifetimeAccount = ref<string | null>(null)
 
-const {
-  containerRef: accountSelectRef,
-  isOpen: accountDropdownOpen,
-  open: openAccountDropdown,
-  close: closeAccountDropdown,
-} = useDropdownSelector((id) => { selectedLifetimeAccount.value = id })
-
 const doesDataExist = computed(() => existingData.value.length > 0)
 
 const objectedExistingData = computed(() => {
@@ -328,18 +269,6 @@ const objectedExistingData = computed(() => {
     }))
     .sort((a, b) => b.missionCount - a.missionCount)
 })
-
-function accountById(id: string | null) {
-  if (id == null) return null
-  return objectedExistingData.value.find((acc) => acc.id === id) ?? null
-}
-
-const selectedLifetimeAccountData = computed(
-  () => accountById(selectedLifetimeAccount.value),
-)
-const selectedLifetimeKnownAccount = computed(
-  () => knownAccounts.value?.find((acc) => acc.id === selectedLifetimeAccount.value) ?? null,
-)
 
 // Lifetime load state
 
@@ -831,8 +760,8 @@ async function viewLifetimeDataOfEid(filterLoad: boolean) {
   lifetimeState.value = LifetimeLoadState.Success
 }
 
-async function onViewSubmit(event: Event) {
-  event.preventDefault()
+async function onAccountSelected(id: string) {
+  selectedLifetimeAccount.value = id
   clearFilter()
   await viewLifetimeDataOfEid(false)
 }

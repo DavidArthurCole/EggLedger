@@ -45,64 +45,13 @@
     />
 
     <!-- Account selector -->
-    <form
+    <DatabaseAccountSelector
       v-if="doesDataExist"
-      id="viewAccountForm"
-      name="viewAccountForm"
-      class="select-form"
-      @submit="onViewSubmit"
-    >
-      <div ref="viewMissionAccountSelectRef" class="relative flex-grow focus-within:z-10">
-        <div
-          v-if="selectedMissionAccount != null && accountById(selectedMissionAccount) != null"
-          class="ledger-input-overlay"
-        >
-          <span class="whitespace-pre"><template v-if="screenshotSafety">EI<span class="inline-block rounded-sm bg-current select-none" style="width: 16ch; height: 0.8em; vertical-align: -0.05em;"></span></template><template v-else>{{ accountById(selectedMissionAccount)?.id }}</template></span>
-          (<span :style="'color: #' + (accountById(selectedMissionAccount)?.accountColor || '')">
-            {{ accountById(selectedMissionAccount)?.nickname }}
-            {{ accountById(selectedMissionAccount)?.ebString }}
-          </span>
-          - {{ accountById(selectedMissionAccount)?.missionCount }} missions)
-        </div>
-        <input
-          id="viewMissionAccountInput"
-          type="text"
-          class="drop-select border-gray-300"
-          placeholder="Select an account"
-          :value="selectedMissionAccount ?? ''"
-          @focus="openAccountDropdown"
-          @input="(e) => (selectedMissionAccount = (e.target as HTMLInputElement).value)"
-        />
-        <ul
-          v-if="accountDropdownOpen && objectedExistingData.length > 0"
-          class="ledger-list"
-          tabindex="-1"
-        >
-          <li
-            v-for="account in objectedExistingData"
-            :key="account.id"
-            class="drop-opt"
-            @click="closeAccountDropdown(account.id)"
-          >
-            <template v-if="screenshotSafety">EI<span class="inline-block rounded-sm bg-current select-none" style="width: 16ch; height: 0.8em; vertical-align: -0.05em;"></span></template><template v-else>{{ account.id }}</template>
-            (<span :style="'color: #' + account.accountColor">{{ account.nickname }} {{ account.ebString }}</span>
-            - {{ account.missionCount }} missions)
-          </li>
-        </ul>
-      </div>
-      <button
-        class="view-form-button"
-        type="submit"
-        :disabled="
-          !selectedMissionAccount ||
-            selectedMissionAccount === '' ||
-            accountById(selectedMissionAccount) == null ||
-            eidMissionsBeingLoaded
-        "
-      >
-        View
-      </button>
-    </form>
+      :accounts="objectedExistingData"
+      button-label="View"
+      :is-loading="eidMissionsBeingLoaded"
+      @submit="onAccountSelected"
+    />
 
     <!-- Mission load progress -->
     <SegmentedProgressBar
@@ -275,8 +224,7 @@ import { useAppState } from '../composables/useAppState'
 import { useMennoData } from '../composables/useMennoData'
 import { useFetch } from '../composables/useFetch'
 import { useFilters } from '../composables/useFilters'
-import { useDropdownSelector } from '../composables/useDropdownSelector'
-import { screenshotSafety, collapseOlderSections } from '../composables/useSettings'
+import { collapseOlderSections } from '../composables/useSettings'
 import {
   type DropLike,
   sortGroupAlreadyCombed,
@@ -294,6 +242,7 @@ import type {
 import FullFilter from '../components/FullFilter.vue'
 import SearchOverSelector from '../components/SearchOverSelector.vue'
 import NoDataFallback from '../components/NoDataFallback.vue'
+import DatabaseAccountSelector from '../components/DatabaseAccountSelector.vue'
 import SegmentedProgressBar, { type ProgressSegment } from '../components/SegmentedProgressBar.vue'
 import OptionsPanel from '../components/OptionsPanel.vue'
 import MissionResultsTable from '../components/MissionResultsTable.vue'
@@ -310,12 +259,6 @@ const { isFetching } = useFetch()
 
 const selectedMissionAccount = ref<string | null>(null)
 
-const {
-  containerRef: viewMissionAccountSelectRef,
-  isOpen: accountDropdownOpen,
-  open: openAccountDropdown,
-  close: closeAccountDropdown,
-} = useDropdownSelector((id) => { selectedMissionAccount.value = id })
 const eidMissionsBeingLoaded = ref(false)
 const loadedEid = ref<string | null>(null)
 
@@ -536,8 +479,8 @@ function openMultiMissionOverlay() {
 
 // Fetch mission + view logic
 
-async function onViewSubmit(event: Event) {
-  event.preventDefault()
+async function onAccountSelected(id: string) {
+  selectedMissionAccount.value = id
   clearFilter()
   await doViewMissionsOfEid()
 }

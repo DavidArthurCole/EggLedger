@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -104,6 +105,53 @@ func fetchCompleteMissionWithContext(ctx context.Context, playerId string, missi
 		track("Store", "failed")
 		return resp, err
 	}
+	dropRows := buildArtifactDropRows(resp)
+	if insertErr := db.InsertArtifactDrops(ctx, playerId, missionId, dropRows); insertErr != nil {
+		log.Errorf("failed to insert artifact drops for mission %s: %v", missionId, insertErr)
+	}
 	track("Store", "done")
 	return resp, nil
+}
+
+// buildArtifactDropRows converts artifacts from a CompleteMissionResponse into
+// ArtifactDropRow values ready for DB insertion. DropIndex matches the 0-based
+// position in the repeated field, aligning with the migration 7 UNIQUE constraint.
+func buildArtifactDropRows(resp *ei.CompleteMissionResponse) []db.ArtifactDropRow {
+	artifacts := resp.GetArtifacts()
+	drops := make([]db.ArtifactDropRow, 0, len(artifacts))
+	for i, drop := range artifacts {
+		spec := drop.GetSpec()
+		name := ei.ArtifactSpec_Name_name[int32(spec.GetName())]
+		var specType string
+		switch {
+		case strings.Contains(name, "_FRAGMENT"):
+			specType = "StoneFragment"
+		case strings.Contains(name, "_STONE"):
+			specType = "Stone"
+		case strings.Contains(name, "GOLD_METEORITE"),
+			strings.Contains(name, "SOLAR_TITANIUM"),
+			strings.Contains(name, "TAU_CETI_GEODE"):
+			specType = "Ingredient"
+		default:
+			specType = "Artifact"
+		}
+		var quality float64
+		for _, art := range _eiAfxConfigArtis {
+			if art.GetSpec().GetName() == spec.GetName() &&
+				art.GetSpec().GetLevel() == spec.GetLevel() &&
+				art.GetSpec().GetRarity() == spec.GetRarity() {
+				quality = art.GetBaseQuality()
+				break
+			}
+		}
+		drops = append(drops, db.ArtifactDropRow{
+			DropIndex:  int32(i),
+			ArtifactId: int32(spec.GetName()),
+			SpecType:   specType,
+			Level:      int32(spec.GetLevel()),
+			Rarity:     int32(spec.GetRarity()),
+			Quality:    quality,
+		})
+	}
+	return drops
 }

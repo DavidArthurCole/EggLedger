@@ -361,7 +361,8 @@ input[type=number] {
 .overlay-target-lifetime,
 .overlay-update,
 .overlay-menno,
-.overlay-ss {
+.overlay-ss,
+.overlay-report {
   background: rgba(0, 0, 0, 0.7);
 }
 
