@@ -35,6 +35,13 @@
 
       <!-- Preview pane -->
       <div v-if="showPreview" class="flex-1 overflow-y-auto p-5">
+        <div
+          v-if="!previewHintDismissed"
+          class="flex items-center justify-between mb-3 px-3 py-1.5 rounded bg-indigo-950/50 border border-indigo-800/40 text-xs text-indigo-400"
+        >
+          <span>Preview mode - click 'Edit' to return to the form</span>
+          <button type="button" class="ml-3 text-indigo-400 hover:text-indigo-300 leading-none" @click="previewHintDismissed = true">x</button>
+        </div>
         <p class="text-xs text-gray-500 mb-3">Layout preview - no live data.</p>
         <div
           class="bg-darker rounded-lg border border-gray-700 p-3"
@@ -103,7 +110,7 @@
         <template v-else>
         <!-- Name -->
         <div class="flex flex-col gap-1">
-          <label for="rb-name" class="text-xs text-gray-400 flex items-center gap-1">
+          <label class="text-xs text-gray-400 flex items-center gap-1">
             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
             Name
           </label>
@@ -118,7 +125,7 @@
 
         <!-- Description -->
         <div class="flex flex-col gap-1">
-          <label for="rb-description" class="text-xs text-gray-400 flex items-center gap-1">
+          <label class="text-xs text-gray-400 flex items-center gap-1">
             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h8"/></svg>
             Description (optional)
           </label>
@@ -134,7 +141,7 @@
         <!-- Subject + Mode row -->
         <div class="grid grid-cols-2 gap-3">
           <div class="flex flex-col gap-1">
-            <label for="rb-subject" class="text-xs text-gray-400 flex items-center gap-1">
+            <label class="text-xs text-gray-400 flex items-center gap-1">
               <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/></svg>
               Subject
             </label>
@@ -150,7 +157,7 @@
             </select>
           </div>
           <div class="flex flex-col gap-1">
-            <label for="rb-mode" class="text-xs text-gray-400 flex items-center gap-1">
+            <label class="text-xs text-gray-400 flex items-center gap-1">
               <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
               Mode
             </label>
@@ -169,7 +176,7 @@
         <!-- Display mode + Group by row -->
         <div class="grid grid-cols-2 gap-3">
           <div class="flex flex-col gap-1">
-            <label for="rb-display-mode" class="text-xs text-gray-400 flex items-center gap-1">
+            <label class="text-xs text-gray-400 flex items-center gap-1">
               <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
               Display
             </label>
@@ -185,7 +192,7 @@
             </select>
           </div>
           <div class="flex flex-col gap-1">
-            <label for="rb-group-by" class="text-xs text-gray-400 flex items-center gap-1">
+            <label class="text-xs text-gray-400 flex items-center gap-1">
               <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z"/></svg>
               Group by
             </label>
@@ -203,22 +210,34 @@
 
         <!-- Color picker (bar/line only) -->
         <div v-if="form.displayMode !== 'grid'" class="flex flex-col gap-1">
-          <label for="rb-color" class="text-xs text-gray-400 flex items-center gap-1">
+          <span class="text-xs text-gray-400 flex items-center gap-1">
             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/></svg>
             Chart color
-          </label>
-          <input
-            id="rb-color"
-            v-model="form.color"
-            type="color"
-            class="h-8 w-16 rounded cursor-pointer bg-transparent border border-gray-700"
-          />
+          </span>
+          <div class="flex flex-wrap gap-1.5">
+            <button
+              v-for="c in colorSwatches"
+              :key="c"
+              type="button"
+              class="w-5 h-5 rounded-full border-2 transition-transform"
+              :style="{ backgroundColor: c }"
+              :class="form.color === c ? 'border-white scale-110' : 'border-transparent hover:border-gray-400'"
+              @click="form.color = c"
+            />
+            <input
+              v-model="form.color"
+              type="text"
+              maxlength="7"
+              class="bg-darker border border-gray-700 rounded px-2 py-0.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500 w-20"
+              placeholder="#6366f1"
+            />
+          </div>
         </div>
 
         <!-- Time bucket (time_series only) -->
         <div v-if="form.mode === 'time_series'" class="grid grid-cols-2 gap-3">
           <div class="flex flex-col gap-1">
-            <label for="rb-time-bucket" class="text-xs text-gray-400 flex items-center gap-1">
+            <label class="text-xs text-gray-400 flex items-center gap-1">
               <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
               Time bucket
             </label>
@@ -259,11 +278,26 @@
         </div>
 
         <!-- Grid size -->
-        <div class="flex flex-col gap-1">
+        <div class="flex flex-col gap-2">
           <span class="text-xs text-gray-400 flex items-center gap-1">
             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"/></svg>
-            Grid size (columns x rows)
+            Grid size
+            <span class="text-gray-500 ml-1">{{ form.gridW }}x{{ form.gridH }}</span>
           </span>
+          <!-- 4x4 visual picker -->
+          <div class="flex flex-col gap-0.5 self-start" @mouseleave="clearHover()">
+            <div v-for="r in 4" :key="r" class="flex gap-0.5">
+              <div
+                v-for="c in 4"
+                :key="c"
+                class="w-5 h-5 rounded-sm border cursor-pointer transition-colors"
+                :class="isCellActive(c, r) ? 'bg-indigo-600 border-indigo-500' : 'bg-gray-800 border-gray-600 hover:border-gray-400'"
+                @mouseenter="setHover(c, r)"
+                @click="selectCell(c, r)"
+              />
+            </div>
+          </div>
+          <!-- Numeric fallback -->
           <div class="flex gap-3 items-center">
             <label for="rb-grid-w" class="text-xs text-gray-400">W</label>
             <input
@@ -283,7 +317,6 @@
               max="4"
               class="bg-darker border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 focus:outline-none focus:border-blue-500 w-16"
             />
-            <span class="text-xs text-gray-500">{{ form.gridW }}x{{ form.gridH }}</span>
           </div>
         </div>
 
@@ -312,6 +345,52 @@
             @field-change="onFieldChange"
           />
         </div>
+
+        <!-- Value filter -->
+        <div class="flex flex-col gap-2">
+          <span class="text-xs text-gray-400 flex items-center gap-1">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+            Value filter (optional)
+          </span>
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-gray-500">Only show results where count</span>
+            <select
+              v-model="form.valueFilterOp"
+              class="bg-darker border border-gray-700 rounded px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
+            >
+              <option value="">None</option>
+              <option value=">">&gt; (greater than)</option>
+              <option value=">=">&gt;= (at least)</option>
+              <option value="<">&lt; (less than)</option>
+              <option value="<=">&lt;= (at most)</option>
+              <option value="=">=  (equal to)</option>
+            </select>
+            <input
+              v-if="form.valueFilterOp"
+              v-model.number="form.valueFilterThreshold"
+              type="number"
+              min="0"
+              class="bg-darker border border-gray-700 rounded px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-blue-500 w-20"
+              placeholder="0"
+            />
+          </div>
+        </div>
+
+        <!-- Normalize by (artifacts + aggregate only) -->
+        <div v-if="form.subject === 'artifacts' && form.mode === 'aggregate'" class="flex flex-col gap-2">
+          <span class="text-xs text-gray-400 flex items-center gap-1">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 11h.01M12 11h.01M15 11h.01M4 19h16a2 2 0 002-2V7a2 2 0 00-2-2H4a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+            Normalize by (optional)
+          </span>
+          <select
+            v-model="form.normalizeBy"
+            class="bg-darker border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 focus:outline-none focus:border-blue-500"
+          >
+            <option value="none">None (raw count)</option>
+            <option value="launches">Per launch</option>
+            <option value="airtime">Per flight hour</option>
+          </select>
+        </div>
         </template>
       </div>
 
@@ -323,7 +402,7 @@
         <div class="flex gap-2">
         <button
           type="button"
-          class="flex-1 px-3 py-1.5 rounded border text-xs"
+          class="flex-1 px-3 py-1.5 rounded border text-xs focus:outline-none"
           :class="closeWarning
             ? 'border-red-600 text-red-400 hover:bg-red-900/20'
             : 'border-gray-600 text-gray-400 hover:text-gray-200 hover:border-gray-400'"
@@ -333,7 +412,7 @@
         </button>
         <button
           type="button"
-          class="flex-1 px-3 py-1.5 rounded border border-indigo-600 bg-indigo-700 text-xs text-white hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          class="flex-1 px-3 py-1.5 rounded border border-indigo-600 bg-indigo-700 text-xs text-white hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none"
           :disabled="!canSave"
           @click="handleSave"
         >
@@ -370,10 +449,43 @@ const emit = defineEmits<{
 const { andConditions, addAndCondition, removeAndCondition, updateAndCondition, toReportFilters, fromReportFilters, clearFilters } = useReportFilters()
 
 const showPreview = ref(false)
+const previewHintDismissed = ref(false)
 const possibleTargets = ref<PossibleTarget[]>([])
 const isDirty = ref(false)
 const closeWarning = ref(false)
 const builderMode = ref<'basic' | 'advanced'>('basic')
+const hoverW = ref(0)
+const hoverH = ref(0)
+
+function isCellActive(c: number, r: number): boolean {
+  if (hoverW.value > 0) return c <= hoverW.value && r <= hoverH.value
+  return c <= form.gridW && r <= form.gridH
+}
+
+function clearHover() {
+  hoverW.value = 0
+  hoverH.value = 0
+}
+
+function setHover(c: number, r: number) {
+  hoverW.value = c
+  hoverH.value = r
+}
+
+function selectCell(c: number, r: number) {
+  form.gridW = c
+  form.gridH = r
+}
+
+const colorSwatches = [
+  '#6366f1', '#8b5cf6', '#ec4899', '#ef4444',
+  '#f97316', '#f59e0b', '#84cc16', '#22c55e',
+  '#14b8a6', '#06b6d4', '#3b82f6', '#64748b',
+]
+
+watch(showPreview, (val) => {
+  if (val) previewHintDismissed.value = false
+})
 
 function makeBlankForm() {
   return {
@@ -389,6 +501,9 @@ function makeBlankForm() {
     gridW: 2,
     gridH: 2,
     color: '#6366f1',
+    valueFilterOp: '',
+    valueFilterThreshold: 0,
+    normalizeBy: 'none',
   }
 }
 
@@ -413,6 +528,9 @@ watch(
       form.gridW = def.gridW || 2
       form.gridH = def.gridH || 2
       form.color = def.color || '#6366f1'
+      form.valueFilterOp = def.valueFilterOp || ''
+      form.valueFilterThreshold = def.valueFilterThreshold || 0
+      form.normalizeBy = def.normalizeBy || 'none'
       fromReportFilters(def.filters)
     } else {
       Object.assign(form, makeBlankForm())
@@ -471,9 +589,9 @@ const missionFilterFields = [
 ]
 
 const artifactFilterFields = [
-  { value: 'artifact_name', label: 'Artifact Name' },
-  { value: 'artifact_rarity', label: 'Artifact Rarity' },
-  { value: 'artifact_tier', label: 'Artifact Tier' },
+  { value: 'artifact_name', label: 'Name' },
+  { value: 'artifact_rarity', label: 'Rarity' },
+  { value: 'artifact_tier', label: 'Tier' },
   { value: 'artifact_spec_type', label: 'Spec Type' },
   { value: 'artifact_quality', label: 'Quality' },
 ]
@@ -566,6 +684,9 @@ function handleSave() {
     sortOrder: 0,
     createdAt: 0,
     updatedAt: 0,
+    valueFilterOp: form.valueFilterOp,
+    valueFilterThreshold: form.valueFilterThreshold,
+    normalizeBy: form.subject === 'artifacts' && form.mode === 'aggregate' ? form.normalizeBy : 'none',
   }
   emit('saved', def)
 }

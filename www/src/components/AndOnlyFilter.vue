@@ -1,94 +1,75 @@
 <template>
   <div>
     <div v-for="(cond, i) in andConditions" :key="i">
-      <div v-if="i !== 0" class="text-gray-400 mt-0_5rem">-- AND --</div>
-      <div class="filter-container focus-within:z-10">
-        <!-- Field select -->
-        <select
-          class="filter-select border-gray-300 text-gray-400"
-          :value="cond.topLevel"
-          @change="onFieldChange(i, ($event.target as HTMLSelectElement).value)"
-        >
-          <option value="">Field...</option>
-          <optgroup v-if="filterFieldOptions.mission.length" label="Mission">
-            <option v-for="f in filterFieldOptions.mission" :key="f.value" :value="f.value">
-              {{ f.label }}
-            </option>
-          </optgroup>
-          <optgroup v-if="filterFieldOptions.artifact.length" label="Artifact">
-            <option v-for="f in filterFieldOptions.artifact" :key="f.value" :value="f.value">
-              {{ f.label }}
-            </option>
-          </optgroup>
-        </select>
-
-        <!-- Bool fields: single True/False value select (op encodes the value) -->
-        <template v-if="cond.topLevel && isBoolField(cond.topLevel)">
+      <div v-if="i !== 0" class="text-xs text-gray-600 italic my-1">and</div>
+      <div class="flex flex-col gap-1">
+        <div class="flex flex-wrap items-center gap-2">
           <select
-            class="filter-select border-gray-300 text-gray-400"
-            :value="cond.op"
-            @change="$emit('update', i, { op: ($event.target as HTMLSelectElement).value })"
+            class="bg-darker border border-gray-700 rounded px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-blue-500 min-w-0"
+            :value="cond.topLevel"
+            @change="onFieldChange(i, ($event.target as HTMLSelectElement).value)"
           >
-            <option value="true">True</option>
-            <option value="false">False</option>
-          </select>
-        </template>
-
-        <!-- Non-bool fields: operator + value -->
-        <template v-else-if="cond.topLevel">
-          <select
-            class="filter-select border-gray-300 text-gray-400"
-            :value="cond.op"
-            @change="$emit('update', i, { op: ($event.target as HTMLSelectElement).value })"
-          >
-            <option v-for="op in operatorsForField(cond.topLevel)" :key="op.value" :value="op.value">
-              {{ op.label }}
-            </option>
+            <option value="">{{ fieldPlaceholder }}</option>
+            <option v-for="f in allFieldOptions" :key="f.value" :value="f.value">{{ f.label }}</option>
           </select>
 
-          <template v-if="cond.op">
-            <input
-              v-if="isDateField(cond.topLevel)"
-              :value="cond.val"
-              type="date"
-              class="filter-select border-gray-300 text-gray-400"
-              @input="$emit('update', i, { val: ($event.target as HTMLInputElement).value })"
-            />
+          <template v-if="cond.topLevel && isBoolField(cond.topLevel)">
             <select
-              v-else-if="valueOptionsFor(cond.topLevel).length > 0"
-              class="filter-select border-gray-300 text-gray-400"
-              :value="cond.val"
-              @change="$emit('update', i, { val: ($event.target as HTMLSelectElement).value })"
+              class="bg-darker border border-gray-700 rounded px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-blue-500 min-w-0"
+              :value="cond.op"
+              @change="$emit('update', i, { op: ($event.target as HTMLSelectElement).value })"
             >
-              <option v-for="opt in valueOptionsFor(cond.topLevel)" :key="opt.value" :value="opt.value">
-                {{ opt.text }}
-              </option>
+              <option value="true">True</option>
+              <option value="false">False</option>
             </select>
-            <input
-              v-else
-              :value="cond.val"
-              type="text"
-              class="filter-select border-gray-300 text-gray-400"
-              placeholder="Value"
-              @input="$emit('update', i, { val: ($event.target as HTMLInputElement).value })"
-            />
           </template>
-        </template>
 
-        <!-- Remove button -->
-        <button
-          type="button"
-          title="Remove filter condition"
-          class="mr-1rem flex items-center justify-center text-red-700 text-lg max-w-6 max-h-6 min-w-6 min-h-6 border border-red-700 rounded-md bg-transparent mt-0_5rem filter-button"
-          @click="$emit('remove', i)"
-        >
-          &times;
-        </button>
+          <template v-else-if="cond.topLevel">
+            <select
+              class="bg-darker border border-gray-700 rounded px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-blue-500 min-w-0"
+              :value="cond.op"
+              @change="$emit('update', i, { op: ($event.target as HTMLSelectElement).value })"
+            >
+              <option v-for="op in operatorsForField(cond.topLevel)" :key="op.value" :value="op.value">{{ op.label }}</option>
+            </select>
 
-        <!-- Incomplete warning -->
-        <span v-if="isIncomplete(cond)" class="filter-incomplete">
-          (!) Incomplete, will not apply
-        </span>
+            <template v-if="cond.op">
+              <input
+                v-if="isDateField(cond.topLevel)"
+                :value="cond.val"
+                type="date"
+                class="bg-darker border border-gray-700 rounded px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-blue-500 min-w-0 w-32"
+                @input="$emit('update', i, { val: ($event.target as HTMLInputElement).value })"
+              />
+              <select
+                v-else-if="valueOptionsFor(cond.topLevel).length > 0"
+                class="bg-darker border border-gray-700 rounded px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-blue-500 min-w-0"
+                :value="cond.val"
+                @change="$emit('update', i, { val: ($event.target as HTMLSelectElement).value })"
+              >
+                <option v-for="opt in valueOptionsFor(cond.topLevel)" :key="opt.value" :value="opt.value">{{ opt.text }}</option>
+              </select>
+              <input
+                v-else
+                :value="cond.val"
+                type="text"
+                class="bg-darker border border-gray-700 rounded px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-blue-500 min-w-0 w-32"
+                placeholder="Value"
+                @input="$emit('update', i, { val: ($event.target as HTMLInputElement).value })"
+              />
+            </template>
+          </template>
+
+          <button
+            type="button"
+            title="Remove filter condition"
+            class="text-red-600 hover:text-red-400 px-1 text-sm leading-none flex-shrink-0"
+            @click="$emit('remove', i)"
+          >
+            &times;
+          </button>
+        </div>
+        <span v-if="isIncomplete(cond)" class="text-xs text-yellow-500">Incomplete - will not apply</span>
       </div>
     </div>
 
@@ -99,6 +80,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { ReportFilterCondition, PossibleTarget } from '../types/bridge'
 import {
   getMissionFilterValueOptions,
@@ -128,6 +110,19 @@ const dateFields = new Set(['launchDT', 'returnDT'])
 
 function isBoolField(field: string) { return boolFields.has(field) }
 function isDateField(field: string) { return dateFields.has(field) }
+
+const allFieldOptions = computed(() => [
+  ...props.filterFieldOptions.mission,
+  ...props.filterFieldOptions.artifact,
+])
+
+const fieldPlaceholder = computed(() => {
+  const hasMission = props.filterFieldOptions.mission.length > 0
+  const hasArtifact = props.filterFieldOptions.artifact.length > 0
+  if (hasArtifact && !hasMission) return 'Artifact field...'
+  if (hasMission && !hasArtifact) return 'Mission field...'
+  return 'Field...'
+})
 
 function operatorsForField(field: string): { value: string, label: string }[] {
   if (dateFields.has(field)) {

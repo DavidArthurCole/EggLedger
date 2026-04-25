@@ -42,6 +42,15 @@
             class="text-red-500 hover:text-red-400 px-1 text-xs leading-none"
             @click="$emit('delete')"
           >&#10005;</button>
+          <select
+            v-if="groups.length > 0"
+            class="text-xs bg-darker border border-gray-700 rounded px-1 py-0.5 text-gray-500 focus:outline-none max-w-24"
+            :value="def.groupId"
+            @change="$emit('setGroup', ($event.target as HTMLSelectElement).value)"
+          >
+            <option value="">No group</option>
+            <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.name }}</option>
+          </select>
         </template>
       </div>
     </div>
@@ -51,13 +60,13 @@
       <div v-if="running" class="h-full flex items-center justify-center">
         <span class="text-xs text-gray-500 animate-pulse">Running...</span>
       </div>
-      <div v-else-if="result && result.labels.length > 0">
-        <ReportPieChart v-if="def.displayMode === 'pie'" :result="result" :color="def.color || '#6366f1'" />
-        <ReportBarChart v-else-if="def.displayMode === 'bar' || def.mode === 'aggregate'" :result="result" :color="def.color || '#6366f1'" />
-        <ReportLineChart v-else-if="def.displayMode === 'line' || def.mode === 'time_series'" :result="result" :color="def.color || '#6366f1'" />
-        <ReportVisualGrid v-else :result="result" />
+      <div v-else-if="filteredResult && filteredResult.labels?.length > 0">
+        <ReportPieChart v-if="def.displayMode === 'pie'" :result="filteredResult" :color="def.color || '#6366f1'" />
+        <ReportBarChart v-else-if="def.displayMode === 'bar' || def.mode === 'aggregate'" :result="filteredResult" :color="def.color || '#6366f1'" :unit-label="normalizeLabel" />
+        <ReportLineChart v-else-if="def.displayMode === 'line' || def.mode === 'time_series'" :result="filteredResult" :color="def.color || '#6366f1'" :unit-label="normalizeLabel" />
+        <ReportVisualGrid v-else :result="filteredResult" :unit-label="normalizeLabel" />
       </div>
-      <div v-else-if="result && result.labels.length === 0" class="h-full flex items-center justify-center">
+      <div v-else-if="filteredResult && filteredResult.labels?.length === 0" class="h-full flex items-center justify-center">
         <span class="text-xs text-gray-600 italic">No results</span>
       </div>
       <div v-else class="h-full flex items-center justify-center">
@@ -67,6 +76,9 @@
 
     <!-- Footer -->
     <div v-if="!editMode" class="flex justify-end gap-2 px-3 pb-2">
+      <span v-if="filteredResult && filteredResult.labels?.length > 0" class="text-xs text-gray-600 mr-auto">
+        {{ filteredResult.labels.length }} result{{ filteredResult.labels.length === 1 ? '' : 's' }}
+      </span>
       <button
         type="button"
         class="text-xs text-gray-500 hover:text-gray-400 disabled:opacity-40"
@@ -89,7 +101,7 @@
         class="tooltip-floating text-sm"
         :style="{ left: tooltipX + 'px', top: tooltipY + 'px' }"
       >
-        Processing load indicator - how much data this report scans
+        {{ weightDescription }}
       </div>
     </Transition>
   </Teleport>
@@ -97,7 +109,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import type { ReportDefinition, ReportResult } from '../types/bridge'
+import type { ReportDefinition, ReportResult, ReportGroup } from '../types/bridge'
 import ReportBarChart from './ReportBarChart.vue'
 import ReportLineChart from './ReportLineChart.vue'
 import ReportPieChart from './ReportPieChart.vue'
@@ -108,6 +120,7 @@ const props = defineProps<{
   result: ReportResult | null
   editMode: boolean
   running: boolean
+  groups: ReportGroup[]
 }>()
 
 defineEmits<{
@@ -115,6 +128,7 @@ defineEmits<{
   edit: []
   run: []
   export: []
+  setGroup: [groupId: string]
 }>()
 
 const showWeightTooltip = ref(false)
@@ -142,6 +156,59 @@ const weightClass = computed(() => {
     case 'HEAVY': return 'bg-red-900/40 text-red-400'
     case 'MEDIUM': return 'bg-yellow-900/40 text-yellow-400'
     default: return 'bg-green-900/40 text-green-400'
+  }
+})
+
+const weightDescription = computed(() => {
+  switch (props.def.weight) {
+    case 'HEAVY':
+      return 'HEAVY: Full time-series scan across all mission data (no date filter). May be slow with many missions.'
+    case 'MEDIUM':
+      return 'MEDIUM: Artifact drop query or time-series with date filter. Moderate data volume.'
+    default:
+      return 'LOW: Aggregate query on indexed missions table. Fast.'
+  }
+})
+
+const normalizeLabel = computed(() => {
+  if (props.def.normalizeBy === 'launches') return 'per launch'
+  if (props.def.normalizeBy === 'airtime') return 'per flight hour'
+  return ''
+})
+
+const filteredResult = computed(() => {
+  if (!props.result) return null
+  const op = props.def.valueFilterOp
+  const threshold = props.def.valueFilterThreshold
+  const isFloat = props.result.isFloat
+  const rawValues = isFloat ? (props.result.floatValues ?? []) : props.result.values
+  if (!op) return props.result
+  const pairs = props.result.labels.map((label, i) => ({
+    label,
+    value: rawValues[i] ?? 0,
+  }))
+  let kept: typeof pairs
+  if (op === '>') kept = pairs.filter(p => p.value > threshold)
+  else if (op === '<') kept = pairs.filter(p => p.value < threshold)
+  else if (op === '>=') kept = pairs.filter(p => p.value >= threshold)
+  else if (op === '<=') kept = pairs.filter(p => p.value <= threshold)
+  else if (op === '=') kept = pairs.filter(p => p.value === threshold)
+  else kept = pairs
+  if (isFloat) {
+    return {
+      labels: kept.map(p => p.label),
+      values: [] as number[],
+      floatValues: kept.map(p => p.value),
+      isFloat: true,
+      weight: props.result.weight,
+    }
+  }
+  return {
+    labels: kept.map(p => p.label),
+    values: kept.map(p => p.value),
+    floatValues: [] as number[],
+    isFloat: false,
+    weight: props.result.weight,
   }
 })
 </script>

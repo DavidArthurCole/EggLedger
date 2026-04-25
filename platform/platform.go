@@ -13,6 +13,11 @@ func Hide(path string) error {
 	return nil
 }
 
+// Show is a noop on Linux.
+func Show(_ string) error {
+	return nil
+}
+
 // OpenFolderAndSelect opens the folder, since file selection depends on the
 // file explorer and can't be implemented in the general case.
 func OpenFolderAndSelect(path string) error {

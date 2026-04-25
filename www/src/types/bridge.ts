@@ -200,11 +200,25 @@ export interface ReportDefinition {
   sortOrder: number
   createdAt: number
   updatedAt: number
+  valueFilterOp: string
+  valueFilterThreshold: number
+  groupId: string
+  normalizeBy: string
+}
+
+export interface ReportGroup {
+  id: string
+  accountId: string
+  name: string
+  sortOrder: number
+  createdAt: number
 }
 
 export interface ReportResult {
   labels: string[]
   values: number[]
+  floatValues: number[]
+  isFloat: boolean
   weight: string
 }
 
@@ -315,6 +329,12 @@ declare global {
   function openFileInFolder(file: string): Promise<void>
   function openURL(url: string): Promise<void>
 
+  // Storage management
+  function getStoragePath(): Promise<string>
+  function setStorageFolderVisible(visible: boolean): Promise<void>
+  function backupStorageTo(destPath: string): Promise<void>
+  function moveStorageTo(destPath: string): Promise<void>
+
   // Updates - returns [version, releaseNotes]
   function checkForUpdates(): Promise<[string, string]>
 
@@ -338,7 +358,15 @@ declare global {
   function reorderReports(idsJSON: string): Promise<boolean>
   function getReportBackfillStatus(): Promise<string>
   function exportReport(id: string): Promise<string>
+  function exportAllReports(accountId: string): Promise<string>
   function importReport(accountId: string, jsonStr: string): Promise<string>
+  function getAccountGroups(accountId: string): Promise<string>
+  function createReportGroup(accountId: string, name: string): Promise<string>
+  function renameReportGroup(id: string, name: string): Promise<boolean>
+  function deleteReportGroup(id: string): Promise<boolean>
+  function setReportGroup(reportId: string, groupId: string): Promise<boolean>
+  function exportGroupReports(groupId: string): Promise<string>
+  function importGroupReports(accountId: string, jsonStr: string): Promise<string>
 
   // Go-to-JS callbacks (assigned by Vue app, called by Go via lorca)
   var updateKnownAccounts: (accounts: Account[]) => void

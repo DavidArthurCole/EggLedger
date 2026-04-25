@@ -206,7 +206,7 @@ func init() {
 	}
 	log.Infof("root dir: %s", _rootDir)
 
-	_internalDir = filepath.Join(_rootDir, "internal")
+	_internalDir = resolveInternalDir(_rootDir)
 
 	// Make sure the app isn't located in the system/user app directory or
 	// downloads dir.
@@ -422,6 +422,9 @@ func reportDefToRow(def reports.ReportDefinition) (reportdb.ReportRow, error) {
 		Weight: def.Weight, Color: def.Color,
 		Description: def.Description, ChartType: def.ChartType,
 		SortOrder: def.SortOrder,
+		ValueFilterOp: def.ValueFilterOp,
+		ValueFilterThreshold: def.ValueFilterThreshold,
+		GroupId: def.GroupId,
 	}
 	if def.TimeBucket != "" {
 		r.TimeBucket = sql.NullString{String: def.TimeBucket, Valid: true}
@@ -431,6 +434,9 @@ func reportDefToRow(def reports.ReportDefinition) (reportdb.ReportRow, error) {
 	}
 	if def.CustomBucketUnit != "" {
 		r.CustomBucketUnit = sql.NullString{String: def.CustomBucketUnit, Valid: true}
+	}
+	if def.NormalizeBy != "" {
+		r.NormalizeBy = sql.NullString{String: def.NormalizeBy, Valid: true}
 	}
 	return r, nil
 }
@@ -454,6 +460,9 @@ func rowToReportDef(r reportdb.ReportRow) (reports.ReportDefinition, error) {
 		Description: r.Description, ChartType: chartType,
 		SortOrder: r.SortOrder,
 		CreatedAt: r.CreatedAt, UpdatedAt: r.UpdatedAt,
+		ValueFilterOp: r.ValueFilterOp,
+		ValueFilterThreshold: r.ValueFilterThreshold,
+		GroupId: r.GroupId,
 	}
 	if r.TimeBucket.Valid {
 		def.TimeBucket = r.TimeBucket.String
@@ -463,6 +472,9 @@ func rowToReportDef(r reportdb.ReportRow) (reports.ReportDefinition, error) {
 	}
 	if r.CustomBucketUnit.Valid {
 		def.CustomBucketUnit = r.CustomBucketUnit.String
+	}
+	if r.NormalizeBy.Valid {
+		def.NormalizeBy = r.NormalizeBy.String
 	}
 	return def, nil
 }
@@ -851,6 +863,99 @@ func main() {
 		}
 	})
 
+	ui.MustBind("getStoragePath", func() string {
+		return _internalDir
+	})
+
+	ui.MustBind("setStorageFolderVisible", func(visible bool) {
+		if visible {
+			if err := platform.Show(_internalDir); err != nil {
+				log.Errorf("setStorageFolderVisible show: %s", err)
+			}
+		} else {
+			if err := platform.Hide(_internalDir); err != nil {
+				log.Errorf("setStorageFolderVisible hide: %s", err)
+			}
+		}
+	})
+
+	ui.MustBind("backupStorageTo", func(destPath string) error {
+		action := "backupStorageTo"
+		wrap := func(err error) error { return errors.Wrap(err, action) }
+		if destPath == "" {
+			return wrap(errors.New("destination path is required"))
+		}
+		if err := copyDir(_internalDir, destPath); err != nil {
+			return wrap(err)
+		}
+		return nil
+	})
+
+	ui.MustBind("moveStorageTo", func(destPath string) error {
+		action := "moveStorageTo"
+		wrap := func(err error) error { return errors.Wrap(err, action) }
+
+		absInternal, err := filepath.Abs(_internalDir)
+		if err != nil {
+			return wrap(err)
+		}
+		absDest, err := filepath.Abs(destPath)
+		if err != nil {
+			return wrap(errors.New("invalid destination path"))
+		}
+
+		if absDest == "" {
+			return wrap(errors.New("destination path is required"))
+		}
+		if absDest == absInternal {
+			return wrap(errors.New("destination is the same as current location"))
+		}
+		if strings.HasPrefix(absDest, absInternal+string(filepath.Separator)) {
+			return wrap(errors.New("destination cannot be inside the current storage directory"))
+		}
+
+		destPreExisted := false
+		if _, statErr := os.Stat(absDest); statErr == nil {
+			destPreExisted = true
+		}
+
+		probe := filepath.Join(absDest, ".eggledger_probe")
+		if err := os.MkdirAll(absDest, 0755); err != nil {
+			return wrap(fmt.Errorf("cannot create destination: %w", err))
+		}
+		if err := os.WriteFile(probe, []byte("probe"), 0644); err != nil {
+			return wrap(fmt.Errorf("destination not writable: %w", err))
+		}
+		os.Remove(probe)
+
+		rollback := func() {
+			if !destPreExisted {
+				os.RemoveAll(absDest)
+			}
+		}
+
+		if err := copyDir(absInternal, absDest); err != nil {
+			rollback()
+			return wrap(err)
+		}
+
+		if err := writeBootstrapConfig(absDest); err != nil {
+			rollback()
+			return wrap(err)
+		}
+
+		executable, err := os.Executable()
+		if err != nil {
+			return wrap(err)
+		}
+		cmd := exec.Command(executable, os.Args[1:]...)
+		if err := cmd.Start(); err != nil {
+			return wrap(err)
+		}
+		ui.Close()
+		return nil
+	})
+
 	ui.MustBind("openURL", func(url string) {
 		if err := open.Start(url); err != nil {
 			log.Errorf("opening %s: %s", url, err)
@@ -1030,6 +1135,47 @@ func main() {
 		return string(b)
 	})
 
+	ui.MustBind("exportAllReports", func(accountId string) string {
+		wrap := func(err error) error { return errors.Wrap(err, "exportAllReports") }
+		rows, err := reportdb.RetrieveAccountReports(context.Background(), accountId)
+		if err != nil {
+			log.Printf("%+v", wrap(err))
+			return ""
+		}
+		defs := make([]reports.ReportDefinition, 0, len(rows))
+		for _, row := range rows {
+			def, defErr := rowToReportDef(row)
+			if defErr != nil {
+				log.Printf("%+v", wrap(defErr))
+				return ""
+			}
+			defs = append(defs, def)
+		}
+		out := struct {
+			ExportVersion string                     `json:"exportVersion"`
+			ExportedAt    int64                      `json:"exportedAt"`
+			AccountID     string                     `json:"accountId"`
+			Reports       []reports.ReportDefinition `json:"reports"`
+		}{
+			ExportVersion: "1",
+			ExportedAt:    time.Now().Unix(),
+			AccountID:     accountId,
+			Reports:       defs,
+		}
+		b, err := json.MarshalIndent(out, "", "  ")
+		if err != nil {
+			log.Printf("%+v", wrap(err))
+			return ""
+		}
+		fname := fmt.Sprintf("reports-export-%d.json", time.Now().Unix())
+		fpath := filepath.Join(_rootDir, fname)
+		if err := os.WriteFile(fpath, b, 0644); err != nil {
+			log.Printf("%+v", wrap(err))
+			return ""
+		}
+		return fpath
+	})
+
 	ui.MustBind("importReport", func(accountId, jsonStr string) string {
 		wrap := func(err error) error { return errors.Wrap(err, "importReport") }
 		var payload struct {
@@ -1058,6 +1204,151 @@ func main() {
 			return ""
 		}
 		return def.Id
+	})
+
+	ui.MustBind("getAccountGroups", func(accountId string) string {
+		wrap := func(err error) error { return errors.Wrap(err, "getAccountGroups") }
+		rows, err := reportdb.RetrieveAccountGroups(context.Background(), accountId)
+		if err != nil {
+			log.Printf("%+v", wrap(err))
+			return "[]"
+		}
+		type groupOut struct {
+			Id        string `json:"id"`
+			AccountId string `json:"accountId"`
+			Name      string `json:"name"`
+			SortOrder int    `json:"sortOrder"`
+			CreatedAt int64  `json:"createdAt"`
+		}
+		out := make([]groupOut, 0, len(rows))
+		for _, r := range rows {
+			out = append(out, groupOut{
+				Id: r.Id, AccountId: r.AccountId, Name: r.Name,
+				SortOrder: r.SortOrder, CreatedAt: r.CreatedAt,
+			})
+		}
+		b, _ := json.Marshal(out)
+		return string(b)
+	})
+
+	ui.MustBind("createReportGroup", func(accountId, name string) string {
+		wrap := func(err error) error { return errors.Wrap(err, "createReportGroup") }
+		row := reportdb.ReportGroupRow{AccountId: accountId, Name: name}
+		id, err := reportdb.InsertReportGroup(context.Background(), row)
+		if err != nil {
+			log.Printf("%+v", wrap(err))
+			return ""
+		}
+		return id
+	})
+
+	ui.MustBind("renameReportGroup", func(id, name string) bool {
+		wrap := func(err error) error { return errors.Wrap(err, "renameReportGroup") }
+		err := reportdb.UpdateReportGroup(context.Background(), reportdb.ReportGroupRow{Id: id, Name: name})
+		if err != nil {
+			log.Printf("%+v", wrap(err))
+			return false
+		}
+		return true
+	})
+
+	ui.MustBind("deleteReportGroup", func(id string) bool {
+		wrap := func(err error) error { return errors.Wrap(err, "deleteReportGroup") }
+		if err := reportdb.DeleteReportGroup(context.Background(), id); err != nil {
+			log.Printf("%+v", wrap(err))
+			return false
+		}
+		return true
+	})
+
+	ui.MustBind("setReportGroup", func(reportId, groupId string) bool {
+		wrap := func(err error) error { return errors.Wrap(err, "setReportGroup") }
+		if err := reportdb.SetReportGroup(context.Background(), reportId, groupId); err != nil {
+			log.Printf("%+v", wrap(err))
+			return false
+		}
+		return true
+	})
+
+	ui.MustBind("exportGroupReports", func(groupId string) string {
+		wrap := func(err error) error { return errors.Wrap(err, "exportGroupReports") }
+		rows, err := reportdb.RetrieveReportsByGroup(context.Background(), groupId)
+		if err != nil {
+			log.Printf("%+v", wrap(err))
+			return ""
+		}
+		group, err := reportdb.RetrieveReportGroup(context.Background(), groupId)
+		if err != nil {
+			log.Printf("%+v", wrap(err))
+			return ""
+		}
+		defs := make([]reports.ReportDefinition, 0, len(rows))
+		for _, row := range rows {
+			def, defErr := rowToReportDef(row)
+			if defErr != nil {
+				log.Printf("%+v", wrap(defErr))
+				return ""
+			}
+			defs = append(defs, def)
+		}
+		out := struct {
+			ExportVersion string                     `json:"exportVersion"`
+			ExportedAt    int64                      `json:"exportedAt"`
+			GroupName     string                     `json:"groupName"`
+			Reports       []reports.ReportDefinition `json:"reports"`
+		}{
+			ExportVersion: "1",
+			ExportedAt:    time.Now().Unix(),
+			GroupName:     group.Name,
+			Reports:       defs,
+		}
+		b, err := json.Marshal(out)
+		if err != nil {
+			log.Printf("%+v", wrap(err))
+			return ""
+		}
+		return string(b)
+	})
+
+	ui.MustBind("importGroupReports", func(accountId, jsonStr string) string {
+		wrap := func(err error) error { return errors.Wrap(err, "importGroupReports") }
+		var payload struct {
+			ExportVersion string                     `json:"exportVersion"`
+			GroupName     string                     `json:"groupName"`
+			Reports       []reports.ReportDefinition `json:"reports"`
+		}
+		if err := json.Unmarshal([]byte(jsonStr), &payload); err != nil {
+			log.Printf("%+v", wrap(err))
+			return ""
+		}
+		groupRow := reportdb.ReportGroupRow{AccountId: accountId, Name: payload.GroupName}
+		if groupRow.Name == "" {
+			groupRow.Name = "Imported Group"
+		}
+		groupId, err := reportdb.InsertReportGroup(context.Background(), groupRow)
+		if err != nil {
+			log.Printf("%+v", wrap(err))
+			return ""
+		}
+		for _, def := range payload.Reports {
+			def.Id = uuid.New().String()
+			def.AccountId = accountId
+			def.GroupId = groupId
+			def.SortOrder = 0
+			if def.Name == "" {
+				def.Name = "Imported Report"
+			}
+			def.Weight = reports.ClassifyWeight(def)
+			row, rowErr := reportDefToRow(def)
+			if rowErr != nil {
+				log.Printf("%+v", wrap(rowErr))
+				continue
+			}
+			if insErr := reportdb.InsertReport(context.Background(), row); insErr != nil {
+				log.Printf("%+v", wrap(insErr))
+			}
+		}
+		return groupId
 	})
 
 	ui.MustBind("getReportBackfillStatus", func() string {

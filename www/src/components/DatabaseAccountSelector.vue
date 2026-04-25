@@ -47,12 +47,14 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import type { DatabaseAccount } from '../types/bridge'
 import { screenshotSafety } from '../composables/useSettings'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   accounts: DatabaseAccount[]
   buttonLabel?: string
   isLoading?: boolean
   placeholder?: string
-}>()
+}>(), {
+  placeholder: 'Enter player ID or nickname...',
+})
 
 const emit = defineEmits<{
   submit: [id: string]

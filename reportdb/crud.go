@@ -31,9 +31,13 @@ type ReportRow struct {
 	Color            string
 	Description      string
 	ChartType        string
-	SortOrder        int
-	CreatedAt        int64
-	UpdatedAt        int64
+	SortOrder int
+	CreatedAt int64
+	UpdatedAt int64
+	ValueFilterOp string
+	ValueFilterThreshold float64
+	GroupId string
+	NormalizeBy sql.NullString
 }
 
 func InsertReport(ctx context.Context, r ReportRow) error {
@@ -48,12 +52,14 @@ func InsertReport(ctx context.Context, r ReportRow) error {
             INSERT INTO reports(id, account_id, name, subject, mode, display_mode, group_by,
                 time_bucket, custom_bucket_n, custom_bucket_unit, filters,
                 grid_x, grid_y, grid_w, grid_h, weight, color, description, chart_type,
-                sort_order, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                sort_order, created_at, updated_at, value_filter_op, value_filter_threshold, group_id,
+                normalize_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			r.Id, r.AccountId, r.Name, r.Subject, r.Mode, r.DisplayMode, r.GroupBy,
 			r.TimeBucket, r.CustomBucketN, r.CustomBucketUnit, string(filtersJSON),
 			r.GridX, r.GridY, r.GridW, r.GridH, r.Weight, r.Color, r.Description, r.ChartType,
-			r.SortOrder, now, now)
+			r.SortOrder, now, now, r.ValueFilterOp, r.ValueFilterThreshold, r.GroupId,
+			r.NormalizeBy)
 		if err != nil {
 			return errors.Wrap(err, action)
 		}
@@ -73,12 +79,16 @@ func UpdateReport(ctx context.Context, r ReportRow) error {
             UPDATE reports SET name=?, subject=?, mode=?, display_mode=?, group_by=?,
                 time_bucket=?, custom_bucket_n=?, custom_bucket_unit=?, filters=?,
                 grid_x=?, grid_y=?, grid_w=?, grid_h=?, weight=?, color=?,
-                description=?, chart_type=?, sort_order=?, updated_at=?
+                description=?, chart_type=?, sort_order=?, updated_at=?,
+                value_filter_op=?, value_filter_threshold=?, group_id=?,
+                normalize_by=?
             WHERE id=?`,
 			r.Name, r.Subject, r.Mode, r.DisplayMode, r.GroupBy,
 			r.TimeBucket, r.CustomBucketN, r.CustomBucketUnit, string(filtersJSON),
 			r.GridX, r.GridY, r.GridW, r.GridH, r.Weight, r.Color,
 			r.Description, r.ChartType, r.SortOrder, now,
+			r.ValueFilterOp, r.ValueFilterThreshold, r.GroupId,
+			r.NormalizeBy,
 			r.Id)
 		if err != nil {
 			return errors.Wrap(err, action)
@@ -100,12 +110,14 @@ func RetrieveReport(ctx context.Context, id string) (*ReportRow, error) {
 		row := db.QueryRowContext(ctx, `SELECT id, account_id, name, subject, mode, display_mode,
             group_by, time_bucket, custom_bucket_n, custom_bucket_unit, filters,
             grid_x, grid_y, grid_w, grid_h, weight, color, description, chart_type,
-            sort_order, created_at, updated_at
+            sort_order, created_at, updated_at, value_filter_op, value_filter_threshold, group_id,
+            normalize_by
             FROM reports WHERE id = ?`, id)
 		return row.Scan(&r.Id, &r.AccountId, &r.Name, &r.Subject, &r.Mode, &r.DisplayMode,
 			&r.GroupBy, &r.TimeBucket, &r.CustomBucketN, &r.CustomBucketUnit, &r.FiltersJSON,
 			&r.GridX, &r.GridY, &r.GridW, &r.GridH, &r.Weight, &r.Color, &r.Description, &r.ChartType,
-			&r.SortOrder, &r.CreatedAt, &r.UpdatedAt)
+			&r.SortOrder, &r.CreatedAt, &r.UpdatedAt, &r.ValueFilterOp, &r.ValueFilterThreshold, &r.GroupId,
+			&r.NormalizeBy)
 	})
 	if err != nil {
 		return nil, err
@@ -119,7 +131,8 @@ func RetrieveAccountReports(ctx context.Context, accountId string) ([]ReportRow,
 		rs, err := db.QueryContext(ctx, `SELECT id, account_id, name, subject, mode, display_mode,
             group_by, time_bucket, custom_bucket_n, custom_bucket_unit, filters,
             grid_x, grid_y, grid_w, grid_h, weight, color, description, chart_type,
-            sort_order, created_at, updated_at
+            sort_order, created_at, updated_at, value_filter_op, value_filter_threshold, group_id,
+            normalize_by
             FROM reports WHERE account_id = ? ORDER BY sort_order ASC, created_at ASC`, accountId)
 		if err != nil {
 			return err
@@ -130,7 +143,8 @@ func RetrieveAccountReports(ctx context.Context, accountId string) ([]ReportRow,
 			if err := rs.Scan(&r.Id, &r.AccountId, &r.Name, &r.Subject, &r.Mode, &r.DisplayMode,
 				&r.GroupBy, &r.TimeBucket, &r.CustomBucketN, &r.CustomBucketUnit, &r.FiltersJSON,
 				&r.GridX, &r.GridY, &r.GridW, &r.GridH, &r.Weight, &r.Color, &r.Description, &r.ChartType,
-				&r.SortOrder, &r.CreatedAt, &r.UpdatedAt); err != nil {
+				&r.SortOrder, &r.CreatedAt, &r.UpdatedAt, &r.ValueFilterOp, &r.ValueFilterThreshold,
+				&r.GroupId, &r.NormalizeBy); err != nil {
 				return err
 			}
 			rows = append(rows, r)

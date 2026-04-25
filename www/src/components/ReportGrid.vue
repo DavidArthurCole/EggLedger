@@ -1,9 +1,14 @@
 <template>
   <div class="flex-1 min-h-0 overflow-y-auto py-2 px-3 flex flex-col gap-3">
-    <div class="flex items-center justify-between">
-      <span class="text-sm font-semibold text-gray-300">Reports</span>
+    <div class="flex items-center justify-end">
       <div class="flex items-center gap-2">
+        <span v-if="exportAllMessage" class="text-xs text-gray-400 max-w-48 truncate" :title="exportAllMessage">{{ exportAllMessage }}</span>
         <span v-if="importError" class="text-xs text-red-400">{{ importError }}</span>
+        <button
+          type="button"
+          class="text-xs px-2 py-1 rounded border border-gray-600 text-gray-400 hover:text-gray-300"
+          @click="handleExportAll"
+        >Export All</button>
         <button
           type="button"
           class="text-xs px-2 py-1 rounded border border-gray-600 text-gray-400 hover:text-gray-300"
@@ -31,7 +36,7 @@
       style="grid-template-columns: repeat(4, 1fr);"
     >
       <div
-        v-for="(def, index) in reports"
+        v-for="(def, index) in displayedReports"
         :key="def.id"
         :draggable="editMode"
         :style="{
@@ -52,12 +57,18 @@
           :result="results[def.id] ?? null"
           :edit-mode="editMode"
           :running="runningIds.has(def.id)"
+          :groups="editMode ? groups : []"
           @run="handleRun(def.id)"
           @edit="openEditor(def)"
           @delete="handleDelete(def.id)"
           @export="downloadReportJson(def.id, def.name)"
+          @set-group="handleSetGroup(def.id, $event)"
         />
       </div>
+    </div>
+
+    <div v-if="displayedReports.length === 0 && reports.length > 0" class="text-xs text-gray-500 text-center mt-8">
+      No reports in this group.
     </div>
 
     <div v-if="editMode" class="flex justify-center mt-1">
@@ -81,10 +92,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import type { ReportDefinition, ReportResult } from '../types/bridge'
 import { AppState } from '../types/bridge'
 import { useReports } from '../composables/useReports'
+import { useReportGroups } from '../composables/useReportGroups'
 import { useAppState } from '../composables/useAppState'
 import { downloadReportJson, readImportFile } from '../utils/reportIO'
 import ReportCard from './ReportCard.vue'
@@ -92,9 +104,11 @@ import ReportBuilderPanel from './ReportBuilderPanel.vue'
 
 const props = defineProps<{
   accountId: string
+  groupFilter?: string | null
 }>()
 
 const { reports, loadReports, deleteReport, reorderReports, executeReport, createReport, updateReport } = useReports()
+const { groups, loadGroups } = useReportGroups()
 const { appState } = useAppState()
 
 const editMode = ref(false)
@@ -105,18 +119,25 @@ const runningIds = ref(new Set<string>())
 const draggingIndex = ref<number | null>(null)
 const dragOverIndex = ref<number | null>(null)
 const importError = ref<string | null>(null)
+const exportAllMessage = ref<string | null>(null)
+
+const displayedReports = computed(() => {
+  if (props.groupFilter == null) return reports.value
+  return reports.value.filter(r => r.groupId === props.groupFilter)
+})
 
 onMounted(async () => {
   await loadReports(props.accountId)
+  await loadGroups(props.accountId)
   for (const def of reports.value) {
-    void handleRun(def.id)
+    handleRun(def.id)
   }
 })
 
 watch(appState, (state) => {
   if (state === AppState.Success) {
     for (const def of reports.value) {
-      void handleRun(def.id)
+      handleRun(def.id)
     }
   }
 })
@@ -144,6 +165,17 @@ async function handleDelete(id: string) {
   await deleteReport(id)
 }
 
+async function handleExportAll() {
+  exportAllMessage.value = null
+  const path = await globalThis.exportAllReports(props.accountId)
+  if (path) {
+    exportAllMessage.value = `Saved to ${path}`
+  } else {
+    exportAllMessage.value = 'Export failed'
+  }
+  setTimeout(() => { exportAllMessage.value = null }, 5000)
+}
+
 async function handleImport() {
   importError.value = null
   const json = await readImportFile()
@@ -155,7 +187,16 @@ async function handleImport() {
     return
   }
   await loadReports(props.accountId)
-  void handleRun(newId)
+  handleRun(newId)
+}
+
+async function handleSetGroup(reportId: string, groupId: string) {
+  const ok = await globalThis.setReportGroup(reportId, groupId)
+  if (ok) {
+    reports.value = reports.value.map(r =>
+      r.id === reportId ? { ...r, groupId } : r,
+    )
+  }
 }
 
 function onDragStart(index: number, event: DragEvent) {
@@ -193,13 +234,19 @@ async function handleSaved(def: ReportDefinition) {
   if (isNew) {
     const saved = await createReport(def)
     runId = saved?.id ?? null
+    if (runId && props.groupFilter) {
+      await globalThis.setReportGroup(runId, props.groupFilter)
+      reports.value = reports.value.map(r =>
+        r.id === runId ? { ...r, groupId: props.groupFilter! } : r,
+      )
+    }
   } else {
     const ok = await updateReport(def)
     runId = ok ? def.id : null
   }
   builderOpen.value = false
   if (runId) {
-    void handleRun(runId)
+    handleRun(runId)
   }
 }
 </script>

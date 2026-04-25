@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 
 	"github.com/pkg/errors"
 )
@@ -32,6 +33,8 @@ func ExecuteReport(ctx context.Context, def ReportDefinition) (ReportResult, err
 	}
 	args := []interface{}{def.AccountId}
 	args = append(args, filterArgs...)
+	baseArgs := make([]interface{}, len(args))
+	copy(baseArgs, args)
 
 	var query string
 	switch def.Mode {
@@ -49,19 +52,71 @@ func ExecuteReport(ctx context.Context, def ReportDefinition) (ReportResult, err
 	}
 	defer rows.Close()
 
-	var labels []string
-	var values []int64
+	rawLabels := make([]string, 0)
+	labels := make([]string, 0)
+	values := make([]int64, 0)
 	for rows.Next() {
 		var rawLabel string
 		var count int64
 		if err := rows.Scan(&rawLabel, &count); err != nil {
 			return ReportResult{}, wrap(err)
 		}
+		rawLabels = append(rawLabels, rawLabel)
 		labels = append(labels, FormatLabel(def.GroupBy, rawLabel))
 		values = append(values, count)
 	}
 	if err := rows.Err(); err != nil {
 		return ReportResult{}, wrap(err)
+	}
+
+	if def.NormalizeBy != "" && def.NormalizeBy != "none" && def.Mode == "aggregate" {
+		groupCol := GroupByColumn(def.GroupBy)
+		if groupCol == "" || strings.HasPrefix(groupCol, "d.") {
+			return ReportResult{Labels: labels, Values: values, Weight: def.Weight}, nil
+		}
+		var denomQuery string
+		if def.NormalizeBy == "airtime" {
+			denomQuery = fmt.Sprintf(
+				`SELECT CAST(%s AS TEXT), SUM(CAST(m.return_timestamp - m.start_timestamp AS REAL) / 3600.0) FROM mission m WHERE %s GROUP BY %s`,
+				groupCol, baseWhere, groupCol,
+			)
+		} else {
+			denomQuery = fmt.Sprintf(
+				`SELECT CAST(%s AS TEXT), COUNT(*) FROM mission m WHERE %s GROUP BY %s`,
+				groupCol, baseWhere, groupCol,
+			)
+		}
+		denomRows, err := _missionDB.QueryContext(ctx, denomQuery, baseArgs...)
+		if err != nil {
+			return ReportResult{}, wrap(err)
+		}
+		defer denomRows.Close()
+		denomMap := make(map[string]float64)
+		for denomRows.Next() {
+			var key string
+			var denom float64
+			if err := denomRows.Scan(&key, &denom); err != nil {
+				return ReportResult{}, wrap(err)
+			}
+			denomMap[key] = denom
+		}
+		if err := denomRows.Err(); err != nil {
+			return ReportResult{}, wrap(err)
+		}
+
+		floatValues := make([]float64, len(values))
+		for i, rawLabel := range rawLabels {
+			denom := denomMap[rawLabel]
+			if denom > 0 {
+				floatValues[i] = float64(values[i]) / denom
+			}
+		}
+		return ReportResult{
+			Labels:      labels,
+			FloatValues: floatValues,
+			IsFloat:     true,
+			Weight:      def.Weight,
+		}, nil
 	}
 
 	return ReportResult{

@@ -6,13 +6,26 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-// hide hides a file or directory using SetFileAttributes.
+// Hide hides a file or directory using SetFileAttributes.
 func Hide(path string) error {
 	u16ptr, err := windows.UTF16PtrFromString(path)
 	if err != nil {
 		return err
 	}
 	return windows.SetFileAttributes(u16ptr, windows.FILE_ATTRIBUTE_HIDDEN)
+}
+
+// Show removes the hidden attribute from a file or directory.
+func Show(path string) error {
+	p, err := windows.UTF16PtrFromString(path)
+	if err != nil {
+		return err
+	}
+	attrs, err := windows.GetFileAttributes(p)
+	if err != nil {
+		return err
+	}
+	return windows.SetFileAttributes(p, attrs&^windows.FILE_ATTRIBUTE_HIDDEN)
 }
 
 func OpenFolderAndSelect(path string) error {

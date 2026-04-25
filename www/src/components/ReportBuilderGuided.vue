@@ -7,7 +7,7 @@
           v-for="n in totalSteps"
           :key="n"
           class="w-4 h-1 rounded-full"
-          :class="n <= displayStep ? 'bg-indigo-500' : 'bg-gray-700'"
+          :class="n <= displayStep ? 'bg-indigo-500' : 'bg-gray-600 border border-gray-500/50'"
         />
       </div>
     </div>
@@ -20,7 +20,7 @@
           v-for="opt in intentOptions"
           :key="opt.value"
           type="button"
-          class="flex flex-col items-center gap-1.5 p-3 rounded-lg border text-xs transition-colors"
+          class="flex flex-col items-center gap-1.5 p-3 rounded-lg border text-xs transition-colors focus:outline-none"
           :class="intent === opt.value
             ? 'border-indigo-500 bg-indigo-900/20 text-indigo-300'
             : 'border-gray-700 bg-darker text-gray-400 hover:border-gray-500'"
@@ -41,7 +41,7 @@
           v-for="opt in groupByOptions"
           :key="opt.value"
           type="button"
-          class="flex items-center gap-2 px-3 py-2 rounded-lg border text-xs text-left transition-colors"
+          class="flex items-center gap-2 px-3 py-2 rounded-lg border text-xs text-left transition-colors focus:outline-none"
           :class="groupBy === opt.value
             ? 'border-indigo-500 bg-indigo-900/20 text-indigo-300'
             : 'border-gray-700 bg-darker text-gray-400 hover:border-gray-500'"
@@ -75,16 +75,18 @@
           {{ qf.label }}
         </label>
       </div>
-      <button
-        type="button"
-        class="text-xs text-indigo-400 hover:text-indigo-300 self-start"
-        @click="step = 4"
-      >Next</button>
-      <button
-        type="button"
-        class="text-xs text-gray-500 hover:text-gray-400 self-start"
-        @click="goBack"
-      >Back</button>
+      <div class="flex gap-2">
+        <button
+          type="button"
+          class="text-xs text-gray-500 hover:text-gray-400"
+          @click="goBack"
+        >← Back</button>
+        <button
+          type="button"
+          class="text-xs text-indigo-400 hover:text-indigo-300"
+          @click="step = 4"
+        >Next →</button>
+      </div>
     </div>
 
     <!-- Step 4: Name it -->
@@ -97,17 +99,19 @@
         placeholder="Report name"
         @keydown.enter="handleApply"
       />
-      <button
-        type="button"
-        class="px-3 py-1.5 rounded border border-indigo-600 bg-indigo-700 text-xs text-white hover:bg-indigo-600 disabled:opacity-50"
-        :disabled="!reportName.trim()"
-        @click="handleApply"
-      >Create Report</button>
-      <button
-        type="button"
-        class="text-xs text-gray-500 hover:text-gray-400 self-start"
-        @click="goBack"
-      >Back</button>
+      <div class="flex gap-2">
+        <button
+          type="button"
+          class="text-xs text-gray-500 hover:text-gray-400"
+          @click="goBack"
+        >← Back</button>
+        <button
+          type="button"
+          class="px-3 py-1.5 rounded border border-indigo-600 bg-indigo-700 text-xs text-white hover:bg-indigo-600 disabled:opacity-50"
+          :disabled="!reportName.trim()"
+          @click="handleApply"
+        >Create Report</button>
+      </div>
     </div>
   </div>
 </template>
@@ -175,10 +179,10 @@ const quickFilterOptions = computed(() => {
 const totalSteps = computed(() => intent.value === 'time' ? 3 : 4)
 
 const displayStep = computed(() => {
-  if (intent.value === 'time') {
-    return step.value === 1 ? 1 : step.value === 3 ? 2 : 3
-  }
-  return step.value
+  if (intent.value !== 'time') return step.value
+  if (step.value === 1) return 1
+  if (step.value === 3) return 2
+  return 3
 })
 
 function defaultGroupBy(intentVal: string): string {
@@ -219,7 +223,7 @@ function selectGroupBy(value: string) {
 function goBack() {
   if (step.value === 4) { step.value = 3; return }
   if (step.value === 3) { step.value = intent.value === 'time' ? 1 : 2; return }
-  if (step.value === 2) { step.value = 1; return }
+  if (step.value === 2) { step.value = 1; }
 }
 
 function handleApply() {
@@ -229,12 +233,15 @@ function handleApply() {
     .filter((c): c is ReportFilterCondition => c !== undefined)
 
   const isArtifact = intent.value === 'artifacts'
+  let displayMode = 'bar'
+  if (intent.value === 'time') displayMode = 'line'
+  else if (isArtifact) displayMode = 'pie'
   emit('apply', {
     name: reportName.value.trim(),
     subject: isArtifact ? 'artifacts' : 'missions',
     mode: intent.value === 'time' ? 'time_series' : 'aggregate',
     groupBy: groupBy.value,
-    displayMode: intent.value === 'time' ? 'line' : isArtifact ? 'pie' : 'bar',
+    displayMode,
     filters: { and: andConditions, or: [] },
   })
 }

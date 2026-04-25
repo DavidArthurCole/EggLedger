@@ -9,11 +9,12 @@
       <div class="flex-1 bg-gray-800 rounded-sm h-4 min-w-0">
         <div
           class="h-4 rounded-sm"
-          :style="{ width: barWidth(result.values[i]) + '%', backgroundColor: color }"
+          :style="{ width: barWidth(displayValues[i]) + '%', backgroundColor: color }"
         />
       </div>
-      <span class="text-gray-300 font-mono flex-shrink-0 w-12 text-right">{{ result.values[i] }}</span>
+      <span class="text-gray-300 font-mono flex-shrink-0 w-20 text-right">{{ formatValue(displayValues[i]) }}</span>
     </div>
+    <div v-if="unitLabel" class="text-xs text-gray-600 text-right mt-0.5">{{ unitLabel }}</div>
   </div>
 </template>
 
@@ -24,11 +25,21 @@ import type { ReportResult } from '../types/bridge'
 const props = defineProps<{
   result: ReportResult
   color: string
+  unitLabel?: string
 }>()
 
-const maxVal = computed(() => Math.max(...props.result.values, 1))
+const displayValues = computed(() =>
+  props.result.isFloat ? (props.result.floatValues ?? []) : props.result.values,
+)
+
+const maxVal = computed(() => Math.max(...displayValues.value.map(Number), 1))
 
 function barWidth(val: number): number {
-  return Math.round((val / maxVal.value) * 100)
+  return Math.round((Number(val) / maxVal.value) * 100)
+}
+
+function formatValue(val: number): string {
+  if (props.result.isFloat) return Number(val).toFixed(2)
+  return String(val)
 }
 </script>

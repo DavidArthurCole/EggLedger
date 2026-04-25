@@ -71,7 +71,7 @@ function segmentColors(baseColor: string, count: number): string[] {
 
 const segments = computed(() => {
   const labels = props.result.labels
-  const values = props.result.values
+  const values = props.result.isFloat ? (props.result.floatValues ?? []) : props.result.values
   const total = values.reduce((a, b) => a + Number(b), 0)
   if (total === 0) return []
 

@@ -3,7 +3,7 @@ module github.com/DavidArthurCole/EggLedger
 go 1.25.0
 
 require (
-	github.com/davidarthurcole/lorca v0.3.5
+	github.com/davidarthurcole/lorca v0.3.6
 	github.com/dustin/go-humanize v1.0.1
 	github.com/golang-migrate/migrate/v4 v4.19.1
 	github.com/google/uuid v1.6.0

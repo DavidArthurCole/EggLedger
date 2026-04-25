@@ -17,6 +17,15 @@ func Hide(path string) error {
 	return unix.Chflags(path, UF_HIDDEN)
 }
 
+// Show removes the hidden flag from a file or directory using chflags(2).
+func Show(path string) error {
+	var stat unix.Stat_t
+	if err := unix.Lstat(path, &stat); err != nil {
+		return err
+	}
+	return unix.Chflags(path, int(stat.Flags)&^UF_HIDDEN)
+}
+
 // The following is a failed attempt using cgo and obj-c to implement
 // openFolderAndSelect with activateFileViewerSelectingURLs. For some reason, it
 // works without Lorca, but when Lorca is used, Finder becomes unresponsive until

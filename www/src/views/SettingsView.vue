@@ -222,6 +222,73 @@
           <label for="collapseOlderSectionsCheckbox" class="ext-opt-label">Collapse all but the most recent year section by default</label>
         </div>
       </div>
+      <hr class="mt-1rem mb-1rem w-full" />
+
+      <div class="px-2 py-2 text-sm text-gray-400 bg-darker rounded-md tabular-nums overflow-auto">
+        <span class="mr-0_5rem font-bold text-lg text-gray-400 ledger-underline">Storage</span><br />
+        <div class="mt-0_5rem">
+          <span class="section-heading">Storage Location</span><br />
+          <div class="flex flex-row items-center gap-2 mt-0_5rem pl-0_5rem flex-wrap">
+            <span class="font-mono text-gray-300 break-all">{{ storagePath || 'Loading...' }}</span>
+            <button
+              type="button"
+              class="apply-filter-button !bg-gray-700 !text-gray-200 hover:!bg-gray-600 !border-gray-500"
+              @click="openStorageFolder"
+            >Open folder</button>
+            <button
+              type="button"
+              class="apply-filter-button !bg-gray-700 !text-gray-200 hover:!bg-gray-600 !border-gray-500"
+              @click="toggleStorageVisible"
+            >{{ storageFolderHidden ? 'Show folder' : 'Hide folder' }}</button>
+          </div>
+        </div>
+
+        <div class="mt-1rem">
+          <span class="section-heading">Backup Storage</span><br />
+          <div class="mt-0_5rem pl-0_5rem">
+            <input
+              type="text"
+              class="drop-select-full text-sm bg-darkest"
+              placeholder="Destination path..."
+              v-model="backupDestPath"
+            />
+            <div class="flex flex-row items-center gap-2 mt-0_5rem">
+              <button
+                type="button"
+                class="apply-filter-button !bg-blue-700 !text-white hover:!bg-blue-600 !border-blue-500"
+                :disabled="!backupDestPath || backupInProgress"
+                @click="runBackup"
+              >{{ backupInProgress ? 'Backing up...' : 'Backup storage...' }}</button>
+              <span v-if="backupSuccess" class="text-green-400 text-xs">Backup complete.</span>
+              <span v-if="backupError" class="text-red-400 text-xs">{{ backupError }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-1rem">
+          <span class="section-heading">Move Storage</span><br />
+          <div class="mt-0_5rem pl-0_5rem">
+            <input
+              type="text"
+              class="drop-select-full text-sm bg-darkest"
+              placeholder="Destination path..."
+              v-model="moveDestPath"
+            />
+            <div class="mt-0_5rem text-xs text-orange-400 border border-orange-700 rounded-md py-2 px-3">
+              This will restart the app. The old location will NOT be deleted automatically.
+            </div>
+            <div class="flex flex-row items-center gap-2 mt-0_5rem">
+              <button
+                type="button"
+                class="apply-filter-button !bg-orange-700 !text-white hover:!bg-orange-600 !border-orange-500"
+                :disabled="!moveDestPath || moveInProgress"
+                @click="runMove"
+              >{{ moveInProgress ? 'Moving...' : 'Move storage...' }}</button>
+              <span v-if="moveError" class="text-red-400 text-xs">{{ moveError }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -260,6 +327,53 @@ const {
   open: openPrefBrowserDropdown,
   close: closePrefBrowserDropdown,
 } = useDropdownSelector((pref) => { setPreferredBrowser(pref) })
+
+const storagePath = ref('')
+const storageFolderHidden = ref(true)
+const backupDestPath = ref('')
+const backupInProgress = ref(false)
+const backupSuccess = ref(false)
+const backupError = ref('')
+const moveDestPath = ref('')
+const moveInProgress = ref(false)
+const moveError = ref('')
+
+function openStorageFolder() {
+  if (storagePath.value) {
+    globalThis.openFileInFolder(storagePath.value)
+  }
+}
+
+async function toggleStorageVisible() {
+  const nowHidden = !storageFolderHidden.value
+  storageFolderHidden.value = nowHidden
+  await globalThis.setStorageFolderVisible(!nowHidden)
+}
+
+async function runBackup() {
+  backupSuccess.value = false
+  backupError.value = ''
+  backupInProgress.value = true
+  try {
+    await globalThis.backupStorageTo(backupDestPath.value)
+    backupSuccess.value = true
+  } catch (e: unknown) {
+    backupError.value = e instanceof Error ? e.message : String(e)
+  } finally {
+    backupInProgress.value = false
+  }
+}
+
+async function runMove() {
+  moveError.value = ''
+  moveInProgress.value = true
+  try {
+    await globalThis.moveStorageTo(moveDestPath.value)
+  } catch (e: unknown) {
+    moveError.value = e instanceof Error ? e.message : String(e)
+    moveInProgress.value = false
+  }
+}
 
 const workerCountWarningRead = ref(false)
 const hideWorkerWarning = ref(false)
@@ -329,6 +443,7 @@ onMounted(async () => {
   await refreshBrowserList()
   await checkRefreshNeeded()
   workerCountWarningRead.value = (await globalThis.workerCountWarningRead()) ?? false
+  storagePath.value = (await globalThis.getStoragePath()) ?? ''
 })
 
 onUnmounted(() => {

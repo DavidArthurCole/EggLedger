@@ -34,14 +34,20 @@ type ReportDefinition struct {
 	Color            string        `json:"color"`
 	Description      string        `json:"description"`
 	ChartType        string        `json:"chartType"`
-	SortOrder        int           `json:"sortOrder"`
-	CreatedAt        int64         `json:"createdAt"`
-	UpdatedAt        int64         `json:"updatedAt"`
+	SortOrder           int           `json:"sortOrder"`
+	CreatedAt           int64         `json:"createdAt"`
+	UpdatedAt           int64         `json:"updatedAt"`
+	ValueFilterOp string `json:"valueFilterOp"`
+	ValueFilterThreshold float64 `json:"valueFilterThreshold"`
+	GroupId string `json:"groupId"`
+	NormalizeBy string `json:"normalizeBy"`
 }
 
 // ReportResult is the computed output of executing a report.
 type ReportResult struct {
-	Labels []string `json:"labels"`
-	Values []int64  `json:"values"`
-	Weight string   `json:"weight"`
+	Labels      []string  `json:"labels"`
+	Values      []int64   `json:"values"`
+	FloatValues []float64 `json:"floatValues"`
+	IsFloat     bool      `json:"isFloat"`
+	Weight      string    `json:"weight"`
 }
