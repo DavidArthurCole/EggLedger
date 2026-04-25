@@ -11,8 +11,9 @@
           <div class="flex-1 flex flex-col justify-end relative">
             <span
               v-if="Number(displayValues[i]) > 0"
-              class="absolute left-0 right-0 text-center text-gray-400 pointer-events-none leading-none"
-              :style="{ bottom: `calc(${barHeight(displayValues[i])}% + 2px)`, fontSize: '8px' }"
+              class="absolute left-0 right-0 text-center pointer-events-none leading-none"
+              :class="barHeight(displayValues[i]) >= 98 ? 'text-gray-600' : 'text-gray-400'"
+              :style="countStyle(displayValues[i])"
             >{{ formatValue(displayValues[i]) }}</span>
             <div
               class="w-full rounded-t-sm"
@@ -56,5 +57,11 @@ function barHeight(val: number): number {
 function formatValue(val: number): string {
   if (props.result.isFloat) return Number(val).toFixed(2)
   return String(val)
+}
+
+function countStyle(val: number): Record<string, string> {
+  const h = barHeight(val)
+  if (h >= 98) return { top: '2px', fontSize: '8px' }
+  return { bottom: `calc(${h}% + 2px)`, fontSize: '8px' }
 }
 </script>

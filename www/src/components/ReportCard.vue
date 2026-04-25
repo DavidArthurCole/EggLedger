@@ -43,7 +43,7 @@
         <span class="text-xs text-gray-500 animate-pulse">Running...</span>
       </div>
       <div v-else-if="filteredResult && filteredResult.labels?.length > 0 && def.displayMode === 'pie'" class="h-full">
-        <ReportPieChart :result="filteredResult" :color="def.color || '#6366f1'" :label-colors="def.labelColors" :grid-w="def.gridW" :grid-h="def.gridH" />
+        <ReportPieChart :result="filteredResult" :color="def.color || '#6366f1'" :label-colors="def.labelColors" />
       </div>
       <template v-else-if="filteredResult && filteredResult.labels?.length > 0">
         <ReportBarChart v-if="def.displayMode === 'bar' || (!def.displayMode && def.mode === 'aggregate')" :result="filteredResult" :color="def.color || '#6366f1'" :unit-label="normalizeLabel" />
@@ -81,10 +81,24 @@
           class="text-blue-400 hover:text-blue-300 px-1 text-xs leading-none"
           @click="$emit('edit')"
         >Edit</button>
+        <template v-if="confirmingDelete">
+          <span class="text-xs text-red-400">Delete?</span>
+          <button
+            type="button"
+            class="text-xs text-gray-400 hover:text-gray-200 px-1 leading-none"
+            @click="confirmingDelete = false"
+          >Cancel</button>
+          <button
+            type="button"
+            class="text-xs text-red-400 hover:text-red-300 font-semibold px-1 leading-none"
+            @click="$emit('delete'); confirmingDelete = false"
+          >Yes</button>
+        </template>
         <button
+          v-else
           type="button"
           class="text-red-500 hover:text-red-400 px-1 text-xs leading-none"
-          @click="$emit('delete')"
+          @click="confirmingDelete = true"
         >&#10005;</button>
       </template>
       <template v-else>
@@ -131,7 +145,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import type { ReportDefinition, ReportFilterCondition, ReportResult, ReportGroup } from '../types/bridge'
 import ReportBarChart from './ReportBarChart.vue'
 import ReportLineChart from './ReportLineChart.vue'
@@ -154,6 +168,10 @@ defineEmits<{
   export: []
   setGroup: [groupId: string]
 }>()
+
+const confirmingDelete = ref(false)
+
+watch(() => props.editMode, (val) => { if (!val) confirmingDelete.value = false })
 
 const showWeightTooltip = ref(false)
 const tooltipX = ref(0)

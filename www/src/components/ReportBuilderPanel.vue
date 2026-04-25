@@ -251,36 +251,42 @@
           <div class="flex flex-col gap-1">
             <span class="text-xs text-gray-400">Preview</span>
             <div
-              class="bg-darker rounded-lg border border-gray-700 p-3 overflow-hidden"
+              class="bg-darker rounded-lg border border-gray-700 p-3 overflow-hidden flex flex-col"
               :style="{ width: (form.gridW * 110) + 'px', height: (form.gridH * 110) + 'px' }"
             >
-              <div class="text-xs font-medium text-gray-300 mb-2 truncate">{{ form.name || 'Untitled report' }}</div>
-              <template v-if="form.displayMode === 'bar'">
-                <div v-for="w in [80, 55, 40, 25]" :key="w" class="flex items-center gap-2 mb-1.5">
-                  <div class="w-14 h-2 bg-gray-700 rounded-sm flex-shrink-0" />
-                  <div class="h-2 rounded-sm" :style="{ width: w + '%', backgroundColor: form.color + '88' }" />
-                </div>
-              </template>
-              <template v-else-if="form.displayMode === 'line'">
-                <div class="flex items-end gap-1 h-12">
-                  <div v-for="(h, i) in [30, 55, 45, 70, 50, 80, 60]" :key="i" class="flex-1 rounded-sm" :style="{ height: h + '%', backgroundColor: form.color + '88' }" />
-                </div>
-              </template>
-              <template v-else-if="form.displayMode === 'pie'">
-                <svg viewBox="0 0 100 100" class="w-12 h-12 mx-auto">
-                  <path d="M 50 50 L 50 10 A 40 40 0 0 1 73.5 82.4 Z" :fill="form.color + 'ee'" />
-                  <path d="M 50 50 L 73.5 82.4 A 40 40 0 0 1 10 50 Z" :fill="form.color + '99'" />
-                  <path d="M 50 50 L 10 50 A 40 40 0 0 1 50 10 Z" :fill="form.color + '55'" />
-                </svg>
-              </template>
-              <template v-else>
-                <div v-for="i in 4" :key="i" class="flex gap-2 py-1 border-b border-gray-700/50 last:border-0">
-                  <div class="flex-1 h-2 bg-gray-700 rounded-sm" />
-                  <div class="w-12 h-2 bg-gray-600 rounded-sm" />
-                </div>
-              </template>
+              <div class="text-xs font-medium text-gray-300 mb-2 truncate flex-shrink-0">{{ form.name || 'Untitled report' }}</div>
+              <div class="flex-1 min-h-0">
+                <template v-if="form.displayMode === 'bar'">
+                  <div class="flex flex-col justify-center gap-1 h-full">
+                    <div v-for="w in [80, 55, 40, 25]" :key="w" class="flex items-center gap-1">
+                      <div class="w-8 h-1.5 bg-gray-700 rounded-sm flex-shrink-0" />
+                      <div class="h-1.5 rounded-sm" :style="{ width: w + '%', backgroundColor: form.color + '88' }" />
+                    </div>
+                  </div>
+                </template>
+                <template v-else-if="form.displayMode === 'line'">
+                  <div class="flex items-end gap-0.5 h-full">
+                    <div v-for="(h, i) in [30, 55, 45, 70, 50, 80, 60]" :key="i" class="flex-1 rounded-sm" :style="{ height: h + '%', backgroundColor: form.color + '88' }" />
+                  </div>
+                </template>
+                <template v-else-if="form.displayMode === 'pie'">
+                  <svg viewBox="0 0 100 100" class="w-full h-full">
+                    <path d="M 50 50 L 50 10 A 40 40 0 0 1 73.5 82.4 Z" :fill="form.color + 'ee'" />
+                    <path d="M 50 50 L 73.5 82.4 A 40 40 0 0 1 10 50 Z" :fill="form.color + '99'" />
+                    <path d="M 50 50 L 10 50 A 40 40 0 0 1 50 10 Z" :fill="form.color + '55'" />
+                  </svg>
+                </template>
+                <template v-else>
+                  <div class="flex flex-col justify-center gap-0.5 h-full">
+                    <div v-for="i in 4" :key="i" class="flex gap-2 py-0.5 border-b border-gray-700/50 last:border-0">
+                      <div class="flex-1 h-1.5 bg-gray-700 rounded-sm" />
+                      <div class="w-8 h-1.5 bg-gray-600 rounded-sm" />
+                    </div>
+                  </div>
+                </template>
+              </div>
             </div>
-            <p class="text-xs text-gray-600 text-center">{{ form.gridW }}x{{ form.gridH }} - {{ modeLabel }} - {{ subjectLabel }}</p>
+            <p class="text-xs text-gray-500 text-center">{{ form.gridW }}x{{ form.gridH }} - {{ modeLabel }} - {{ subjectLabel }}</p>
           </div>
         </div>
 

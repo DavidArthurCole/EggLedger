@@ -42,6 +42,13 @@
           @set-group="handleSetGroup(def.id, $event)"
         />
       </div>
+      <div
+        v-if="editMode && draggingIndex !== null"
+        class="rounded-lg border-2 border-dashed flex items-center justify-center text-xs transition-colors select-none"
+        :class="dragOverIndex === displayedReports.length ? 'border-blue-500 bg-blue-500/10 text-blue-400' : 'border-gray-700 text-gray-600'"
+        @dragover.prevent="onDragOver(displayedReports.length)"
+        @drop.prevent="onDrop(displayedReports.length)"
+      >Move here</div>
     </div>
 
     <div v-if="displayedReports.length === 0 && reports.length > 0" class="text-xs text-gray-500 text-center mt-8">

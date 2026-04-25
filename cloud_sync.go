@@ -66,9 +66,9 @@ type cloudReportsBlob struct {
 	Groups  []reportdb.ReportGroupRow  `json:"groups"`
 }
 
-// blobEnvelope wraps the plaintext data field for PUT/GET requests.
+// blobEnvelope wraps the payload for PUT/GET requests, matching the server's ciphertext field.
 type blobEnvelope struct {
-	Data json.RawMessage `json:"data"`
+	Ciphertext string `json:"ciphertext"`
 }
 
 // authInitResponse is returned by GET /auth/discord.
@@ -456,7 +456,7 @@ func putBlob(ctx context.Context, token, name string, payload interface{}) error
 	if err != nil {
 		return fmt.Errorf("putBlob %s: marshal: %w", name, err)
 	}
-	body, err := json.Marshal(blobEnvelope{Data: raw})
+	body, err := json.Marshal(blobEnvelope{Ciphertext: string(raw)})
 	if err != nil {
 		return fmt.Errorf("putBlob %s: envelope: %w", name, err)
 	}
@@ -509,7 +509,7 @@ func getBlob(ctx context.Context, token, name string, out interface{}) error {
 	if err := json.NewDecoder(resp.Body).Decode(&env); err != nil {
 		return fmt.Errorf("getBlob %s: decode: %w", name, err)
 	}
-	if err := json.Unmarshal(env.Data, out); err != nil {
+	if err := json.Unmarshal([]byte(env.Ciphertext), out); err != nil {
 		return fmt.Errorf("getBlob %s: unmarshal data: %w", name, err)
 	}
 	return nil

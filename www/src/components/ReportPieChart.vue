@@ -1,6 +1,6 @@
 <template>
-  <div class="w-full h-full">
-    <svg :viewBox="`0 0 ${vw} ${vh}`" class="w-full h-full" preserveAspectRatio="xMidYMid meet" style="max-height: 100%; max-width: 100%;">
+  <div ref="containerRef" class="w-full h-full">
+    <svg :viewBox="`0 0 ${vw} ${vh}`" class="w-full h-full" preserveAspectRatio="xMidYMid meet">
       <defs>
         <linearGradient
           v-for="(seg, i) in segments"
@@ -63,7 +63,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import type { ReportResult } from '../types/bridge'
 
 const props = defineProps<{
@@ -71,13 +71,39 @@ const props = defineProps<{
   color: string
   /** JSON-encoded Record<string, string> mapping label to hex color */
   labelColors?: string
-  gridW?: number
-  gridH?: number
 }>()
 
-const isPortrait = computed(() => (props.gridH ?? 1) > (props.gridW ?? 1))
-const vw = computed(() => 260)
-const vh = computed(() => isPortrait.value ? 310 : 220)
+const containerRef = ref<HTMLDivElement | null>(null)
+const containerSize = ref({ w: 0, h: 0 })
+let resizeObserver: ResizeObserver | null = null
+
+onMounted(() => {
+  if (!containerRef.value) return
+  const rect = containerRef.value.getBoundingClientRect()
+  containerSize.value = { w: rect.width, h: rect.height }
+  resizeObserver = new ResizeObserver(entries => {
+    const entry = entries[0]
+    if (entry) containerSize.value = { w: entry.contentRect.width, h: entry.contentRect.height }
+  })
+  resizeObserver.observe(containerRef.value)
+})
+
+onUnmounted(() => { resizeObserver?.disconnect() })
+
+const vw = computed(() => {
+  const { w, h } = containerSize.value
+  if (!h) return 260
+  return Math.max(260, (w / h) * 220)
+})
+
+const vh = computed(() => {
+  const { w, h } = containerSize.value
+  if (!w) return 220
+  const ratio = w / h
+  if (ratio > 260 / 220) return 220
+  return 260 / ratio
+})
+
 const cx = computed(() => vw.value / 2)
 const cy = computed(() => vh.value / 2)
 const r = 55
