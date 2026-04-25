@@ -299,6 +299,9 @@ func (s *AppStorage) persistAllToDB() {
 		"lifetime_sort_method":          s.LifetimeSortMethod,
 		"lifetime_show_drops_per_ship":  strconv.FormatBool(s.LifetimeShowDropsPerShip),
 		"lifetime_show_expected_totals": strconv.FormatBool(s.LifetimeShowExpectedTotals),
+		"cloud_session_token":           s.CloudSessionToken,
+		"cloud_discord_username":        s.CloudDiscordUsername,
+		"cloud_discord_avatar_url":      s.CloudDiscordAvatarURL,
 	}
 	s.Unlock()
 	if err := db.SetSettings(context.Background(), settings); err != nil {

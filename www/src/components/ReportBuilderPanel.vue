@@ -248,11 +248,11 @@
           </div>
 
           <!-- Live preview -->
-          <div class="flex flex-col gap-1 flex-1">
+          <div class="flex flex-col gap-1">
             <span class="text-xs text-gray-400">Preview</span>
             <div
-              class="bg-darker rounded-lg border border-gray-700 p-3 w-full overflow-hidden"
-              :style="{ height: (form.gridH * 72 + 20) + 'px' }"
+              class="bg-darker rounded-lg border border-gray-700 p-3 overflow-hidden"
+              :style="{ width: (form.gridW * 130) + 'px', height: (form.gridH * 72 + 20) + 'px' }"
             >
               <div class="text-xs font-medium text-gray-300 mb-2 truncate">{{ form.name || 'Untitled report' }}</div>
               <template v-if="form.displayMode === 'bar'">
@@ -280,7 +280,7 @@
                 </div>
               </template>
             </div>
-            <p class="text-xs text-gray-600">{{ form.gridW }}x{{ form.gridH }} - {{ modeLabel }} - {{ subjectLabel }}</p>
+            <p class="text-xs text-gray-600 text-center">{{ form.gridW }}x{{ form.gridH }} - {{ modeLabel }} - {{ subjectLabel }}</p>
           </div>
         </div>
 
