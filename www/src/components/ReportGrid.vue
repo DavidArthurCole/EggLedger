@@ -10,6 +10,8 @@
     <div
       class="grid gap-3"
       style="grid-template-columns: repeat(4, 1fr); grid-auto-rows: 200px;"
+      @dragover.prevent="onGridDragOver($event)"
+      @drop.prevent="onGridDrop($event)"
     >
       <div
         v-for="(def, index) in displayedReports"
@@ -220,6 +222,20 @@ function onDragStart(index: number, event: DragEvent) {
 function onDragEnd() {
   draggingIndex.value = null
   dragOverIndex.value = null
+}
+
+function onGridDragOver(event: DragEvent) {
+  if (draggingIndex.value === null) return
+  if ((event.target as Element) === (event.currentTarget as Element)) {
+    dragOverIndex.value = displayedReports.value.length
+  }
+}
+
+function onGridDrop(event: DragEvent) {
+  if (draggingIndex.value === null) return
+  if ((event.target as Element) === (event.currentTarget as Element)) {
+    onDrop(displayedReports.value.length)
+  }
 }
 
 function onDragOver(index: number) {

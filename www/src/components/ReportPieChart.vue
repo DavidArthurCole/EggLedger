@@ -31,7 +31,7 @@
           :x2="seg.elbowX"
           :y2="seg.labelY"
           :stroke="`url(#lg-${i})`"
-          stroke-width="0.8"
+          :stroke-width="strokeWidth"
         />
         <line
           :x1="seg.elbowX"
@@ -39,22 +39,22 @@
           :x2="seg.labelX"
           :y2="seg.labelY"
           :stroke="`url(#lg-${i})`"
-          stroke-width="0.8"
+          :stroke-width="strokeWidth"
         />
         <text
           :x="seg.textX"
           :y="seg.labelY"
           :text-anchor="seg.anchor"
           dominant-baseline="middle"
-          font-size="5"
+          :font-size="fontSize"
           fill="#9ca3af"
         >{{ seg.shortLabel }}</text>
         <text
           :x="seg.textX"
-          :y="seg.labelY + 6"
+          :y="seg.labelY + pctYOffset"
           :text-anchor="seg.anchor"
           dominant-baseline="middle"
-          font-size="4.5"
+          :font-size="fontSizePct"
           fill="#6b7280"
         >{{ seg.pct.toFixed(1) }}%</text>
       </g>
@@ -90,43 +90,40 @@ onMounted(() => {
 
 onUnmounted(() => { resizeObserver?.disconnect() })
 
-const vw = computed(() => {
-  const { w, h } = containerSize.value
-  if (!h) return 260
-  return Math.max(260, (w / h) * 220)
-})
-
-const vh = computed(() => {
-  const { w, h } = containerSize.value
-  if (!w) return 220
-  const ratio = w / h
-  if (ratio > 260 / 220) return 220
-  return 260 / ratio
-})
-
+const vw = computed(() => containerSize.value.w || 260)
+const vh = computed(() => containerSize.value.h || 220)
 const cx = computed(() => vw.value / 2)
 const cy = computed(() => vh.value / 2)
-const r = 55
-const elbowR = r + 16
+
+// All geometry scales from r. Cap at 90 to prevent label overflow on very large cards.
+const r = computed(() => Math.min(Math.min(vw.value, vh.value) * 0.25, 90))
+const elbowR = computed(() => r.value * 1.291)
+const labelOffset = computed(() => r.value * 0.182)
+const textXOff = computed(() => r.value * 0.027)
+const fontSize = computed(() => r.value * 0.091)
+const fontSizePct = computed(() => r.value * 0.082)
+const pctYOffset = computed(() => r.value * 0.109)
+const strokeWidth = computed(() => r.value * 0.0145)
 
 const MAX_SEGMENTS = 10
-const MIN_LABEL_SPACING = 14
+const minLabelSpacing = computed(() => r.value * 0.255)
+const labelClamp = computed(() => r.value * 0.145)
 
 function hexToHsl(hex: string): [number, number, number] {
-  const r = Number.parseInt(hex.slice(1, 3), 16) / 255
-  const g = Number.parseInt(hex.slice(3, 5), 16) / 255
-  const b = Number.parseInt(hex.slice(5, 7), 16) / 255
-  const max = Math.max(r, g, b)
-  const min = Math.min(r, g, b)
+  const rc = Number.parseInt(hex.slice(1, 3), 16) / 255
+  const gc = Number.parseInt(hex.slice(3, 5), 16) / 255
+  const bc = Number.parseInt(hex.slice(5, 7), 16) / 255
+  const max = Math.max(rc, gc, bc)
+  const min = Math.min(rc, gc, bc)
   const l = (max + min) / 2
   const d = max - min
   const s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1))
   let h = 0
   if (d !== 0) {
     switch (max) {
-      case r: h = ((g - b) / d + 6) % 6; break
-      case g: h = (b - r) / d + 2; break
-      default: h = (r - g) / d + 4
+      case rc: h = ((gc - bc) / d + 6) % 6; break
+      case gc: h = (bc - rc) / d + 2; break
+      default: h = (rc - gc) / d + 4
     }
     h *= 60
   }
@@ -163,32 +160,36 @@ const parsedLabelColors = computed((): Record<string, string> => {
   }
 })
 
-function spreadLabelPositions(rawPositions: number[]): number[] {
-  const adjusted = [...rawPositions]
-  const n = adjusted.length
-  if (n <= 1) return adjusted
-
-  // Multiple passes to resolve all overlaps
-  for (let pass = 0; pass < n; pass++) {
-    let changed = false
-    for (let i = 0; i < n - 1; i++) {
-      const gap = adjusted[i + 1] - adjusted[i]
-      if (gap < MIN_LABEL_SPACING) {
-        const overlap = MIN_LABEL_SPACING - gap
-        adjusted[i] -= overlap / 2
-        adjusted[i + 1] += overlap / 2
-        changed = true
-      }
-    }
-    if (!changed) break
-  }
-  return adjusted
-}
-
 const segments = computed(() => {
   const cxVal = cx.value
   const cyVal = cy.value
   const vhVal = vh.value
+  const rVal = r.value
+  const elbowRVal = elbowR.value
+  const labelOffsetVal = labelOffset.value
+  const textXOffVal = textXOff.value
+  const minSpacing = minLabelSpacing.value
+  const clamp = labelClamp.value
+
+  function spreadLabelPositions(rawPositions: number[]): number[] {
+    const adjusted = [...rawPositions]
+    const n = adjusted.length
+    if (n <= 1) return adjusted
+    for (let pass = 0; pass < n; pass++) {
+      let changed = false
+      for (let i = 0; i < n - 1; i++) {
+        const gap = adjusted[i + 1] - adjusted[i]
+        if (gap < minSpacing) {
+          const overlap = minSpacing - gap
+          adjusted[i] -= overlap / 2
+          adjusted[i + 1] += overlap / 2
+          changed = true
+        }
+      }
+      if (!changed) break
+    }
+    return adjusted
+  }
 
   const labels = props.result.labels
   const values = props.result.isFloat ? (props.result.floatValues ?? []) : props.result.values
@@ -207,12 +208,12 @@ const segments = computed(() => {
   const perLabel = parsedLabelColors.value
 
   function slicePath(startAngle: number, endAngle: number): string {
-    const sx = cxVal + Math.cos(startAngle) * r
-    const sy = cyVal + Math.sin(startAngle) * r
-    const ex = cxVal + Math.cos(endAngle) * r
-    const ey = cyVal + Math.sin(endAngle) * r
+    const sx = cxVal + Math.cos(startAngle) * rVal
+    const sy = cyVal + Math.sin(startAngle) * rVal
+    const ex = cxVal + Math.cos(endAngle) * rVal
+    const ey = cyVal + Math.sin(endAngle) * rVal
     const large = endAngle - startAngle > Math.PI ? 1 : 0
-    return `M ${cxVal} ${cyVal} L ${sx} ${sy} A ${r} ${r} 0 ${large} 1 ${ex} ${ey} Z`
+    return `M ${cxVal} ${cyVal} L ${sx} ${sy} A ${rVal} ${rVal} 0 ${large} 1 ${ex} ${ey} Z`
   }
 
   let angleOffset = -Math.PI / 2
@@ -223,12 +224,12 @@ const segments = computed(() => {
     angleOffset = endAngle
     const midAngle = (startAngle + endAngle) / 2
 
-    const innerX = cxVal + Math.cos(midAngle) * r
-    const innerY = cyVal + Math.sin(midAngle) * r
-    const elbowX = cxVal + Math.cos(midAngle) * elbowR
-    const rawElbowY = cyVal + Math.sin(midAngle) * elbowR
+    const innerX = cxVal + Math.cos(midAngle) * rVal
+    const innerY = cyVal + Math.sin(midAngle) * rVal
+    const elbowX = cxVal + Math.cos(midAngle) * elbowRVal
+    const rawElbowY = cyVal + Math.sin(midAngle) * elbowRVal
     const isRight = elbowX >= cxVal
-    const labelX = isRight ? elbowX + 10 : elbowX - 10
+    const labelX = isRight ? elbowX + labelOffsetVal : elbowX - labelOffsetVal
     const color = perLabel[item.label] ?? autoColors[i]
 
     return {
@@ -243,13 +244,12 @@ const segments = computed(() => {
       elbowX,
       rawElbowY,
       labelX,
-      textX: isRight ? labelX + 1.5 : labelX - 1.5,
+      textX: isRight ? labelX + textXOffVal : labelX - textXOffVal,
       anchor: isRight ? 'start' : 'end',
       isRight,
     }
   })
 
-  // Split into left and right groups, sort each by rawElbowY
   const leftIndices = raw.map((_, i) => i).filter(i => raw[i].elbowX < cxVal)
   const rightIndices = raw.map((_, i) => i).filter(i => raw[i].elbowX >= cxVal)
 
@@ -261,10 +261,10 @@ const segments = computed(() => {
 
   const labelYMap: Record<number, number> = {}
   leftOrder.forEach((segIdx, sortPos) => {
-    labelYMap[segIdx] = Math.max(8, Math.min(vhVal - 8, leftSpread[sortPos]))
+    labelYMap[segIdx] = Math.max(clamp, Math.min(vhVal - clamp, leftSpread[sortPos]))
   })
   rightOrder.forEach((segIdx, sortPos) => {
-    labelYMap[segIdx] = Math.max(8, Math.min(vhVal - 8, rightSpread[sortPos]))
+    labelYMap[segIdx] = Math.max(clamp, Math.min(vhVal - clamp, rightSpread[sortPos]))
   })
 
   return raw.map((seg, i) => ({
