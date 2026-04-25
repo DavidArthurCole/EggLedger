@@ -60,6 +60,7 @@
           :groups="editMode ? groups : []"
           @run="handleRun(def.id)"
           @edit="openEditor(def)"
+          @copy="handleCopy(def)"
           @delete="handleDelete(def.id)"
           @export="downloadReportJson(def.id, def.name)"
           @set-group="handleSetGroup(def.id, $event)"
@@ -71,7 +72,7 @@
       No reports in this group.
     </div>
 
-    <div v-if="editMode" class="flex justify-center mt-1">
+    <div class="flex justify-center mt-1">
       <button
         type="button"
         class="text-xs px-3 py-1.5 rounded border border-dashed border-gray-600 text-gray-400 hover:text-gray-200 hover:border-gray-400"
@@ -163,6 +164,28 @@ async function handleRun(id: string) {
 
 async function handleDelete(id: string) {
   await deleteReport(id)
+}
+
+function makeCopyName(name: string): string {
+  const existing = new Set(reports.value.map(r => r.name))
+  const match = name.match(/^(.*)\s+\((\d+)\)$/)
+  const base = match ? match[1] : name
+  let n = match ? Number.parseInt(match[2]) : 0
+  let candidate: string
+  do {
+    n++
+    candidate = `${base} (${n})`
+  } while (existing.has(candidate))
+  return candidate
+}
+
+async function handleCopy(def: ReportDefinition) {
+  const copy: ReportDefinition = { ...def, id: '', name: makeCopyName(def.name), sortOrder: 0, createdAt: 0, updatedAt: 0 }
+  const saved = await createReport(copy)
+  if (saved?.id) {
+    if (def.groupId) await globalThis.setReportGroup(saved.id, def.groupId)
+    handleRun(saved.id)
+  }
 }
 
 async function handleExportAll() {

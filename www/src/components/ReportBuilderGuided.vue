@@ -185,10 +185,6 @@ const displayStep = computed(() => {
   return 3
 })
 
-function defaultGroupBy(intentVal: string): string {
-  return intentVal === 'artifacts' ? 'artifact_name' : 'ship_type'
-}
-
 function autoName() {
   const intentLabels: Record<string, string> = { missions: 'Mission counts', artifacts: 'Artifact drops', time: 'Activity over time' }
   const groupByLabels: Record<string, string> = {
@@ -209,7 +205,7 @@ function selectIntent(value: string) {
     autoName()
     step.value = 3
   } else {
-    groupBy.value = defaultGroupBy(value)
+    groupBy.value = ''
     step.value = 2
   }
 }

@@ -1,9 +1,10 @@
 <template>
   <div v-show="mounted" class="h-full flex flex-col space-y-3 pb-3 bg-darker">
-    <div class="flex items-center flex-shrink-0">
-      <TabBar :tabs="tabList" v-model:active-tab="activeTab" class="flex-1" />
-      <GlobalAccountHeader class="flex-shrink-0 pr-3" />
-    </div>
+    <TabBar :tabs="tabList" v-model:active-tab="activeTab">
+      <template #right>
+        <GlobalAccountHeader />
+      </template>
+    </TabBar>
 
     <LedgerView v-show="activeTab === 'Ledger'" />
     <MissionDataView v-show="activeTab === 'Mission Data'" />

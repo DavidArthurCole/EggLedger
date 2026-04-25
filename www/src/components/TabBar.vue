@@ -1,6 +1,6 @@
 <template>
   <div class="h-11 flex-shrink-0 bg-dark">
-    <div class="h-full flex items-end w-full mx-auto px-4 space-x-1.5 bg-dark border-b border-gray-300">
+    <div class="h-full flex items-end w-full mx-auto px-4 gap-x-1.5 bg-dark border-b border-gray-300">
       <div
         v-for="tab in tabs"
         :key="tab"
@@ -9,6 +9,9 @@
         @click="$emit('update:activeTab', tab)"
       >
         {{ tab }}
+      </div>
+      <div v-if="$slots.right" class="ml-auto">
+        <slot name="right" />
       </div>
     </div>
   </div>

@@ -9,98 +9,40 @@
       v-if="!appIsInForbiddenDirectory && !appIsTranslocated"
       class="view-layout overflow-hidden"
     >
-    <div>
-      <form
-        id="ledgerForm"
-        name="ledgerForm"
-        class="select-form"
-        @submit="onSubmit"
-      >
-        <div ref="playerIdSelectRef" class="tooltip-custom relative flex-grow focus-within:z-10">
-          <div v-if="selectedAccount?.nickname || (screenshotSafety && playerId)" class="ledger-input-overlay">
-            <span class="whitespace-pre"><template v-if="screenshotSafety && playerId.startsWith('EI')">EI<span class="inline-block rounded-sm bg-current select-none" style="width: 16ch; height: 0.8em; vertical-align: -0.05em;"></span></template><template v-else>{{ playerId }}</template></span>
-            <template v-if="selectedAccount?.nickname">
-              (<span :style="'color: #' + (selectedAccount?.accountColor ?? '')">
-                {{ selectedAccount?.nickname }} {{ selectedAccount?.ebString ?? '???' }}
-              </span>
-              <template v-if="selectedAccount?.seString">
-                <span class="text-gray-400">&nbsp;·</span>
-                <img :src="'images/soul_egg.png'" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="">
-                <span style="color:#a855f7">{{ selectedAccount?.seString }} SE</span>
-                <span class="text-gray-400"> ·</span>
-                <img :src="'images/prophecy_egg.png'" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="">
-                <span style="color:#eab308">{{ selectedAccount?.peCount }} PE</span>
-                <template v-if="selectedAccount?.teCount">
-                  <span class="text-gray-400"> ·</span>
-                  <img :src="'images/truth_egg.png'" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="">
-                  <span style="color:#c831ff">{{ selectedAccount?.teCount }} TE</span>
-                </template>
-              </template>)
+    <div class="flex flex-col items-center gap-2 py-2">
+      <div class="text-xs text-gray-400 min-h-4 text-center">
+        <template v-if="activeAccountId && activeAccountInfo">
+          <span :style="'color: #' + activeAccountInfo.accountColor" class="font-medium">{{ activeAccountInfo.nickname }}</span>
+          <span class="text-gray-500 ml-1.5">{{ activeAccountInfo.ebString }}</span>
+          <template v-if="activeAccountInfo.seString">
+            <span class="text-gray-400 ml-1.5">·</span>
+            <img :src="'images/soul_egg.png'" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="">
+            <span style="color:#a855f7">{{ activeAccountInfo.seString }} SE</span>
+            <span class="text-gray-400 ml-1.5">·</span>
+            <img :src="'images/prophecy_egg.png'" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="">
+            <span style="color:#eab308">{{ activeAccountInfo.peCount }} PE</span>
+            <template v-if="activeAccountInfo.teCount">
+              <span class="text-gray-400 ml-1.5">·</span>
+              <img :src="'images/truth_egg.png'" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="">
+              <span style="color:#c831ff">{{ activeAccountInfo.teCount }} TE</span>
             </template>
-          </div>
-          <div v-if="!isPlayerIdValid" class="ledger-input-overlay">
-            <span class="whitespace-pre">
-              <template v-if="!screenshotSafety">{{ playerId }} </template>(<span class="text-red-700">Invalid EID: {{ getEidProblem(playerId) }}</span>)
-            </span>
-          </div>
-          <input
-            id="playerIdInput"
-            type="text"
-            :class="'drop-select ' + (isPlayerIdValid ? 'border-gray-300' : 'border-red-700')"
-            :style="(selectedAccount?.nickname || (screenshotSafety && playerId)) ? { color: 'transparent', caretColor: '#9ca3af' } : undefined"
-            placeholder="EI1234567890123456"
-            :value="playerId"
-            @focus="openPlayerIdDropdown"
-            @input="(e) => (playerId = (e.target as HTMLInputElement).value)"
-          />
-          <ul
-            v-if="playerIdDropdownOpen && (knownAccounts?.length ?? 0) > 0"
-            class="ledger-list"
-            tabindex="-1"
-          >
-            <li
-              v-for="account in knownAccounts"
-              :key="account.id"
-              class="drop-opt"
-              @click="closePlayerIdDropdown(account.id)"
-            >
-              <template v-if="screenshotSafety">EI<span class="inline-block rounded-sm bg-current select-none" style="width: 16ch; height: 0.8em; vertical-align: -0.05em;"></span></template><template v-else>{{ account.id }}</template>
-              (<span :style="'color: #' + (account.accountColor ?? '')">
-                {{ account.nickname }}
-                {{ account.ebString ?? '???' }}
-              </span>
-              <template v-if="account.seString">
-                <span class="text-gray-400">&nbsp;·</span>
-                <img :src="'images/soul_egg.png'" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="">
-                <span style="color:#a855f7">{{ account.seString }} SE</span>
-                <span class="text-gray-400"> ·</span>
-                <img :src="'images/prophecy_egg.png'" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="">
-                <span style="color:#eab308">{{ account.peCount }} PE</span>
-                <template v-if="account.teCount">
-                  <span class="text-gray-400"> ·</span>
-                  <img :src="'images/truth_egg.png'" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="">
-                  <span style="color:#c831ff">{{ account.teCount }} TE</span>
-                </template>
-              </template>)
-            </li>
-          </ul>
-        </div>
+          </template>
+        </template>
+        <span v-else class="text-gray-500 italic">Select an account from the top right to get started</span>
+      </div>
+      <form id="ledgerForm" name="ledgerForm" @submit="onSubmit">
         <button
           v-if="idle"
           type="submit"
-          class="fetch-button disabled:hover:darker_tab_hover"
-          :disabled="playerId.trim() === '' || !isPlayerIdValid"
-        >
-          Fetch
-        </button>
+          class="fetch-button disabled:opacity-50 disabled:hover:darker_tab_hover"
+          :disabled="!activeAccountId"
+        >Fetch</button>
         <button
           v-else
           type="button"
-          class="fetch-button disabled:hover:darker_tab_hover"
+          class="fetch-button"
           @click="onStop"
-        >
-          Stop
-        </button>
+        >Stop</button>
       </form>
     </div>
 
@@ -227,8 +169,8 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useAppState } from '../composables/useAppState'
 import { useFetch } from '../composables/useFetch'
 import { screenshotSafety, showMissionProgress } from '../composables/useSettings'
+import { useActiveAccount } from '../composables/useActiveAccount'
 import LogLine from '../components/LogLine.vue'
-import { useDropdownSelector } from '../composables/useDropdownSelector'
 import { AppState } from '../types/bridge'
 import ForbiddenDirModal from '../components/modals/ForbiddenDirModal.vue'
 import TranslocationModal from '../components/modals/TranslocationModal.vue'
@@ -245,21 +187,19 @@ const {
   processLogs,
 } = useAppState()
 
+const { activeAccountId } = useActiveAccount()
+
 const { progress, fetchPlayerData, stopFetching } = useFetch()
 
-const playerId = ref<string>(knownAccounts.value?.[0]?.id ?? '')
 const messagesRef = ref<HTMLElement | null>(null)
 
 const missionProcesses = computed(() =>
   processLogs.value.filter((p) => p.kind === 'mission'),
 )
 
-const {
-  containerRef: playerIdSelectRef,
-  isOpen: playerIdDropdownOpen,
-  open: openPlayerIdDropdown,
-  close: closePlayerIdDropdown,
-} = useDropdownSelector((id) => { playerId.value = id })
+const activeAccountInfo = computed(
+  () => knownAccounts.value?.find((acc) => acc.id === activeAccountId.value) ?? null,
+)
 
 function splitMaskedPath(path: string): Array<{ text?: string; mask?: boolean }> {
   const parts: Array<{ text?: string; mask?: boolean }> = []
@@ -274,17 +214,6 @@ function splitMaskedPath(path: string): Array<{ text?: string; mask?: boolean }>
   if (lastIndex < path.length) parts.push({ text: path.slice(lastIndex) })
   return parts
 }
-
-function normalizePlayerId(id: string): string {
-  id = id.trim()
-  if (/^EI\d{16}$/i.test(id)) return id.toUpperCase()
-  return id
-}
-
-const isPlayerIdValid = computed(() => /(^$)|(^EI\d{16}$)/.test(normalizePlayerId(playerId.value)))
-const selectedAccount = computed(
-  () => knownAccounts.value?.find((acc) => acc.id === normalizePlayerId(playerId.value)) ?? null,
-)
 
 const idle = computed(() => {
   const s = appState.value
@@ -371,14 +300,6 @@ const segmentStates = computed(() => {
 })
 
 
-function getEidProblem(id: string): string {
-  const normalizedId = normalizePlayerId(id).toUpperCase()
-  if (normalizedId.substring(0, 2) !== 'EI') return 'should start with "EI"'
-  if (!/^EI\d*$/.test(normalizedId) || normalizedId.length === 2) return 'should be EI + 16 digits'
-  if (normalizedId.length !== 18) return 'expected 16 digits, found ' + (normalizedId.length - 2)
-  return ''
-}
-
 function hhmmss(date: Date): string {
   return `${date.getHours().toString().padStart(2, '0')}:${date
     .getMinutes()
@@ -409,10 +330,8 @@ onUnmounted(() => {
 
 async function onSubmit(event: Event) {
   event.preventDefault()
-  closePlayerIdDropdown()
-  const normalized = normalizePlayerId(playerId.value)
-  if (normalized === '') return
-  await fetchPlayerData(normalized)
+  if (!activeAccountId.value) return
+  await fetchPlayerData(activeAccountId.value)
   existingData.value = await globalThis.getExistingData()
 }
 

@@ -1,5 +1,21 @@
 <template>
   <div class="bg-dark rounded-lg border border-gray-700 flex flex-col h-full overflow-hidden" :class="{ 'border-indigo-700/50': editMode }">
+    <!-- Centered drag handle (edit mode only) -->
+    <div
+      v-if="editMode"
+      class="flex justify-center items-center py-1 cursor-grab active:cursor-grabbing select-none border-b border-gray-700/40"
+      title="Drag to reorder"
+    >
+      <svg class="w-6 h-3 text-gray-500" viewBox="0 0 24 12" fill="currentColor">
+        <circle cx="4" cy="3" r="1.5" />
+        <circle cx="12" cy="3" r="1.5" />
+        <circle cx="20" cy="3" r="1.5" />
+        <circle cx="4" cy="9" r="1.5" />
+        <circle cx="12" cy="9" r="1.5" />
+        <circle cx="20" cy="9" r="1.5" />
+      </svg>
+    </div>
+
     <!-- Header -->
     <div class="flex items-start justify-between gap-2 px-3 pt-3 pb-1.5 border-b border-gray-700/50">
       <div class="min-w-0 flex-1">
@@ -19,19 +35,12 @@
           @mouseleave="showWeightTooltip = false"
         >{{ def.weight }}</span>
         <template v-if="editMode">
-          <span
-            class="text-gray-600 hover:text-gray-400 px-1 cursor-grab active:cursor-grabbing select-none"
-            title="Drag to reorder"
-          >
-            <svg class="w-3 h-3" viewBox="0 0 12 16" fill="currentColor">
-              <circle cx="3" cy="3" r="1.5" />
-              <circle cx="9" cy="3" r="1.5" />
-              <circle cx="3" cy="8" r="1.5" />
-              <circle cx="9" cy="8" r="1.5" />
-              <circle cx="3" cy="13" r="1.5" />
-              <circle cx="9" cy="13" r="1.5" />
-            </svg>
-          </span>
+          <button
+            type="button"
+            class="text-gray-400 hover:text-gray-200 px-1 text-xs leading-none"
+            title="Duplicate report"
+            @click="$emit('copy')"
+          >Copy</button>
           <button
             type="button"
             class="text-blue-400 hover:text-blue-300 px-1 text-xs leading-none"
@@ -132,6 +141,7 @@ const props = defineProps<{
 defineEmits<{
   delete: []
   edit: []
+  copy: []
   run: []
   export: []
   setGroup: [groupId: string]

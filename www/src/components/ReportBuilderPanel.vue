@@ -214,21 +214,24 @@
             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/></svg>
             Chart color
           </span>
-          <div class="flex flex-wrap gap-1.5">
-            <button
-              v-for="c in colorSwatches"
-              :key="c"
-              type="button"
-              class="w-5 h-5 rounded-full border-2 transition-transform"
-              :style="{ backgroundColor: c }"
-              :class="form.color === c ? 'border-white scale-110' : 'border-transparent hover:border-gray-400'"
-              @click="form.color = c"
-            />
+          <div class="flex items-center gap-2">
+            <label class="relative cursor-pointer flex-shrink-0" aria-label="Open color picker">
+              <div
+                class="w-8 h-8 rounded border border-gray-600 hover:border-gray-400 transition-colors overflow-hidden"
+                :style="{ backgroundColor: form.color }"
+              />
+              <input
+                type="color"
+                :value="form.color"
+                class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                @input="(e) => { form.color = (e.target as HTMLInputElement).value }"
+              />
+            </label>
             <input
               v-model="form.color"
               type="text"
               maxlength="7"
-              class="bg-darker border border-gray-700 rounded px-2 py-0.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500 w-20"
+              class="bg-darker border border-gray-700 rounded px-2 py-0.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500 w-20 font-mono"
               placeholder="#6366f1"
             />
           </div>
@@ -291,32 +294,11 @@
                 v-for="c in 4"
                 :key="c"
                 class="w-5 h-5 rounded-sm border cursor-pointer transition-colors"
-                :class="isCellActive(c, r) ? 'bg-indigo-600 border-indigo-500' : 'bg-gray-800 border-gray-600 hover:border-gray-400'"
+                :class="cellClass(c, r)"
                 @mouseenter="setHover(c, r)"
                 @click="selectCell(c, r)"
               />
             </div>
-          </div>
-          <!-- Numeric fallback -->
-          <div class="flex gap-3 items-center">
-            <label for="rb-grid-w" class="text-xs text-gray-400">W</label>
-            <input
-              id="rb-grid-w"
-              v-model.number="form.gridW"
-              type="number"
-              min="1"
-              max="4"
-              class="bg-darker border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 focus:outline-none focus:border-blue-500 w-16"
-            />
-            <label for="rb-grid-h" class="text-xs text-gray-400">H</label>
-            <input
-              id="rb-grid-h"
-              v-model.number="form.gridH"
-              type="number"
-              min="1"
-              max="4"
-              class="bg-darker border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 focus:outline-none focus:border-blue-500 w-16"
-            />
           </div>
         </div>
 
@@ -457,9 +439,16 @@ const builderMode = ref<'basic' | 'advanced'>('basic')
 const hoverW = ref(0)
 const hoverH = ref(0)
 
-function isCellActive(c: number, r: number): boolean {
-  if (hoverW.value > 0) return c <= hoverW.value && r <= hoverH.value
-  return c <= form.gridW && r <= form.gridH
+function cellClass(c: number, r: number): string {
+  const confirmed = c <= form.gridW && r <= form.gridH
+  if (hoverW.value > 0) {
+    const hovered = c <= hoverW.value && r <= hoverH.value
+    if (confirmed && hovered) return 'bg-indigo-600 border-indigo-500'
+    if (hovered) return 'bg-indigo-600/75 border-indigo-500/50'
+    if (confirmed) return 'bg-indigo-800/60 border-indigo-700/50'
+    return 'bg-gray-800 border-gray-600 hover:border-gray-400'
+  }
+  return confirmed ? 'bg-indigo-600 border-indigo-500' : 'bg-gray-800 border-gray-600 hover:border-gray-400'
 }
 
 function clearHover() {
@@ -687,6 +676,8 @@ function handleSave() {
     valueFilterOp: form.valueFilterOp,
     valueFilterThreshold: form.valueFilterThreshold,
     normalizeBy: form.subject === 'artifacts' && form.mode === 'aggregate' ? form.normalizeBy : 'none',
+    chartType: '',
+    groupId: props.editingDef?.groupId ?? '',
   }
   emit('saved', def)
 }

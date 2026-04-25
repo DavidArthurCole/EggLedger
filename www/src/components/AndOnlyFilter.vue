@@ -2,20 +2,20 @@
   <div>
     <div v-for="(cond, i) in andConditions" :key="i">
       <div v-if="i !== 0" class="text-xs text-gray-600 italic my-1">and</div>
-      <div class="flex flex-col gap-1">
-        <div class="flex flex-wrap items-center gap-2">
+      <div class="flex flex-col gap-1.5">
+        <div class="flex flex-wrap items-center gap-2.5">
           <select
-            class="bg-darker border border-gray-700 rounded px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-blue-500 min-w-0"
+            class="bg-darker border border-gray-700 rounded px-2.5 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500 min-w-0"
             :value="cond.topLevel"
             @change="onFieldChange(i, ($event.target as HTMLSelectElement).value)"
           >
-            <option value="">{{ fieldPlaceholder }}</option>
+            <option value="" disabled>{{ fieldPlaceholder }}</option>
             <option v-for="f in allFieldOptions" :key="f.value" :value="f.value">{{ f.label }}</option>
           </select>
 
           <template v-if="cond.topLevel && isBoolField(cond.topLevel)">
             <select
-              class="bg-darker border border-gray-700 rounded px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-blue-500 min-w-0"
+              class="bg-darker border border-gray-700 rounded px-2.5 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500 min-w-0"
               :value="cond.op"
               @change="$emit('update', i, { op: ($event.target as HTMLSelectElement).value })"
             >
@@ -26,7 +26,7 @@
 
           <template v-else-if="cond.topLevel">
             <select
-              class="bg-darker border border-gray-700 rounded px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-blue-500 min-w-0"
+              class="bg-darker border border-gray-700 rounded px-2.5 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500 min-w-0"
               :value="cond.op"
               @change="$emit('update', i, { op: ($event.target as HTMLSelectElement).value })"
             >
@@ -38,12 +38,12 @@
                 v-if="isDateField(cond.topLevel)"
                 :value="cond.val"
                 type="date"
-                class="bg-darker border border-gray-700 rounded px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-blue-500 min-w-0 w-32"
+                class="bg-darker border border-gray-700 rounded px-2.5 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500 min-w-0 w-32"
                 @input="$emit('update', i, { val: ($event.target as HTMLInputElement).value })"
               />
               <select
                 v-else-if="valueOptionsFor(cond.topLevel).length > 0"
-                class="bg-darker border border-gray-700 rounded px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-blue-500 min-w-0"
+                class="bg-darker border border-gray-700 rounded px-2.5 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500 min-w-0"
                 :value="cond.val"
                 @change="$emit('update', i, { val: ($event.target as HTMLSelectElement).value })"
               >
@@ -53,7 +53,7 @@
                 v-else
                 :value="cond.val"
                 type="text"
-                class="bg-darker border border-gray-700 rounded px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-blue-500 min-w-0 w-32"
+                class="bg-darker border border-gray-700 rounded px-2.5 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500 min-w-0 w-32"
                 placeholder="Value"
                 @input="$emit('update', i, { val: ($event.target as HTMLInputElement).value })"
               />

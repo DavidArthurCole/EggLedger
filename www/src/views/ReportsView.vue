@@ -16,11 +16,11 @@
 
     <div v-else class="flex-1 min-h-0 bg-darkest rounded-md overflow-hidden flex flex-col">
       <!-- Group tab bar -->
-      <div v-if="loadedAccountId" class="flex items-center gap-1 px-2 pt-1 pb-0 flex-shrink-0 flex-wrap">
+      <div v-if="loadedAccountId" class="flex items-center gap-1.5 px-2 pt-1.5 pb-0 flex-shrink-0 flex-wrap">
         <!-- All tab -->
         <button
           type="button"
-          class="text-xs px-3 py-1 rounded-full transition-colors"
+          class="text-sm px-4 py-1.5 rounded-full transition-colors"
           :class="selectedGroupId === null ? 'bg-indigo-700 text-white' : 'text-gray-400 hover:text-gray-200'"
           @click="selectedGroupId = null"
         >All</button>
@@ -31,7 +31,7 @@
             <button
               v-if="editingGroupId !== g.id"
               type="button"
-              class="text-xs px-3 py-1 rounded-full transition-colors"
+              class="text-sm px-4 py-1.5 rounded-full transition-colors"
               :class="selectedGroupId === g.id ? 'bg-indigo-700 text-white' : 'text-gray-400 hover:text-gray-200'"
               @click="selectedGroupId = g.id"
             >{{ g.name }}</button>
@@ -39,56 +39,57 @@
               v-else
               v-model="editingGroupName"
               type="text"
-              class="text-xs px-2 py-0.5 rounded bg-darker border border-gray-600 text-gray-200 focus:outline-none focus:border-blue-500 w-28"
+              class="text-sm px-2 py-1 rounded bg-darker border border-gray-600 text-gray-200 focus:outline-none focus:border-blue-500 w-32"
               @keydown.enter="commitRenameGroup(g)"
               @keydown.esc="editingGroupId = null"
               @blur="commitRenameGroup(g)"
             />
             <template v-if="groupEditMode && editingGroupId !== g.id">
-              <button type="button" class="ml-0.5 text-gray-600 hover:text-gray-400 text-xs" @click="startRenameGroup(g)">&#9998;</button>
-              <button type="button" class="text-gray-600 hover:text-red-400 text-xs" @click="handleDeleteGroup(g.id)">&#215;</button>
+              <button type="button" class="ml-0.5 text-gray-600 hover:text-gray-400 text-sm" @click="startRenameGroup(g)">&#9998;</button>
+              <button type="button" class="text-gray-600 hover:text-red-400 text-sm" @click="handleDeleteGroup(g.id)">&#215;</button>
             </template>
           </div>
         </template>
 
-        <!-- New group input / add button -->
-        <template v-if="groupEditMode">
-          <input
-            v-if="showNewGroupInput"
-            v-model="newGroupName"
-            type="text"
-            class="text-xs px-2 py-0.5 rounded bg-darker border border-gray-600 text-gray-200 focus:outline-none focus:border-blue-500 w-28"
-            placeholder="Group name"
-            @keydown.enter="handleCreateGroup"
-            @keydown.esc="showNewGroupInput = false; newGroupName = ''"
-            @blur="handleCreateGroup"
-          />
-          <button v-else type="button" class="text-xs px-2 py-1 text-gray-500 hover:text-gray-300" @click="showNewGroupInput = true">+ Group</button>
-        </template>
+        <!-- Right side controls -->
+        <div class="ml-auto flex items-center gap-1.5">
+          <button
+            type="button"
+            class="text-sm px-3 py-1.5 rounded border border-gray-700 text-gray-500 hover:text-gray-300"
+            @click="handleExportAll"
+          >Export All</button>
+          <button
+            type="button"
+            class="text-sm px-3 py-1.5 rounded border border-gray-700 text-gray-500 hover:text-gray-300"
+            @click="handleImportGroup"
+          >Import</button>
+          <button
+            type="button"
+            class="text-sm px-3 py-1.5 rounded border"
+            :class="groupEditMode ? 'border-indigo-500 text-indigo-400' : 'border-gray-700 text-gray-600 hover:text-gray-400'"
+            @click="groupEditMode = !groupEditMode"
+          >{{ groupEditMode ? 'Done' : 'Edit' }}</button>
+        </div>
+      </div>
 
-        <!-- Edit groups toggle -->
+      <!-- Group management row (edit mode) -->
+      <div v-if="loadedAccountId && groupEditMode" class="flex items-center gap-1.5 px-2 pb-1.5 flex-shrink-0">
+        <input
+          v-if="showNewGroupInput"
+          v-model="newGroupName"
+          type="text"
+          class="text-sm px-2 py-1 rounded bg-darker border border-gray-600 text-gray-200 focus:outline-none focus:border-blue-500 w-32"
+          placeholder="Group name"
+          @keydown.enter="handleCreateGroup"
+          @keydown.esc="showNewGroupInput = false; newGroupName = ''"
+          @blur="handleCreateGroup"
+        />
         <button
+          v-else
           type="button"
-          class="ml-auto text-xs px-2 py-1 rounded border"
-          :class="groupEditMode ? 'border-indigo-500 text-indigo-400' : 'border-gray-700 text-gray-600 hover:text-gray-400'"
-          @click="groupEditMode = !groupEditMode"
-        >{{ groupEditMode ? 'Done' : 'Groups' }}</button>
-
-        <!-- Export group button -->
-        <button
-          v-if="selectedGroupId"
-          type="button"
-          class="text-xs px-2 py-1 rounded border border-gray-700 text-gray-500 hover:text-gray-300"
-          @click="handleExportGroup"
-        >Export</button>
-
-        <!-- Import group button -->
-        <button
-          v-if="groupEditMode"
-          type="button"
-          class="text-xs px-2 py-1 rounded border border-gray-700 text-gray-500 hover:text-gray-300"
-          @click="handleImportGroup"
-        >Import Group</button>
+          class="text-sm px-3 py-1.5 rounded border border-gray-700 text-gray-500 hover:text-gray-300"
+          @click="showNewGroupInput = true"
+        >+ New Group</button>
       </div>
 
       <ReportGrid v-if="loadedAccountId" :account-id="loadedAccountId" :group-filter="selectedGroupId" />
@@ -168,6 +169,12 @@ async function handleDeleteGroup(id: string) {
   if (!loadedAccountId.value) return
   await deleteGroup(loadedAccountId.value, id)
   if (selectedGroupId.value === id) selectedGroupId.value = null
+}
+
+async function handleExportAll() {
+  if (!loadedAccountId.value) return
+  const path = await globalThis.exportAllReports(loadedAccountId.value)
+  if (path) globalThis.openFileInFolder(path)
 }
 
 async function handleExportGroup() {

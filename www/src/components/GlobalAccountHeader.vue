@@ -2,7 +2,7 @@
   <div class="relative" ref="containerRef">
     <button
       type="button"
-      class="flex items-center gap-1 px-2 py-1 text-xs rounded border border-gray-700 bg-darker hover:bg-dark_tab_hover text-gray-300 transition-colors"
+      class="relative -bottom-px flex items-center gap-1 px-3 pt-1.5 pb-1 text-xs font-medium text-gray-400 border border-darker_tab border-300 rounded-t-md bg-darker_tab hover:bg-dark_tab_hover transition-colors whitespace-nowrap"
       @click="toggle"
     >
       <template v-if="activeAccount">

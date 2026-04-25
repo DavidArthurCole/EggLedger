@@ -629,7 +629,7 @@ async function initCloudSync() {
     cloudConnected.value = connected
     cloudUsername.value = username ?? ''
     if (connected) {
-      void refreshSyncStatus()
+      refreshSyncStatus()
     }
   }
   globalThis.onCloudSyncComplete = (success: boolean, errMsg: string) => {
@@ -637,7 +637,7 @@ async function initCloudSync() {
     if (success) {
       cloudSyncSuccess.value = true
       cloudSyncError.value = ''
-      void refreshSyncStatus()
+      refreshSyncStatus()
     } else {
       cloudSyncError.value = errMsg
     }
