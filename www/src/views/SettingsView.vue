@@ -126,8 +126,8 @@
                 <div>Last push: <span :class="cloudLastPushAt ? 'text-gray-400' : 'text-gray-600 italic'">{{ cloudLastPushAt ? cloudLastPushString : 'Never' }}</span></div>
                 <div>Last pull: <span :class="cloudLastPullAt ? 'text-gray-400' : 'text-gray-600 italic'">{{ cloudLastPullAt ? cloudLastPullString : 'Never' }}</span></div>
               </div>
-              <div v-if="!cloudUsername" class="mt-0_5rem border border-yellow-700 rounded-md px-3 py-2 text-yellow-500 text-xs space-y-1.5 max-w-[50%]">
-                <p class="italic">Reconnect to restore display name and avatar.</p>
+              <div v-if="!cloudUsername || !cloudHasEncryptionKey" class="mt-0_5rem border border-yellow-700 rounded-md px-3 py-2 text-yellow-500 text-xs space-y-1.5 max-w-[50%]">
+                <p class="italic">Reconnect to restore{{ !cloudHasEncryptionKey ? ' sync credentials' : ' display name and avatar' }}.</p>
                 <button
                   type="button"
                   :disabled="cloudAuthWaiting"
@@ -603,6 +603,7 @@ const cloudReachable = ref(false)
 const cloudConnected = ref(false)
 const cloudUsername = ref('')
 const cloudAvatarUrl = ref('')
+const cloudHasEncryptionKey = ref(false)
 const cloudLastPushAt = ref(0)
 const cloudLastPullAt = ref(0)
 const cloudAuthWaiting = ref(false)
@@ -624,7 +625,7 @@ const cloudLastPullString = computed(() => {
   return new Date(cloudLastPullAt.value * 1000).toLocaleString()
 })
 
-type CloudStatusPayload = { connected: boolean; username: string; avatarUrl: string; lastPushAt: number; lastPullAt: number }
+type CloudStatusPayload = { connected: boolean; username: string; avatarUrl: string; lastPushAt: number; lastPullAt: number; hasEncryptionKey: boolean }
 
 function applyCloudStatus(status: CloudStatusPayload) {
   cloudConnected.value = status.connected
@@ -632,6 +633,7 @@ function applyCloudStatus(status: CloudStatusPayload) {
   cloudAvatarUrl.value = status.avatarUrl ?? ''
   cloudLastPushAt.value = status.lastPushAt ?? 0
   cloudLastPullAt.value = status.lastPullAt ?? 0
+  cloudHasEncryptionKey.value = status.hasEncryptionKey ?? false
 }
 
 async function initCloudSync() {

@@ -3,14 +3,21 @@ package main
 // cloud_sync.go - Discord OAuth2 authentication and blob sync against
 // https://ledgersync.davidarthurcole.me
 //
-// Blobs are stored as plaintext JSON. Discord session token is the only
-// credential required. No client-side encryption or backup codes.
+// Blobs are AES-256-GCM encrypted client-side before upload. The encryption key
+// is generated server-side on first auth and returned with every subsequent auth,
+// so the same key is available on all devices after reconnecting.
 
 import (
 	"bytes"
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -30,11 +37,12 @@ const (
 
 // CloudSyncStatus is returned to the UI by getCloudSyncStatus.
 type CloudSyncStatus struct {
-	Connected  bool   `json:"connected"`
-	Username   string `json:"username"`
-	AvatarURL  string `json:"avatarUrl"`
-	LastPushAt int64  `json:"lastPushAt"`
-	LastPullAt int64  `json:"lastPullAt"`
+	Connected        bool   `json:"connected"`
+	Username         string `json:"username"`
+	AvatarURL        string `json:"avatarUrl"`
+	LastPushAt       int64  `json:"lastPushAt"`
+	LastPullAt       int64  `json:"lastPullAt"`
+	HasEncryptionKey bool   `json:"hasEncryptionKey"`
 }
 
 // cloudSyncableSettings is the subset of AppStorage that is safe to sync
@@ -79,9 +87,10 @@ type authInitResponse struct {
 
 // pollResponse is the shape of a successful GET /auth/poll response.
 type pollResponse struct {
-	Token     string `json:"token"`
-	Username  string `json:"username"`
-	AvatarURL string `json:"avatarUrl"`
+	Token         string `json:"token"`
+	Username      string `json:"username"`
+	AvatarURL     string `json:"avatarUrl"`
+	EncryptionKey string `json:"encryptionKey"`
 }
 
 // Package-level Go-to-JS callbacks, wired in main() after lorca is ready.
@@ -113,11 +122,12 @@ func handleGetCloudSyncStatus() CloudSyncStatus {
 		lastPull = t.Unix()
 	}
 	return CloudSyncStatus{
-		Connected:  _storage.GetCloudSessionToken() != "",
-		Username:   _storage.GetCloudDiscordUsername(),
-		AvatarURL:  _storage.GetCloudDiscordAvatarURL(),
-		LastPushAt: lastPush,
-		LastPullAt: lastPull,
+		Connected:        _storage.GetCloudSessionToken() != "",
+		Username:         _storage.GetCloudDiscordUsername(),
+		AvatarURL:        _storage.GetCloudDiscordAvatarURL(),
+		LastPushAt:       lastPush,
+		LastPullAt:       lastPull,
+		HasEncryptionKey: _storage.GetCloudEncryptionKey() != "",
 	}
 }
 
@@ -166,7 +176,7 @@ func handleConnectDiscord() (string, error) {
 				}
 				return
 			case <-ticker.C:
-				token, username, avatarURL, pollErr := pollAuthToken(ctx, init.State)
+				token, username, avatarURL, encryptionKey, pollErr := pollAuthToken(ctx, init.State)
 				if pollErr != nil {
 					log.Debugf("cloud sync: poll error: %v", pollErr)
 					continue
@@ -175,6 +185,7 @@ func handleConnectDiscord() (string, error) {
 					continue
 				}
 				_storage.SetCloudSessionToken(token)
+				_storage.SetCloudEncryptionKey(encryptionKey)
 				_storage.SetCloudDiscordUsername(username)
 				_storage.SetCloudDiscordAvatarURL(avatarURL)
 				log.Infof("cloud sync: authenticated as %s", username)
@@ -190,34 +201,34 @@ func handleConnectDiscord() (string, error) {
 }
 
 // pollAuthToken calls GET /auth/poll?state=<state> once.
-// Returns ("", "", "", nil) while still pending, (token, username, avatarURL, nil) on success,
-// ("", "", "", err) on a definitive server error.
-func pollAuthToken(ctx context.Context, state string) (string, string, string, error) {
+// Returns ("", "", "", "", nil) while still pending, (token, username, avatarURL, encryptionKey, nil) on success,
+// ("", "", "", "", err) on a definitive server error.
+func pollAuthToken(ctx context.Context, state string) (string, string, string, string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
 		_cloudSyncBaseURL+"/auth/poll?state="+state, nil)
 	if err != nil {
-		return "", "", "", err
+		return "", "", "", "", err
 	}
 	client := &http.Client{Timeout: _cloudSyncHTTPTimeout}
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", "", "", err
+		return "", "", "", "", err
 	}
 	defer resp.Body.Close()
 
 	switch resp.StatusCode {
 	case http.StatusAccepted, http.StatusNotFound:
-		return "", "", "", nil
+		return "", "", "", "", nil
 	case http.StatusOK:
 	default:
-		return "", "", "", fmt.Errorf("poll: unexpected status %d", resp.StatusCode)
+		return "", "", "", "", fmt.Errorf("poll: unexpected status %d", resp.StatusCode)
 	}
 
 	var pr pollResponse
 	if err := json.NewDecoder(resp.Body).Decode(&pr); err != nil {
-		return "", "", "", fmt.Errorf("poll: decode: %w", err)
+		return "", "", "", "", fmt.Errorf("poll: decode: %w", err)
 	}
-	return pr.Token, pr.Username, pr.AvatarURL, nil
+	return pr.Token, pr.Username, pr.AvatarURL, pr.EncryptionKey, nil
 }
 
 // handleDisconnectCloud invalidates the server-side session and clears local creds.
@@ -451,12 +462,68 @@ func importRemoteReports(ctx context.Context, blob cloudReportsBlob) {
 }
 
 // putBlob marshals payload and PUTs it to /blobs/<name>.
+// encryptBlob encrypts plaintext with AES-256-GCM using hexKey (64-char hex = 32 bytes).
+// The 12-byte random nonce is prepended to the ciphertext and the whole thing is base64-encoded.
+func encryptBlob(hexKey string, plaintext []byte) (string, error) {
+	key, err := hex.DecodeString(hexKey)
+	if err != nil {
+		return "", fmt.Errorf("encryptBlob: decode key: %w", err)
+	}
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return "", fmt.Errorf("encryptBlob: new cipher: %w", err)
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", fmt.Errorf("encryptBlob: new gcm: %w", err)
+	}
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return "", fmt.Errorf("encryptBlob: nonce: %w", err)
+	}
+	sealed := gcm.Seal(nonce, nonce, plaintext, nil)
+	return base64.StdEncoding.EncodeToString(sealed), nil
+}
+
+// decryptBlob reverses encryptBlob: base64-decodes, splits nonce, then AES-256-GCM decrypts.
+func decryptBlob(hexKey, ciphertext string) ([]byte, error) {
+	key, err := hex.DecodeString(hexKey)
+	if err != nil {
+		return nil, fmt.Errorf("decryptBlob: decode key: %w", err)
+	}
+	data, err := base64.StdEncoding.DecodeString(ciphertext)
+	if err != nil {
+		return nil, fmt.Errorf("decryptBlob: decode base64: %w", err)
+	}
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, fmt.Errorf("decryptBlob: new cipher: %w", err)
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, fmt.Errorf("decryptBlob: new gcm: %w", err)
+	}
+	nonceSize := gcm.NonceSize()
+	if len(data) < nonceSize {
+		return nil, fmt.Errorf("decryptBlob: ciphertext too short")
+	}
+	plaintext, err := gcm.Open(nil, data[:nonceSize], data[nonceSize:], nil)
+	if err != nil {
+		return nil, fmt.Errorf("decryptBlob: decrypt: %w", err)
+	}
+	return plaintext, nil
+}
+
 func putBlob(ctx context.Context, token, name string, payload interface{}) error {
 	raw, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("putBlob %s: marshal: %w", name, err)
 	}
-	body, err := json.Marshal(blobEnvelope{Ciphertext: string(raw)})
+	encrypted, err := encryptBlob(_storage.GetCloudEncryptionKey(), raw)
+	if err != nil {
+		return fmt.Errorf("putBlob %s: encrypt: %w", name, err)
+	}
+	body, err := json.Marshal(blobEnvelope{Ciphertext: encrypted})
 	if err != nil {
 		return fmt.Errorf("putBlob %s: envelope: %w", name, err)
 	}
@@ -509,8 +576,12 @@ func getBlob(ctx context.Context, token, name string, out interface{}) error {
 	if err := json.NewDecoder(resp.Body).Decode(&env); err != nil {
 		return fmt.Errorf("getBlob %s: decode: %w", name, err)
 	}
-	if err := json.Unmarshal([]byte(env.Ciphertext), out); err != nil {
-		return fmt.Errorf("getBlob %s: unmarshal data: %w", name, err)
+	plaintext, err := decryptBlob(_storage.GetCloudEncryptionKey(), env.Ciphertext)
+	if err != nil {
+		return fmt.Errorf("getBlob %s: decrypt: %w", name, err)
+	}
+	if err := json.Unmarshal(plaintext, out); err != nil {
+		return fmt.Errorf("getBlob %s: unmarshal: %w", name, err)
 	}
 	return nil
 }

@@ -239,6 +239,7 @@ export interface CloudSyncStatus {
   lastPushAt: number
   /** Unix seconds; 0 if never pulled */
   lastPullAt: number
+  hasEncryptionKey: boolean
 }
 
 export enum AppState {

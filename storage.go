@@ -50,6 +50,7 @@ type AppStorage struct {
 	lastKnownGoodApiVersion    string
 
 	CloudSessionToken      string    `json:"cloud_session_token"`
+	CloudEncryptionKey     string    `json:"cloud_encryption_key"`
 	CloudLastPushAt        time.Time `json:"cloud_last_push_at"`
 	CloudLastPullAt        time.Time `json:"cloud_last_pull_at"`
 	CloudDiscordUsername   string    `json:"cloud_discord_username"`
@@ -715,6 +716,19 @@ func (s *AppStorage) SetCloudSessionToken(token string) {
 	s.CloudSessionToken = token
 	s.Unlock()
 	go s.dbSet("cloud_session_token", token)
+}
+
+func (s *AppStorage) GetCloudEncryptionKey() string {
+	s.Lock()
+	defer s.Unlock()
+	return s.CloudEncryptionKey
+}
+
+func (s *AppStorage) SetCloudEncryptionKey(key string) {
+	s.Lock()
+	s.CloudEncryptionKey = key
+	s.Unlock()
+	go s.dbSet("cloud_encryption_key", key)
 }
 
 func (s *AppStorage) GetCloudLastPushAt() time.Time {
