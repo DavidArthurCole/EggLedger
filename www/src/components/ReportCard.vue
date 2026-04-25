@@ -43,7 +43,7 @@
         <span class="text-xs text-gray-500 animate-pulse">Running...</span>
       </div>
       <div v-else-if="filteredResult && filteredResult.labels?.length > 0 && def.displayMode === 'pie'" class="h-full">
-        <ReportPieChart :result="filteredResult" :color="def.color || '#6366f1'" :label-colors="def.labelColors" />
+        <ReportPieChart :result="filteredResult" :color="def.color || '#6366f1'" :label-colors="def.labelColors" :grid-w="def.gridW" :grid-h="def.gridH" />
       </div>
       <template v-else-if="filteredResult && filteredResult.labels?.length > 0">
         <ReportBarChart v-if="def.displayMode === 'bar' || (!def.displayMode && def.mode === 'aggregate')" :result="filteredResult" :color="def.color || '#6366f1'" :unit-label="normalizeLabel" />

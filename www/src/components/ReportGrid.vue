@@ -9,7 +9,7 @@
 
     <div
       class="grid gap-3"
-      style="grid-template-columns: repeat(4, 1fr);"
+      style="grid-template-columns: repeat(4, 1fr); grid-auto-rows: 200px;"
     >
       <div
         v-for="(def, index) in displayedReports"

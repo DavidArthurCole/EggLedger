@@ -1,6 +1,6 @@
 <template>
   <div class="w-full h-full">
-    <svg :viewBox="`0 0 ${vw} ${vh}`" class="w-full h-full" preserveAspectRatio="xMidYMid meet">
+    <svg :viewBox="`0 0 ${vw} ${vh}`" class="w-full h-full" preserveAspectRatio="xMidYMid meet" style="max-height: 100%; max-width: 100%;">
       <defs>
         <linearGradient
           v-for="(seg, i) in segments"
@@ -71,12 +71,15 @@ const props = defineProps<{
   color: string
   /** JSON-encoded Record<string, string> mapping label to hex color */
   labelColors?: string
+  gridW?: number
+  gridH?: number
 }>()
 
-const vw = 260
-const vh = 220
-const cx = vw / 2
-const cy = vh / 2
+const isPortrait = computed(() => (props.gridH ?? 1) > (props.gridW ?? 1))
+const vw = computed(() => 260)
+const vh = computed(() => isPortrait.value ? 310 : 220)
+const cx = computed(() => vw.value / 2)
+const cy = computed(() => vh.value / 2)
 const r = 55
 const elbowR = r + 16
 
@@ -157,6 +160,10 @@ function spreadLabelPositions(rawPositions: number[]): number[] {
 }
 
 const segments = computed(() => {
+  const cxVal = cx.value
+  const cyVal = cy.value
+  const vhVal = vh.value
+
   const labels = props.result.labels
   const values = props.result.isFloat ? (props.result.floatValues ?? []) : props.result.values
   const total = values.reduce((a, b) => a + Number(b), 0)
@@ -174,12 +181,12 @@ const segments = computed(() => {
   const perLabel = parsedLabelColors.value
 
   function slicePath(startAngle: number, endAngle: number): string {
-    const sx = cx + Math.cos(startAngle) * r
-    const sy = cy + Math.sin(startAngle) * r
-    const ex = cx + Math.cos(endAngle) * r
-    const ey = cy + Math.sin(endAngle) * r
+    const sx = cxVal + Math.cos(startAngle) * r
+    const sy = cyVal + Math.sin(startAngle) * r
+    const ex = cxVal + Math.cos(endAngle) * r
+    const ey = cyVal + Math.sin(endAngle) * r
     const large = endAngle - startAngle > Math.PI ? 1 : 0
-    return `M ${cx} ${cy} L ${sx} ${sy} A ${r} ${r} 0 ${large} 1 ${ex} ${ey} Z`
+    return `M ${cxVal} ${cyVal} L ${sx} ${sy} A ${r} ${r} 0 ${large} 1 ${ex} ${ey} Z`
   }
 
   let angleOffset = -Math.PI / 2
@@ -190,11 +197,11 @@ const segments = computed(() => {
     angleOffset = endAngle
     const midAngle = (startAngle + endAngle) / 2
 
-    const innerX = cx + Math.cos(midAngle) * r
-    const innerY = cy + Math.sin(midAngle) * r
-    const elbowX = cx + Math.cos(midAngle) * elbowR
-    const rawElbowY = cy + Math.sin(midAngle) * elbowR
-    const isRight = elbowX >= cx
+    const innerX = cxVal + Math.cos(midAngle) * r
+    const innerY = cyVal + Math.sin(midAngle) * r
+    const elbowX = cxVal + Math.cos(midAngle) * elbowR
+    const rawElbowY = cyVal + Math.sin(midAngle) * elbowR
+    const isRight = elbowX >= cxVal
     const labelX = isRight ? elbowX + 10 : elbowX - 10
     const color = perLabel[item.label] ?? autoColors[i]
 
@@ -217,8 +224,8 @@ const segments = computed(() => {
   })
 
   // Split into left and right groups, sort each by rawElbowY
-  const leftIndices = raw.map((_, i) => i).filter(i => raw[i].elbowX < cx)
-  const rightIndices = raw.map((_, i) => i).filter(i => raw[i].elbowX >= cx)
+  const leftIndices = raw.map((_, i) => i).filter(i => raw[i].elbowX < cxVal)
+  const rightIndices = raw.map((_, i) => i).filter(i => raw[i].elbowX >= cxVal)
 
   const leftOrder = [...leftIndices].sort((a, b) => raw[a].rawElbowY - raw[b].rawElbowY)
   const rightOrder = [...rightIndices].sort((a, b) => raw[a].rawElbowY - raw[b].rawElbowY)
@@ -228,10 +235,10 @@ const segments = computed(() => {
 
   const labelYMap: Record<number, number> = {}
   leftOrder.forEach((segIdx, sortPos) => {
-    labelYMap[segIdx] = Math.max(8, Math.min(vh - 8, leftSpread[sortPos]))
+    labelYMap[segIdx] = Math.max(8, Math.min(vhVal - 8, leftSpread[sortPos]))
   })
   rightOrder.forEach((segIdx, sortPos) => {
-    labelYMap[segIdx] = Math.max(8, Math.min(vh - 8, rightSpread[sortPos]))
+    labelYMap[segIdx] = Math.max(8, Math.min(vhVal - 8, rightSpread[sortPos]))
   })
 
   return raw.map((seg, i) => ({

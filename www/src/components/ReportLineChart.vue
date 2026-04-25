@@ -1,19 +1,34 @@
 <template>
-  <div class="w-full h-full flex flex-col gap-1 overflow-hidden">
-    <div class="flex-1 flex items-end gap-px overflow-x-auto min-h-0">
-      <div
-        v-for="(label, i) in result.labels"
-        :key="i"
-        class="flex-1 min-w-3 h-full flex flex-col justify-end"
-        :title="`${label}: ${formatValue(displayValues[i])}`"
-      >
+  <div class="w-full h-full flex flex-col overflow-hidden">
+    <div class="flex-1 overflow-x-auto min-h-0">
+      <div class="flex h-full gap-px">
         <div
-          class="w-full rounded-t-sm"
-          :style="{ height: barHeight(displayValues[i]) + '%', backgroundColor: color }"
-        />
+          v-for="(label, i) in result.labels"
+          :key="i"
+          class="flex-1 min-w-4 flex flex-col"
+          :title="`${label}: ${formatValue(displayValues[i])}`"
+        >
+          <div class="flex-1 flex flex-col justify-end relative">
+            <span
+              v-if="Number(displayValues[i]) > 0"
+              class="absolute left-0 right-0 text-center text-gray-400 pointer-events-none leading-none"
+              :style="{ bottom: `calc(${barHeight(displayValues[i])}% + 2px)`, fontSize: '8px' }"
+            >{{ formatValue(displayValues[i]) }}</span>
+            <div
+              class="w-full rounded-t-sm"
+              :style="{ height: barHeight(displayValues[i]) + '%', backgroundColor: color }"
+            />
+          </div>
+          <div class="flex justify-center items-start overflow-hidden flex-shrink-0 pt-1" style="height: 3rem;">
+            <span
+              class="text-gray-500 text-center break-words w-full"
+              style="font-size: 9px; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;"
+            >{{ label }}</span>
+          </div>
+        </div>
       </div>
     </div>
-    <div v-if="unitLabel" class="text-xs text-gray-600 text-right flex-shrink-0">{{ unitLabel }}</div>
+    <div v-if="unitLabel" class="text-xs text-gray-600 text-right flex-shrink-0 mt-0.5">{{ unitLabel }}</div>
   </div>
 </template>
 
