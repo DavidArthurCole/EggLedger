@@ -79,16 +79,18 @@
         <div class="bg-dark rounded-md p-3 space-y-1">
           <h2 class="font-bold text-gray-300 border-b border-gray-700 pb-1 mb-2">How do I use EggLedger?</h2>
           <ul class="about-list-1">
-            <li>Go to the <b>Ledger</b> tab</li>
-            <li>Enter your Egg, Inc. account ID</li>
-            <li>Press <b>Fetch</b>
+            <li>Open the account selector and choose <b>+ Add Account</b>, then enter your EID</li>
+            <li>With your account selected, press <b>Fetch</b> on the <b>Ledger</b> tab
               <ul class="about-list-2">
                 <li>First fetch may take a while if you have many completed missions</li>
                 <li>Subsequent fetches only pull new missions</li>
+                <li>Multiple accounts can be added and switched between at any time</li>
               </ul>
             </li>
+            <li>Browse and filter your mission history in the <b>Mission Data</b> tab</li>
+            <li>View lifetime drop totals and statistics in the <b>Lifetime Data</b> tab</li>
+            <li>Build custom charts and breakdowns in the <b>Reports</b> tab</li>
           </ul>
-          <p class="ledger-underline">Data for multiple accounts can coexist.</p>
         </div>
 
         <div class="bg-dark rounded-md p-3 space-y-1">
@@ -111,6 +113,13 @@
           <p>No. EggLedger talks directly to the Egg, Inc. API - all data stays 100% local. No analytics are collected.</p>
           <p>The only third-party request is an occasional update check against github.com. No personal data is attached and no logs are available to me.</p>
           <p>Unless you contact me directly, I have no way to know you're even using this tool.</p>
+        </div>
+
+        <div class="bg-dark rounded-md p-3 space-y-1">
+          <h2 class="font-bold text-gray-300 border-b border-gray-700 pb-1 mb-2">Is the Settings Sync feature private?</h2>
+          <p>Settings Sync is fully optional. If you never connect Discord, nothing leaves your machine beyond the Egg, Inc. API calls and the update check described above.</p>
+          <p>If you do use it, your settings are <span class="ledger-underline">encrypted client-side before upload</span>. The encryption key is derived locally and never transmitted - the sync server receives and stores only an opaque encrypted blob it cannot read.</p>
+          <p>Discord is used solely to verify your identity. No settings data passes through Discord's servers.</p>
         </div>
 
         <div class="bg-dark rounded-md p-3 space-y-1">
