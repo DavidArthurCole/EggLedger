@@ -1,6 +1,21 @@
 <template>
   <div class="flex flex-col items-center gap-1 p-1 w-full h-full">
     <svg :viewBox="`0 0 ${vw} ${vh}`" class="w-full flex-1 min-h-0 overflow-visible">
+      <defs>
+        <linearGradient
+          v-for="(seg, i) in segments"
+          :key="'g-' + i"
+          :id="`lg-${i}`"
+          gradientUnits="userSpaceOnUse"
+          :x1="seg.innerX"
+          :y1="seg.innerY"
+          :x2="seg.elbowX"
+          :y2="seg.rawElbowY"
+        >
+          <stop offset="0%" :stop-color="seg.color" stop-opacity="0.9" />
+          <stop offset="100%" stop-color="#6b7280" stop-opacity="0.9" />
+        </linearGradient>
+      </defs>
       <!-- Donut segments -->
       <circle
         v-for="(seg, i) in segments"
@@ -21,21 +36,30 @@
           :x1="seg.innerX"
           :y1="seg.innerY"
           :x2="seg.elbowX"
-          :y2="seg.elbowY"
+          :y2="seg.rawElbowY"
+          :stroke="`url(#lg-${i})`"
+          stroke-width="0.8"
+        />
+        <line
+          v-if="seg.labelY !== seg.rawElbowY"
+          :x1="seg.elbowX"
+          :y1="seg.rawElbowY"
+          :x2="seg.elbowX"
+          :y2="seg.labelY"
           stroke="#6b7280"
           stroke-width="0.8"
         />
         <line
           :x1="seg.elbowX"
-          :y1="seg.elbowY"
+          :y1="seg.labelY"
           :x2="seg.labelX"
-          :y2="seg.elbowY"
+          :y2="seg.labelY"
           stroke="#6b7280"
           stroke-width="0.8"
         />
         <text
           :x="seg.textX"
-          :y="seg.elbowY"
+          :y="seg.labelY"
           :text-anchor="seg.anchor"
           dominant-baseline="middle"
           font-size="5"
@@ -43,7 +67,7 @@
         >{{ seg.shortLabel }}</text>
         <text
           :x="seg.textX"
-          :y="seg.elbowY + 6"
+          :y="seg.labelY + 6"
           :text-anchor="seg.anchor"
           dominant-baseline="middle"
           font-size="4.5"
@@ -65,8 +89,8 @@ const props = defineProps<{
   labelColors?: string
 }>()
 
-const vw = 180
-const vh = 120
+const vw = 260
+const vh = 200
 const cx = vw / 2
 const cy = vh / 2
 const r = 32
@@ -76,6 +100,7 @@ const outerR = r + strokeW / 2 + 4
 const elbowR = outerR + 8
 
 const MAX_SEGMENTS = 10
+const MIN_LABEL_SPACING = 8
 
 function hexToHsl(hex: string): [number, number, number] {
   const r = Number.parseInt(hex.slice(1, 3), 16) / 255
@@ -105,7 +130,7 @@ function segmentColors(baseColor: string, count: number): string[] {
   )
 }
 
-function truncateLabel(label: string, maxLen = 14): string {
+function truncateLabel(label: string, maxLen = 16): string {
   return label.length > maxLen ? label.slice(0, maxLen - 1) + '…' : label
 }
 
@@ -117,6 +142,28 @@ const parsedLabelColors = computed((): Record<string, string> => {
     return {}
   }
 })
+
+function spreadLabelPositions(rawPositions: number[]): number[] {
+  const adjusted = [...rawPositions]
+  const n = adjusted.length
+  if (n <= 1) return adjusted
+
+  // Multiple passes to resolve all overlaps
+  for (let pass = 0; pass < n; pass++) {
+    let changed = false
+    for (let i = 0; i < n - 1; i++) {
+      const gap = adjusted[i + 1] - adjusted[i]
+      if (gap < MIN_LABEL_SPACING) {
+        const overlap = MIN_LABEL_SPACING - gap
+        adjusted[i] -= overlap / 2
+        adjusted[i + 1] += overlap / 2
+        changed = true
+      }
+    }
+    if (!changed) break
+  }
+  return adjusted
+}
 
 const segments = computed(() => {
   const labels = props.result.labels
@@ -134,8 +181,9 @@ const segments = computed(() => {
 
   const autoColors = segmentColors(props.color, items.length)
   const perLabel = parsedLabelColors.value
+
   let offset = 0
-  return items.map((item, i) => {
+  const raw = items.map((item, i) => {
     const arc = (item.value / total) * circumference
     const midAngle = (offset + arc / 2) / circumference * 2 * Math.PI - Math.PI / 2
     offset += arc
@@ -143,7 +191,7 @@ const segments = computed(() => {
     const innerX = cx + Math.cos(midAngle) * outerR
     const innerY = cy + Math.sin(midAngle) * outerR
     const elbowX = cx + Math.cos(midAngle) * elbowR
-    const elbowY = cy + Math.sin(midAngle) * elbowR
+    const rawElbowY = cy + Math.sin(midAngle) * elbowR
     const isRight = elbowX >= cx
     const labelX = isRight ? elbowX + 3 : elbowX - 3
     const color = perLabel[item.label] ?? autoColors[i]
@@ -159,10 +207,30 @@ const segments = computed(() => {
       innerX,
       innerY,
       elbowX,
-      elbowY,
+      rawElbowY,
       labelX,
+      textX: isRight ? labelX + 1 : labelX - 1,
       anchor: isRight ? 'start' : 'end',
     }
   })
+
+  // Spread labels on left and right sides independently to avoid cross-side interference
+  const leftIndices = raw.map((_, i) => i).filter(i => raw[i].elbowX < cx)
+  const rightIndices = raw.map((_, i) => i).filter(i => raw[i].elbowX >= cx)
+
+  const leftOrder = [...leftIndices].sort((a, b) => raw[a].rawElbowY - raw[b].rawElbowY)
+  const rightOrder = [...rightIndices].sort((a, b) => raw[a].rawElbowY - raw[b].rawElbowY)
+
+  const leftSpread = spreadLabelPositions(leftOrder.map(i => raw[i].rawElbowY))
+  const rightSpread = spreadLabelPositions(rightOrder.map(i => raw[i].rawElbowY))
+
+  const labelYMap: Record<number, number> = {}
+  leftOrder.forEach((segIdx, sortPos) => { labelYMap[segIdx] = leftSpread[sortPos] })
+  rightOrder.forEach((segIdx, sortPos) => { labelYMap[segIdx] = rightSpread[sortPos] })
+
+  return raw.map((seg, i) => ({
+    ...seg,
+    labelY: labelYMap[i] ?? seg.rawElbowY,
+  }))
 })
 </script>
