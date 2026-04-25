@@ -624,6 +624,48 @@ func InsertArtifactDrops(ctx context.Context, playerId, missionId string, drops 
 	})
 }
 
+// MissionDropSet groups a mission's drops for batch insertion.
+type MissionDropSet struct {
+	PlayerId  string
+	MissionId string
+	Drops     []ArtifactDropRow
+}
+
+// InsertArtifactDropsBatch inserts drops for multiple missions in a single transaction.
+// Each mission with zero drops gets a sentinel row (drop_index = -1). Idempotent.
+func InsertArtifactDropsBatch(ctx context.Context, sets []MissionDropSet) error {
+	if len(sets) == 0 {
+		return nil
+	}
+	action := fmt.Sprintf("batch insert artifact drops (%d missions)", len(sets))
+	return DoDBOperation(ctx, func(ctx context.Context, db *sql.DB) error {
+		return transact(ctx, action, func(tx *sql.Tx) error {
+			for _, s := range sets {
+				if len(s.Drops) == 0 {
+					_, err := tx.ExecContext(ctx,
+						`INSERT OR IGNORE INTO artifact_drops(mission_id, player_id, drop_index, artifact_id, spec_type, level, rarity, quality)
+						 VALUES (?, ?, -1, 0, '', 0, 0, 0)`,
+						s.MissionId, s.PlayerId)
+					if err != nil {
+						return err
+					}
+					continue
+				}
+				for _, d := range s.Drops {
+					_, err := tx.ExecContext(ctx,
+						`INSERT OR IGNORE INTO artifact_drops(mission_id, player_id, drop_index, artifact_id, spec_type, level, rarity, quality)
+						 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+						s.MissionId, s.PlayerId, d.DropIndex, d.ArtifactId, d.SpecType, d.Level, d.Rarity, d.Quality)
+					if err != nil {
+						return err
+					}
+				}
+			}
+			return nil
+		})
+	})
+}
+
 // MissionPayloadRef holds the minimum data needed to backfill artifact_drops
 // from a stored mission blob.
 type MissionPayloadRef struct {

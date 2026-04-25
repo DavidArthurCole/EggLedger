@@ -44,8 +44,12 @@ func handleGetMissionIds(playerId string) []string {
 }
 
 func handleGetExistingData() []DatabaseAccount {
+	_storage.Lock()
+	accounts := make([]Account, len(_storage.KnownAccounts))
+	copy(accounts, _storage.KnownAccounts)
+	_storage.Unlock()
 	knownAccounts := []DatabaseAccount{}
-	for _, knownAccount := range _storage.KnownAccounts {
+	for _, knownAccount := range accounts {
 		count, maxReturnTS, err := db.RetrievePlayerMissionStats(context.Background(), knownAccount.Id)
 		if err != nil {
 			log.Error(err)

@@ -56,6 +56,20 @@ func BackfillArtifactDrops() {
 	_backfill.total.Store(int64(len(refs)))
 	log.Infof("backfill: populating artifact_drops for %d missions", len(refs))
 
+	// Decode all payloads first (CPU-only, no DB lock held), then insert in
+	// one transaction to avoid thousands of individual write transactions
+	// competing with the fetch pipeline.
+	const batchSize = 500
+	sets := make([]db.MissionDropSet, 0, batchSize)
+	flush := func() {
+		if len(sets) == 0 {
+			return
+		}
+		if err := db.InsertArtifactDropsBatch(ctx, sets); err != nil {
+			log.Errorf("backfill: batch insert error: %v", err)
+		}
+		sets = sets[:0]
+	}
 	for _, ref := range refs {
 		payload, err := db.DecompressPayload(ref.CompressedPayload)
 		if err != nil {
@@ -69,12 +83,17 @@ func BackfillArtifactDrops() {
 			_backfill.finished.Add(1)
 			continue
 		}
-		drops := buildArtifactDropRows(resp)
-		if err := db.InsertArtifactDrops(ctx, ref.PlayerId, ref.MissionId, drops); err != nil {
-			log.Errorf("backfill: insert drops %s: %v", ref.MissionId, err)
-		}
+		sets = append(sets, db.MissionDropSet{
+			PlayerId:  ref.PlayerId,
+			MissionId: ref.MissionId,
+			Drops:     buildArtifactDropRows(resp),
+		})
 		_backfill.finished.Add(1)
+		if len(sets) >= batchSize {
+			flush()
+		}
 	}
+	flush()
 	log.Infof("backfill: artifact_drops backfill complete")
 	_backfill.done.Store(true)
 }
