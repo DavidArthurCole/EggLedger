@@ -547,10 +547,20 @@ function hexToHsl(hex: string): [number, number, number] {
   return [h, s, l]
 }
 
+function hslToHex(h: number, s: number, l: number): string {
+  const a = s * Math.min(l, 1 - l)
+  const f = (n: number) => {
+    const k = (n + h / 30) % 12
+    const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1)
+    return Math.round(255 * color).toString(16).padStart(2, '0')
+  }
+  return `#${f(0)}${f(8)}${f(4)}`
+}
+
 function autoSliceColors(baseColor: string, count: number): string[] {
   const [h, s, l] = hexToHsl(baseColor)
   return Array.from({ length: count }, (_, i) =>
-    `hsl(${(h + (i * 360) / count) % 360}, ${Math.round(s * 100)}%, ${Math.round(l * 100)}%)`,
+    hslToHex(((h + (i * 360) / count) % 360), s, l),
   )
 }
 
