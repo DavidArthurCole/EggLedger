@@ -61,6 +61,8 @@ import type { ReportResult } from '../types/bridge'
 const props = defineProps<{
   result: ReportResult
   color: string
+  /** JSON-encoded Record<string, string> mapping label to hex color */
+  labelColors?: string
 }>()
 
 const vw = 180
@@ -107,6 +109,15 @@ function truncateLabel(label: string, maxLen = 14): string {
   return label.length > maxLen ? label.slice(0, maxLen - 1) + '…' : label
 }
 
+const parsedLabelColors = computed((): Record<string, string> => {
+  if (!props.labelColors) return {}
+  try {
+    return JSON.parse(props.labelColors) as Record<string, string>
+  } catch {
+    return {}
+  }
+})
+
 const segments = computed(() => {
   const labels = props.result.labels
   const values = props.result.isFloat ? (props.result.floatValues ?? []) : props.result.values
@@ -121,7 +132,8 @@ const segments = computed(() => {
     items.push({ label: 'Other', value: other })
   }
 
-  const colors = segmentColors(props.color, items.length)
+  const autoColors = segmentColors(props.color, items.length)
+  const perLabel = parsedLabelColors.value
   let offset = 0
   return items.map((item, i) => {
     const arc = (item.value / total) * circumference
@@ -134,6 +146,7 @@ const segments = computed(() => {
     const elbowY = cy + Math.sin(midAngle) * elbowR
     const isRight = elbowX >= cx
     const labelX = isRight ? elbowX + 3 : elbowX - 3
+    const color = perLabel[item.label] ?? autoColors[i]
 
     return {
       label: item.label,
@@ -141,7 +154,7 @@ const segments = computed(() => {
       value: item.value,
       arc,
       offset: offset - arc,
-      color: colors[i],
+      color,
       pct: (item.value / total) * 100,
       innerX,
       innerY,

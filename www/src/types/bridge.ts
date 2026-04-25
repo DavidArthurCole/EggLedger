@@ -21,6 +21,8 @@ export interface DatabaseAccount {
   missionCount: number
   ebString: string
   accountColor: string
+  /** Unix seconds; 0 if no missions exist */
+  lastMissionReturnDT: number
 }
 
 export interface DatabaseMission {
@@ -204,6 +206,8 @@ export interface ReportDefinition {
   valueFilterThreshold: number
   groupId: string
   normalizeBy: string
+  /** JSON-encoded Record<string, string> mapping label to hex color for pie slices */
+  labelColors: string
 }
 
 export interface ReportGroup {

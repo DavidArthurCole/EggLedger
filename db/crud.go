@@ -238,6 +238,23 @@ func RetrievePlayerCompleteMissionIds(ctx context.Context, playerId string) ([]s
 	return missionIds, nil
 }
 
+// RetrievePlayerMissionStats returns the mission count and the maximum
+// return_timestamp (Unix seconds, 0 if no missions exist) for a player.
+// A single query replaces the two separate calls previously used by
+// handleGetExistingData.
+func RetrievePlayerMissionStats(ctx context.Context, playerId string) (count int, maxReturnTS float64, err error) {
+	action := fmt.Sprintf("retrieve mission stats for player %s from database", playerId)
+	err = DoDBOperation(ctx, func(ctx context.Context, db *sql.DB) error {
+		return transact(ctx, action, func(tx *sql.Tx) error {
+			row := tx.QueryRowContext(ctx,
+				`SELECT COUNT(*), COALESCE(MAX(return_timestamp), 0) FROM mission WHERE player_id = ?;`,
+				playerId)
+			return row.Scan(&count, &maxReturnTS)
+		})
+	})
+	return count, maxReturnTS, err
+}
+
 // CountPendingMissionTypes returns the number of missions for a player that
 // have mission_type = -1 (i.e. the type has not yet been resolved from the
 // stored payload). This is used to decide whether the one-time type-resolution

@@ -137,11 +137,12 @@ type ExportedFile struct {
 }
 
 type DatabaseAccount struct {
-	Id           string `json:"id"`
-	Nickname     string `json:"nickname"`
-	MissionCount int    `json:"missionCount"`
-	EBString     string `json:"ebString"`
-	AccountColor string `json:"accountColor"`
+	Id                 string  `json:"id"`
+	Nickname           string  `json:"nickname"`
+	MissionCount       int     `json:"missionCount"`
+	EBString           string  `json:"ebString"`
+	AccountColor       string  `json:"accountColor"`
+	LastMissionReturnDT float64 `json:"lastMissionReturnDT"`
 }
 
 type PossibleTarget struct {
@@ -425,6 +426,7 @@ func reportDefToRow(def reports.ReportDefinition) (reportdb.ReportRow, error) {
 		ValueFilterOp: def.ValueFilterOp,
 		ValueFilterThreshold: def.ValueFilterThreshold,
 		GroupId: def.GroupId,
+		LabelColors: def.LabelColors,
 	}
 	if def.TimeBucket != "" {
 		r.TimeBucket = sql.NullString{String: def.TimeBucket, Valid: true}
@@ -463,6 +465,7 @@ func rowToReportDef(r reportdb.ReportRow) (reports.ReportDefinition, error) {
 		ValueFilterOp: r.ValueFilterOp,
 		ValueFilterThreshold: r.ValueFilterThreshold,
 		GroupId: r.GroupId,
+		LabelColors: r.LabelColors,
 	}
 	if r.TimeBucket.Valid {
 		def.TimeBucket = r.TimeBucket.String

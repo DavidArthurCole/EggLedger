@@ -46,16 +46,17 @@ func handleGetMissionIds(playerId string) []string {
 func handleGetExistingData() []DatabaseAccount {
 	knownAccounts := []DatabaseAccount{}
 	for _, knownAccount := range _storage.KnownAccounts {
-		ids, err := db.RetrievePlayerCompleteMissionIds(context.Background(), knownAccount.Id)
+		count, maxReturnTS, err := db.RetrievePlayerMissionStats(context.Background(), knownAccount.Id)
 		if err != nil {
 			log.Error(err)
-		} else if len(ids) > 0 {
+		} else if count > 0 {
 			knownAccounts = append(knownAccounts, DatabaseAccount{
-				Id:           knownAccount.Id,
-				Nickname:     knownAccount.Nickname,
-				MissionCount: len(ids),
-				EBString:     knownAccount.EBString,
-				AccountColor: knownAccount.AccountColor,
+				Id:                  knownAccount.Id,
+				Nickname:            knownAccount.Nickname,
+				MissionCount:        count,
+				EBString:            knownAccount.EBString,
+				AccountColor:        knownAccount.AccountColor,
+				LastMissionReturnDT: maxReturnTS,
 			})
 		}
 	}

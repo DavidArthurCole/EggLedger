@@ -53,7 +53,13 @@
               </template>
             </template>
           </span>
-          <span class="text-gray-600">{{ acct.missionCount }} missions</span>
+          <span class="flex items-center gap-1.5 text-gray-600">
+            <span>{{ acct.missionCount }} missions</span>
+            <template v-if="formatTimeSince(acct.lastMissionReturnDT)">
+              <span>·</span>
+              <span>fetched {{ formatTimeSince(acct.lastMissionReturnDT) }}</span>
+            </template>
+          </span>
         </span>
       </li>
       <li
@@ -70,7 +76,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useDropdownSelector } from '../composables/useDropdownSelector'
 import { useActiveAccount } from '../composables/useActiveAccount'
 import { useAppState } from '../composables/useAppState'
@@ -84,6 +90,39 @@ const { existingData, knownAccounts } = useAppState()
 const addDialogRef = ref<InstanceType<typeof AddAccountDialog> | null>(null)
 
 const { containerRef, isOpen, open, close } = useDropdownSelector()
+
+const now = ref(Math.floor(Date.now() / 1000))
+let tickInterval: ReturnType<typeof setInterval> | null = null
+
+onMounted(() => {
+  tickInterval = setInterval(() => {
+    now.value = Math.floor(Date.now() / 1000)
+  }, 60_000)
+})
+
+onUnmounted(() => {
+  if (tickInterval !== null) {
+    clearInterval(tickInterval)
+    tickInterval = null
+  }
+})
+
+function formatTimeSince(unixSeconds: number): string {
+  if (!unixSeconds) return ''
+  const diff = now.value - unixSeconds
+  if (diff <= 0) return ''
+  const totalMinutes = Math.floor(diff / 60)
+  const days = Math.floor(totalMinutes / (60 * 24))
+  const hours = Math.floor((totalMinutes % (60 * 24)) / 60)
+  const minutes = totalMinutes % 60
+  if (days > 0) {
+    return hours > 0 ? `${days}d${hours}h ago` : `${days}d ago`
+  }
+  if (hours > 0) {
+    return minutes > 0 ? `${hours}h${minutes}m ago` : `${hours}h ago`
+  }
+  return `${minutes}m ago`
+}
 
 function toggle() {
   if (isOpen.value) close()

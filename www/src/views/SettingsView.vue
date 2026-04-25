@@ -624,12 +624,12 @@ function applyCloudStatus(status: CloudStatusPayload) {
 }
 
 async function initCloudSync() {
+  applyCloudStatus(JSON.parse(await globalThis.getCloudSyncStatus()))
+
   cloudReachableChecking.value = true
   cloudReachable.value = await globalThis.checkCloudReachable()
   cloudReachableChecking.value = false
   if (!cloudReachable.value) return
-
-  applyCloudStatus(JSON.parse(await globalThis.getCloudSyncStatus()))
 
   globalThis.onDiscordAuthComplete = (connected: boolean, username: string) => {
     cloudAuthWaiting.value = false

@@ -62,6 +62,7 @@
       v-if="builderOpen"
       :account-id="accountId"
       :editing-def="editingDef"
+      :editing-result-labels="editingDef && results[editingDef.id] ? results[editingDef.id].labels : []"
       @saved="handleSaved"
       @close="builderOpen = false"
     />

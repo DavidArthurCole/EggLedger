@@ -41,6 +41,7 @@ type ReportDefinition struct {
 	ValueFilterThreshold float64 `json:"valueFilterThreshold"`
 	GroupId string `json:"groupId"`
 	NormalizeBy string `json:"normalizeBy"`
+	LabelColors string `json:"labelColors"`
 }
 
 // ReportResult is the computed output of executing a report.
