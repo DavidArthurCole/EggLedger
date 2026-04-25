@@ -30,3 +30,8 @@ func decompress(in []byte) ([]byte, error) {
 	}
 	return out.Bytes(), nil
 }
+
+// DecompressPayload decompresses a gzip-compressed payload blob.
+func DecompressPayload(data []byte) ([]byte, error) {
+	return decompress(data)
+}

@@ -82,6 +82,206 @@
       <hr class="mt-1rem mb-1rem w-full" />
 
       <div class="px-2 py-2 text-sm text-gray-400 bg-darker rounded-md tabular-nums overflow-auto">
+        <span class="mr-0_5rem font-bold text-lg text-gray-400 ledger-underline">Settings Sync</span>
+        <span class="text-gray-500 text-xs italic ml-1">(optional - requires Discord)</span><br />
+
+        <div v-if="cloudReachableChecking" class="mt-0_5rem text-gray-500 italic text-xs">
+          Checking connection to ledgersync.davidarthurcole.me...
+        </div>
+
+        <div v-else-if="!cloudReachable" class="mt-0_5rem">
+          <div class="border border-yellow-700 rounded-md px-3 py-2 text-yellow-400 text-xs space-y-1">
+            <p class="font-semibold">Could not reach ledgersync.davidarthurcole.me</p>
+            <p>Settings sync is unavailable right now. Possible causes:</p>
+            <ul class="list-disc list-inside ml-1 text-yellow-400/80 space-y-0.5">
+              <li>The server is protected by Cloudflare - VPNs or anonymising proxies may be blocked.</li>
+              <li>Your network or firewall is blocking HTTPS to this host.</li>
+              <li>The service is temporarily down.</li>
+            </ul>
+            <p class="text-yellow-400/70">Try disabling any active VPN, then click Retry below.</p>
+          </div>
+          <button
+            type="button"
+            class="apply-filter-button mt-0_5rem"
+            @click="recheckReachable"
+          >Retry</button>
+        </div>
+
+        <div v-else>
+          <div class="mt-0_5rem">
+            <template v-if="cloudConnected">
+              <div class="flex items-center gap-2">
+                <img
+                  v-if="cloudAvatarUrl"
+                  :src="cloudAvatarUrl"
+                  class="w-7 h-7 rounded-full border border-gray-600"
+                  alt="Discord avatar"
+                />
+                <div>
+                  <span class="text-green-400 font-semibold">Connected</span>
+                  <span v-if="cloudUsername" class="text-gray-400 ml-1">as <span class="text-gray-300">{{ cloudUsername }}</span></span>
+                </div>
+              </div>
+              <div class="mt-0_25rem text-xs text-gray-500 space-y-0.5">
+                <div>Last push: <span :class="cloudLastPushAt ? 'text-gray-400' : 'text-gray-600 italic'">{{ cloudLastPushAt ? cloudLastPushString : 'Never' }}</span></div>
+                <div>Last pull: <span :class="cloudLastPullAt ? 'text-gray-400' : 'text-gray-600 italic'">{{ cloudLastPullAt ? cloudLastPullString : 'Never' }}</span></div>
+              </div>
+              <div v-if="!cloudUsername || !cloudHasEncryptionKey" class="mt-0_5rem border border-yellow-700 rounded-md px-3 py-2 text-yellow-500 text-xs space-y-1.5 max-w-[50%]">
+                <p class="italic">Reconnect to restore{{ !cloudHasEncryptionKey ? ' sync credentials' : ' display name and avatar' }}.</p>
+                <button
+                  type="button"
+                  :disabled="cloudAuthWaiting"
+                  class="apply-filter-button !mt-0 !text-white"
+                  :style="{ backgroundColor: '#5865F2', borderColor: '#4752C4' }"
+                  @click="connectDiscord"
+                ><span class="inline-flex items-center gap-1.5"><svg class="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057.101 18.079.11 18.1.133 18.114a19.929 19.929 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>{{ cloudAuthWaiting ? 'Waiting for auth...' : 'Reconnect with Discord' }}</span></button>
+              </div>
+            </template>
+            <template v-else>
+              <span class="text-gray-500 italic">Not connected</span>
+            </template>
+          </div>
+
+          <div v-if="cloudAuthWaiting" class="mt-0_5rem border border-blue-700 rounded-md px-3 py-2 text-blue-300 text-xs max-w-[50%]">
+            <p class="font-semibold">Waiting for Discord authorization...</p>
+            <p class="text-blue-300/70 mt-0.5">Your browser should have opened the authorization page. Approve it there, then return here.</p>
+            <p v-if="cloudAuthURL" class="mt-0.5">
+              If nothing opened,
+              <button type="button" class="underline text-blue-400 hover:text-blue-300" @click="openAuthURL">click here to open it manually</button>.
+            </p>
+          </div>
+
+          <div class="mt-0_5rem flex flex-row flex-wrap gap-2">
+            <button
+              v-if="!cloudConnected"
+              type="button"
+              :disabled="cloudAuthWaiting"
+              class="apply-filter-button !text-white"
+              :style="{ backgroundColor: '#5865F2', borderColor: '#4752C4' }"
+              @click="connectDiscord"
+            ><span class="inline-flex items-center gap-1.5"><svg class="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057.101 18.079.11 18.1.133 18.114a19.929 19.929 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>{{ cloudAuthWaiting ? 'Waiting for auth...' : 'Connect with Discord' }}</span></button>
+
+            <template v-if="cloudConnected">
+              <button
+                type="button"
+                :disabled="cloudSyncInProgress"
+                class="apply-filter-button !bg-blue-700 !text-white hover:!bg-blue-600 !border-blue-500"
+                @click="syncNow"
+              >{{ cloudSyncInProgress ? 'Syncing...' : 'Sync now' }}</button>
+              <button
+                type="button"
+                :disabled="cloudRestoreInProgress"
+                class="apply-filter-button !bg-gray-700 !text-gray-200 hover:!bg-gray-600 !border-gray-500"
+                @click="restoreNow"
+              >{{ cloudRestoreInProgress ? 'Restoring...' : 'Restore from cloud' }}</button>
+              <button
+                type="button"
+                class="apply-filter-button !bg-red-900 !text-red-200 hover:!bg-red-800 !border-red-700"
+                @click="disconnectCloud"
+              >Disconnect</button>
+            </template>
+          </div>
+
+          <div v-if="cloudSyncError" class="mt-0_5rem text-red-400 text-xs">Sync failed: {{ cloudSyncError }}</div>
+          <div v-if="cloudSyncSuccess" class="mt-0_5rem text-green-400 text-xs">Sync complete.</div>
+          <div v-if="cloudRestoreError" class="mt-0_5rem text-red-400 text-xs">Restore failed: {{ cloudRestoreError }}</div>
+          <div v-if="cloudRestoreSuccess" class="mt-0_5rem text-green-400 text-xs">Restore complete. Restart the app to apply synced settings.</div>
+        </div>
+      </div>
+
+      <hr class="mt-1rem mb-1rem w-full" />
+
+      <div class="px-2 py-2 text-sm text-gray-400 bg-darker rounded-md tabular-nums overflow-auto">
+        <span class="mr-0_5rem font-bold text-lg text-gray-400 ledger-underline">Storage</span><br />
+        <div class="mt-0_5rem">
+          <span class="section-heading">Storage Location</span><br />
+          <div class="mt-0_5rem pl-0_5rem">
+            <div class="flex flex-row items-center gap-2">
+              <input
+                type="text"
+                readonly
+                :value="storagePath || 'Loading...'"
+                :size="(storagePath || 'Loading...').length + 2"
+                class="block rounded-md text-sm bg-darkest font-mono text-gray-300 cursor-default border border-gray-600 px-2 py-1 focus:outline-none focus:ring-0 shrink min-w-0"
+              />
+              <button
+                type="button"
+                class="apply-filter-button !mt-0 !mr-0 !ml-0 flex-shrink-0"
+                @click="openStorageFolder"
+              >Open folder</button>
+              <button
+                type="button"
+                class="apply-filter-button !mt-0 !mr-0 !ml-0 flex-shrink-0"
+                @click="toggleStorageVisible"
+              >{{ storageFolderHidden ? 'Show folder' : 'Hide folder' }}</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-1rem">
+          <span class="section-heading">Backup Storage</span><br />
+          <div class="mt-0_5rem pl-0_5rem">
+            <div class="flex flex-row items-center gap-2 max-w-[50%]">
+              <input
+                type="text"
+                class="drop-select-full text-sm bg-darkest"
+                placeholder="Destination path..."
+                v-model="backupDestPath"
+              />
+              <button
+                type="button"
+                class="apply-filter-button !mt-0 !bg-gray-700 !text-gray-200 hover:!bg-gray-600 !border-gray-500 flex-shrink-0"
+                @click="chooseBackupDest"
+              >Choose...</button>
+            </div>
+            <div class="flex flex-row items-center gap-2 mt-0_5rem">
+              <button
+                type="button"
+                class="apply-filter-button !bg-blue-700 !text-white hover:!bg-blue-600 !border-blue-500"
+                :disabled="!backupDestPath || backupInProgress"
+                @click="runBackup"
+              >{{ backupInProgress ? 'Backing up...' : 'Backup storage...' }}</button>
+              <span v-if="backupSuccess" class="text-green-400 text-xs">Backup complete.</span>
+              <span v-if="backupError" class="text-red-400 text-xs">{{ backupError }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-1rem">
+          <span class="section-heading">Move Storage</span><br />
+          <div class="mt-0_5rem pl-0_5rem">
+            <div class="flex flex-row items-center gap-2 max-w-[50%]">
+              <input
+                type="text"
+                class="drop-select-full text-sm bg-darkest"
+                placeholder="Destination path..."
+                v-model="moveDestPath"
+              />
+              <button
+                type="button"
+                class="apply-filter-button !mt-0 !bg-gray-700 !text-gray-200 hover:!bg-gray-600 !border-gray-500 flex-shrink-0"
+                @click="chooseMoveDest"
+              >Choose...</button>
+            </div>
+            <div class="mt-0_5rem text-xs text-orange-400 border border-orange-700 rounded-md py-2 px-3 max-w-[50%]">
+              This will restart the app. The old location will NOT be deleted automatically.
+            </div>
+            <div class="flex flex-row items-center gap-2 mt-0_5rem">
+              <button
+                type="button"
+                class="apply-filter-button !bg-orange-700 !text-white hover:!bg-orange-600 !border-orange-500"
+                :disabled="!moveDestPath || moveInProgress"
+                @click="runMove"
+              >{{ moveInProgress ? 'Moving...' : 'Move storage...' }}</button>
+              <span v-if="moveError" class="text-red-400 text-xs">{{ moveError }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <hr class="mt-1rem mb-1rem w-full" />
+
+      <div class="px-2 py-2 text-sm text-gray-400 bg-darker rounded-md tabular-nums overflow-auto">
         <span class="mr-0_5rem font-bold text-lg text-gray-400 ledger-underline">Menno's Ship Data</span><br />
         <span class="italic text-gray-400">Data last refreshed on
           <span :class="secondsSinceLastUpdate >= 2147483647 ? 'text-red-700' : 'text-green-500'">{{ lastUpdateString }}</span>
@@ -261,6 +461,63 @@ const {
   close: closePrefBrowserDropdown,
 } = useDropdownSelector((pref) => { setPreferredBrowser(pref) })
 
+const storagePath = ref('')
+const storageFolderHidden = ref(true)
+const backupDestPath = ref('')
+const backupInProgress = ref(false)
+const backupSuccess = ref(false)
+const backupError = ref('')
+const moveDestPath = ref('')
+const moveInProgress = ref(false)
+const moveError = ref('')
+
+function openStorageFolder() {
+  if (storagePath.value) {
+    globalThis.openFileInFolder(storagePath.value)
+  }
+}
+
+async function toggleStorageVisible() {
+  const nowHidden = !storageFolderHidden.value
+  storageFolderHidden.value = nowHidden
+  await globalThis.setStorageFolderVisible(!nowHidden)
+}
+
+async function chooseBackupDest() {
+  const path = await globalThis.chooseFolderPath()
+  if (path) backupDestPath.value = path
+}
+
+async function chooseMoveDest() {
+  const path = await globalThis.chooseFolderPath()
+  if (path) moveDestPath.value = path
+}
+
+async function runBackup() {
+  backupSuccess.value = false
+  backupError.value = ''
+  backupInProgress.value = true
+  try {
+    await globalThis.backupStorageTo(backupDestPath.value)
+    backupSuccess.value = true
+  } catch (e: unknown) {
+    backupError.value = e instanceof Error ? e.message : String(e)
+  } finally {
+    backupInProgress.value = false
+  }
+}
+
+async function runMove() {
+  moveError.value = ''
+  moveInProgress.value = true
+  try {
+    await globalThis.moveStorageTo(moveDestPath.value)
+  } catch (e: unknown) {
+    moveError.value = e instanceof Error ? e.message : String(e)
+    moveInProgress.value = false
+  }
+}
+
 const workerCountWarningRead = ref(false)
 const hideWorkerWarning = ref(false)
 
@@ -329,9 +586,144 @@ onMounted(async () => {
   await refreshBrowserList()
   await checkRefreshNeeded()
   workerCountWarningRead.value = (await globalThis.workerCountWarningRead()) ?? false
+  storagePath.value = (await globalThis.getStoragePath()) ?? ''
+  await initCloudSync()
 })
 
 onUnmounted(() => {
   globalThis.removeEventListener('resize', onResize)
+  globalThis.onDiscordAuthComplete = () => {}
+  globalThis.onCloudSyncComplete = () => {}
+  globalThis.onCloudRestoreComplete = () => {}
 })
+
+// Cloud sync state
+const cloudReachableChecking = ref(false)
+const cloudReachable = ref(false)
+const cloudConnected = ref(false)
+const cloudUsername = ref('')
+const cloudAvatarUrl = ref('')
+const cloudHasEncryptionKey = ref(false)
+const cloudLastPushAt = ref(0)
+const cloudLastPullAt = ref(0)
+const cloudAuthWaiting = ref(false)
+const cloudAuthURL = ref('')
+const cloudSyncInProgress = ref(false)
+const cloudSyncError = ref('')
+const cloudSyncSuccess = ref(false)
+const cloudRestoreInProgress = ref(false)
+const cloudRestoreError = ref('')
+const cloudRestoreSuccess = ref(false)
+
+const cloudLastPushString = computed(() => {
+  if (!cloudLastPushAt.value) return ''
+  return new Date(cloudLastPushAt.value * 1000).toLocaleString()
+})
+
+const cloudLastPullString = computed(() => {
+  if (!cloudLastPullAt.value) return ''
+  return new Date(cloudLastPullAt.value * 1000).toLocaleString()
+})
+
+type CloudStatusPayload = { connected: boolean; username: string; avatarUrl: string; lastPushAt: number; lastPullAt: number; hasEncryptionKey: boolean }
+
+function applyCloudStatus(status: CloudStatusPayload) {
+  cloudConnected.value = status.connected
+  cloudUsername.value = status.username ?? ''
+  cloudAvatarUrl.value = status.avatarUrl ?? ''
+  cloudLastPushAt.value = status.lastPushAt ?? 0
+  cloudLastPullAt.value = status.lastPullAt ?? 0
+  cloudHasEncryptionKey.value = status.hasEncryptionKey ?? false
+}
+
+async function initCloudSync() {
+  applyCloudStatus(JSON.parse(await globalThis.getCloudSyncStatus()))
+
+  cloudReachableChecking.value = true
+  cloudReachable.value = await globalThis.checkCloudReachable()
+  cloudReachableChecking.value = false
+  if (!cloudReachable.value) return
+
+  globalThis.onDiscordAuthComplete = (connected: boolean, username: string) => {
+    cloudAuthWaiting.value = false
+    cloudConnected.value = connected
+    cloudUsername.value = username ?? ''
+    if (connected) {
+      refreshSyncStatus()
+    }
+  }
+  globalThis.onCloudSyncComplete = (success: boolean, errMsg: string) => {
+    cloudSyncInProgress.value = false
+    if (success) {
+      cloudSyncSuccess.value = true
+      cloudSyncError.value = ''
+      refreshSyncStatus()
+    } else {
+      cloudSyncError.value = errMsg
+    }
+  }
+  globalThis.onCloudRestoreComplete = (success: boolean, errMsg: string) => {
+    cloudRestoreInProgress.value = false
+    if (success) {
+      cloudRestoreSuccess.value = true
+      cloudRestoreError.value = ''
+    } else {
+      cloudRestoreError.value = errMsg
+    }
+  }
+}
+
+async function recheckReachable() {
+  cloudReachableChecking.value = true
+  cloudReachable.value = await globalThis.checkCloudReachable()
+  cloudReachableChecking.value = false
+  if (cloudReachable.value) {
+    await initCloudSync()
+  }
+}
+
+async function refreshSyncStatus() {
+  applyCloudStatus(JSON.parse(await globalThis.getCloudSyncStatus()))
+}
+
+async function connectDiscord() {
+  cloudAuthWaiting.value = true
+  cloudAuthURL.value = ''
+  try {
+    const url = await globalThis.connectDiscord()
+    cloudAuthURL.value = url ?? ''
+  } catch (_e: unknown) {
+    console.error('Error initiating Discord connection:', _e)
+    cloudAuthWaiting.value = false
+  }
+}
+
+function openAuthURL() {
+  if (cloudAuthURL.value) {
+    globalThis.openURL(cloudAuthURL.value)
+  }
+}
+
+async function disconnectCloud() {
+  await globalThis.disconnectCloud()
+  cloudConnected.value = false
+  cloudUsername.value = ''
+  cloudAvatarUrl.value = ''
+  cloudLastPushAt.value = 0
+  cloudLastPullAt.value = 0
+}
+
+function syncNow() {
+  cloudSyncInProgress.value = true
+  cloudSyncError.value = ''
+  cloudSyncSuccess.value = false
+  globalThis.syncToCloud()
+}
+
+function restoreNow() {
+  cloudRestoreInProgress.value = true
+  cloudRestoreError.value = ''
+  cloudRestoreSuccess.value = false
+  globalThis.restoreFromCloud()
+}
 </script>

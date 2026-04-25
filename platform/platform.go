@@ -5,11 +5,17 @@ package platform
 import (
 	"os/exec"
 	"path/filepath"
+	"strings"
 )
 
 // Hide is a noop on Linux. I don't think there's a unified way to hide files
 // or directories on Linux (what does that even mean?) other than using a dot.
 func Hide(path string) error {
+	return nil
+}
+
+// Show is a noop on Linux.
+func Show(_ string) error {
 	return nil
 }
 
@@ -21,4 +27,26 @@ func OpenFolderAndSelect(path string) error {
 
 func Open(target string) error {
 	return exec.Command("xdg-open", target).Start()
+}
+
+// ChooseFolder opens a folder picker via zenity if available.
+// Returns the selected path, or "" if cancelled or zenity is not installed.
+func ChooseFolder() string {
+	cmd := exec.Command("zenity", "--file-selection", "--directory", "--title=Choose Folder")
+	out, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
+}
+
+// ChooseSaveFilePath opens a save-file dialog via zenity if available.
+// defaultName is the suggested filename. Returns the chosen path, or "" if cancelled.
+func ChooseSaveFilePath(defaultName string) string {
+	cmd := exec.Command("zenity", "--file-selection", "--save", "--filename="+defaultName, "--title=Save As", "--confirm-overwrite")
+	out, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
 }

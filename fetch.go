@@ -158,8 +158,10 @@ func runFetchPipeline(w *worker, playerId string) {
 	}
 	_storage.AddKnownAccount(Account{Id: playerId, Nickname: nickname, EBString: ebString, AccountColor: roleColor, SeString: seSuffix, PeCount: peCount, TeCount: totalTE})
 	_storage.Lock()
-	_updateKnownAccounts(_storage.KnownAccounts)
+	accountsCopy := make([]Account, len(_storage.KnownAccounts))
+	copy(accountsCopy, _storage.KnownAccounts)
 	_storage.Unlock()
+	_updateKnownAccounts(accountsCopy)
 	if checkInterrupt() {
 		return
 	}

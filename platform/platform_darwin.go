@@ -17,6 +17,15 @@ func Hide(path string) error {
 	return unix.Chflags(path, UF_HIDDEN)
 }
 
+// Show removes the hidden flag from a file or directory using chflags(2).
+func Show(path string) error {
+	var stat unix.Stat_t
+	if err := unix.Lstat(path, &stat); err != nil {
+		return err
+	}
+	return unix.Chflags(path, int(stat.Flags)&^UF_HIDDEN)
+}
+
 // The following is a failed attempt using cgo and obj-c to implement
 // openFolderAndSelect with activateFileViewerSelectingURLs. For some reason, it
 // works without Lorca, but when Lorca is used, Finder becomes unresponsive until
@@ -56,6 +65,29 @@ func OpenFolderAndSelect(path string) error {
 // Open opens a file or URL using the default application on macOS.
 func Open(target string) error {
 	return exec.Command("open", target).Start()
+}
+
+// ChooseFolder opens a native folder picker dialog via AppleScript.
+// Returns the selected path, or "" if cancelled.
+func ChooseFolder() string {
+	cmd := exec.Command("osascript", "-e", `POSIX path of (choose folder)`)
+	out, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
+}
+
+// ChooseSaveFilePath opens a native save-file dialog via AppleScript.
+// defaultName is the suggested filename. Returns the chosen path, or "" if cancelled.
+func ChooseSaveFilePath(defaultName string) string {
+	script := `POSIX path of (choose file name with prompt "Save as:" default name "` + defaultName + `")`
+	cmd := exec.Command("osascript", "-e", script)
+	out, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
 }
 
 // quoteStringForAppleScript quotes backslashes and double quotes.

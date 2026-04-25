@@ -44,18 +44,23 @@ func handleGetMissionIds(playerId string) []string {
 }
 
 func handleGetExistingData() []DatabaseAccount {
+	_storage.Lock()
+	accounts := make([]Account, len(_storage.KnownAccounts))
+	copy(accounts, _storage.KnownAccounts)
+	_storage.Unlock()
 	knownAccounts := []DatabaseAccount{}
-	for _, knownAccount := range _storage.KnownAccounts {
-		ids, err := db.RetrievePlayerCompleteMissionIds(context.Background(), knownAccount.Id)
+	for _, knownAccount := range accounts {
+		count, maxReturnTS, err := db.RetrievePlayerMissionStats(context.Background(), knownAccount.Id)
 		if err != nil {
 			log.Error(err)
-		} else if len(ids) > 0 {
+		} else if count > 0 {
 			knownAccounts = append(knownAccounts, DatabaseAccount{
-				Id:           knownAccount.Id,
-				Nickname:     knownAccount.Nickname,
-				MissionCount: len(ids),
-				EBString:     knownAccount.EBString,
-				AccountColor: knownAccount.AccountColor,
+				Id:                  knownAccount.Id,
+				Nickname:            knownAccount.Nickname,
+				MissionCount:        count,
+				EBString:            knownAccount.EBString,
+				AccountColor:        knownAccount.AccountColor,
+				LastMissionReturnDT: maxReturnTS,
 			})
 		}
 	}
@@ -96,15 +101,11 @@ func handleGetDurationConfigs() []PossibleMission {
 }
 
 // handleGetAllPlayerDrops returns a map of missionId -> drops for every mission
-// the player has stored, using a single bulk DB read instead of N individual queries.
+// the player has stored, processing one mission at a time to avoid a large
+// transient allocation that can cause GC stop-the-world pauses.
 func handleGetAllPlayerDrops(playerId string) map[string][]MissionDrop {
-	missions, err := db.RetrievePlayerCompleteMissions(context.Background(), playerId)
-	if err != nil {
-		log.Error(err)
-		return nil
-	}
-	result := make(map[string][]MissionDrop, len(missions))
-	for _, completeMission := range missions {
+	result := make(map[string][]MissionDrop)
+	err := db.RetrievePlayerCompleteMissionsStream(context.Background(), playerId, func(completeMission *ei.CompleteMissionResponse) error {
 		missionId := completeMission.GetInfo().GetIdentifier()
 		shipDrops := []MissionDrop{}
 		for _, drop := range completeMission.Artifacts {
@@ -120,8 +121,8 @@ func handleGetAllPlayerDrops(playerId string) map[string][]MissionDrop {
 				Id:       int32(spec.GetName()),
 				Name:     ei.ArtifactSpec_Name_name[int32(spec.GetName())],
 				GameName: spec.CasedName(),
-				Level:    int32(*drop.Spec.Level),
-				Rarity:   int32(*drop.Spec.Rarity),
+				Level:    int32(spec.GetLevel()),
+				Rarity:   int32(spec.GetRarity()),
 				Quality:  foundQuality,
 				IVOrder:  int32(spec.Name.InventoryVisualizerOrder()),
 			}
@@ -142,6 +143,11 @@ func handleGetAllPlayerDrops(playerId string) map[string][]MissionDrop {
 			shipDrops = append(shipDrops, missionDrop)
 		}
 		result[missionId] = shipDrops
+		return nil
+	})
+	if err != nil {
+		log.Error(err)
+		return nil
 	}
 	return result
 }
@@ -167,8 +173,8 @@ func handleGetShipDrops(playerId, missionId string) []MissionDrop {
 			Id:       int32(spec.GetName()),
 			Name:     ei.ArtifactSpec_Name_name[int32(spec.GetName())],
 			GameName: spec.CasedName(),
-			Level:    int32(*drop.Spec.Level),
-			Rarity:   int32(*drop.Spec.Rarity),
+			Level:    int32(spec.GetLevel()),
+			Rarity:   int32(spec.GetRarity()),
 			Quality:  foundQuality,
 			IVOrder:  int32(spec.Name.InventoryVisualizerOrder()),
 		}

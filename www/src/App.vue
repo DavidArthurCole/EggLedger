@@ -1,10 +1,15 @@
 <template>
   <div v-show="mounted" class="h-full flex flex-col space-y-3 pb-3 bg-darker">
-    <TabBar :tabs="tabList" v-model:active-tab="activeTab" />
+    <TabBar :tabs="tabList" v-model:active-tab="activeTab">
+      <template #right>
+        <GlobalAccountHeader />
+      </template>
+    </TabBar>
 
     <LedgerView v-show="activeTab === 'Ledger'" />
     <MissionDataView v-show="activeTab === 'Mission Data'" />
     <LifetimeDataView v-show="activeTab === 'Lifetime Data'" />
+    <ReportsView v-show="activeTab === 'Reports'" />
     <SettingsView v-show="activeTab === 'Settings'" />
     <AboutView v-show="activeTab === 'About'" />
 
@@ -44,10 +49,13 @@ import LedgerView from './views/LedgerView.vue'
 import MissionDataView from './views/MissionDataView.vue'
 import LifetimeDataView from './views/LifetimeDataView.vue'
 import AboutView from './views/AboutView.vue'
+import ReportsView from './views/ReportsView.vue'
 import UpdateModal from './components/modals/UpdateModal.vue'
 import MennoLoadingModal from './components/modals/MennoLoadingModal.vue'
+import GlobalAccountHeader from './components/GlobalAccountHeader.vue'
 import { useAppState } from './composables/useAppState'
 import { useMennoData } from './composables/useMennoData'
+import { useActiveAccount } from './composables/useActiveAccount'
 import { registerShortcuts } from './shortcuts'
 
 const {
@@ -60,9 +68,11 @@ const {
   initAppState,
 } = useAppState()
 
+const { initActiveAccount } = useActiveAccount()
+
 const { mennoRefreshing, mennoIsAutoRefresh, mennoProgress, checkRefreshNeeded, refresh, load } = useMennoData()
 
-const tabList = ['Ledger', 'Mission Data', 'Lifetime Data', 'Settings', 'About']
+const tabList = ['Ledger', 'Mission Data', 'Lifetime Data', 'Reports', 'Settings', 'About']
 
 const mounted = ref(false)
 const updateModalDismissed = ref(false)
@@ -70,6 +80,7 @@ const apiStaleBannerDismissed = ref(false)
 
 onMounted(async () => {
   await initAppState()
+  await initActiveAccount()
   registerShortcuts()
   mounted.value = true
 

@@ -1,0 +1,1 @@
+ALTER TABLE reports ADD COLUMN label_colors TEXT NOT NULL DEFAULT '';

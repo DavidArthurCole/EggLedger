@@ -44,65 +44,6 @@
       @close="closeMultiMissionOverlay"
     />
 
-    <!-- Account selector -->
-    <form
-      v-if="doesDataExist"
-      id="viewAccountForm"
-      name="viewAccountForm"
-      class="select-form"
-      @submit="onViewSubmit"
-    >
-      <div ref="viewMissionAccountSelectRef" class="relative flex-grow focus-within:z-10">
-        <div
-          v-if="selectedMissionAccount != null && accountById(selectedMissionAccount) != null"
-          class="ledger-input-overlay"
-        >
-          <span class="whitespace-pre"><template v-if="screenshotSafety">EI<span class="inline-block rounded-sm bg-current select-none" style="width: 16ch; height: 0.8em; vertical-align: -0.05em;"></span></template><template v-else>{{ accountById(selectedMissionAccount)?.id }}</template></span>
-          (<span :style="'color: #' + (accountById(selectedMissionAccount)?.accountColor || '')">
-            {{ accountById(selectedMissionAccount)?.nickname }}
-            {{ accountById(selectedMissionAccount)?.ebString }}
-          </span>
-          - {{ accountById(selectedMissionAccount)?.missionCount }} missions)
-        </div>
-        <input
-          id="viewMissionAccountInput"
-          type="text"
-          class="drop-select border-gray-300"
-          placeholder="Select an account"
-          :value="selectedMissionAccount ?? ''"
-          @focus="openAccountDropdown"
-          @input="(e) => (selectedMissionAccount = (e.target as HTMLInputElement).value)"
-        />
-        <ul
-          v-if="accountDropdownOpen && objectedExistingData.length > 0"
-          class="ledger-list"
-          tabindex="-1"
-        >
-          <li
-            v-for="account in objectedExistingData"
-            :key="account.id"
-            class="drop-opt"
-            @click="closeAccountDropdown(account.id)"
-          >
-            <template v-if="screenshotSafety">EI<span class="inline-block rounded-sm bg-current select-none" style="width: 16ch; height: 0.8em; vertical-align: -0.05em;"></span></template><template v-else>{{ account.id }}</template>
-            (<span :style="'color: #' + account.accountColor">{{ account.nickname }} {{ account.ebString }}</span>
-            - {{ account.missionCount }} missions)
-          </li>
-        </ul>
-      </div>
-      <button
-        class="view-form-button"
-        type="submit"
-        :disabled="
-          !selectedMissionAccount ||
-            selectedMissionAccount === '' ||
-            accountById(selectedMissionAccount) == null ||
-            eidMissionsBeingLoaded
-        "
-      >
-        View
-      </button>
-    </form>
 
     <!-- Mission load progress -->
     <SegmentedProgressBar
@@ -275,8 +216,8 @@ import { useAppState } from '../composables/useAppState'
 import { useMennoData } from '../composables/useMennoData'
 import { useFetch } from '../composables/useFetch'
 import { useFilters } from '../composables/useFilters'
-import { useDropdownSelector } from '../composables/useDropdownSelector'
-import { screenshotSafety, collapseOlderSections } from '../composables/useSettings'
+import { useActiveAccount } from '../composables/useActiveAccount'
+import { collapseOlderSections } from '../composables/useSettings'
 import {
   type DropLike,
   sortGroupAlreadyCombed,
@@ -305,17 +246,10 @@ import type { ViewMissionData, InnerDrop, MennoConfigItem } from '../types/missi
 const { existingData, activeTab } = useAppState()
 const { mennoDataLoaded, getMennoData, load: loadMennoData } = useMennoData()
 const { isFetching } = useFetch()
+const { activeAccountId } = useActiveAccount()
 
-// Account selector state
+// Account load state
 
-const selectedMissionAccount = ref<string | null>(null)
-
-const {
-  containerRef: viewMissionAccountSelectRef,
-  isOpen: accountDropdownOpen,
-  open: openAccountDropdown,
-  close: closeAccountDropdown,
-} = useDropdownSelector((id) => { selectedMissionAccount.value = id })
 const eidMissionsBeingLoaded = ref(false)
 const loadedEid = ref<string | null>(null)
 
@@ -339,23 +273,6 @@ const missionLoadStatusText = computed(() =>
 )
 
 const doesDataExist = computed(() => existingData.value.length > 0)
-
-const objectedExistingData = computed(() => {
-  return existingData.value
-    .map((account) => ({
-      id: account.id,
-      nickname: account.nickname,
-      missionCount: account.missionCount,
-      ebString: account.ebString && account.ebString !== '' ? account.ebString : '???',
-      accountColor: account.accountColor,
-    }))
-    .sort((a, b) => b.missionCount - a.missionCount)
-})
-
-function accountById(id: string | null) {
-  if (id == null) return null
-  return objectedExistingData.value.find((acc) => acc.id === id) ?? null
-}
 
 // Mission list + filter result state
 
@@ -536,22 +453,20 @@ function openMultiMissionOverlay() {
 
 // Fetch mission + view logic
 
-async function onViewSubmit(event: Event) {
-  event.preventDefault()
+async function loadMissions(id: string) {
   clearFilter()
-  await doViewMissionsOfEid()
-}
-
-async function doViewMissionsOfEid() {
-  if (!selectedMissionAccount.value) return
   filterApplyTime.value = ''
   multiViewFreeSelectIds.value = []
   eidMissionsBeingLoaded.value = true
-  allLoadedMissions.value = await globalThis.viewMissionsOfEid(selectedMissionAccount.value)
+  allLoadedMissions.value = await globalThis.viewMissionsOfEid(id)
   filteredMissions.value = allLoadedMissions.value
-  loadedEid.value = selectedMissionAccount.value
+  loadedEid.value = id
   eidMissionsBeingLoaded.value = false
 }
+
+watch(activeAccountId, (id) => {
+  if (id) void loadMissions(id)
+}, { immediate: true })
 
 async function getSpecificMissionData(eid: string, missionId: string, extendedInfo: boolean, dropCache: Record<string, MissionDrop[]> | null = null, knownMissionInfo: DatabaseMission | null = null): Promise<ViewMissionData | null> {
   const missionInfo = knownMissionInfo ?? await globalThis.getMissionInfo(eid, missionId)

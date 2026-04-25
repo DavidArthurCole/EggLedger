@@ -31,6 +31,26 @@
         </div>
       </div>
 
+      <!-- Update banner -->
+      <div v-if="appHasUpdate" class="flex items-center gap-3 p-3 rounded-lg bg-blue-950/40 border border-blue-700/40 mt-2">
+        <div class="flex-1 space-y-1">
+          <p class="text-blue-200/80 text-xs font-semibold">Update v{{ appHasUpdate }} available</p>
+          <div v-if="updateInProgress">
+            <p class="text-blue-200/60 text-xs">
+              Downloading...
+              <span v-if="updateProgress.total > 0">{{ Math.round(updateProgress.downloaded / updateProgress.total * 100) }}%</span>
+            </p>
+          </div>
+          <p v-if="updateError" class="text-red-400 text-xs">{{ updateError }}</p>
+        </div>
+        <button
+          v-if="!updateInProgress"
+          type="button"
+          class="flex-shrink-0 inline-flex items-center px-3 py-1.5 rounded-md bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition-colors"
+          @click="startUpdate"
+        >Update now</button>
+      </div>
+
       <!-- Pane grid -->
       <div class="grid grid-cols-2 gap-3 mt-2">
 
@@ -59,16 +79,18 @@
         <div class="bg-dark rounded-md p-3 space-y-1">
           <h2 class="font-bold text-gray-300 border-b border-gray-700 pb-1 mb-2">How do I use EggLedger?</h2>
           <ul class="about-list-1">
-            <li>Go to the <b>Ledger</b> tab</li>
-            <li>Enter your Egg, Inc. account ID</li>
-            <li>Press <b>Fetch</b>
+            <li>Open the account selector and choose <b>+ Add Account</b>, then enter your EID</li>
+            <li>With your account selected, press <b>Fetch</b> on the <b>Ledger</b> tab
               <ul class="about-list-2">
                 <li>First fetch may take a while if you have many completed missions</li>
                 <li>Subsequent fetches only pull new missions</li>
+                <li>Multiple accounts can be added and switched between at any time</li>
               </ul>
             </li>
+            <li>Browse and filter your mission history in the <b>Mission Data</b> tab</li>
+            <li>View lifetime drop totals and statistics in the <b>Lifetime Data</b> tab</li>
+            <li>Build custom charts and breakdowns in the <b>Reports</b> tab</li>
           </ul>
-          <p class="ledger-underline">Data for multiple accounts can coexist.</p>
         </div>
 
         <div class="bg-dark rounded-md p-3 space-y-1">
@@ -91,6 +113,13 @@
           <p>No. EggLedger talks directly to the Egg, Inc. API - all data stays 100% local. No analytics are collected.</p>
           <p>The only third-party request is an occasional update check against github.com. No personal data is attached and no logs are available to me.</p>
           <p>Unless you contact me directly, I have no way to know you're even using this tool.</p>
+        </div>
+
+        <div class="bg-dark rounded-md p-3 space-y-1">
+          <h2 class="font-bold text-gray-300 border-b border-gray-700 pb-1 mb-2">Is the Settings Sync feature private?</h2>
+          <p>Settings Sync is fully optional. If you never connect Discord, nothing leaves your machine beyond the Egg, Inc. API calls and the update check described above.</p>
+          <p>If you do use it, your settings are <span class="ledger-underline">encrypted client-side before upload</span>. The encryption key is derived locally and never transmitted - the sync server receives and stores only an opaque encrypted blob it cannot read.</p>
+          <p>Discord is used solely to verify your identity. No settings data passes through Discord's servers.</p>
         </div>
 
         <div class="bg-dark rounded-md p-3 space-y-1">
@@ -140,6 +169,9 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useAppState } from '../composables/useAppState'
+
+const { appHasUpdate } = useAppState()
 
 const COFFEE_DISMISS_KEY = 'eggl_coffee_dismissed'
 const coffeeDismissed = ref(localStorage.getItem(COFFEE_DISMISS_KEY) === '1')
@@ -147,5 +179,25 @@ const coffeeDismissed = ref(localStorage.getItem(COFFEE_DISMISS_KEY) === '1')
 function dismissCoffee() {
   localStorage.setItem(COFFEE_DISMISS_KEY, '1')
   coffeeDismissed.value = true
+}
+
+const updateInProgress = ref(false)
+const updateProgress = ref({ downloaded: 0, total: 0 })
+const updateError = ref('')
+
+async function startUpdate() {
+  if (!appHasUpdate.value) return
+  updateInProgress.value = true
+  updateError.value = ''
+  globalThis.updateDownloadProgress = (downloaded, total) => {
+    updateProgress.value = { downloaded, total }
+  }
+  try {
+    await globalThis.downloadAndInstallUpdate(appHasUpdate.value)
+    // App will restart - no further action needed
+  } catch (e: unknown) {
+    updateError.value = e instanceof Error ? e.message : String(e)
+    updateInProgress.value = false
+  }
 }
 </script>

@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"embed"
 	"encoding/json"
 	"flag"
@@ -22,15 +23,20 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"github.com/DavidArthurCole/EggLedger/api"
 	"github.com/DavidArthurCole/EggLedger/db"
 	"github.com/DavidArthurCole/EggLedger/ei"
 	"github.com/DavidArthurCole/EggLedger/eiafx"
 	"github.com/DavidArthurCole/EggLedger/ledgerdata"
 	"github.com/DavidArthurCole/EggLedger/platform"
+	"github.com/DavidArthurCole/EggLedger/reportdb"
+	"github.com/DavidArthurCole/EggLedger/reports"
 	"github.com/davidarthurcole/lorca"
 	log "github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/writer"
+	"github.com/google/uuid"
 	"github.com/skratchdot/open-golang/open"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
@@ -131,11 +137,12 @@ type ExportedFile struct {
 }
 
 type DatabaseAccount struct {
-	Id           string `json:"id"`
-	Nickname     string `json:"nickname"`
-	MissionCount int    `json:"missionCount"`
-	EBString     string `json:"ebString"`
-	AccountColor string `json:"accountColor"`
+	Id                 string  `json:"id"`
+	Nickname           string  `json:"nickname"`
+	MissionCount       int     `json:"missionCount"`
+	EBString           string  `json:"ebString"`
+	AccountColor       string  `json:"accountColor"`
+	LastMissionReturnDT float64 `json:"lastMissionReturnDT"`
 }
 
 type PossibleTarget struct {
@@ -200,7 +207,7 @@ func init() {
 	}
 	log.Infof("root dir: %s", _rootDir)
 
-	_internalDir = filepath.Join(_rootDir, "internal")
+	_internalDir = resolveInternalDir(_rootDir)
 
 	// Make sure the app isn't located in the system/user app directory or
 	// downloads dir.
@@ -402,11 +409,88 @@ func checkApiVersionStaleness() bool {
 	return last != api.AppVersion
 }
 
+func reportDefToRow(def reports.ReportDefinition) (reportdb.ReportRow, error) {
+	wrap := func(err error) error { return errors.Wrap(err, "reportDefToRow") }
+	filtersBytes, err := json.Marshal(def.Filters)
+	if err != nil {
+		return reportdb.ReportRow{}, wrap(err)
+	}
+	r := reportdb.ReportRow{
+		Id: def.Id, AccountId: def.AccountId, Name: def.Name,
+		Subject: def.Subject, Mode: def.Mode, DisplayMode: def.DisplayMode,
+		GroupBy: def.GroupBy, FiltersJSON: string(filtersBytes),
+		GridX: def.GridX, GridY: def.GridY, GridW: def.GridW, GridH: def.GridH,
+		Weight: def.Weight, Color: def.Color,
+		Description: def.Description, ChartType: def.ChartType,
+		SortOrder: def.SortOrder,
+		ValueFilterOp: def.ValueFilterOp,
+		ValueFilterThreshold: def.ValueFilterThreshold,
+		GroupId: def.GroupId,
+		LabelColors: def.LabelColors,
+	}
+	if def.TimeBucket != "" {
+		r.TimeBucket = sql.NullString{String: def.TimeBucket, Valid: true}
+	}
+	if def.CustomBucketN > 0 {
+		r.CustomBucketN = sql.NullInt64{Int64: int64(def.CustomBucketN), Valid: true}
+	}
+	if def.CustomBucketUnit != "" {
+		r.CustomBucketUnit = sql.NullString{String: def.CustomBucketUnit, Valid: true}
+	}
+	if def.NormalizeBy != "" {
+		r.NormalizeBy = sql.NullString{String: def.NormalizeBy, Valid: true}
+	}
+	return r, nil
+}
+
+func rowToReportDef(r reportdb.ReportRow) (reports.ReportDefinition, error) {
+	wrap := func(err error) error { return errors.Wrap(err, "rowToReportDef") }
+	var filters reports.ReportFilters
+	if err := json.Unmarshal([]byte(r.FiltersJSON), &filters); err != nil {
+		return reports.ReportDefinition{}, wrap(err)
+	}
+	chartType := r.ChartType
+	if chartType == "" {
+		chartType = "bar"
+	}
+	def := reports.ReportDefinition{
+		Id: r.Id, AccountId: r.AccountId, Name: r.Name,
+		Subject: r.Subject, Mode: r.Mode, DisplayMode: r.DisplayMode,
+		GroupBy: r.GroupBy, Filters: filters,
+		GridX: r.GridX, GridY: r.GridY, GridW: r.GridW, GridH: r.GridH,
+		Weight: r.Weight, Color: r.Color,
+		Description: r.Description, ChartType: chartType,
+		SortOrder: r.SortOrder,
+		CreatedAt: r.CreatedAt, UpdatedAt: r.UpdatedAt,
+		ValueFilterOp: r.ValueFilterOp,
+		ValueFilterThreshold: r.ValueFilterThreshold,
+		GroupId: r.GroupId,
+		LabelColors: r.LabelColors,
+	}
+	if r.TimeBucket.Valid {
+		def.TimeBucket = r.TimeBucket.String
+	}
+	if r.CustomBucketN.Valid {
+		def.CustomBucketN = int(r.CustomBucketN.Int64)
+	}
+	if r.CustomBucketUnit.Valid {
+		def.CustomBucketUnit = r.CustomBucketUnit.String
+	}
+	if r.NormalizeBy.Valid {
+		def.NormalizeBy = r.NormalizeBy.String
+	}
+	return def, nil
+}
+
 func main() {
 	flag.BoolVar(&_forceMennoRefresh, "force-menno-refresh", false, "treat menno data as stale regardless of last refresh time")
 	flag.BoolVar(&_forceUpdateCheck, "force-update-check", false, "bypass the 12-hour update-check cooldown")
 	flag.BoolVar(&_debugCompression, "debug-compression", false, "log Content-Encoding headers on API responses to check if the server is gzip-compressing")
 	flag.Parse()
+	if _replacePID != 0 && _replacePath != "" {
+		runReplaceMode(_replacePID, _replacePath)
+		return
+	}
 	api.DebugCompression = _debugCompression
 
 	if _devMode {
@@ -453,6 +537,8 @@ func main() {
 	}
 	ui := UI{u}
 	defer ui.Close()
+	_ui = ui
+	ui.MustBind("downloadAndInstallUpdate", handleDownloadAndInstallUpdate)
 
 	_updateKnownAccounts = func(accounts []Account) {
 		ui.pushJSON("updateKnownAccounts", accounts)
@@ -482,7 +568,40 @@ func main() {
 		ui.pushJSON("updateProcesses", snapshots)
 	}
 	_processRegistry = NewProcessRegistry(updateProcesses)
+
+	_onDiscordAuthComplete = func(connected bool, username string) {
+		encoded, err := json.Marshal(username)
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		ui.Eval(fmt.Sprintf("window.onDiscordAuthComplete(%t, %s)", connected, encoded))
+	}
+	_onCloudSyncComplete = func(success bool, errMsg string) {
+		encoded, err := json.Marshal(errMsg)
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		ui.Eval(fmt.Sprintf("window.onCloudSyncComplete(%t, %s)", success, encoded))
+	}
+	_onCloudRestoreComplete = func(success bool, errMsg string) {
+		encoded, err := json.Marshal(errMsg)
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		ui.Eval(fmt.Sprintf("window.onCloudRestoreComplete(%t, %s)", success, encoded))
+	}
 	_processRegistry.Start(context.Background())
+
+	reportDBPath := filepath.Join(_internalDir, "reports.db")
+	if err := reportdb.InitReportDB(reportDBPath); err != nil {
+		log.Fatal("reportdb init err: ", err)
+	}
+	defer reportdb.CloseReportDB()
+	reports.SetMissionDB(db.GetDB())
+	go BackfillArtifactDrops()
 
 	ui.MustBind("getDefaultScalingFactor", func() float64 {
 		return _storage.GetDefaultScalingFactor()
@@ -772,10 +891,157 @@ func main() {
 	})
 
 	ui.MustBind("openFileInFolder", func(file string) {
-		path := filepath.Join(_rootDir, file)
-		if err := platform.OpenFolderAndSelect(path); err != nil {
-			log.Errorf("opening %s in folder: %s", path, err)
+		if err := platform.OpenFolderAndSelect(file); err != nil {
+			log.Errorf("opening %s in folder: %s", file, err)
 		}
+	})
+
+	ui.MustBind("chooseSaveFilePath", func(defaultName string) string {
+		return platform.ChooseSaveFilePath(defaultName)
+	})
+
+	ui.MustBind("chooseFolderPath", func() string {
+		return platform.ChooseFolder()
+	})
+
+	ui.MustBind("getStoragePath", func() string {
+		return _internalDir
+	})
+
+	ui.MustBind("setStorageFolderVisible", func(visible bool) {
+		if visible {
+			if err := platform.Show(_internalDir); err != nil {
+				log.Errorf("setStorageFolderVisible show: %s", err)
+			}
+		} else {
+			if err := platform.Hide(_internalDir); err != nil {
+				log.Errorf("setStorageFolderVisible hide: %s", err)
+			}
+		}
+	})
+
+	ui.MustBind("backupStorageTo", func(destPath string) error {
+		action := "backupStorageTo"
+		wrap := func(err error) error { return errors.Wrap(err, action) }
+		if destPath == "" {
+			return wrap(errors.New("destination path is required"))
+		}
+		if err := copyDir(_internalDir, destPath); err != nil {
+			return wrap(err)
+		}
+		return nil
+	})
+
+	ui.MustBind("moveStorageTo", func(destPath string) error {
+		action := "moveStorageTo"
+		wrap := func(err error) error { return errors.Wrap(err, action) }
+
+		absInternal, err := filepath.Abs(_internalDir)
+		if err != nil {
+			return wrap(err)
+		}
+		absDest, err := filepath.Abs(destPath)
+		if err != nil {
+			return wrap(errors.New("invalid destination path"))
+		}
+
+		if absDest == "" {
+			return wrap(errors.New("destination path is required"))
+		}
+		if absDest == absInternal {
+			return wrap(errors.New("destination is the same as current location"))
+		}
+		if strings.HasPrefix(absDest, absInternal+string(filepath.Separator)) {
+			return wrap(errors.New("destination cannot be inside the current storage directory"))
+		}
+
+		destPreExisted := false
+		if _, statErr := os.Stat(absDest); statErr == nil {
+			destPreExisted = true
+		}
+
+		probe := filepath.Join(absDest, ".eggledger_probe")
+		if err := os.MkdirAll(absDest, 0755); err != nil {
+			return wrap(fmt.Errorf("cannot create destination: %w", err))
+		}
+		if err := os.WriteFile(probe, []byte("probe"), 0644); err != nil {
+			return wrap(fmt.Errorf("destination not writable: %w", err))
+		}
+		os.Remove(probe)
+
+		rollback := func() {
+			if !destPreExisted {
+				os.RemoveAll(absDest)
+			}
+		}
+
+		if err := copyDir(absInternal, absDest); err != nil {
+			rollback()
+			return wrap(err)
+		}
+
+		if err := writeBootstrapConfig(absDest); err != nil {
+			rollback()
+			return wrap(err)
+		}
+
+		executable, err := os.Executable()
+		if err != nil {
+			return wrap(err)
+		}
+		cmd := exec.Command(executable, os.Args[1:]...)
+		if err := cmd.Start(); err != nil {
+			return wrap(err)
+		}
+		ui.Close()
+		return nil
+	})
+
+	ui.MustBind("addAccount", func(eid string) (Account, error) {
+		action := "addAccount"
+		wrap := func(err error) error { return errors.Wrap(err, action) }
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		defer cancel()
+		resp, err := fetchFirstContactWithContext(ctx, eid)
+		if err != nil {
+			return Account{}, wrap(err)
+		}
+		backup := resp.GetBackup()
+		nickname := backup.GetUserName()
+		eb := backup.GetEarningsBonus()
+		roleColor, _, ebAddendum, eb, precision := RoleFromEB(eb)
+		ebString := fmt.Sprintf(fmt.Sprintf("%%.%df", precision), eb) + ebAddendum
+		game := backup.GetGame()
+		seSuffix := AbbreviateFloat(game.GetSoulEggsD())
+		peCount := int(game.GetEggsOfProphecy())
+		totalTE := 0
+		if virtue := backup.GetVirtue(); virtue != nil {
+			for _, v := range virtue.GetEovEarned() {
+				totalTE += int(v)
+			}
+		}
+		acct := Account{
+			Id:           eid,
+			Nickname:     nickname,
+			EBString:     ebString,
+			AccountColor: roleColor,
+			SeString:     seSuffix,
+			PeCount:      peCount,
+			TeCount:      totalTE,
+		}
+		_storage.AddKnownAccount(acct)
+		_storage.Lock()
+		_updateKnownAccounts(_storage.KnownAccounts)
+		_storage.Unlock()
+		return acct, nil
+	})
+
+	ui.MustBind("getActiveAccountId", func() string {
+		return _storage.GetActiveAccountId()
+	})
+
+	ui.MustBind("setActiveAccountId", func(id string) {
+		_storage.SetActiveAccountId(id)
 	})
 
 	ui.MustBind("openURL", func(url string) {
@@ -825,6 +1091,381 @@ func main() {
 	ui.MustBind("loadMennoData", handleLoadMennoData)
 
 	ui.MustBind("getMennoData", handleGetMennoData)
+
+	ui.MustBind("createReport", func(defJSON string) string {
+		var def reports.ReportDefinition
+		if err := json.Unmarshal([]byte(defJSON), &def); err != nil {
+			log.Error(err)
+			return ""
+		}
+		def.Weight = reports.ClassifyWeight(def)
+		if def.Id == "" {
+			def.Id = uuid.New().String()
+		}
+		row, err := reportDefToRow(def)
+		if err != nil {
+			log.Error(err)
+			return ""
+		}
+		if err := reportdb.InsertReport(context.Background(), row); err != nil {
+			log.Error(err)
+			return ""
+		}
+		out, _ := json.Marshal(def)
+		return string(out)
+	})
+
+	ui.MustBind("updateReport", func(defJSON string) string {
+		var def reports.ReportDefinition
+		if err := json.Unmarshal([]byte(defJSON), &def); err != nil {
+			log.Error(err)
+			return ""
+		}
+		def.Weight = reports.ClassifyWeight(def)
+		row, err := reportDefToRow(def)
+		if err != nil {
+			log.Error(err)
+			return ""
+		}
+		if err := reportdb.UpdateReport(context.Background(), row); err != nil {
+			log.Error(err)
+			return ""
+		}
+		out, _ := json.Marshal(def)
+		return string(out)
+	})
+
+	ui.MustBind("deleteReport", func(id string) bool {
+		if err := reportdb.DeleteReport(context.Background(), id); err != nil {
+			log.Error(err)
+			return false
+		}
+		return true
+	})
+
+	ui.MustBind("getAccountReports", func(accountId string) string {
+		rows, err := reportdb.RetrieveAccountReports(context.Background(), accountId)
+		if err != nil {
+			log.Error(err)
+			return "[]"
+		}
+		defs := make([]reports.ReportDefinition, 0, len(rows))
+		for _, r := range rows {
+			def, err := rowToReportDef(r)
+			if err != nil {
+				log.Error(err)
+				continue
+			}
+			defs = append(defs, def)
+		}
+		out, _ := json.Marshal(defs)
+		return string(out)
+	})
+
+	ui.MustBind("executeReport", func(id string) string {
+		row, err := reportdb.RetrieveReport(context.Background(), id)
+		if err != nil {
+			log.Error(err)
+			return "{}"
+		}
+		def, err := rowToReportDef(*row)
+		if err != nil {
+			log.Error(err)
+			return "{}"
+		}
+		result, err := reports.ExecuteReport(context.Background(), def)
+		if err != nil {
+			log.Error(err)
+			return "{}"
+		}
+		out, _ := json.Marshal(result)
+		return string(out)
+	})
+
+	ui.MustBind("reorderReports", func(idsJSON string) bool {
+		var ids []string
+		if err := json.Unmarshal([]byte(idsJSON), &ids); err != nil {
+			log.Error(err)
+			return false
+		}
+		if err := reportdb.ReorderReports(context.Background(), ids); err != nil {
+			log.Error(err)
+			return false
+		}
+		return true
+	})
+
+	ui.MustBind("exportReport", func(id string) string {
+		wrap := func(err error) error { return errors.Wrap(err, "exportReport") }
+		row, err := reportdb.RetrieveReport(context.Background(), id)
+		if err != nil {
+			log.Printf("%+v", wrap(err))
+			return ""
+		}
+		def, err := rowToReportDef(*row)
+		if err != nil {
+			log.Printf("%+v", wrap(err))
+			return ""
+		}
+		out := struct {
+			ExportVersion string                   `json:"exportVersion"`
+			ExportedAt    int64                    `json:"exportedAt"`
+			Report        reports.ReportDefinition `json:"report"`
+		}{
+			ExportVersion: "1",
+			ExportedAt:    time.Now().Unix(),
+			Report:        def,
+		}
+		b, err := json.Marshal(out)
+		if err != nil {
+			log.Printf("%+v", wrap(err))
+			return ""
+		}
+		return string(b)
+	})
+
+	ui.MustBind("exportAllReports", func(accountId, destPath string) string {
+		wrap := func(err error) error { return errors.Wrap(err, "exportAllReports") }
+		rows, err := reportdb.RetrieveAccountReports(context.Background(), accountId)
+		if err != nil {
+			log.Printf("%+v", wrap(err))
+			return ""
+		}
+		defs := make([]reports.ReportDefinition, 0, len(rows))
+		for _, row := range rows {
+			def, defErr := rowToReportDef(row)
+			if defErr != nil {
+				log.Printf("%+v", wrap(defErr))
+				return ""
+			}
+			defs = append(defs, def)
+		}
+		out := struct {
+			ExportVersion string                     `json:"exportVersion"`
+			ExportedAt    int64                      `json:"exportedAt"`
+			AccountID     string                     `json:"accountId"`
+			Reports       []reports.ReportDefinition `json:"reports"`
+		}{
+			ExportVersion: "1",
+			ExportedAt:    time.Now().Unix(),
+			AccountID:     accountId,
+			Reports:       defs,
+		}
+		b, err := json.MarshalIndent(out, "", "  ")
+		if err != nil {
+			log.Printf("%+v", wrap(err))
+			return ""
+		}
+		if destPath == "" {
+			destPath = filepath.Join(_internalDir, fmt.Sprintf("reports-export-%d.json", time.Now().Unix()))
+		}
+		if err := os.WriteFile(destPath, b, 0644); err != nil {
+			log.Printf("%+v", wrap(err))
+			return ""
+		}
+		return destPath
+	})
+
+	ui.MustBind("importReport", func(accountId, jsonStr string) string {
+		wrap := func(err error) error { return errors.Wrap(err, "importReport") }
+		var payload struct {
+			ExportVersion string                   `json:"exportVersion"`
+			Report        reports.ReportDefinition `json:"report"`
+		}
+		if err := json.Unmarshal([]byte(jsonStr), &payload); err != nil {
+			log.Printf("%+v", wrap(err))
+			return ""
+		}
+		def := payload.Report
+		def.Id = uuid.New().String()
+		def.AccountId = accountId
+		def.SortOrder = 0
+		if def.Name == "" {
+			def.Name = "Imported Report"
+		}
+		def.Weight = reports.ClassifyWeight(def)
+		row, err := reportDefToRow(def)
+		if err != nil {
+			log.Printf("%+v", wrap(err))
+			return ""
+		}
+		if err := reportdb.InsertReport(context.Background(), row); err != nil {
+			log.Printf("%+v", wrap(err))
+			return ""
+		}
+		return def.Id
+	})
+
+	ui.MustBind("getAccountGroups", func(accountId string) string {
+		wrap := func(err error) error { return errors.Wrap(err, "getAccountGroups") }
+		rows, err := reportdb.RetrieveAccountGroups(context.Background(), accountId)
+		if err != nil {
+			log.Printf("%+v", wrap(err))
+			return "[]"
+		}
+		type groupOut struct {
+			Id        string `json:"id"`
+			AccountId string `json:"accountId"`
+			Name      string `json:"name"`
+			SortOrder int    `json:"sortOrder"`
+			CreatedAt int64  `json:"createdAt"`
+		}
+		out := make([]groupOut, 0, len(rows))
+		for _, r := range rows {
+			out = append(out, groupOut{
+				Id: r.Id, AccountId: r.AccountId, Name: r.Name,
+				SortOrder: r.SortOrder, CreatedAt: r.CreatedAt,
+			})
+		}
+		b, _ := json.Marshal(out)
+		return string(b)
+	})
+
+	ui.MustBind("createReportGroup", func(accountId, name string) string {
+		wrap := func(err error) error { return errors.Wrap(err, "createReportGroup") }
+		row := reportdb.ReportGroupRow{AccountId: accountId, Name: name}
+		id, err := reportdb.InsertReportGroup(context.Background(), row)
+		if err != nil {
+			log.Printf("%+v", wrap(err))
+			return ""
+		}
+		return id
+	})
+
+	ui.MustBind("renameReportGroup", func(id, name string) bool {
+		wrap := func(err error) error { return errors.Wrap(err, "renameReportGroup") }
+		err := reportdb.UpdateReportGroup(context.Background(), reportdb.ReportGroupRow{Id: id, Name: name})
+		if err != nil {
+			log.Printf("%+v", wrap(err))
+			return false
+		}
+		return true
+	})
+
+	ui.MustBind("deleteReportGroup", func(id string) bool {
+		wrap := func(err error) error { return errors.Wrap(err, "deleteReportGroup") }
+		if err := reportdb.DeleteReportGroup(context.Background(), id); err != nil {
+			log.Printf("%+v", wrap(err))
+			return false
+		}
+		return true
+	})
+
+	ui.MustBind("setReportGroup", func(reportId, groupId string) bool {
+		wrap := func(err error) error { return errors.Wrap(err, "setReportGroup") }
+		if err := reportdb.SetReportGroup(context.Background(), reportId, groupId); err != nil {
+			log.Printf("%+v", wrap(err))
+			return false
+		}
+		return true
+	})
+
+	ui.MustBind("exportGroupReports", func(groupId string) string {
+		wrap := func(err error) error { return errors.Wrap(err, "exportGroupReports") }
+		rows, err := reportdb.RetrieveReportsByGroup(context.Background(), groupId)
+		if err != nil {
+			log.Printf("%+v", wrap(err))
+			return ""
+		}
+		group, err := reportdb.RetrieveReportGroup(context.Background(), groupId)
+		if err != nil {
+			log.Printf("%+v", wrap(err))
+			return ""
+		}
+		defs := make([]reports.ReportDefinition, 0, len(rows))
+		for _, row := range rows {
+			def, defErr := rowToReportDef(row)
+			if defErr != nil {
+				log.Printf("%+v", wrap(defErr))
+				return ""
+			}
+			defs = append(defs, def)
+		}
+		out := struct {
+			ExportVersion string                     `json:"exportVersion"`
+			ExportedAt    int64                      `json:"exportedAt"`
+			GroupName     string                     `json:"groupName"`
+			Reports       []reports.ReportDefinition `json:"reports"`
+		}{
+			ExportVersion: "1",
+			ExportedAt:    time.Now().Unix(),
+			GroupName:     group.Name,
+			Reports:       defs,
+		}
+		b, err := json.Marshal(out)
+		if err != nil {
+			log.Printf("%+v", wrap(err))
+			return ""
+		}
+		return string(b)
+	})
+
+	ui.MustBind("importGroupReports", func(accountId, jsonStr string) string {
+		wrap := func(err error) error { return errors.Wrap(err, "importGroupReports") }
+		var payload struct {
+			ExportVersion string                     `json:"exportVersion"`
+			GroupName     string                     `json:"groupName"`
+			Reports       []reports.ReportDefinition `json:"reports"`
+		}
+		if err := json.Unmarshal([]byte(jsonStr), &payload); err != nil {
+			log.Printf("%+v", wrap(err))
+			return ""
+		}
+		groupRow := reportdb.ReportGroupRow{AccountId: accountId, Name: payload.GroupName}
+		if groupRow.Name == "" {
+			groupRow.Name = "Imported Group"
+		}
+		groupId, err := reportdb.InsertReportGroup(context.Background(), groupRow)
+		if err != nil {
+			log.Printf("%+v", wrap(err))
+			return ""
+		}
+		for _, def := range payload.Reports {
+			def.Id = uuid.New().String()
+			def.AccountId = accountId
+			def.GroupId = groupId
+			def.SortOrder = 0
+			if def.Name == "" {
+				def.Name = "Imported Report"
+			}
+			def.Weight = reports.ClassifyWeight(def)
+			row, rowErr := reportDefToRow(def)
+			if rowErr != nil {
+				log.Printf("%+v", wrap(rowErr))
+				continue
+			}
+			if insErr := reportdb.InsertReport(context.Background(), row); insErr != nil {
+				log.Printf("%+v", wrap(insErr))
+			}
+		}
+		return groupId
+	})
+
+	ui.MustBind("getReportBackfillStatus", func() string {
+		out, _ := json.Marshal(GetBackfillStatus())
+		return string(out)
+	})
+
+	ui.MustBind("checkCloudReachable", handleCheckCloudReachable)
+
+	ui.MustBind("getCloudSyncStatus", func() string {
+		out, _ := json.Marshal(handleGetCloudSyncStatus())
+		return string(out)
+	})
+
+	ui.MustBind("connectDiscord", func() (string, error) {
+		return handleConnectDiscord()
+	})
+
+	ui.MustBind("disconnectCloud", handleDisconnectCloud)
+
+	ui.MustBind("syncToCloud", func() {
+		handleSyncToCloud()
+	})
+
+	ui.MustBind("restoreFromCloud", func() {
+		handleRestoreFromCloud()
+	})
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {

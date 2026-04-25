@@ -17,6 +17,7 @@ type AppStorage struct {
 	sync.Mutex
 
 	KnownAccounts              []Account `json:"known_accounts"`
+	ActiveAccountId            string    `json:"active_account_id"`
 	LastMennoDataRefreshAt     time.Time `json:"last_menno_data_refresh_at"`
 	LastUpdateCheckAt          time.Time `json:"last_update_check_at"`
 	KnownLatestReleaseNotes    string    `json:"known_latest_release_notes"`
@@ -47,6 +48,13 @@ type AppStorage struct {
 	LifetimeShowDropsPerShip   bool      `json:"lifetime_show_drops_per_ship"`
 	LifetimeShowExpectedTotals bool      `json:"lifetime_show_expected_totals"`
 	lastKnownGoodApiVersion    string
+
+	CloudSessionToken      string    `json:"cloud_session_token"`
+	CloudEncryptionKey     string    `json:"cloud_encryption_key"`
+	CloudLastPushAt        time.Time `json:"cloud_last_push_at"`
+	CloudLastPullAt        time.Time `json:"cloud_last_pull_at"`
+	CloudDiscordUsername   string    `json:"cloud_discord_username"`
+	CloudDiscordAvatarURL  string    `json:"cloud_discord_avatar_url"`
 }
 
 type Account struct {
@@ -120,6 +128,9 @@ func (s *AppStorage) loadFromDB() {
 		if err := json.Unmarshal([]byte(v), &s.KnownAccounts); err != nil {
 			log.Warnf("storage: failed to parse known_accounts: %s", err)
 		}
+	}
+	if v, ok := settings["active_account_id"]; ok {
+		s.ActiveAccountId = v
 	}
 	if v, ok := settings["last_menno_data_refresh_at"]; ok && v != "" {
 		if t, err := time.Parse(time.RFC3339Nano, v); err == nil {
@@ -231,6 +242,28 @@ func (s *AppStorage) loadFromDB() {
 	if v, ok := settings["last_known_good_api_version"]; ok {
 		s.lastKnownGoodApiVersion = v
 	}
+	if v, ok := settings["cloud_session_token"]; ok {
+		s.CloudSessionToken = v
+	}
+	if v, ok := settings["cloud_encryption_key"]; ok {
+		s.CloudEncryptionKey = v
+	}
+	if v, ok := settings["cloud_last_push_at"]; ok && v != "" {
+		if t, err := time.Parse(time.RFC3339Nano, v); err == nil {
+			s.CloudLastPushAt = t
+		}
+	}
+	if v, ok := settings["cloud_last_pull_at"]; ok && v != "" {
+		if t, err := time.Parse(time.RFC3339Nano, v); err == nil {
+			s.CloudLastPullAt = t
+		}
+	}
+	if v, ok := settings["cloud_discord_username"]; ok {
+		s.CloudDiscordUsername = v
+	}
+	if v, ok := settings["cloud_discord_avatar_url"]; ok {
+		s.CloudDiscordAvatarURL = v
+	}
 }
 
 // persistAllToDB writes every field to the settings table in one transaction.
@@ -240,6 +273,7 @@ func (s *AppStorage) persistAllToDB() {
 	accountsJSON, _ := json.Marshal(s.KnownAccounts)
 	settings := map[string]string{
 		"known_accounts":                string(accountsJSON),
+		"active_account_id":             s.ActiveAccountId,
 		"last_menno_data_refresh_at":    s.LastMennoDataRefreshAt.Format(time.RFC3339Nano),
 		"last_update_check_at":          s.LastUpdateCheckAt.Format(time.RFC3339Nano),
 		"known_latest_release_notes":    s.KnownLatestReleaseNotes,
@@ -269,6 +303,10 @@ func (s *AppStorage) persistAllToDB() {
 		"lifetime_sort_method":          s.LifetimeSortMethod,
 		"lifetime_show_drops_per_ship":  strconv.FormatBool(s.LifetimeShowDropsPerShip),
 		"lifetime_show_expected_totals": strconv.FormatBool(s.LifetimeShowExpectedTotals),
+		"cloud_session_token":           s.CloudSessionToken,
+		"cloud_encryption_key":          s.CloudEncryptionKey,
+		"cloud_discord_username":        s.CloudDiscordUsername,
+		"cloud_discord_avatar_url":      s.CloudDiscordAvatarURL,
 	}
 	s.Unlock()
 	if err := db.SetSettings(context.Background(), settings); err != nil {
@@ -656,4 +694,95 @@ func (s *AppStorage) GetLifetimeShowExpectedTotals() bool {
 	s.Lock()
 	defer s.Unlock()
 	return s.LifetimeShowExpectedTotals
+}
+
+func (s *AppStorage) GetActiveAccountId() string {
+	s.Lock()
+	defer s.Unlock()
+	return s.ActiveAccountId
+}
+
+func (s *AppStorage) SetActiveAccountId(id string) {
+	s.Lock()
+	s.ActiveAccountId = id
+	s.Unlock()
+	go s.dbSet("active_account_id", id)
+}
+
+func (s *AppStorage) GetCloudSessionToken() string {
+	s.Lock()
+	defer s.Unlock()
+	return s.CloudSessionToken
+}
+
+func (s *AppStorage) SetCloudSessionToken(token string) {
+	s.Lock()
+	s.CloudSessionToken = token
+	s.Unlock()
+	go s.dbSet("cloud_session_token", token)
+}
+
+func (s *AppStorage) GetCloudEncryptionKey() string {
+	s.Lock()
+	defer s.Unlock()
+	return s.CloudEncryptionKey
+}
+
+func (s *AppStorage) SetCloudEncryptionKey(key string) {
+	s.Lock()
+	s.CloudEncryptionKey = key
+	s.Unlock()
+	go s.dbSet("cloud_encryption_key", key)
+}
+
+func (s *AppStorage) GetCloudLastPushAt() time.Time {
+	s.Lock()
+	defer s.Unlock()
+	return s.CloudLastPushAt
+}
+
+func (s *AppStorage) SetCloudLastPushAt(t time.Time) {
+	s.Lock()
+	s.CloudLastPushAt = t
+	s.Unlock()
+	go s.dbSet("cloud_last_push_at", t.Format(time.RFC3339Nano))
+}
+
+func (s *AppStorage) GetCloudLastPullAt() time.Time {
+	s.Lock()
+	defer s.Unlock()
+	return s.CloudLastPullAt
+}
+
+func (s *AppStorage) SetCloudLastPullAt(t time.Time) {
+	s.Lock()
+	s.CloudLastPullAt = t
+	s.Unlock()
+	go s.dbSet("cloud_last_pull_at", t.Format(time.RFC3339Nano))
+}
+
+func (s *AppStorage) GetCloudDiscordUsername() string {
+	s.Lock()
+	defer s.Unlock()
+	return s.CloudDiscordUsername
+}
+
+func (s *AppStorage) SetCloudDiscordUsername(username string) {
+	s.Lock()
+	s.CloudDiscordUsername = username
+	s.Unlock()
+	go s.dbSet("cloud_discord_username", username)
+}
+
+func (s *AppStorage) GetCloudDiscordAvatarURL() string {
+	s.Lock()
+	defer s.Unlock()
+	return s.CloudDiscordAvatarURL
+}
+
+func (s *AppStorage) SetCloudDiscordAvatarURL(url string) {
+	s.Lock()
+	s.CloudDiscordAvatarURL = url
+	s.Unlock()
+	go s.dbSet("cloud_discord_avatar_url", url)
 }

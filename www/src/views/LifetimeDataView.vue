@@ -22,66 +22,6 @@
       @input="(val: string) => (dropSearchTerm = val)"
     />
 
-    <!-- Account selector -->
-    <form
-      v-if="doesDataExist"
-      style="margin-top: 0rem !important"
-      id="lifetimeAccountForm"
-      name="lifetimeAccountForm"
-      class="select-form"
-      @submit="onViewSubmit"
-    >
-      <div ref="accountSelectRef" class="relative flex-grow focus-within:z-10">
-        <div
-          v-if="selectedLifetimeAccountData != null"
-          class="ledger-input-overlay"
-        >
-          <span class="whitespace-pre"><template v-if="screenshotSafety">EI<span class="inline-block rounded-sm bg-current select-none" style="width: 16ch; height: 0.8em; vertical-align: -0.05em;"></span></template><template v-else>{{ selectedLifetimeAccountData.id }}</template></span>
-          (<span :style="'color: #' + selectedLifetimeAccountData.accountColor">
-            {{ selectedLifetimeAccountData.nickname }}
-            {{ selectedLifetimeAccountData.ebString }}
-          </span>
-          - {{ selectedLifetimeAccountData.missionCount }} missions)
-        </div>
-        <input
-          id="lifetimeAccountInput"
-          type="text"
-          class="drop-select border-gray-300"
-          placeholder="Select an account"
-          :value="selectedLifetimeAccount ?? ''"
-          @focus="openAccountDropdown"
-          @input="(e) => (selectedLifetimeAccount = (e.target as HTMLInputElement).value)"
-        />
-        <ul
-          v-if="accountDropdownOpen && objectedExistingData.length > 0"
-          class="ledger-list"
-          tabindex="-1"
-        >
-          <li
-            v-for="account in objectedExistingData"
-            :key="account.id"
-            class="drop-opt"
-            @click="closeAccountDropdown(account.id)"
-          >
-            <template v-if="screenshotSafety">EI<span class="inline-block rounded-sm bg-current select-none" style="width: 16ch; height: 0.8em; vertical-align: -0.05em;"></span></template><template v-else>{{ account.id }}</template>
-            (<span :style="'color: #' + account.accountColor">{{ account.nickname }} {{ account.ebString }}</span>
-            - {{ account.missionCount }} missions)
-          </li>
-        </ul>
-      </div>
-      <button
-        class="view-form-button"
-        type="submit"
-        :disabled="
-          !selectedLifetimeAccount ||
-            selectedLifetimeAccount === '' ||
-            selectedLifetimeAccountData == null ||
-            lifetimeDataBeingLoaded
-        "
-      >
-        View
-      </button>
-    </form>
 
     <!-- Lifetime progress -->
     <SegmentedProgressBar
@@ -198,6 +138,21 @@
       </div>
     </div>
 
+    <!-- Load button (shown before first load) -->
+    <div
+      v-if="doesDataExist && lifetimeData == null && !lifetimeDataBeingLoaded"
+      class="flex items-center justify-center mt-4"
+    >
+      <button
+        type="button"
+        class="px-6 py-2 text-base font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-500 active:bg-blue-700 disabled:opacity-50"
+        :disabled="!activeAccountId"
+        @click="void viewLifetimeDataOfEid(false)"
+      >
+        Load Lifetime Data
+      </button>
+    </div>
+
     <!-- Data display -->
     <div
       v-if="doesDataExist"
@@ -240,8 +195,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useAppState } from '../composables/useAppState'
 import { useMennoData } from '../composables/useMennoData'
 import { useFilters } from '../composables/useFilters'
-import { useDropdownSelector } from '../composables/useDropdownSelector'
-import { screenshotSafety } from '../composables/useSettings'
+import { useActiveAccount } from '../composables/useActiveAccount'
 import type {
   DatabaseMission,
   MissionDrop,
@@ -257,8 +211,9 @@ import SegmentedProgressBar, { type ProgressSegment } from '../components/Segmen
 
 // Shared state
 
-const { existingData, knownAccounts, activeTab } = useAppState()
+const { existingData, activeTab } = useAppState()
 const { mennoDataLoaded, getMennoData, load: loadMennoData } = useMennoData()
+const { activeAccountId } = useActiveAccount()
 
 // Types local to this view
 
@@ -304,42 +259,7 @@ interface LifetimeData extends LedgerData {
   ingredients: LifetimeDrop[]
 }
 
-// Account selector state
-
-const selectedLifetimeAccount = ref<string | null>(null)
-
-const {
-  containerRef: accountSelectRef,
-  isOpen: accountDropdownOpen,
-  open: openAccountDropdown,
-  close: closeAccountDropdown,
-} = useDropdownSelector((id) => { selectedLifetimeAccount.value = id })
-
 const doesDataExist = computed(() => existingData.value.length > 0)
-
-const objectedExistingData = computed(() => {
-  return existingData.value
-    .map((account) => ({
-      id: account.id,
-      nickname: account.nickname,
-      missionCount: account.missionCount,
-      ebString: account.ebString && account.ebString !== '' ? account.ebString : '???',
-      accountColor: account.accountColor,
-    }))
-    .sort((a, b) => b.missionCount - a.missionCount)
-})
-
-function accountById(id: string | null) {
-  if (id == null) return null
-  return objectedExistingData.value.find((acc) => acc.id === id) ?? null
-}
-
-const selectedLifetimeAccountData = computed(
-  () => accountById(selectedLifetimeAccount.value),
-)
-const selectedLifetimeKnownAccount = computed(
-  () => knownAccounts.value?.find((acc) => acc.id === selectedLifetimeAccount.value) ?? null,
-)
 
 // Lifetime load state
 
@@ -563,10 +483,13 @@ function reSortLifetime() {
         return sortGroupAlreadyCombed
     }
   })()
-  ld.artifacts = sortFn([...ld.artifacts] as unknown as DropLike[]) as unknown as LifetimeDrop[]
-  ld.stones = sortFn([...ld.stones] as unknown as DropLike[]) as unknown as LifetimeDrop[]
-  ld.stoneFragments = sortFn([...ld.stoneFragments] as unknown as DropLike[]) as unknown as LifetimeDrop[]
-  ld.ingredients = sortFn([...ld.ingredients] as unknown as DropLike[]) as unknown as LifetimeDrop[]
+  lifetimeData.value = {
+    ...ld,
+    artifacts: sortFn([...ld.artifacts] as unknown as DropLike[]) as unknown as LifetimeDrop[],
+    stones: sortFn([...ld.stones] as unknown as DropLike[]) as unknown as LifetimeDrop[],
+    stoneFragments: sortFn([...ld.stoneFragments] as unknown as DropLike[]) as unknown as LifetimeDrop[],
+    ingredients: sortFn([...ld.ingredients] as unknown as DropLike[]) as unknown as LifetimeDrop[],
+  }
 }
 
 // Artifact/mission configs (loaded in onMounted, passed to useFilters)
@@ -588,7 +511,7 @@ const {
   openTargetFilterMenu, closeTargetFilterMenu, selectTargetFilter,
 } = useFilters({
   idSuffix: 'lifetime',
-  accountId: selectedLifetimeAccount,
+  accountId: activeAccountId,
   durationConfigs, possibleTargets, maxQuality, artifactConfigs,
 })
 
@@ -697,7 +620,7 @@ function lifetimeHasExactlyOneConfiguration(firstMatches: number[] | null): bool
 
 // eslint-disable-next-line sonarjs/cognitive-complexity
 async function viewLifetimeDataOfEid(filterLoad: boolean) {
-  if (!selectedLifetimeAccount.value) return
+  if (!activeAccountId.value) return
   lifetimeDataBeingFiltered.value = filterLoad
 
   const start = performance.now()
@@ -706,7 +629,7 @@ async function viewLifetimeDataOfEid(filterLoad: boolean) {
   // Fetch mission IDs with a 2.5 second timeout
   const idsJson: string[] | null = await (async () => {
     try {
-      const missionIdsPromise = globalThis.getMissionIds(selectedLifetimeAccount.value!)
+      const missionIdsPromise = globalThis.getMissionIds(activeAccountId.value!)
       const timeoutPromise = new Promise<null>((resolve) => {
         setTimeout(() => resolve(null), 2500)
       })
@@ -728,7 +651,7 @@ async function viewLifetimeDataOfEid(filterLoad: boolean) {
   }
 
   const missions: DatabaseMission[] = shouldFilter
-    ? (await globalThis.viewMissionsOfEid(selectedLifetimeAccount.value!)) ?? []
+    ? (await globalThis.viewMissionsOfEid(activeAccountId.value!)) ?? []
     : []
 
   const idFilter = async (arr: string[], predicate: (id: string) => Promise<boolean>): Promise<string[]> =>
@@ -768,8 +691,8 @@ async function viewLifetimeDataOfEid(filterLoad: boolean) {
 
   // Bulk-fetch all drops and missions in two round-trips instead of N×2 relay calls
   const [dropCache, missionCache] = await Promise.all([
-    globalThis.getAllPlayerDrops(selectedLifetimeAccount.value!),
-    globalThis.viewMissionsOfEid(selectedLifetimeAccount.value!),
+    globalThis.getAllPlayerDrops(activeAccountId.value!),
+    globalThis.viewMissionsOfEid(activeAccountId.value!),
   ])
 
   let firstMatches: number[] | null = null
@@ -777,7 +700,7 @@ async function viewLifetimeDataOfEid(filterLoad: boolean) {
   let pos = 0
   for (const id of ids) {
     pos++
-    const mission = await getSpecificMissionDataForLifetime(selectedLifetimeAccount.value!, id, dropCache, missionCache)
+    const mission = await getSpecificMissionDataForLifetime(activeAccountId.value!, id, dropCache, missionCache)
     if (mission != null) {
       const mi = mission.missionInfo
       if (firstMatches == null) {
@@ -831,11 +754,11 @@ async function viewLifetimeDataOfEid(filterLoad: boolean) {
   lifetimeState.value = LifetimeLoadState.Success
 }
 
-async function onViewSubmit(event: Event) {
-  event.preventDefault()
+watch(activeAccountId, () => {
   clearFilter()
-  await viewLifetimeDataOfEid(false)
-}
+  lifetimeData.value = null
+  lifetimeState.value = LifetimeLoadState.Idle
+})
 
 async function onFilterSubmit(event: Event) {
   event.preventDefault()

@@ -21,6 +21,8 @@ export interface DatabaseAccount {
   missionCount: number
   ebString: string
   accountColor: string
+  /** Unix seconds; 0 if no missions exist */
+  lastMissionReturnDT: number
 }
 
 export interface DatabaseMission {
@@ -166,6 +168,80 @@ export interface MennoDownloadProgress {
   etaSeconds: number
 }
 
+export interface ReportFilterCondition {
+  topLevel: string
+  op: string
+  val: string
+}
+
+export interface ReportFilters {
+  and: ReportFilterCondition[]
+  or: ReportFilterCondition[][]
+}
+
+export interface ReportDefinition {
+  id: string
+  accountId: string
+  name: string
+  subject: string
+  mode: string
+  displayMode: string
+  groupBy: string
+  timeBucket: string
+  customBucketN: number
+  customBucketUnit: string
+  filters: ReportFilters
+  gridX: number
+  gridY: number
+  gridW: number
+  gridH: number
+  weight: string
+  color: string
+  description: string
+  chartType: string
+  sortOrder: number
+  createdAt: number
+  updatedAt: number
+  valueFilterOp: string
+  valueFilterThreshold: number
+  groupId: string
+  normalizeBy: string
+  /** JSON-encoded Record<string, string> mapping label to hex color for pie slices */
+  labelColors: string
+}
+
+export interface ReportGroup {
+  id: string
+  accountId: string
+  name: string
+  sortOrder: number
+  createdAt: number
+}
+
+export interface ReportResult {
+  labels: string[]
+  values: number[]
+  floatValues: number[]
+  isFloat: boolean
+  weight: string
+}
+
+export interface BackfillStatus {
+  done: boolean
+  progress: number
+}
+
+export interface CloudSyncStatus {
+  connected: boolean
+  username: string
+  avatarUrl: string
+  /** Unix seconds; 0 if never pushed */
+  lastPushAt: number
+  /** Unix seconds; 0 if never pulled */
+  lastPullAt: number
+  hasEncryptionKey: boolean
+}
+
 export enum AppState {
   AwaitingInput = 'AwaitingInput',
   FetchingSave = 'FetchingSave',
@@ -247,6 +323,9 @@ declare global {
   // Accounts
   function knownAccounts(): Promise<Account[]>
   function getExistingData(): Promise<DatabaseAccount[]>
+  function addAccount(eid: string): Promise<Account>
+  function getActiveAccountId(): Promise<string>
+  function setActiveAccountId(id: string): Promise<void>
 
   // Missions
   function getMaxQuality(): Promise<number>
@@ -267,6 +346,13 @@ declare global {
   function openFile(file: string): Promise<void>
   function openFileInFolder(file: string): Promise<void>
   function openURL(url: string): Promise<void>
+  function chooseFolderPath(): Promise<string>
+
+  // Storage management
+  function getStoragePath(): Promise<string>
+  function setStorageFolderVisible(visible: boolean): Promise<void>
+  function backupStorageTo(destPath: string): Promise<void>
+  function moveStorageTo(destPath: string): Promise<void>
 
   // Updates - returns [version, releaseNotes]
   function checkForUpdates(): Promise<[string, string]>
@@ -282,6 +368,33 @@ declare global {
   function loadMennoData(): Promise<boolean>
   function getMennoData(ship: number, shipDuration: number, shipLevel: number, targetArtifact: number): Promise<ConfigurationItem[]>
 
+  // Reports
+  function createReport(defJSON: string): Promise<string>
+  function updateReport(defJSON: string): Promise<string>
+  function deleteReport(id: string): Promise<boolean>
+  function getAccountReports(accountId: string): Promise<string>
+  function executeReport(id: string): Promise<string>
+  function reorderReports(idsJSON: string): Promise<boolean>
+  function getReportBackfillStatus(): Promise<string>
+  function exportReport(id: string): Promise<string>
+  function exportAllReports(accountId: string, destPath: string): Promise<string>
+  function chooseSaveFilePath(defaultName: string): Promise<string>
+  function importReport(accountId: string, jsonStr: string): Promise<string>
+  function getAccountGroups(accountId: string): Promise<string>
+  function createReportGroup(accountId: string, name: string): Promise<string>
+  function renameReportGroup(id: string, name: string): Promise<boolean>
+  function deleteReportGroup(id: string): Promise<boolean>
+  function setReportGroup(reportId: string, groupId: string): Promise<boolean>
+  function exportGroupReports(groupId: string): Promise<string>
+  function importGroupReports(accountId: string, jsonStr: string): Promise<string>
+
+  // Cloud sync
+  function checkCloudReachable(): Promise<boolean>
+  function getCloudSyncStatus(): Promise<string>
+  function connectDiscord(): Promise<string>
+  function disconnectCloud(): Promise<void>
+  function syncToCloud(): Promise<void>
+  function restoreFromCloud(): Promise<void>
   // Go-to-JS callbacks (assigned by Vue app, called by Go via lorca)
   var updateKnownAccounts: (accounts: Account[]) => void
   var updateState: (state: string) => void
@@ -291,4 +404,7 @@ declare global {
   var updateExportedFiles: (files: string[]) => void
   var emitMessage: (message: string, isError: boolean) => void
   var updateProcesses: (processes: ProcessSnapshot[]) => void
+  var onDiscordAuthComplete: (connected: boolean, username: string) => void
+  var onCloudSyncComplete: (success: boolean, errMsg: string) => void
+  var onCloudRestoreComplete: (success: boolean, errMsg: string) => void
 }

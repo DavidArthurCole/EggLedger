@@ -63,6 +63,18 @@ type MissionFilterCols struct {
 	ReturnTimestamp float64
 }
 
+// ArtifactDropRow is one processed artifact drop ready for DB insertion.
+// DropIndex is the 0-based position of this drop in CompleteMissionResponse.Artifacts,
+// matching the UNIQUE(mission_id, player_id, drop_index) constraint in migration 7.
+type ArtifactDropRow struct {
+	DropIndex  int32
+	ArtifactId int32
+	SpecType   string
+	Level      int32
+	Rarity     int32
+	Quality    float64
+}
+
 // MissionMeta is a lightweight mission record built purely from DB columns,
 // without decompressing the payload blob.
 type MissionMeta struct {
@@ -195,6 +207,45 @@ func RetrievePlayerCompleteMissions(ctx context.Context, playerId string) ([]*ei
 	return missions, nil
 }
 
+// RetrievePlayerCompleteMissionsStream calls cb for each mission one at a time,
+// decompressing and decoding inline so only one mission is in memory at once.
+// This avoids the large transient allocation that occurs when all compressed
+// payloads are loaded into a [][]byte slice before decoding.
+func RetrievePlayerCompleteMissionsStream(ctx context.Context, playerId string, cb func(*ei.CompleteMissionResponse) error) error {
+	action := fmt.Sprintf("stream complete missions for player %s", playerId)
+	return DoDBOperation(ctx, func(ctx context.Context, db *sql.DB) error {
+		return transact(ctx, action, func(tx *sql.Tx) error {
+			rows, err := tx.QueryContext(ctx,
+				`SELECT start_timestamp, complete_payload FROM mission WHERE player_id = ? ORDER BY start_timestamp;`,
+				playerId)
+			if err != nil {
+				return err
+			}
+			defer rows.Close()
+			for rows.Next() {
+				var ts float64
+				var compressed []byte
+				if err := rows.Scan(&ts, &compressed); err != nil {
+					return err
+				}
+				raw, err := decompress(compressed)
+				if err != nil {
+					return err
+				}
+				m, err := api.DecodeCompleteMissionPayload(raw)
+				if err != nil {
+					return err
+				}
+				m.Info.StartTimeDerived = &ts
+				if err := cb(m); err != nil {
+					return err
+				}
+			}
+			return rows.Err()
+		})
+	})
+}
+
 func RetrievePlayerCompleteMissionIds(ctx context.Context, playerId string) ([]string, error) {
 	action := fmt.Sprintf("retrieve complete mission ids for player %s from database", playerId)
 	var missionIds []string
@@ -224,6 +275,23 @@ func RetrievePlayerCompleteMissionIds(ctx context.Context, playerId string) ([]s
 		return nil, err
 	}
 	return missionIds, nil
+}
+
+// RetrievePlayerMissionStats returns the mission count and the maximum
+// return_timestamp (Unix seconds, 0 if no missions exist) for a player.
+// A single query replaces the two separate calls previously used by
+// handleGetExistingData.
+func RetrievePlayerMissionStats(ctx context.Context, playerId string) (count int, maxReturnTS float64, err error) {
+	action := fmt.Sprintf("retrieve mission stats for player %s from database", playerId)
+	err = DoDBOperation(ctx, func(ctx context.Context, db *sql.DB) error {
+		return transact(ctx, action, func(tx *sql.Tx) error {
+			row := tx.QueryRowContext(ctx,
+				`SELECT COUNT(*), COALESCE(MAX(return_timestamp), 0) FROM mission WHERE player_id = ?;`,
+				playerId)
+			return row.Scan(&count, &maxReturnTS)
+		})
+	})
+	return count, maxReturnTS, err
 }
 
 // CountPendingMissionTypes returns the number of missions for a player that
@@ -522,6 +590,118 @@ func ResolvePendingMissionTypes(ctx context.Context, playerId string, progressFn
 	}
 
 	return len(updates), nil
+}
+
+// InsertArtifactDrops inserts artifact drop rows for one mission using INSERT OR IGNORE.
+// The UNIQUE(mission_id, player_id, drop_index) constraint in migration 7 makes this
+// idempotent - re-runs (e.g. from the backfill goroutine) are safe with no extra checks.
+// For missions with zero drops, inserts a sentinel row (drop_index = -1) to mark the
+// mission as backfill-complete.
+func InsertArtifactDrops(ctx context.Context, playerId, missionId string, drops []ArtifactDropRow) error {
+	action := fmt.Sprintf("insert artifact drops for mission %s player %s", missionId, playerId)
+	return DoDBOperation(ctx, func(ctx context.Context, db *sql.DB) error {
+		return transact(ctx, action, func(tx *sql.Tx) error {
+			if len(drops) == 0 {
+				// Sentinel: marks mission as backfill-complete with zero drops.
+				// drop_index = -1 is excluded by the report engine (d.drop_index >= 0).
+				_, err := tx.ExecContext(ctx,
+					`INSERT OR IGNORE INTO artifact_drops(mission_id, player_id, drop_index, artifact_id, spec_type, level, rarity, quality)
+					 VALUES (?, ?, -1, 0, '', 0, 0, 0)`,
+					missionId, playerId)
+				return err
+			}
+			for _, d := range drops {
+				_, err := tx.ExecContext(ctx,
+					`INSERT OR IGNORE INTO artifact_drops(mission_id, player_id, drop_index, artifact_id, spec_type, level, rarity, quality)
+					 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+					missionId, playerId, d.DropIndex, d.ArtifactId, d.SpecType, d.Level, d.Rarity, d.Quality)
+				if err != nil {
+					return err
+				}
+			}
+			return nil
+		})
+	})
+}
+
+// MissionDropSet groups a mission's drops for batch insertion.
+type MissionDropSet struct {
+	PlayerId  string
+	MissionId string
+	Drops     []ArtifactDropRow
+}
+
+// InsertArtifactDropsBatch inserts drops for multiple missions in a single transaction.
+// Each mission with zero drops gets a sentinel row (drop_index = -1). Idempotent.
+func InsertArtifactDropsBatch(ctx context.Context, sets []MissionDropSet) error {
+	if len(sets) == 0 {
+		return nil
+	}
+	action := fmt.Sprintf("batch insert artifact drops (%d missions)", len(sets))
+	return DoDBOperation(ctx, func(ctx context.Context, db *sql.DB) error {
+		return transact(ctx, action, func(tx *sql.Tx) error {
+			for _, s := range sets {
+				if len(s.Drops) == 0 {
+					_, err := tx.ExecContext(ctx,
+						`INSERT OR IGNORE INTO artifact_drops(mission_id, player_id, drop_index, artifact_id, spec_type, level, rarity, quality)
+						 VALUES (?, ?, -1, 0, '', 0, 0, 0)`,
+						s.MissionId, s.PlayerId)
+					if err != nil {
+						return err
+					}
+					continue
+				}
+				for _, d := range s.Drops {
+					_, err := tx.ExecContext(ctx,
+						`INSERT OR IGNORE INTO artifact_drops(mission_id, player_id, drop_index, artifact_id, spec_type, level, rarity, quality)
+						 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+						s.MissionId, s.PlayerId, d.DropIndex, d.ArtifactId, d.SpecType, d.Level, d.Rarity, d.Quality)
+					if err != nil {
+						return err
+					}
+				}
+			}
+			return nil
+		})
+	})
+}
+
+// MissionPayloadRef holds the minimum data needed to backfill artifact_drops
+// from a stored mission blob.
+type MissionPayloadRef struct {
+	MissionId         string
+	PlayerId          string
+	CompressedPayload []byte
+}
+
+// GetMissionsWithoutDrops returns compressed payloads for all missions that
+// have no rows in artifact_drops. Used by the startup backfill goroutine.
+// The CompressedPayload field in each ref holds gzip-compressed bytes; call
+// db.DecompressPayload before proto-decoding.
+func GetMissionsWithoutDrops(ctx context.Context) ([]MissionPayloadRef, error) {
+	var refs []MissionPayloadRef
+	err := DoDBOperation(ctx, func(ctx context.Context, db *sql.DB) error {
+		rows, err := db.QueryContext(ctx, `
+			SELECT m.mission_id, m.player_id, m.complete_payload
+			FROM mission m
+			WHERE NOT EXISTS (
+				SELECT 1 FROM artifact_drops d
+				WHERE d.mission_id = m.mission_id AND d.player_id = m.player_id
+			)`)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var ref MissionPayloadRef
+			if err := rows.Scan(&ref.MissionId, &ref.PlayerId, &ref.CompressedPayload); err != nil {
+				return err
+			}
+			refs = append(refs, ref)
+		}
+		return rows.Err()
+	})
+	return refs, err
 }
 
 func transact(ctx context.Context, description string, txFunc func(*sql.Tx) error) (err error) {

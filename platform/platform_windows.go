@@ -1,12 +1,14 @@
 package platform
 
 import (
+	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"golang.org/x/sys/windows"
 )
 
-// hide hides a file or directory using SetFileAttributes.
+// Hide hides a file or directory using SetFileAttributes.
 func Hide(path string) error {
 	u16ptr, err := windows.UTF16PtrFromString(path)
 	if err != nil {
@@ -15,12 +17,49 @@ func Hide(path string) error {
 	return windows.SetFileAttributes(u16ptr, windows.FILE_ATTRIBUTE_HIDDEN)
 }
 
+// Show removes the hidden attribute from a file or directory.
+func Show(path string) error {
+	p, err := windows.UTF16PtrFromString(path)
+	if err != nil {
+		return err
+	}
+	attrs, err := windows.GetFileAttributes(p)
+	if err != nil {
+		return err
+	}
+	return windows.SetFileAttributes(p, attrs&^windows.FILE_ATTRIBUTE_HIDDEN)
+}
+
 func OpenFolderAndSelect(path string) error {
 	abspath, _ := filepath.Abs(path)
 	verb, _ := windows.UTF16PtrFromString("open")
 	lpFile, _ := windows.UTF16PtrFromString("explorer.exe")
 	lpParameters, _ := windows.UTF16PtrFromString("/select," + abspath)
 	return windows.ShellExecute(0, verb, lpFile, lpParameters, nil, windows.SW_SHOW)
+}
+
+// ChooseFolder opens a native folder picker dialog via PowerShell.
+// Returns the selected path, or "" if cancelled.
+func ChooseFolder() string {
+	script := `Add-Type -AssemblyName System.Windows.Forms; $f=New-Object System.Windows.Forms.FolderBrowserDialog; $f.ShowNewFolderButton=$true; if($f.ShowDialog() -eq 'OK'){Write-Output $f.SelectedPath}`
+	cmd := exec.Command("powershell", "-NoProfile", "-WindowStyle", "Hidden", "-Command", script)
+	out, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
+}
+
+// ChooseSaveFilePath opens a native save-file dialog via PowerShell.
+// defaultName is the suggested filename. Returns the chosen path, or "" if cancelled.
+func ChooseSaveFilePath(defaultName string) string {
+	script := `Add-Type -AssemblyName System.Windows.Forms; $f=New-Object System.Windows.Forms.SaveFileDialog; $f.FileName='` + defaultName + `'; $f.Filter='JSON files (*.json)|*.json|All files (*.*)|*.*'; if($f.ShowDialog() -eq 'OK'){Write-Output $f.FileName}`
+	cmd := exec.Command("powershell", "-NoProfile", "-WindowStyle", "Hidden", "-Command", script)
+	out, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
 }
 
 // Open opens a file or URL in the default application on Windows.

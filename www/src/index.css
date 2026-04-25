@@ -55,7 +55,7 @@ hr {
 }
 
 .fetch-button {
-  @apply -ml-px relative w-20 text-center space-x-2 px-4 py-2 border border-gray-300 text-sm font-medium rounded-r-md text-gray-400 bg-darkerer;
+  @apply relative w-20 text-center space-x-2 px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-400 bg-darkerer;
 
   &:focus {
     @apply outline-none ring-1 ring-blue-500 border-blue-500;
@@ -361,7 +361,8 @@ input[type=number] {
 .overlay-target-lifetime,
 .overlay-update,
 .overlay-menno,
-.overlay-ss {
+.overlay-ss,
+.overlay-report {
   background: rgba(0, 0, 0, 0.7);
 }
 
@@ -409,7 +410,7 @@ input[type=number] {
     content: '';
     position: absolute;
     top: 100%;
-    left: 50%;
+    left: calc(50% + var(--arrow-offset, 0px));
     transform: translateX(-50%);
     border: 7px solid transparent;
     border-top-color: #ccc;
@@ -419,7 +420,7 @@ input[type=number] {
     content: '';
     position: absolute;
     top: 100%;
-    left: 50%;
+    left: calc(50% + var(--arrow-offset, 0px));
     transform: translateX(-50%) translateY(-1px);
     border: 6px solid transparent;
     border-top-color: rgba(33, 37, 41, 0.95);
