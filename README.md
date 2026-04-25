@@ -23,6 +23,7 @@
 - **Firefox and Chromium-family support** - works with Chrome, Brave, Edge, Opera, Vivaldi, and Firefox. Switch browsers from Settings without reinstalling.
 - **Screenshot Safety mode** - masks player EIDs wherever they appear on screen.
 - **Optional Settings Sync** - back up and restore your settings across devices using Discord as an auth layer. See [Security and privacy](#security-and-privacy) for details.
+- **In-app updates** - when a new release is available, an update banner appears in the About tab. One click downloads the new binary and relaunches the app in place - no browser or installer required.
 
 ## FAQ
 
@@ -42,6 +43,10 @@ EggLedger is built on top of `lorca`, an open-source library for building Go app
 - Firefox
 
 If EggLedger is launching in the wrong browser, or you would prefer a different one, go to **Settings** in-app and choose from the list of detected browsers.
+
+**The in-app update isn't working on macOS. What do I do?**
+
+macOS [Gatekeeper translocates](https://developer.apple.com/documentation/security/gatekeeper) apps that are run directly from a disk image or Downloads folder by executing them from a randomised quarantine path. EggLedger cannot update itself from that path. Move `EggLedger` to a permanent location (e.g. your Applications folder or any folder outside Downloads) before launching it, and the in-app updater will work normally.
 
 **Can I run EggLedger on Mobile?**
 

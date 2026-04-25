@@ -235,12 +235,20 @@ func (cr *countingReader) Read(p []byte) (int, error) {
 }
 
 // downloadUpdate streams the asset at assetURL to destPath, calling progressCb
-// every ~64KB with (downloaded, total) bytes. Returns error on non-200 or
-// write failure.
+// every ~64KB with (downloaded, total) bytes. Returns error on non-200, write
+// failure, or a truncated download (received < Content-Length).
 func downloadUpdate(assetURL, destPath string, progressCb func(downloaded, total int64)) error {
 	wrap := func(err error) error { return errors.Wrap(err, "downloadUpdate") }
 
-	resp, err := http.Get(assetURL) //nolint:noctx
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, "GET", assetURL, nil)
+	if err != nil {
+		return wrap(errors.Wrapf(err, "creating request for %s", assetURL))
+	}
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return wrap(errors.Wrapf(err, "GET %s", assetURL))
 	}
@@ -264,6 +272,12 @@ func downloadUpdate(assetURL, destPath string, progressCb func(downloaded, total
 
 	if _, err := io.Copy(f, cr); err != nil {
 		return wrap(errors.Wrapf(err, "writing %s", destPath))
+	}
+	if err := f.Sync(); err != nil {
+		return wrap(errors.Wrapf(err, "syncing %s", destPath))
+	}
+	if cr.total > 0 && cr.downloaded != cr.total {
+		return wrap(errors.Errorf("incomplete download: received %d of %d bytes", cr.downloaded, cr.total))
 	}
 
 	return nil

@@ -26,13 +26,33 @@ func runReplaceMode(oldPID int, oldPath string) {
 	if err != nil {
 		log.Fatalf("update: os.Executable: %v", err)
 	}
-	if err := os.Rename(self, oldPath); err != nil {
-		log.Fatalf("update: rename %s -> %s: %v", self, oldPath, err)
+
+	// On Windows the old binary may remain briefly locked after process exit.
+	// Retry the rename a few times before giving up.
+	var renameErr error
+	for i := 0; i < 5; i++ {
+		renameErr = os.Rename(self, oldPath)
+		if renameErr == nil {
+			break
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	if renameErr != nil {
+		log.Fatalf(
+			"update: could not rename %s -> %s after 5 attempts: %v\n"+
+				"The updated binary is at: %s\n"+
+				"You can manually replace the existing binary with it.",
+			self, oldPath, renameErr, self,
+		)
 	}
 
 	cmd := exec.Command(oldPath)
 	if err := cmd.Start(); err != nil {
-		log.Fatalf("update: launch %s: %v", oldPath, err)
+		log.Fatalf(
+			"update: launch %s: %v\n"+
+				"The updated binary is at: %s - you can launch it manually.",
+			oldPath, err, oldPath,
+		)
 	}
 	os.Exit(0)
 }
