@@ -245,6 +245,9 @@ func (s *AppStorage) loadFromDB() {
 	if v, ok := settings["cloud_session_token"]; ok {
 		s.CloudSessionToken = v
 	}
+	if v, ok := settings["cloud_encryption_key"]; ok {
+		s.CloudEncryptionKey = v
+	}
 	if v, ok := settings["cloud_last_push_at"]; ok && v != "" {
 		if t, err := time.Parse(time.RFC3339Nano, v); err == nil {
 			s.CloudLastPushAt = t
@@ -301,6 +304,7 @@ func (s *AppStorage) persistAllToDB() {
 		"lifetime_show_drops_per_ship":  strconv.FormatBool(s.LifetimeShowDropsPerShip),
 		"lifetime_show_expected_totals": strconv.FormatBool(s.LifetimeShowExpectedTotals),
 		"cloud_session_token":           s.CloudSessionToken,
+		"cloud_encryption_key":          s.CloudEncryptionKey,
 		"cloud_discord_username":        s.CloudDiscordUsername,
 		"cloud_discord_avatar_url":      s.CloudDiscordAvatarURL,
 	}

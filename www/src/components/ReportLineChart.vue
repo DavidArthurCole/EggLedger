@@ -8,17 +8,20 @@
           class="flex-1 min-w-4 flex flex-col"
           :title="`${label}: ${formatValue(displayValues[i])}`"
         >
-          <div class="flex-1 flex flex-col justify-end relative">
-            <span
-              v-if="Number(displayValues[i]) > 0"
-              class="absolute left-0 right-0 text-center pointer-events-none leading-none"
-              :class="barHeight(displayValues[i]) >= 98 ? 'text-gray-600' : 'text-gray-400'"
-              :style="countStyle(displayValues[i])"
-            >{{ formatValue(displayValues[i]) }}</span>
-            <div
-              class="w-full rounded-t-sm"
-              :style="{ height: barHeight(displayValues[i]) + '%', backgroundColor: color }"
-            />
+          <div class="flex-1 flex flex-col">
+            <div class="flex-shrink-0 h-4 flex justify-center items-end">
+              <span
+                v-if="Number(displayValues[i]) > 0"
+                class="leading-none text-gray-400 pointer-events-none"
+                style="font-size: 8px;"
+              >{{ formatValue(displayValues[i]) }}</span>
+            </div>
+            <div class="flex-1 flex flex-col justify-end">
+              <div
+                class="w-full rounded-t-sm"
+                :style="{ height: barHeight(displayValues[i]) + '%', backgroundColor: color }"
+              />
+            </div>
           </div>
           <div class="flex justify-center items-start overflow-hidden flex-shrink-0 pt-1" style="height: 3rem;">
             <span
@@ -59,9 +62,4 @@ function formatValue(val: number): string {
   return String(val)
 }
 
-function countStyle(val: number): Record<string, string> {
-  const h = barHeight(val)
-  if (h >= 98) return { top: '2px', fontSize: '8px' }
-  return { bottom: `calc(${h}% + 2px)`, fontSize: '8px' }
-}
 </script>

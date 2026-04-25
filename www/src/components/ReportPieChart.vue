@@ -95,8 +95,8 @@ const vh = computed(() => containerSize.value.h || 220)
 const cx = computed(() => vw.value / 2)
 const cy = computed(() => vh.value / 2)
 
-// All geometry scales from r. Cap at 90 to prevent label overflow on very large cards.
-const r = computed(() => Math.min(Math.min(vw.value, vh.value) * 0.25, 90))
+// All geometry scales from r. Cap prevents label overflow on very large cards.
+const r = computed(() => Math.min(Math.min(vw.value, vh.value) * 0.38, 120))
 const elbowR = computed(() => r.value * 1.291)
 const labelOffset = computed(() => r.value * 0.182)
 const textXOff = computed(() => r.value * 0.027)
