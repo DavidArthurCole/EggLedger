@@ -207,6 +207,45 @@ func RetrievePlayerCompleteMissions(ctx context.Context, playerId string) ([]*ei
 	return missions, nil
 }
 
+// RetrievePlayerCompleteMissionsStream calls cb for each mission one at a time,
+// decompressing and decoding inline so only one mission is in memory at once.
+// This avoids the large transient allocation that occurs when all compressed
+// payloads are loaded into a [][]byte slice before decoding.
+func RetrievePlayerCompleteMissionsStream(ctx context.Context, playerId string, cb func(*ei.CompleteMissionResponse) error) error {
+	action := fmt.Sprintf("stream complete missions for player %s", playerId)
+	return DoDBOperation(ctx, func(ctx context.Context, db *sql.DB) error {
+		return transact(ctx, action, func(tx *sql.Tx) error {
+			rows, err := tx.QueryContext(ctx,
+				`SELECT start_timestamp, complete_payload FROM mission WHERE player_id = ? ORDER BY start_timestamp;`,
+				playerId)
+			if err != nil {
+				return err
+			}
+			defer rows.Close()
+			for rows.Next() {
+				var ts float64
+				var compressed []byte
+				if err := rows.Scan(&ts, &compressed); err != nil {
+					return err
+				}
+				raw, err := decompress(compressed)
+				if err != nil {
+					return err
+				}
+				m, err := api.DecodeCompleteMissionPayload(raw)
+				if err != nil {
+					return err
+				}
+				m.Info.StartTimeDerived = &ts
+				if err := cb(m); err != nil {
+					return err
+				}
+			}
+			return rows.Err()
+		})
+	})
+}
+
 func RetrievePlayerCompleteMissionIds(ctx context.Context, playerId string) ([]string, error) {
 	action := fmt.Sprintf("retrieve complete mission ids for player %s from database", playerId)
 	var missionIds []string

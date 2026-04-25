@@ -9,26 +9,19 @@
           gradientUnits="userSpaceOnUse"
           :x1="seg.innerX"
           :y1="seg.innerY"
-          :x2="seg.elbowX"
-          :y2="seg.rawElbowY"
+          :x2="seg.labelX"
+          :y2="seg.labelY"
         >
-          <stop offset="0%" :stop-color="seg.color" stop-opacity="0.9" />
-          <stop offset="100%" stop-color="#6b7280" stop-opacity="0.9" />
+          <stop offset="0%" :stop-color="seg.color" />
+          <stop offset="100%" stop-color="#6b7280" />
         </linearGradient>
       </defs>
-      <!-- Donut segments -->
-      <circle
+      <!-- Pie segments -->
+      <path
         v-for="(seg, i) in segments"
         :key="'seg-' + i"
-        :cx="cx"
-        :cy="cy"
-        :r="r"
-        fill="none"
-        :stroke="seg.color"
-        :stroke-width="strokeW"
-        :stroke-dasharray="`${seg.arc} ${circumference - seg.arc}`"
-        :stroke-dashoffset="`${circumference - seg.offset}`"
-        style="transform-box: fill-box; transform-origin: center; transform: rotate(-90deg)"
+        :d="seg.path"
+        :fill="seg.color"
       />
       <!-- Connector lines and labels -->
       <g v-for="(seg, i) in segments" :key="'lbl-' + i">
@@ -36,17 +29,8 @@
           :x1="seg.innerX"
           :y1="seg.innerY"
           :x2="seg.elbowX"
-          :y2="seg.rawElbowY"
-          :stroke="`url(#lg-${i})`"
-          stroke-width="0.8"
-        />
-        <line
-          v-if="seg.labelY !== seg.rawElbowY"
-          :x1="seg.elbowX"
-          :y1="seg.rawElbowY"
-          :x2="seg.elbowX"
           :y2="seg.labelY"
-          stroke="#6b7280"
+          :stroke="`url(#lg-${i})`"
           stroke-width="0.8"
         />
         <line
@@ -54,7 +38,7 @@
           :y1="seg.labelY"
           :x2="seg.labelX"
           :y2="seg.labelY"
-          stroke="#6b7280"
+          :stroke="`url(#lg-${i})`"
           stroke-width="0.8"
         />
         <text
@@ -93,11 +77,8 @@ const vw = 260
 const vh = 220
 const cx = vw / 2
 const cy = vh / 2
-const r = 50
-const strokeW = 18
-const circumference = 2 * Math.PI * r
-const outerR = r + strokeW / 2 + 3
-const elbowR = outerR + 16
+const r = 55
+const elbowR = r + 16
 
 const MAX_SEGMENTS = 10
 const MIN_LABEL_SPACING = 14
@@ -182,14 +163,25 @@ const segments = computed(() => {
   const autoColors = segmentColors(props.color, items.length)
   const perLabel = parsedLabelColors.value
 
-  let offset = 0
-  const raw = items.map((item, i) => {
-    const arc = (item.value / total) * circumference
-    const midAngle = (offset + arc / 2) / circumference * 2 * Math.PI - Math.PI / 2
-    offset += arc
+  function slicePath(startAngle: number, endAngle: number): string {
+    const sx = cx + Math.cos(startAngle) * r
+    const sy = cy + Math.sin(startAngle) * r
+    const ex = cx + Math.cos(endAngle) * r
+    const ey = cy + Math.sin(endAngle) * r
+    const large = endAngle - startAngle > Math.PI ? 1 : 0
+    return `M ${cx} ${cy} L ${sx} ${sy} A ${r} ${r} 0 ${large} 1 ${ex} ${ey} Z`
+  }
 
-    const innerX = cx + Math.cos(midAngle) * outerR
-    const innerY = cy + Math.sin(midAngle) * outerR
+  let angleOffset = -Math.PI / 2
+  const raw = items.map((item, i) => {
+    const sweep = (item.value / total) * 2 * Math.PI
+    const startAngle = angleOffset
+    const endAngle = angleOffset + sweep
+    angleOffset = endAngle
+    const midAngle = (startAngle + endAngle) / 2
+
+    const innerX = cx + Math.cos(midAngle) * r
+    const innerY = cy + Math.sin(midAngle) * r
     const elbowX = cx + Math.cos(midAngle) * elbowR
     const rawElbowY = cy + Math.sin(midAngle) * elbowR
     const isRight = elbowX >= cx
@@ -200,8 +192,7 @@ const segments = computed(() => {
       label: item.label,
       shortLabel: truncateLabel(item.label),
       value: item.value,
-      arc,
-      offset: offset - arc,
+      path: slicePath(startAngle, endAngle),
       color,
       pct: (item.value / total) * 100,
       innerX,

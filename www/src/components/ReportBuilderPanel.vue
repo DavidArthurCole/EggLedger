@@ -6,7 +6,7 @@
     @keydown.esc="requestClose()"
   >
     <div
-      class="bg-dark rounded-lg relative shadow-xl w-full max-w-lg max-h-9/10-vh flex flex-col transition-colors duration-150"
+      class="bg-dark rounded-lg relative shadow-xl w-full max-w-2xl max-h-9/10-vh flex flex-col transition-colors duration-150"
       :class="closeWarning ? 'ring-2 ring-red-500/60' : ''"
       @mousedown.stop
     >
@@ -51,7 +51,7 @@
         <template v-else>
         <!-- Name -->
         <div class="flex flex-col gap-1">
-          <label class="text-xs text-gray-400 flex items-center gap-1">
+          <label for="rb-name" class="text-xs text-gray-400 flex items-center gap-1">
             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
             Name
           </label>
@@ -66,7 +66,7 @@
 
         <!-- Description -->
         <div class="flex flex-col gap-1">
-          <label class="text-xs text-gray-400 flex items-center gap-1">
+          <label for="rb-description" class="text-xs text-gray-400 flex items-center gap-1">
             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h8"/></svg>
             Description (optional)
           </label>
@@ -82,7 +82,7 @@
         <!-- Subject + Mode row -->
         <div class="grid grid-cols-2 gap-3">
           <div class="flex flex-col gap-1">
-            <label class="text-xs text-gray-400 flex items-center gap-1">
+            <label for="rb-subject" class="text-xs text-gray-400 flex items-center gap-1">
               <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/></svg>
               Subject
             </label>
@@ -98,7 +98,7 @@
             </select>
           </div>
           <div class="flex flex-col gap-1">
-            <label class="text-xs text-gray-400 flex items-center gap-1">
+            <label for="rb-mode" class="text-xs text-gray-400 flex items-center gap-1">
               <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
               Mode
             </label>
@@ -117,7 +117,7 @@
         <!-- Display mode + Group by row -->
         <div class="grid grid-cols-2 gap-3">
           <div class="flex flex-col gap-1">
-            <label class="text-xs text-gray-400 flex items-center gap-1">
+            <label for="rb-display-mode" class="text-xs text-gray-400 flex items-center gap-1">
               <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
               Display
             </label>
@@ -133,7 +133,7 @@
             </select>
           </div>
           <div class="flex flex-col gap-1">
-            <label class="text-xs text-gray-400 flex items-center gap-1">
+            <label for="rb-group-by" class="text-xs text-gray-400 flex items-center gap-1">
               <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z"/></svg>
               Group by
             </label>
@@ -183,7 +183,7 @@
         <!-- Time bucket (time_series only) -->
         <div v-if="form.mode === 'time_series'" class="grid grid-cols-2 gap-3">
           <div class="flex flex-col gap-1">
-            <label class="text-xs text-gray-400 flex items-center gap-1">
+            <label for="rb-time-bucket" class="text-xs text-gray-400 flex items-center gap-1">
               <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
               Time bucket
             </label>
@@ -223,61 +223,64 @@
           </div>
         </div>
 
-        <!-- Grid size -->
-        <div class="flex flex-col gap-2">
-          <span class="text-xs text-gray-400 flex items-center gap-1">
-            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"/></svg>
-            Grid size
-            <span class="text-gray-500 ml-1">{{ form.gridW }}x{{ form.gridH }}</span>
-          </span>
-          <!-- 4x4 visual picker -->
-          <div class="flex flex-col gap-0.5 self-start" @mouseleave="clearHover()">
-            <div v-for="r in 4" :key="r" class="flex gap-0.5">
-              <div
-                v-for="c in 4"
-                :key="c"
-                class="w-5 h-5 rounded-sm border cursor-pointer transition-colors"
-                :class="cellClass(c, r)"
-                @mouseenter="setHover(c, r)"
-                @click="selectCell(c, r)"
-              />
+        <!-- Grid size + live preview side by side -->
+        <div class="flex flex-row gap-4 items-start">
+          <!-- Grid size picker -->
+          <div class="flex flex-col gap-2">
+            <span class="text-xs text-gray-400 flex items-center gap-1">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"/></svg>
+              Grid size
+              <span class="text-gray-500 ml-1">{{ form.gridW }}x{{ form.gridH }}</span>
+            </span>
+            <!-- 4x4 visual picker -->
+            <div class="flex flex-col gap-0.5 self-start" @mouseleave="clearHover()">
+              <div v-for="r in 4" :key="r" class="flex gap-0.5">
+                <div
+                  v-for="c in 4"
+                  :key="c"
+                  class="w-5 h-5 rounded-sm border cursor-pointer transition-colors"
+                  :class="cellClass(c, r)"
+                  @mouseenter="setHover(c, r)"
+                  @click="selectCell(c, r)"
+                />
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- Live preview -->
-        <div class="flex flex-col gap-1">
-          <span class="text-xs text-gray-400">Preview</span>
-          <div
-            class="bg-darker rounded-lg border border-gray-700 p-3 self-start w-full"
-            :style="{ minHeight: form.gridH * 64 + 'px' }"
-          >
-            <div class="text-xs font-medium text-gray-300 mb-2 truncate">{{ form.name || 'Untitled report' }}</div>
-            <template v-if="form.displayMode === 'bar'">
-              <div v-for="w in [80, 55, 40, 25]" :key="w" class="flex items-center gap-2 mb-1.5">
-                <div class="w-14 h-2 bg-gray-700 rounded-sm flex-shrink-0" />
-                <div class="h-2 rounded-sm" :style="{ width: w + '%', backgroundColor: form.color + '88' }" />
-              </div>
-            </template>
-            <template v-else-if="form.displayMode === 'line'">
-              <div class="flex items-end gap-1 h-12">
-                <div v-for="(h, i) in [30, 55, 45, 70, 50, 80, 60]" :key="i" class="flex-1 rounded-sm" :style="{ height: h + '%', backgroundColor: form.color + '88' }" />
-              </div>
-            </template>
-            <template v-else-if="form.displayMode === 'pie'">
-              <svg viewBox="0 0 100 100" class="w-14 h-14 mx-auto" style="transform: rotate(-90deg)">
-                <circle cx="50" cy="50" r="40" fill="none" :stroke="form.color + '99'" stroke-width="18" stroke-dasharray="157 94" stroke-dashoffset="0" />
-                <circle cx="50" cy="50" r="40" fill="none" :stroke="form.color + 'bb'" stroke-width="18" stroke-dasharray="94 157" stroke-dashoffset="-157" />
-              </svg>
-            </template>
-            <template v-else>
-              <div v-for="i in 4" :key="i" class="flex gap-2 py-1 border-b border-gray-700/50 last:border-0">
-                <div class="flex-1 h-2 bg-gray-700 rounded-sm" />
-                <div class="w-12 h-2 bg-gray-600 rounded-sm" />
-              </div>
-            </template>
+          <!-- Live preview -->
+          <div class="flex flex-col gap-1 flex-1">
+            <span class="text-xs text-gray-400">Preview</span>
+            <div
+              class="bg-darker rounded-lg border border-gray-700 p-3 w-full"
+              :style="{ minHeight: form.gridH * 64 + 'px' }"
+            >
+              <div class="text-xs font-medium text-gray-300 mb-2 truncate">{{ form.name || 'Untitled report' }}</div>
+              <template v-if="form.displayMode === 'bar'">
+                <div v-for="w in [80, 55, 40, 25]" :key="w" class="flex items-center gap-2 mb-1.5">
+                  <div class="w-14 h-2 bg-gray-700 rounded-sm flex-shrink-0" />
+                  <div class="h-2 rounded-sm" :style="{ width: w + '%', backgroundColor: form.color + '88' }" />
+                </div>
+              </template>
+              <template v-else-if="form.displayMode === 'line'">
+                <div class="flex items-end gap-1 h-12">
+                  <div v-for="(h, i) in [30, 55, 45, 70, 50, 80, 60]" :key="i" class="flex-1 rounded-sm" :style="{ height: h + '%', backgroundColor: form.color + '88' }" />
+                </div>
+              </template>
+              <template v-else-if="form.displayMode === 'pie'">
+                <svg viewBox="0 0 100 100" class="w-14 h-14 mx-auto" style="transform: rotate(-90deg)">
+                  <circle cx="50" cy="50" r="40" fill="none" :stroke="form.color + '99'" stroke-width="18" stroke-dasharray="157 94" stroke-dashoffset="0" />
+                  <circle cx="50" cy="50" r="40" fill="none" :stroke="form.color + 'bb'" stroke-width="18" stroke-dasharray="94 157" stroke-dashoffset="-157" />
+                </svg>
+              </template>
+              <template v-else>
+                <div v-for="i in 4" :key="i" class="flex gap-2 py-1 border-b border-gray-700/50 last:border-0">
+                  <div class="flex-1 h-2 bg-gray-700 rounded-sm" />
+                  <div class="w-12 h-2 bg-gray-600 rounded-sm" />
+                </div>
+              </template>
+            </div>
+            <p class="text-xs text-gray-600">{{ form.gridW }}x{{ form.gridH }} - {{ modeLabel }} - {{ subjectLabel }}</p>
           </div>
-          <p class="text-xs text-gray-600">{{ form.gridW }}x{{ form.gridH }} - {{ modeLabel }} - {{ subjectLabel }}</p>
         </div>
 
         <!-- Filters -->
@@ -522,12 +525,43 @@ const pieLabels = computed(() => {
   return Object.keys(labelColorsMap.value)
 })
 
+function hexToHsl(hex: string): [number, number, number] {
+  const rv = Number.parseInt(hex.slice(1, 3), 16) / 255
+  const gv = Number.parseInt(hex.slice(3, 5), 16) / 255
+  const bv = Number.parseInt(hex.slice(5, 7), 16) / 255
+  const max = Math.max(rv, gv, bv)
+  const min = Math.min(rv, gv, bv)
+  const l = (max + min) / 2
+  const d = max - min
+  const s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1))
+  let h = 0
+  if (d !== 0) {
+    switch (max) {
+      case rv: h = ((gv - bv) / d + 6) % 6; break
+      case gv: h = (bv - rv) / d + 2; break
+      default: h = (rv - gv) / d + 4
+    }
+    h *= 60
+  }
+  return [h, s, l]
+}
+
+function autoSliceColors(baseColor: string, count: number): string[] {
+  const [h, s, l] = hexToHsl(baseColor)
+  return Array.from({ length: count }, (_, i) =>
+    `hsl(${(h + (i * 360) / count) % 360}, ${Math.round(s * 100)}%, ${Math.round(l * 100)}%)`,
+  )
+}
+
 function setLabelColor(label: string, color: string) {
   labelColorsMap.value = { ...labelColorsMap.value, [label]: color }
 }
 
 function getLabelColor(label: string): string {
-  return labelColorsMap.value[label] ?? form.color
+  if (labelColorsMap.value[label]) return labelColorsMap.value[label]
+  const idx = pieLabels.value.indexOf(label)
+  const colors = autoSliceColors(form.color, pieLabels.value.length)
+  return idx >= 0 ? (colors[idx] ?? form.color) : form.color
 }
 
 const subjectLabel = computed(() => {

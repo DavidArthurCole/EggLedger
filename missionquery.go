@@ -97,15 +97,11 @@ func handleGetDurationConfigs() []PossibleMission {
 }
 
 // handleGetAllPlayerDrops returns a map of missionId -> drops for every mission
-// the player has stored, using a single bulk DB read instead of N individual queries.
+// the player has stored, processing one mission at a time to avoid a large
+// transient allocation that can cause GC stop-the-world pauses.
 func handleGetAllPlayerDrops(playerId string) map[string][]MissionDrop {
-	missions, err := db.RetrievePlayerCompleteMissions(context.Background(), playerId)
-	if err != nil {
-		log.Error(err)
-		return nil
-	}
-	result := make(map[string][]MissionDrop, len(missions))
-	for _, completeMission := range missions {
+	result := make(map[string][]MissionDrop)
+	err := db.RetrievePlayerCompleteMissionsStream(context.Background(), playerId, func(completeMission *ei.CompleteMissionResponse) error {
 		missionId := completeMission.GetInfo().GetIdentifier()
 		shipDrops := []MissionDrop{}
 		for _, drop := range completeMission.Artifacts {
@@ -143,6 +139,11 @@ func handleGetAllPlayerDrops(playerId string) map[string][]MissionDrop {
 			shipDrops = append(shipDrops, missionDrop)
 		}
 		result[missionId] = shipDrops
+		return nil
+	})
+	if err != nil {
+		log.Error(err)
+		return nil
 	}
 	return result
 }

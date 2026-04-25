@@ -42,7 +42,7 @@
       <div v-if="running" class="h-full flex items-center justify-center">
         <span class="text-xs text-gray-500 animate-pulse">Running...</span>
       </div>
-      <div v-else-if="filteredResult && filteredResult.labels?.length > 0">
+      <div v-else-if="filteredResult && filteredResult.labels?.length > 0" class="h-full">
         <ReportPieChart v-if="def.displayMode === 'pie'" :result="filteredResult" :color="def.color || '#6366f1'" :label-colors="def.labelColors" />
         <ReportBarChart v-else-if="def.displayMode === 'bar' || def.mode === 'aggregate'" :result="filteredResult" :color="def.color || '#6366f1'" :unit-label="normalizeLabel" />
         <ReportLineChart v-else-if="def.displayMode === 'line' || def.mode === 'time_series'" :result="filteredResult" :color="def.color || '#6366f1'" :unit-label="normalizeLabel" />
