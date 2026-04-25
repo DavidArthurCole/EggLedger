@@ -6,7 +6,7 @@
     @keydown.esc="requestClose()"
   >
     <div
-      class="bg-dark rounded-lg relative shadow-xl w-full max-w-2xl max-h-9/10-vh flex flex-col transition-colors duration-150"
+      class="bg-dark rounded-lg relative shadow-xl w-full max-w-2xl max-h-90vh flex flex-col transition-colors duration-150"
       :class="closeWarning ? 'ring-2 ring-red-500/60' : ''"
       @mousedown.stop
     >

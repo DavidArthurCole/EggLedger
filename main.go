@@ -49,7 +49,10 @@ var (
 	_fs embed.FS
 
 	_rootDir     string
+	_dataRootDir string
 	_internalDir string
+	_exportsDir  string
+	_logsDir     string
 
 	_appIsInForbiddenDirectory bool
 
@@ -207,7 +210,10 @@ func init() {
 	}
 	log.Infof("root dir: %s", _rootDir)
 
+	_dataRootDir = resolveDataRootDir(_rootDir)
 	_internalDir = resolveInternalDir(_rootDir)
+	_exportsDir = resolveExportsDir(_rootDir)
+	_logsDir = resolveLogsDir(_rootDir)
 
 	// Make sure the app isn't located in the system/user app directory or
 	// downloads dir.
@@ -250,11 +256,10 @@ func init() {
 	}
 
 	// Set up persistent logging.
-	logdir := filepath.Join(_rootDir, "logs")
-	if err := os.MkdirAll(logdir, 0755); err != nil {
+	if err := os.MkdirAll(_logsDir, 0755); err != nil {
 		log.Error(err)
 	} else {
-		logfile := filepath.Join(logdir, "app.log")
+		logfile := filepath.Join(_logsDir, "app.log")
 		logger := &lumberjack.Logger{
 			Filename:  logfile,
 			MaxSize:   5, // megabytes
@@ -905,7 +910,7 @@ func main() {
 	})
 
 	ui.MustBind("getStoragePath", func() string {
-		return _internalDir
+		return _dataRootDir
 	})
 
 	ui.MustBind("setStorageFolderVisible", func(visible bool) {
@@ -926,8 +931,18 @@ func main() {
 		if destPath == "" {
 			return wrap(errors.New("destination path is required"))
 		}
-		if err := copyDir(_internalDir, destPath); err != nil {
+		if err := copyDir(_internalDir, filepath.Join(destPath, "internal")); err != nil {
 			return wrap(err)
+		}
+		if _, statErr := os.Stat(_exportsDir); statErr == nil {
+			if err := copyDir(_exportsDir, filepath.Join(destPath, "exports")); err != nil {
+				return wrap(err)
+			}
+		}
+		if _, statErr := os.Stat(_logsDir); statErr == nil {
+			if err := copyDir(_logsDir, filepath.Join(destPath, "logs")); err != nil {
+				return wrap(err)
+			}
 		}
 		return nil
 	})
@@ -936,7 +951,7 @@ func main() {
 		action := "moveStorageTo"
 		wrap := func(err error) error { return errors.Wrap(err, action) }
 
-		absInternal, err := filepath.Abs(_internalDir)
+		absDataRoot, err := filepath.Abs(_dataRootDir)
 		if err != nil {
 			return wrap(err)
 		}
@@ -948,11 +963,11 @@ func main() {
 		if absDest == "" {
 			return wrap(errors.New("destination path is required"))
 		}
-		if absDest == absInternal {
+		if absDest == absDataRoot {
 			return wrap(errors.New("destination is the same as current location"))
 		}
-		if strings.HasPrefix(absDest, absInternal+string(filepath.Separator)) {
-			return wrap(errors.New("destination cannot be inside the current storage directory"))
+		if strings.HasPrefix(absDest, absDataRoot+string(filepath.Separator)) {
+			return wrap(errors.New("destination cannot be inside the current data directory"))
 		}
 
 		destPreExisted := false
@@ -975,9 +990,21 @@ func main() {
 			}
 		}
 
-		if err := copyDir(absInternal, absDest); err != nil {
+		if err := copyDir(_internalDir, filepath.Join(absDest, "internal")); err != nil {
 			rollback()
 			return wrap(err)
+		}
+		if _, statErr := os.Stat(_exportsDir); statErr == nil {
+			if err := copyDir(_exportsDir, filepath.Join(absDest, "exports")); err != nil {
+				rollback()
+				return wrap(err)
+			}
+		}
+		if _, statErr := os.Stat(_logsDir); statErr == nil {
+			if err := copyDir(_logsDir, filepath.Join(absDest, "logs")); err != nil {
+				rollback()
+				return wrap(err)
+			}
 		}
 
 		if err := writeBootstrapConfig(absDest); err != nil {

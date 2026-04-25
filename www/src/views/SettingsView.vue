@@ -264,7 +264,7 @@
               >Choose...</button>
             </div>
             <div class="mt-0_5rem text-xs text-orange-400 border border-orange-700 rounded-md py-2 px-3 max-w-[50%]">
-              This will restart the app. The old location will NOT be deleted automatically.
+              Copies all app data (databases, exports, logs) into the chosen folder, then restarts. The old files are NOT deleted automatically.
             </div>
             <div class="flex flex-row items-center gap-2 mt-0_5rem">
               <button

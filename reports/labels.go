@@ -28,10 +28,12 @@ func FormatLabel(groupBy string, rawVal string) string {
 	case "mission_target":
 		v := parseInt()
 		if v < 0 {
-			return "None"
+			return "None (Pre 1.27)"
 		}
-		name := ei.ArtifactSpec_Name(v)
-		return name.CasedName()
+		if v == 0 {
+			return "Untargeted"
+		}
+		return ei.ArtifactSpec_Name(v).CasedName()
 	case "artifact_name":
 		name := ei.ArtifactSpec_Name(parseInt())
 		return name.CasedName()

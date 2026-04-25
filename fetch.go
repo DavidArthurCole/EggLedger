@@ -416,7 +416,7 @@ func runFetchPipeline(w *worker, playerId string) {
 		return
 	}
 
-	exportDir := filepath.Join(_rootDir, "exports", "missions")
+	exportDir := filepath.Join(_exportsDir, "missions")
 	if err := os.MkdirAll(exportDir, 0755); err != nil {
 		perror(errors.Wrap(err, "failed to create export directory"))
 		updateState(AppState_FAILED)

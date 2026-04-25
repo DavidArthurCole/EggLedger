@@ -172,21 +172,18 @@ const segments = computed(() => {
   const clamp = labelClamp.value
 
   function spreadLabelPositions(rawPositions: number[]): number[] {
+    if (rawPositions.length <= 1) return [...rawPositions]
     const adjusted = [...rawPositions]
     const n = adjusted.length
-    if (n <= 1) return adjusted
-    for (let pass = 0; pass < n; pass++) {
-      let changed = false
-      for (let i = 0; i < n - 1; i++) {
-        const gap = adjusted[i + 1] - adjusted[i]
-        if (gap < minSpacing) {
-          const overlap = minSpacing - gap
-          adjusted[i] -= overlap / 2
-          adjusted[i + 1] += overlap / 2
-          changed = true
-        }
-      }
-      if (!changed) break
+    // Forward pass: clamp to top boundary, then push each label below the previous
+    for (let i = 0; i < n; i++) {
+      const floor = i === 0 ? clamp : adjusted[i - 1] + minSpacing
+      if (adjusted[i] < floor) adjusted[i] = floor
+    }
+    // Backward pass: clamp to bottom boundary, then push each label above the next
+    for (let i = n - 1; i >= 0; i--) {
+      const ceiling = i === n - 1 ? vhVal - clamp : adjusted[i + 1] - minSpacing
+      if (adjusted[i] > ceiling) adjusted[i] = ceiling
     }
     return adjusted
   }

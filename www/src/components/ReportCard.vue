@@ -63,7 +63,7 @@
       <template v-if="editMode">
         <select
           v-if="groups.length > 0"
-          class="text-xs bg-darker border border-gray-700 rounded px-1 py-0.5 text-gray-500 focus:outline-none max-w-24 mr-auto"
+          class="text-xs bg-darker border border-gray-700 rounded pl-1 pr-6 py-0.5 text-gray-500 focus:outline-none max-w-36 mr-auto"
           :value="def.groupId"
           @change="$emit('setGroup', ($event.target as HTMLSelectElement).value)"
         >
