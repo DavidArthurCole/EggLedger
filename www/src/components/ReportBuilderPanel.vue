@@ -164,11 +164,11 @@
             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/></svg>
             Slice colors
           </span>
-          <div v-if="pieLabels.length > 0" class="flex flex-col gap-1.5">
+          <div v-if="pieLabels.length > 0" class="grid grid-cols-2 gap-1.5">
             <div
               v-for="label in pieLabels"
               :key="label"
-              class="flex items-center gap-2"
+              class="flex items-center gap-2 min-w-0"
             >
               <ColorPicker
                 :model-value="getLabelColor(label)"
@@ -251,8 +251,8 @@
           <div class="flex flex-col gap-1 flex-1">
             <span class="text-xs text-gray-400">Preview</span>
             <div
-              class="bg-darker rounded-lg border border-gray-700 p-3 w-full"
-              :style="{ minHeight: form.gridH * 64 + 'px' }"
+              class="bg-darker rounded-lg border border-gray-700 p-3 w-full overflow-hidden"
+              :style="{ height: (form.gridH * 72 + 20) + 'px' }"
             >
               <div class="text-xs font-medium text-gray-300 mb-2 truncate">{{ form.name || 'Untitled report' }}</div>
               <template v-if="form.displayMode === 'bar'">
@@ -267,9 +267,10 @@
                 </div>
               </template>
               <template v-else-if="form.displayMode === 'pie'">
-                <svg viewBox="0 0 100 100" class="w-14 h-14 mx-auto" style="transform: rotate(-90deg)">
-                  <circle cx="50" cy="50" r="40" fill="none" :stroke="form.color + '99'" stroke-width="18" stroke-dasharray="157 94" stroke-dashoffset="0" />
-                  <circle cx="50" cy="50" r="40" fill="none" :stroke="form.color + 'bb'" stroke-width="18" stroke-dasharray="94 157" stroke-dashoffset="-157" />
+                <svg viewBox="0 0 100 100" class="w-12 h-12 mx-auto">
+                  <path d="M 50 50 L 50 10 A 40 40 0 0 1 73.5 82.4 Z" :fill="form.color + 'ee'" />
+                  <path d="M 50 50 L 73.5 82.4 A 40 40 0 0 1 10 50 Z" :fill="form.color + '99'" />
+                  <path d="M 50 50 L 10 50 A 40 40 0 0 1 50 10 Z" :fill="form.color + '55'" />
                 </svg>
               </template>
               <template v-else>
