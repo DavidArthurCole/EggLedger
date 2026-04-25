@@ -410,7 +410,7 @@ input[type=number] {
     content: '';
     position: absolute;
     top: 100%;
-    left: 50%;
+    left: calc(50% + var(--arrow-offset, 0px));
     transform: translateX(-50%);
     border: 7px solid transparent;
     border-top-color: #ccc;
@@ -420,7 +420,7 @@ input[type=number] {
     content: '';
     position: absolute;
     top: 100%;
-    left: 50%;
+    left: calc(50% + var(--arrow-offset, 0px));
     transform: translateX(-50%) translateY(-1px);
     border: 6px solid transparent;
     border-top-color: rgba(33, 37, 41, 0.95);

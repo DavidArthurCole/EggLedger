@@ -46,8 +46,8 @@
         <ReportPieChart :result="filteredResult" :color="def.color || '#6366f1'" :label-colors="def.labelColors" />
       </div>
       <template v-else-if="filteredResult && filteredResult.labels?.length > 0">
-        <ReportBarChart v-if="def.displayMode === 'bar' || def.mode === 'aggregate'" :result="filteredResult" :color="def.color || '#6366f1'" :unit-label="normalizeLabel" />
-        <ReportLineChart v-else-if="def.displayMode === 'line' || def.mode === 'time_series'" :result="filteredResult" :color="def.color || '#6366f1'" :unit-label="normalizeLabel" />
+        <ReportBarChart v-if="def.displayMode === 'bar' || (!def.displayMode && def.mode === 'aggregate')" :result="filteredResult" :color="def.color || '#6366f1'" :unit-label="normalizeLabel" />
+        <ReportLineChart v-else-if="def.displayMode === 'line' || (!def.displayMode && def.mode === 'time_series')" :result="filteredResult" :color="def.color || '#6366f1'" :unit-label="normalizeLabel" />
         <ReportVisualGrid v-else :result="filteredResult" :unit-label="normalizeLabel" />
       </template>
       <div v-else-if="filteredResult && filteredResult.labels?.length === 0" class="h-full flex items-center justify-center">
@@ -114,8 +114,9 @@
     <Transition name="tooltip-fade">
       <div
         v-if="showWeightTooltip"
+        ref="tooltipRef"
         class="tooltip-floating"
-        :style="{ left: tooltipX + 'px', top: tooltipY + 'px' }"
+        :style="{ left: tooltipX + 'px', top: tooltipY + 'px', '--arrow-offset': tooltipArrowOffset + 'px' }"
       >
         <div class="text-xs font-semibold text-gray-300 mb-1">{{ def.weight }} - weight factors</div>
         <div
@@ -130,7 +131,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import type { ReportDefinition, ReportFilterCondition, ReportResult, ReportGroup } from '../types/bridge'
 import ReportBarChart from './ReportBarChart.vue'
 import ReportLineChart from './ReportLineChart.vue'
@@ -157,12 +158,27 @@ defineEmits<{
 const showWeightTooltip = ref(false)
 const tooltipX = ref(0)
 const tooltipY = ref(0)
+const tooltipArrowOffset = ref(0)
+const tooltipRef = ref<HTMLElement | null>(null)
 
-function onWeightHover(e: MouseEvent) {
+async function onWeightHover(e: MouseEvent) {
   const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-  tooltipX.value = rect.left + rect.width / 2
+  const anchorCenterX = rect.left + rect.width / 2
+  tooltipX.value = anchorCenterX
   tooltipY.value = rect.top
+  tooltipArrowOffset.value = 0
   showWeightTooltip.value = true
+
+  await nextTick()
+  if (!tooltipRef.value) return
+  const tipRect = tooltipRef.value.getBoundingClientRect()
+  const padding = 8
+  const idealLeft = tipRect.left
+  const clampedLeft = Math.max(padding, Math.min(window.innerWidth - tipRect.width - padding, idealLeft))
+  if (clampedLeft !== idealLeft) {
+    tooltipX.value = anchorCenterX + (clampedLeft - idealLeft)
+    tooltipArrowOffset.value = anchorCenterX - (clampedLeft + tipRect.width / 2)
+  }
 }
 
 const subjectLabel = computed(() => {
