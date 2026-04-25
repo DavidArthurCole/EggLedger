@@ -19,11 +19,11 @@ export function useReports() {
   }
 
   async function updateReport(def: ReportDefinition): Promise<boolean> {
-    const ok = await globalThis.updateReport(JSON.stringify(def))
-    if (ok) {
-      reports.value = reports.value.map(r => r.id === def.id ? def : r)
-    }
-    return ok
+    const json = await globalThis.updateReport(JSON.stringify(def))
+    if (!json) return false
+    const saved = JSON.parse(json) as ReportDefinition
+    reports.value = reports.value.map(r => r.id === saved.id ? saved : r)
+    return true
   }
 
   async function deleteReport(id: string): Promise<boolean> {

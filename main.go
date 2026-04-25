@@ -1115,23 +1115,24 @@ func main() {
 		return string(out)
 	})
 
-	ui.MustBind("updateReport", func(defJSON string) bool {
+	ui.MustBind("updateReport", func(defJSON string) string {
 		var def reports.ReportDefinition
 		if err := json.Unmarshal([]byte(defJSON), &def); err != nil {
 			log.Error(err)
-			return false
+			return ""
 		}
 		def.Weight = reports.ClassifyWeight(def)
 		row, err := reportDefToRow(def)
 		if err != nil {
 			log.Error(err)
-			return false
+			return ""
 		}
 		if err := reportdb.UpdateReport(context.Background(), row); err != nil {
 			log.Error(err)
-			return false
+			return ""
 		}
-		return true
+		out, _ := json.Marshal(def)
+		return string(out)
 	})
 
 	ui.MustBind("deleteReport", func(id string) bool {

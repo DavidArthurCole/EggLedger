@@ -369,7 +369,7 @@ declare global {
 
   // Reports
   function createReport(defJSON: string): Promise<string>
-  function updateReport(defJSON: string): Promise<boolean>
+  function updateReport(defJSON: string): Promise<string>
   function deleteReport(id: string): Promise<boolean>
   function getAccountReports(accountId: string): Promise<string>
   function executeReport(id: string): Promise<string>

@@ -1,20 +1,19 @@
 <template>
-  <div class="w-full h-full flex flex-col gap-1 overflow-y-auto">
-    <div
-      v-for="(label, i) in result.labels"
-      :key="i"
-      class="flex items-center gap-2 text-xs"
-    >
-      <span class="text-gray-400 truncate w-24 flex-shrink-0 text-right">{{ label }}</span>
-      <div class="flex-1 bg-gray-800 rounded-sm h-4 min-w-0">
+  <div class="w-full h-full flex flex-col gap-1 overflow-hidden">
+    <div class="flex-1 flex items-end gap-px overflow-x-auto min-h-0">
+      <div
+        v-for="(label, i) in result.labels"
+        :key="i"
+        class="flex-1 min-w-3 h-full flex flex-col justify-end"
+        :title="`${label}: ${formatValue(displayValues[i])}`"
+      >
         <div
-          class="h-4 rounded-sm"
-          :style="{ width: barWidth(displayValues[i]) + '%', backgroundColor: color }"
+          class="w-full rounded-t-sm"
+          :style="{ height: barHeight(displayValues[i]) + '%', backgroundColor: color }"
         />
       </div>
-      <span class="text-gray-300 font-mono flex-shrink-0 w-20 text-right">{{ formatValue(displayValues[i]) }}</span>
     </div>
-    <div v-if="unitLabel" class="text-xs text-gray-600 text-right mt-0.5">{{ unitLabel }}</div>
+    <div v-if="unitLabel" class="text-xs text-gray-600 text-right flex-shrink-0">{{ unitLabel }}</div>
   </div>
 </template>
 
@@ -34,8 +33,9 @@ const displayValues = computed(() =>
 
 const maxVal = computed(() => Math.max(...displayValues.value.map(Number), 1))
 
-function barWidth(val: number): number {
-  return Math.round((Number(val) / maxVal.value) * 100)
+function barHeight(val: number): number {
+  const pct = Math.round((Number(val) / maxVal.value) * 100)
+  return Number(val) > 0 ? Math.max(pct, 2) : 0
 }
 
 function formatValue(val: number): string {
