@@ -16,10 +16,15 @@
         </svg>
       </button>
       <!-- Header -->
-      <div class="flex items-center px-5 py-3 border-b border-gray-700 flex-shrink-0">
+      <div class="flex items-center px-5 py-3 border-b border-gray-700 flex-shrink-0 gap-3">
         <span class="text-sm font-semibold text-gray-200">
           {{ editingDef ? 'Edit Report' : 'Add Report' }}
         </span>
+        <div v-if="!editingDef && builderMode === 'basic'" class="flex rounded-md overflow-hidden border border-gray-700 flex-shrink-0 text-xs">
+          <button type="button" class="px-3 py-1.5 transition-colors bg-indigo-700 text-white">Basic</button>
+          <button type="button" class="px-3 py-1.5 transition-colors bg-darker text-gray-400 hover:text-gray-200"
+            @click="builderMode = 'advanced'">Advanced</button>
+        </div>
       </div>
 
       <!-- Edit form -->
