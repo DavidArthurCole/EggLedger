@@ -433,6 +433,7 @@ func reportDefToRow(def reports.ReportDefinition) (reportdb.ReportRow, error) {
 		GroupId: def.GroupId,
 		LabelColors: def.LabelColors,
 		SecondaryGroupBy: def.SecondaryGroupBy,
+		UnfilledColor: def.UnfilledColor,
 	}
 	if def.TimeBucket != "" {
 		r.TimeBucket = sql.NullString{String: def.TimeBucket, Valid: true}
@@ -473,6 +474,7 @@ func rowToReportDef(r reportdb.ReportRow) (reports.ReportDefinition, error) {
 		GroupId: r.GroupId,
 		LabelColors: r.LabelColors,
 		SecondaryGroupBy: r.SecondaryGroupBy,
+		UnfilledColor: r.UnfilledColor,
 	}
 	if r.TimeBucket.Valid {
 		def.TimeBucket = r.TimeBucket.String
@@ -927,26 +929,28 @@ func main() {
 		}
 	})
 
-	ui.MustBind("backupStorageTo", func(destPath string) error {
-		action := "backupStorageTo"
+	ui.MustBind("backupStoragePart", func(destPath, part string) error {
+		action := "backupStoragePart"
 		wrap := func(err error) error { return errors.Wrap(err, action) }
 		if destPath == "" {
 			return wrap(errors.New("destination path is required"))
 		}
-		if err := copyDir(_internalDir, filepath.Join(destPath, "internal")); err != nil {
-			return wrap(err)
-		}
-		if _, statErr := os.Stat(_exportsDir); statErr == nil {
-			if err := copyDir(_exportsDir, filepath.Join(destPath, "exports")); err != nil {
-				return wrap(err)
+		switch part {
+		case "internal":
+			return wrap(copyDir(_internalDir, filepath.Join(destPath, "internal")))
+		case "exports":
+			if _, statErr := os.Stat(_exportsDir); statErr == nil {
+				return wrap(copyDir(_exportsDir, filepath.Join(destPath, "exports")))
 			}
-		}
-		if _, statErr := os.Stat(_logsDir); statErr == nil {
-			if err := copyDir(_logsDir, filepath.Join(destPath, "logs")); err != nil {
-				return wrap(err)
+			return nil
+		case "logs":
+			if _, statErr := os.Stat(_logsDir); statErr == nil {
+				return wrap(copyDir(_logsDir, filepath.Join(destPath, "logs")))
 			}
+			return nil
+		default:
+			return wrap(fmt.Errorf("unknown backup part: %s", part))
 		}
-		return nil
 	})
 
 	ui.MustBind("moveStorageTo", func(destPath string) error {
@@ -1494,6 +1498,21 @@ func main() {
 
 	ui.MustBind("restoreFromCloud", func() {
 		handleRestoreFromCloud()
+	})
+
+	ui.MustBind("deleteRemoteData", func() string {
+		if err := handleDeleteRemoteData(); err != nil {
+			return err.Error()
+		}
+		return ""
+	})
+
+	ui.MustBind("getCloudAutoSync", func() bool {
+		return _storage.GetCloudAutoSync()
+	})
+
+	ui.MustBind("setCloudAutoSync", func(flag bool) {
+		_storage.SetCloudAutoSync(flag)
 	})
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")

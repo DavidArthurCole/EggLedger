@@ -15,6 +15,12 @@
 
           <template v-if="cond.topLevel && isBoolField(cond.topLevel)">
             <select
+              class="bg-darker border border-gray-700 rounded px-2.5 py-1.5 text-xs text-gray-300 focus:outline-none min-w-0 opacity-60 cursor-not-allowed"
+              disabled
+            >
+              <option value="">is</option>
+            </select>
+            <select
               class="bg-darker border border-gray-700 rounded px-2.5 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500 min-w-0"
               :value="cond.op"
               @change="$emit('update', i, { op: ($event.target as HTMLSelectElement).value })"

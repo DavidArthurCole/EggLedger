@@ -55,6 +55,7 @@ type AppStorage struct {
 	CloudLastPullAt        time.Time `json:"cloud_last_pull_at"`
 	CloudDiscordUsername   string    `json:"cloud_discord_username"`
 	CloudDiscordAvatarURL  string    `json:"cloud_discord_avatar_url"`
+	CloudAutoSync          bool      `json:"cloud_auto_sync"`
 }
 
 type Account struct {
@@ -264,6 +265,9 @@ func (s *AppStorage) loadFromDB() {
 	if v, ok := settings["cloud_discord_avatar_url"]; ok {
 		s.CloudDiscordAvatarURL = v
 	}
+	if v, ok := settings["cloud_auto_sync"]; ok {
+		s.CloudAutoSync, _ = strconv.ParseBool(v)
+	}
 }
 
 // persistAllToDB writes every field to the settings table in one transaction.
@@ -307,6 +311,7 @@ func (s *AppStorage) persistAllToDB() {
 		"cloud_encryption_key":          s.CloudEncryptionKey,
 		"cloud_discord_username":        s.CloudDiscordUsername,
 		"cloud_discord_avatar_url":      s.CloudDiscordAvatarURL,
+		"cloud_auto_sync":               strconv.FormatBool(s.CloudAutoSync),
 	}
 	s.Unlock()
 	if err := db.SetSettings(context.Background(), settings); err != nil {
@@ -785,4 +790,17 @@ func (s *AppStorage) SetCloudDiscordAvatarURL(url string) {
 	s.CloudDiscordAvatarURL = url
 	s.Unlock()
 	go s.dbSet("cloud_discord_avatar_url", url)
+}
+
+func (s *AppStorage) GetCloudAutoSync() bool {
+	s.Lock()
+	defer s.Unlock()
+	return s.CloudAutoSync
+}
+
+func (s *AppStorage) SetCloudAutoSync(flag bool) {
+	s.Lock()
+	s.CloudAutoSync = flag
+	s.Unlock()
+	go s.dbSet("cloud_auto_sync", strconv.FormatBool(flag))
 }

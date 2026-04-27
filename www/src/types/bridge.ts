@@ -209,6 +209,8 @@ export interface ReportDefinition {
   normalizeBy: string
   /** JSON-encoded Record<string, string> mapping label to hex color for pie slices */
   labelColors: string
+  /** Hex color for zero-value cells in heatmap; empty string uses default dark */
+  unfilledColor: string
 }
 
 export interface ReportGroup {
@@ -356,7 +358,7 @@ declare global {
   // Storage management
   function getStoragePath(): Promise<string>
   function setStorageFolderVisible(visible: boolean): Promise<void>
-  function backupStorageTo(destPath: string): Promise<void>
+  function backupStoragePart(destPath: string, part: 'internal' | 'exports' | 'logs'): Promise<void>
   function moveStorageTo(destPath: string): Promise<void>
 
   // Updates - returns [version, releaseNotes]
@@ -400,6 +402,9 @@ declare global {
   function disconnectCloud(): Promise<void>
   function syncToCloud(): Promise<void>
   function restoreFromCloud(): Promise<void>
+  function deleteRemoteData(): Promise<string>
+  function getCloudAutoSync(): Promise<boolean>
+  function setCloudAutoSync(flag: boolean): Promise<void>
   // Go-to-JS callbacks (assigned by Vue app, called by Go via lorca)
   var updateKnownAccounts: (accounts: Account[]) => void
   var updateState: (state: string) => void

@@ -61,7 +61,10 @@
             <i>For EggLedger specifically</i>, I (<a v-external-link href="https://github.com/DavidArthurCole" target="_blank" class="url-link">DavidArthurCole</a>) am the active developer and maintainer.
           </p>
           <p>
-            Reach out on <a v-external-link href="https://discord.com/users/258383847148879874" target="_blank" class="url-link">Discord</a> (<span class="text-duration-0">@davidarthurcole</span>) or <a v-external-link href="https://github.com/DavidArthurCole/EggLedger/issues/new/choose" target="_blank" class="url-link">open a GitHub Issue</a> for bugs, requests, or questions.
+            Join my <a v-external-link href="https://discord.davidarthurcole.me" target="_blank" class="url-link">Discord server</a> for EggLedger support, bug reports, and general discussion.
+          </p>
+          <p>
+            You can also reach me directly on <a v-external-link href="https://discord.com/users/258383847148879874" target="_blank" class="url-link">Discord</a> (<span class="text-duration-0">@davidarthurcole</span>) or <a v-external-link href="https://github.com/DavidArthurCole/EggLedger/issues/new/choose" target="_blank" class="url-link">open a GitHub Issue</a>.
           </p>
         </div>
 

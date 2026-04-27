@@ -43,6 +43,7 @@ type ReportDefinition struct {
 	GroupId string `json:"groupId"`
 	NormalizeBy string `json:"normalizeBy"`
 	LabelColors string `json:"labelColors"`
+	UnfilledColor string `json:"unfilledColor"`
 }
 
 // ReportResult is the computed output of executing a report.

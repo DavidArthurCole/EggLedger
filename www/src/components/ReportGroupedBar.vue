@@ -20,7 +20,7 @@
                 minWidth: '2px',
                 cursor: 'pointer',
               }"
-              @mouseenter="(e) => showTooltip(e, [row + ' x ' + col, cellLabel(rIdx, cIdx)])"
+              @mouseenter="(e) => showTooltip(e, [col + ' ' + row, cellLabel(rIdx, cIdx)])"
               @mousemove="moveTooltip"
               @mouseleave="hideTooltip"
             />

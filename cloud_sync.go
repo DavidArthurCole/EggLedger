@@ -461,6 +461,27 @@ func importRemoteReports(ctx context.Context, blob cloudReportsBlob) {
 	}
 }
 
+// handleDeleteRemoteData overwrites all server-side blobs with empty payloads,
+// effectively clearing all synced data while keeping the session active.
+func handleDeleteRemoteData() error {
+	ctx := context.Background()
+	wrap := func(err error) error { return fmt.Errorf("deleteRemoteData: %w", err) }
+	token := _storage.GetCloudSessionToken()
+	if token == "" {
+		return wrap(fmt.Errorf("not connected"))
+	}
+	if err := putBlob(ctx, token, "accounts", []Account{}); err != nil {
+		return wrap(err)
+	}
+	if err := putBlob(ctx, token, "settings", cloudSyncableSettings{}); err != nil {
+		return wrap(err)
+	}
+	if err := putBlob(ctx, token, "reports", cloudReportsBlob{}); err != nil {
+		return wrap(err)
+	}
+	return nil
+}
+
 // putBlob marshals payload and PUTs it to /blobs/<name>.
 // encryptBlob encrypts plaintext with AES-256-GCM using hexKey (64-char hex = 32 bytes).
 // The 12-byte random nonce is prepended to the ciphertext and the whole thing is base64-encoded.

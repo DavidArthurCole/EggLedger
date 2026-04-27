@@ -49,6 +49,7 @@
 
         <!-- Advanced form fields -->
         <template v-else>
+
         <!-- Name -->
         <div class="flex flex-col gap-1">
           <label for="rb-name" class="text-xs text-gray-400 flex items-center gap-1">
@@ -77,6 +78,12 @@
             class="bg-darker border border-gray-700 rounded px-2 py-1.5 text-xs text-gray-400 focus:outline-none focus:border-blue-500 resize-none"
             placeholder="What does this report show?"
           />
+        </div>
+
+        <!-- Data section header -->
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Data</span>
+          <div class="flex-1 h-px bg-gray-700"></div>
         </div>
 
         <!-- Subject + Mode row -->
@@ -204,36 +211,6 @@
           <p v-if="form.secondaryGroupBy" class="text-xs text-gray-500 mt-0.5">Counting: {{ inferredSubjectLabel }}</p>
         </div>
 
-        <!-- Color picker (bar/line/pie only) -->
-        <div v-if="form.displayMode !== 'grid'" class="flex flex-col gap-1">
-          <span class="text-xs text-gray-400 flex items-center gap-1">
-            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/></svg>
-            {{ form.displayMode === 'pie' ? 'Fallback color' : 'Chart color' }}
-          </span>
-          <ColorPicker v-model="form.color" />
-        </div>
-
-        <!-- Per-slice / per-bar colors -->
-        <div v-if="form.displayMode === 'pie' || form.displayMode === 'bar'" class="flex flex-col gap-2">
-          <span class="text-xs text-gray-400 flex items-center gap-1">
-            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/></svg>
-            {{ form.displayMode === 'pie' ? 'Slice colors' : 'Bar colors' }}
-          </span>
-          <div v-if="chartLabels.length > 0" class="grid grid-cols-2 gap-1.5">
-            <div
-              v-for="label in chartLabels"
-              :key="label"
-              class="flex items-center gap-2 min-w-0"
-            >
-              <ColorPicker
-                :model-value="getLabelColor(label)"
-                @update:model-value="setLabelColor(label, $event)"
-              />
-              <span class="text-xs text-gray-400 truncate">{{ label }}</span>
-            </div>
-          </div>
-        </div>
-
         <!-- Time bucket (time_series only) -->
         <div v-if="form.mode === 'time_series'" class="grid grid-cols-2 gap-3">
           <div class="flex flex-col gap-1">
@@ -274,73 +251,6 @@
                 <option value="month">Months</option>
               </select>
             </div>
-          </div>
-        </div>
-
-        <!-- Grid size + live preview side by side -->
-        <div class="flex flex-row gap-4 items-start">
-          <!-- Grid size picker -->
-          <div class="flex flex-col gap-2">
-            <span class="text-xs text-gray-400 flex items-center gap-1">
-              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"/></svg>
-              Grid size
-              <span class="text-gray-500 ml-1">{{ form.gridW }}x{{ form.gridH }}</span>
-            </span>
-            <!-- 8x4 visual picker -->
-            <div class="flex flex-col gap-0.5 self-start" @mouseleave="clearHover()">
-              <div v-for="r in 4" :key="r" class="flex gap-0.5">
-                <div
-                  v-for="c in 8"
-                  :key="c"
-                  class="w-3.5 h-3.5 rounded-sm border cursor-pointer transition-colors"
-                  :class="cellClass(c, r)"
-                  @mouseenter="setHover(c, r)"
-                  @click="selectCell(c, r)"
-                />
-              </div>
-            </div>
-          </div>
-
-          <!-- Live preview -->
-          <div class="flex flex-col gap-1">
-            <span class="text-xs text-gray-400">Preview</span>
-            <div
-              class="bg-darker rounded-lg border border-gray-700 p-3 overflow-hidden flex flex-col"
-              :style="{ width: (form.gridW * 55) + 'px', height: (form.gridH * 55) + 'px' }"
-            >
-              <div class="text-xs font-medium text-gray-300 mb-2 truncate flex-shrink-0">{{ form.name || 'Untitled report' }}</div>
-              <div class="flex-1 min-h-0">
-                <template v-if="form.displayMode === 'bar'">
-                  <div class="flex flex-col justify-center gap-1 h-full">
-                    <div v-for="w in [80, 55, 40, 25]" :key="w" class="flex items-center gap-1">
-                      <div class="w-8 h-1.5 bg-gray-700 rounded-sm flex-shrink-0" />
-                      <div class="h-1.5 rounded-sm" :style="{ width: w + '%', backgroundColor: form.color + '88' }" />
-                    </div>
-                  </div>
-                </template>
-                <template v-else-if="form.displayMode === 'line'">
-                  <div class="flex items-end gap-0.5 h-full">
-                    <div v-for="(h, i) in [30, 55, 45, 70, 50, 80, 60]" :key="i" class="flex-1 rounded-sm" :style="{ height: h + '%', backgroundColor: form.color + '88' }" />
-                  </div>
-                </template>
-                <template v-else-if="form.displayMode === 'pie'">
-                  <svg viewBox="0 0 100 100" class="w-full h-full">
-                    <path d="M 50 50 L 50 10 A 40 40 0 0 1 73.5 82.4 Z" :fill="form.color + 'ee'" />
-                    <path d="M 50 50 L 73.5 82.4 A 40 40 0 0 1 10 50 Z" :fill="form.color + '99'" />
-                    <path d="M 50 50 L 10 50 A 40 40 0 0 1 50 10 Z" :fill="form.color + '55'" />
-                  </svg>
-                </template>
-                <template v-else>
-                  <div class="flex flex-col justify-center gap-0.5 h-full">
-                    <div v-for="i in 4" :key="i" class="flex gap-2 py-0.5 border-b border-gray-700/50 last:border-0">
-                      <div class="flex-1 h-1.5 bg-gray-700 rounded-sm" />
-                      <div class="w-8 h-1.5 bg-gray-600 rounded-sm" />
-                    </div>
-                  </div>
-                </template>
-              </div>
-            </div>
-            <p class="text-xs text-gray-500 text-center">{{ form.gridW }}x{{ form.gridH }} - {{ modeLabel }} - {{ subjectLabel }}</p>
           </div>
         </div>
 
@@ -433,20 +343,39 @@
                     <option v-for="f in artifactFilterFields" :key="f.value" :value="f.value">{{ f.label }}</option>
                   </optgroup>
                 </select>
-                <select
-                  :value="orGroups[gIdx][cIdx].op"
-                  class="text-xs bg-darker border border-gray-700 rounded px-1 py-1 text-gray-300 focus:outline-none w-14"
-                  @change="updateOrCondition(gIdx, cIdx, { op: ($event.target as HTMLSelectElement).value })"
-                >
-                  <option v-for="op in getOpsForField(orGroups[gIdx][cIdx].topLevel)" :key="op.value" :value="op.value">{{ op.label }}</option>
-                </select>
-                <input
-                  v-if="!isBoolField(orGroups[gIdx][cIdx].topLevel)"
-                  :value="orGroups[gIdx][cIdx].val"
-                  :type="isDateField(orGroups[gIdx][cIdx].topLevel) ? 'date' : 'text'"
-                  class="text-xs bg-darker border border-gray-700 rounded px-2 py-1 text-gray-300 focus:outline-none flex-1 min-w-0"
-                  @input="updateOrCondition(gIdx, cIdx, { val: ($event.target as HTMLInputElement).value })"
-                />
+                <template v-if="isBoolField(orGroups[gIdx][cIdx].topLevel)">
+                  <select
+                    class="text-xs bg-darker border border-gray-700 rounded px-1 py-1 text-gray-300 focus:outline-none w-14 opacity-60 cursor-not-allowed"
+                    disabled
+                  >
+                    <option>is</option>
+                  </select>
+                  <select
+                    :value="orGroups[gIdx][cIdx].op"
+                    class="text-xs bg-darker border border-gray-700 rounded px-1 py-1 text-gray-300 focus:outline-none"
+                    @change="updateOrCondition(gIdx, cIdx, { op: ($event.target as HTMLSelectElement).value })"
+                  >
+                    <option value="true">True</option>
+                    <option value="false">False</option>
+                  </select>
+                </template>
+                <template v-else>
+                  <select
+                    :value="orGroups[gIdx][cIdx].op"
+                    class="text-xs bg-darker border border-gray-700 rounded px-1 py-1 text-gray-300 focus:outline-none w-14"
+                    :disabled="getOpsForField(orGroups[gIdx][cIdx].topLevel).length <= 1"
+                    :class="getOpsForField(orGroups[gIdx][cIdx].topLevel).length <= 1 ? 'opacity-60 cursor-not-allowed' : ''"
+                    @change="updateOrCondition(gIdx, cIdx, { op: ($event.target as HTMLSelectElement).value })"
+                  >
+                    <option v-for="op in getOpsForField(orGroups[gIdx][cIdx].topLevel)" :key="op.value" :value="op.value">{{ op.label }}</option>
+                  </select>
+                  <input
+                    :value="orGroups[gIdx][cIdx].val"
+                    :type="isDateField(orGroups[gIdx][cIdx].topLevel) ? 'date' : 'text'"
+                    class="text-xs bg-darker border border-gray-700 rounded px-2 py-1 text-gray-300 focus:outline-none flex-1 min-w-0"
+                    @input="updateOrCondition(gIdx, cIdx, { val: ($event.target as HTMLInputElement).value })"
+                  />
+                </template>
                 <button type="button" class="text-gray-500 hover:text-red-400 text-xs px-1" @click="removeFromOrGroup(gIdx, cIdx)">x</button>
               </div>
               <button
@@ -481,6 +410,119 @@
             </template>
           </select>
         </div>
+
+        <!-- Appearance section header -->
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Appearance</span>
+          <div class="flex-1 h-px bg-gray-700"></div>
+        </div>
+
+        <!-- Chart color + Zero cell color (same row when both visible) -->
+        <div v-if="form.displayMode !== 'grid'" class="flex flex-row gap-6 flex-wrap">
+          <div class="flex flex-col gap-1">
+            <span class="text-xs text-gray-400 flex items-center gap-1">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/></svg>
+              {{ form.displayMode === 'pie' ? 'Fallback color' : 'Chart color' }}
+            </span>
+            <ColorPicker v-model="form.color" />
+          </div>
+          <div v-if="form.displayMode === 'heatmap'" class="flex flex-col gap-1">
+            <span class="text-xs text-gray-400 flex items-center gap-1">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/></svg>
+              Zero cell color
+            </span>
+            <ColorPicker v-model="form.unfilledColor" />
+          </div>
+        </div>
+
+        <!-- Per-slice / per-bar colors -->
+        <div v-if="form.displayMode === 'pie' || form.displayMode === 'bar'" class="flex flex-col gap-2">
+          <span class="text-xs text-gray-400 flex items-center gap-1">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/></svg>
+            {{ form.displayMode === 'pie' ? 'Slice colors' : 'Bar colors' }}
+          </span>
+          <div v-if="chartLabels.length > 0" class="grid grid-cols-2 gap-1.5">
+            <div
+              v-for="label in chartLabels"
+              :key="label"
+              class="flex items-center gap-2 min-w-0"
+            >
+              <ColorPicker
+                :model-value="getLabelColor(label)"
+                @update:model-value="setLabelColor(label, $event)"
+              />
+              <span class="text-xs text-gray-400 truncate">{{ label }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Grid size + live preview side by side -->
+        <div class="flex flex-row gap-4 items-start">
+          <!-- Grid size picker -->
+          <div class="flex flex-col gap-2">
+            <span class="text-xs text-gray-400 flex items-center gap-1">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"/></svg>
+              Grid size
+              <span class="text-gray-500 ml-1">{{ form.gridW }}x{{ form.gridH }}</span>
+            </span>
+            <!-- 8x4 visual picker -->
+            <div class="flex flex-col gap-0.5 self-start" @mouseleave="clearHover()">
+              <div v-for="r in 4" :key="r" class="flex gap-0.5">
+                <div
+                  v-for="c in 8"
+                  :key="c"
+                  class="w-3.5 h-3.5 rounded-sm border cursor-pointer transition-colors"
+                  :class="cellClass(c, r)"
+                  @mouseenter="setHover(c, r)"
+                  @click="selectCell(c, r)"
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- Live preview -->
+          <div class="flex flex-col gap-1">
+            <span class="text-xs text-gray-400">Preview</span>
+            <div
+              class="bg-darker rounded-lg border border-gray-700 p-3 overflow-hidden flex flex-col"
+              :style="{ width: (form.gridW * 55) + 'px', height: (form.gridH * 55) + 'px' }"
+            >
+              <div class="text-xs font-medium text-gray-300 mb-2 truncate flex-shrink-0">{{ form.name || 'Untitled report' }}</div>
+              <div class="flex-1 min-h-0">
+                <template v-if="form.displayMode === 'bar'">
+                  <div class="flex flex-col justify-center gap-1 h-full">
+                    <div v-for="w in [80, 55, 40, 25]" :key="w" class="flex items-center gap-1">
+                      <div class="w-8 h-1.5 bg-gray-700 rounded-sm flex-shrink-0" />
+                      <div class="h-1.5 rounded-sm" :style="{ width: w + '%', backgroundColor: form.color + '88' }" />
+                    </div>
+                  </div>
+                </template>
+                <template v-else-if="form.displayMode === 'line'">
+                  <div class="flex items-end gap-0.5 h-full">
+                    <div v-for="(h, i) in [30, 55, 45, 70, 50, 80, 60]" :key="i" class="flex-1 rounded-sm" :style="{ height: h + '%', backgroundColor: form.color + '88' }" />
+                  </div>
+                </template>
+                <template v-else-if="form.displayMode === 'pie'">
+                  <svg viewBox="0 0 100 100" class="w-full h-full">
+                    <path d="M 50 50 L 50 10 A 40 40 0 0 1 73.5 82.4 Z" :fill="form.color + 'ee'" />
+                    <path d="M 50 50 L 73.5 82.4 A 40 40 0 0 1 10 50 Z" :fill="form.color + '99'" />
+                    <path d="M 50 50 L 10 50 A 40 40 0 0 1 50 10 Z" :fill="form.color + '55'" />
+                  </svg>
+                </template>
+                <template v-else>
+                  <div class="flex flex-col justify-center gap-0.5 h-full">
+                    <div v-for="i in 4" :key="i" class="flex gap-2 py-0.5 border-b border-gray-700/50 last:border-0">
+                      <div class="flex-1 h-1.5 bg-gray-700 rounded-sm" />
+                      <div class="w-8 h-1.5 bg-gray-600 rounded-sm" />
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+            <p class="text-xs text-gray-500 text-center">{{ form.gridW }}x{{ form.gridH }} - {{ modeLabel }} - {{ subjectLabel }}</p>
+          </div>
+        </div>
+
         </template>
       </div>
 
@@ -614,6 +656,7 @@ function makeBlankForm() {
     gridW: 2,
     gridH: 2,
     color: '#6366f1',
+    unfilledColor: '#1f2937',
     valueFilterOp: '',
     valueFilterThreshold: 0,
     normalizeBy: 'none',
@@ -642,6 +685,7 @@ watch(
       form.gridW = def.gridW || 2
       form.gridH = def.gridH || 2
       form.color = def.color || '#6366f1'
+      form.unfilledColor = def.unfilledColor || '#1f2937'
       form.valueFilterOp = def.valueFilterOp || ''
       form.valueFilterThreshold = def.valueFilterThreshold || 0
       form.normalizeBy = def.normalizeBy || 'none'
@@ -954,6 +998,7 @@ function handleSave() {
     labelColors: ['pie', 'bar'].includes(form.displayMode) && Object.keys(labelColorsMap.value).length > 0
       ? JSON.stringify(labelColorsMap.value)
       : '',
+    unfilledColor: form.displayMode === 'heatmap' ? (form.unfilledColor || '') : '',
   }
   emit('saved', def)
   setTimeout(() => { isSaving.value = false }, 4000)

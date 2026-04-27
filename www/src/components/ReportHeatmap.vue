@@ -21,7 +21,7 @@
             class="text-center px-1 py-0.5"
             :style="cellStyle(rIdx, cIdx)"
             style="cursor: pointer;"
-            @mouseenter="(e) => showTooltip(e, [row + ' x ' + col, displayValue(rIdx, cIdx)])"
+            @mouseenter="(e) => showTooltip(e, [col + ' ' + row, displayValue(rIdx, cIdx)])"
             @mousemove="moveTooltip"
             @mouseleave="hideTooltip"
           >{{ displayValue(rIdx, cIdx) }}</td>
@@ -54,6 +54,7 @@ const props = defineProps<{
   result: ReportResult
   color: string
   normalizeBy?: string
+  unfilledColor?: string
 }>()
 
 const { tooltip, showTooltip, moveTooltip, hideTooltip } = useChartTooltip()
@@ -78,16 +79,31 @@ function idx(rIdx: number, cIdx: number): number {
   return rIdx * (props.result.colLabels?.length ?? 0) + cIdx
 }
 
+function hexToRgb(hex: string): [number, number, number] {
+  return [
+    Number.parseInt(hex.slice(1, 3), 16),
+    Number.parseInt(hex.slice(3, 5), 16),
+    Number.parseInt(hex.slice(5, 7), 16),
+  ]
+}
+
+const safeUnfilledColor = computed(() => {
+  const c = props.unfilledColor ?? ''
+  return c.startsWith('#') && c.length === 7 ? c : '#1f2937'
+})
+
 function displayValue(rIdx: number, cIdx: number): string {
   const v = props.result.matrixValues[idx(rIdx, cIdx)] ?? 0
-  if (v === 0) return '-'
+  if (v === 0) return '0'
   if (isPct.value) return `${v.toFixed(1)}%`
   return v % 1 === 0 ? String(v) : v.toFixed(2)
 }
 
 function cellStyle(rIdx: number, cIdx: number): Record<string, string> {
   const v = props.result.matrixValues[idx(rIdx, cIdx)] ?? 0
-  if (v === 0) return { color: '#4b5563' }
+  if (v === 0) {
+    return { backgroundColor: safeUnfilledColor.value, color: '#4b5563' }
+  }
   const max = globalMax.value
   let intensity: number
   if (isPct.value) {
@@ -95,11 +111,15 @@ function cellStyle(rIdx: number, cIdx: number): Record<string, string> {
   } else {
     intensity = max > 0 ? v / max : 0
   }
-  const opacity = Math.max(0.1, intensity)
-  const alphaHex = Math.round(opacity * 255).toString(16).padStart(2, '0')
+  intensity = Math.max(0.12, intensity)
+  const [fr, fg, fb] = hexToRgb(safeColor.value)
+  const [br, bg, bb] = hexToRgb(safeUnfilledColor.value)
+  const r = Math.round(br + (fr - br) * intensity)
+  const g = Math.round(bg + (fg - bg) * intensity)
+  const b = Math.round(bb + (fb - bb) * intensity)
   return {
-    backgroundColor: `${safeColor.value}${alphaHex}`,
-    color: opacity > 0.5 ? '#f3f4f6' : '#9ca3af',
+    backgroundColor: `rgb(${r}, ${g}, ${b})`,
+    color: intensity > 0.55 ? '#f3f4f6' : '#9ca3af',
   }
 }
 </script>

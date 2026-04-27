@@ -125,6 +125,7 @@
               <div class="mt-0_25rem text-xs text-gray-500 space-y-0.5">
                 <div>Last push: <span :class="cloudLastPushAt ? 'text-gray-400' : 'text-gray-600 italic'">{{ cloudLastPushAt ? cloudLastPushString : 'Never' }}</span></div>
                 <div>Last pull: <span :class="cloudLastPullAt ? 'text-gray-400' : 'text-gray-600 italic'">{{ cloudLastPullAt ? cloudLastPullString : 'Never' }}</span></div>
+                <div v-if="sessionExpiryString">Session expires: <span class="text-gray-400">{{ sessionExpiryString }}</span></div>
               </div>
               <div v-if="!cloudUsername || !cloudHasEncryptionKey" class="mt-0_5rem border border-yellow-700 rounded-md px-3 py-2 text-yellow-500 text-xs space-y-1.5 max-w-[50%]">
                 <p class="italic">Reconnect to restore{{ !cloudHasEncryptionKey ? ' sync credentials' : ' display name and avatar' }}.</p>
@@ -151,34 +152,70 @@
             </p>
           </div>
 
-          <div class="mt-0_5rem flex flex-row flex-wrap gap-2">
+          <div class="mt-0_5rem flex flex-col gap-2">
             <button
               v-if="!cloudConnected"
               type="button"
               :disabled="cloudAuthWaiting"
-              class="apply-filter-button !text-white"
+              class="apply-filter-button !text-white self-start"
               :style="{ backgroundColor: '#5865F2', borderColor: '#4752C4' }"
               @click="connectDiscord"
             ><span class="inline-flex items-center gap-1.5"><svg class="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057.101 18.079.11 18.1.133 18.114a19.929 19.929 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>{{ cloudAuthWaiting ? 'Waiting for auth...' : 'Connect with Discord' }}</span></button>
 
             <template v-if="cloudConnected">
-              <button
-                type="button"
-                :disabled="cloudSyncInProgress"
-                class="apply-filter-button !bg-blue-700 !text-white hover:!bg-blue-600 !border-blue-500"
-                @click="syncNow"
-              >{{ cloudSyncInProgress ? 'Syncing...' : 'Sync now' }}</button>
-              <button
-                type="button"
-                :disabled="cloudRestoreInProgress"
-                class="apply-filter-button !bg-gray-700 !text-gray-200 hover:!bg-gray-600 !border-gray-500"
-                @click="restoreNow"
-              >{{ cloudRestoreInProgress ? 'Restoring...' : 'Restore from cloud' }}</button>
-              <button
-                type="button"
-                class="apply-filter-button !bg-red-900 !text-red-200 hover:!bg-red-800 !border-red-700"
-                @click="disconnectCloud"
-              >Disconnect</button>
+              <div class="flex flex-row flex-wrap gap-2">
+                <button
+                  type="button"
+                  :disabled="cloudSyncInProgress"
+                  class="apply-filter-button !mt-0 !mr-0 !ml-0 !bg-blue-700 !text-white hover:!bg-blue-600 !border-blue-500"
+                  @click="syncNow"
+                ><span class="inline-flex items-center gap-1.5"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>{{ cloudSyncInProgress ? 'Syncing...' : 'Sync now' }}</span></button>
+                <button
+                  type="button"
+                  :disabled="cloudRestoreInProgress"
+                  class="apply-filter-button !mt-0 !mr-0 !ml-0 !bg-gray-700 !text-gray-200 hover:!bg-gray-600 !border-gray-500"
+                  @click="restoreNow"
+                ><span class="inline-flex items-center gap-1.5"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>{{ cloudRestoreInProgress ? 'Restoring...' : 'Restore from cloud' }}</span></button>
+              </div>
+              <div class="flex flex-row flex-wrap gap-2">
+                <template v-if="confirmingDeleteRemote">
+                  <span class="text-xs text-red-400 self-center">Delete all remote data?</span>
+                  <button
+                    type="button"
+                    class="apply-filter-button !mt-0 !mr-0 !ml-0 !text-gray-300 !bg-gray-700 hover:!bg-gray-600 !border-gray-500"
+                    @click="confirmingDeleteRemote = false"
+                  >Cancel</button>
+                  <button
+                    type="button"
+                    :disabled="deleteRemoteInProgress"
+                    class="apply-filter-button !mt-0 !mr-0 !ml-0 !bg-red-900 !text-red-200 hover:!bg-red-800 !border-red-700"
+                    @click="deleteRemoteData"
+                  >{{ deleteRemoteInProgress ? 'Deleting...' : 'Yes, delete' }}</button>
+                </template>
+                <template v-else>
+                  <button
+                    type="button"
+                    class="apply-filter-button !mt-0 !mr-0 !ml-0 !bg-red-900 !text-red-200 hover:!bg-red-800 !border-red-700"
+                    @click="disconnectCloud"
+                  >Disconnect</button>
+                  <button
+                    type="button"
+                    :disabled="deleteRemoteInProgress"
+                    class="apply-filter-button !mt-0 !mr-0 !ml-0 !bg-red-900/60 !text-red-300 hover:!bg-red-900 !border-red-800"
+                    @click="confirmingDeleteRemote = true"
+                  >Delete Remote Data</button>
+                </template>
+              </div>
+              <div class="flex items-center gap-2">
+                <input
+                  id="cloudAutoSyncCheckbox"
+                  type="checkbox"
+                  class="ext-opt-check"
+                  v-model="cloudAutoSync"
+                  @change="onAutoSyncChange"
+                />
+                <label for="cloudAutoSyncCheckbox" class="ext-opt-label">Auto-sync settings on change</label>
+              </div>
             </template>
           </div>
 
@@ -194,6 +231,8 @@
             ><span class="inline-flex items-center gap-1.5"><svg class="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057.101 18.079.11 18.1.133 18.114a19.929 19.929 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>{{ cloudAuthWaiting ? 'Waiting for auth...' : 'Reconnect with Discord' }}</span></button>
           </div>
           <div v-if="cloudSyncSuccess" class="mt-0_5rem text-green-400 text-xs">Sync complete.</div>
+          <div v-if="deleteRemoteError" class="mt-0_5rem text-red-400 text-xs">Delete failed: {{ deleteRemoteError }}</div>
+          <div v-if="deleteRemoteSuccess" class="mt-0_5rem text-green-400 text-xs">Remote data deleted.</div>
           <div v-if="cloudRestoreError" class="mt-0_5rem text-red-400 text-xs">Restore failed: {{ cloudRestoreError }}</div>
           <div v-if="cloudRestoreError && cloudRestoreError.includes('session expired')" class="mt-0_5rem border border-yellow-700 rounded-md px-3 py-2 text-yellow-500 text-xs space-y-1.5 max-w-[50%]">
             <p class="italic">Your session has expired. Reconnect to continue syncing.</p>
@@ -226,12 +265,15 @@
               />
               <button
                 type="button"
-                class="apply-filter-button !mt-0 !mr-0 !ml-0 flex-shrink-0"
+                class="apply-filter-button !mt-0 !mr-0 !ml-0 !bg-blue-700 !text-white hover:!bg-blue-600 !border-blue-500 flex-shrink-0"
                 @click="openStorageFolder"
               >Open folder</button>
               <button
                 type="button"
                 class="apply-filter-button !mt-0 !mr-0 !ml-0 flex-shrink-0"
+                :class="storageFolderHidden
+                  ? '!bg-green-700 !text-white hover:!bg-green-600 !border-green-500'
+                  : '!bg-orange-700 !text-white hover:!bg-orange-600 !border-orange-500'"
                 @click="toggleStorageVisible"
               >{{ storageFolderHidden ? 'Show folder' : 'Hide folder' }}</button>
             </div>
@@ -240,6 +282,9 @@
 
         <div class="mt-1rem">
           <span class="section-heading">Backup Storage</span><br />
+          <div class="mt-0_25rem pl-0_5rem text-xs text-gray-500">
+            Copies all app data into the chosen folder. The original files are not modified.
+          </div>
           <div class="mt-0_5rem pl-0_5rem">
             <div class="flex flex-row items-center gap-2 max-w-[50%]">
               <input
@@ -250,25 +295,33 @@
               />
               <button
                 type="button"
-                class="apply-filter-button !mt-0 !bg-gray-700 !text-gray-200 hover:!bg-gray-600 !border-gray-500 flex-shrink-0"
+                class="apply-filter-button !mt-0 !mr-0 !ml-0 !bg-gray-700 !text-gray-200 hover:!bg-gray-600 !border-gray-500 flex-shrink-0"
                 @click="chooseBackupDest"
               >Choose...</button>
-            </div>
-            <div class="flex flex-row items-center gap-2 mt-0_5rem">
               <button
                 type="button"
-                class="apply-filter-button !bg-blue-700 !text-white hover:!bg-blue-600 !border-blue-500"
+                class="apply-filter-button !mt-0 !mr-0 !ml-0 !bg-blue-700 !text-white hover:!bg-blue-600 !border-blue-500 flex-shrink-0"
                 :disabled="!backupDestPath || backupInProgress"
                 @click="runBackup"
-              >{{ backupInProgress ? 'Backing up...' : 'Backup storage...' }}</button>
-              <span v-if="backupSuccess" class="text-green-400 text-xs">Backup complete.</span>
-              <span v-if="backupError" class="text-red-400 text-xs">{{ backupError }}</span>
+              >{{ backupInProgress ? 'Backing up...' : 'Backup storage' }}</button>
+            </div>
+            <div class="mt-0_5rem">
+              <SegmentedProgressBar
+                :active="backupInProgress"
+                :segments="backupSegments"
+                :status-text="backupSuccess ? 'Backup complete.' : backupError || undefined"
+                :status-class="backupError ? 'text-red-400' : 'text-green-400'"
+                :is-spinning="backupInProgress"
+              />
             </div>
           </div>
         </div>
 
         <div class="mt-1rem">
           <span class="section-heading">Move Storage</span><br />
+          <div class="mt-0_25rem pl-0_5rem text-xs text-gray-500">
+            Copies all app data (databases, exports, logs) into the chosen folder, then restarts. The old files are NOT deleted automatically.
+          </div>
           <div class="mt-0_5rem pl-0_5rem">
             <div class="flex flex-row items-center gap-2 max-w-[50%]">
               <input
@@ -279,21 +332,16 @@
               />
               <button
                 type="button"
-                class="apply-filter-button !mt-0 !bg-gray-700 !text-gray-200 hover:!bg-gray-600 !border-gray-500 flex-shrink-0"
+                class="apply-filter-button !mt-0 !mr-0 !ml-0 !bg-gray-700 !text-gray-200 hover:!bg-gray-600 !border-gray-500 flex-shrink-0"
                 @click="chooseMoveDest"
               >Choose...</button>
-            </div>
-            <div class="mt-0_5rem text-xs text-orange-400 border border-orange-700 rounded-md py-2 px-3 max-w-[50%]">
-              Copies all app data (databases, exports, logs) into the chosen folder, then restarts. The old files are NOT deleted automatically.
-            </div>
-            <div class="flex flex-row items-center gap-2 mt-0_5rem">
               <button
                 type="button"
-                class="apply-filter-button !bg-orange-700 !text-white hover:!bg-orange-600 !border-orange-500"
+                class="apply-filter-button !mt-0 !mr-0 !ml-0 !bg-orange-700 !text-white hover:!bg-orange-600 !border-orange-500 flex-shrink-0"
                 :disabled="!moveDestPath || moveInProgress"
                 @click="runMove"
-              >{{ moveInProgress ? 'Moving...' : 'Move storage...' }}</button>
-              <span v-if="moveError" class="text-red-400 text-xs">{{ moveError }}</span>
+              >{{ moveInProgress ? 'Moving...' : 'Move storage' }}</button>
+              <span v-if="moveError" class="text-red-400 text-xs flex-shrink-0">{{ moveError }}</span>
             </div>
           </div>
         </div>
@@ -447,10 +495,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useSettings } from '../composables/useSettings'
 import { useMennoData } from '../composables/useMennoData'
 import { useDropdownSelector } from '../composables/useDropdownSelector'
+import SegmentedProgressBar from '../components/SegmentedProgressBar.vue'
+import type { ProgressSegment } from '../components/SegmentedProgressBar.vue'
 
 const {
   resolutionX,
@@ -491,6 +541,17 @@ const moveDestPath = ref('')
 const moveInProgress = ref(false)
 const moveError = ref('')
 
+const pendingSegment = (label: string): ProgressSegment => ({ label, status: 'pending', color: 'blue' })
+const activeSegment = (label: string): ProgressSegment => ({ label, status: 'active', color: 'blue', pulsing: true })
+const doneSegment = (label: string): ProgressSegment => ({ label, status: 'done', color: 'blue' })
+const failedSegment = (label: string): ProgressSegment => ({ label, status: 'failed', color: 'blue' })
+
+const backupSegments = ref<ProgressSegment[]>([
+  pendingSegment('Database'),
+  pendingSegment('Exports'),
+  pendingSegment('Logs'),
+])
+
 function openStorageFolder() {
   if (storagePath.value) {
     globalThis.openFileInFolder(storagePath.value)
@@ -517,11 +578,26 @@ async function runBackup() {
   backupSuccess.value = false
   backupError.value = ''
   backupInProgress.value = true
+  const dest = backupDestPath.value
+  const parts: Array<{ part: 'internal' | 'exports' | 'logs'; label: string }> = [
+    { part: 'internal', label: 'Database' },
+    { part: 'exports', label: 'Exports' },
+    { part: 'logs', label: 'Logs' },
+  ]
+  backupSegments.value = parts.map((p, i) => i === 0 ? activeSegment(p.label) : pendingSegment(p.label))
   try {
-    await globalThis.backupStorageTo(backupDestPath.value)
+    for (let i = 0; i < parts.length; i++) {
+      await globalThis.backupStoragePart(dest, parts[i].part)
+      backupSegments.value[i] = doneSegment(parts[i].label)
+      if (i + 1 < parts.length) {
+        backupSegments.value[i + 1] = activeSegment(parts[i + 1].label)
+      }
+    }
     backupSuccess.value = true
   } catch (e: unknown) {
     backupError.value = e instanceof Error ? e.message : String(e)
+    const activeIdx = backupSegments.value.findIndex(s => s.status === 'active')
+    if (activeIdx >= 0) backupSegments.value[activeIdx] = failedSegment(parts[activeIdx].label)
   } finally {
     backupInProgress.value = false
   }
@@ -607,6 +683,7 @@ onMounted(async () => {
   await checkRefreshNeeded()
   workerCountWarningRead.value = (await globalThis.workerCountWarningRead()) ?? false
   storagePath.value = (await globalThis.getStoragePath()) ?? ''
+  cloudAutoSync.value = (await globalThis.getCloudAutoSync()) ?? false
   await initCloudSync()
 })
 
@@ -634,6 +711,11 @@ const cloudSyncSuccess = ref(false)
 const cloudRestoreInProgress = ref(false)
 const cloudRestoreError = ref('')
 const cloudRestoreSuccess = ref(false)
+const confirmingDeleteRemote = ref(false)
+const deleteRemoteInProgress = ref(false)
+const deleteRemoteError = ref('')
+const deleteRemoteSuccess = ref(false)
+const cloudAutoSync = ref(false)
 
 const cloudLastPushString = computed(() => {
   if (!cloudLastPushAt.value) return ''
@@ -643,6 +725,13 @@ const cloudLastPushString = computed(() => {
 const cloudLastPullString = computed(() => {
   if (!cloudLastPullAt.value) return ''
   return new Date(cloudLastPullAt.value * 1000).toLocaleString()
+})
+
+const sessionExpiryString = computed(() => {
+  const lastActivity = Math.max(cloudLastPushAt.value, cloudLastPullAt.value)
+  if (!lastActivity) return ''
+  const expiryMs = (lastActivity + 30 * 24 * 3600) * 1000
+  return new Date(expiryMs).toLocaleString()
 })
 
 type CloudStatusPayload = { connected: boolean; username: string; avatarUrl: string; lastPushAt: number; lastPullAt: number; hasEncryptionKey: boolean }
@@ -669,6 +758,8 @@ async function initCloudSync() {
     cloudConnected.value = connected
     cloudUsername.value = username ?? ''
     if (connected) {
+      cloudSyncError.value = ''
+      cloudRestoreError.value = ''
       refreshSyncStatus()
     }
   }
@@ -746,4 +837,34 @@ function restoreNow() {
   cloudRestoreSuccess.value = false
   globalThis.restoreFromCloud()
 }
+
+async function deleteRemoteData() {
+  deleteRemoteInProgress.value = true
+  deleteRemoteError.value = ''
+  deleteRemoteSuccess.value = false
+  confirmingDeleteRemote.value = false
+  const errMsg = await globalThis.deleteRemoteData()
+  deleteRemoteInProgress.value = false
+  if (errMsg) {
+    deleteRemoteError.value = errMsg
+  } else {
+    deleteRemoteSuccess.value = true
+  }
+}
+
+async function onAutoSyncChange() {
+  await globalThis.setCloudAutoSync(cloudAutoSync.value)
+}
+
+watch(
+  [
+    autoRefreshMenno, autoRetry, hideTimeoutErrors, workerCount,
+    screenshotSafety, showMissionProgress, collapseOlderSections,
+  ],
+  () => {
+    if (cloudAutoSync.value && cloudConnected.value && !cloudSyncInProgress.value) {
+      syncNow()
+    }
+  },
+)
 </script>

@@ -1,0 +1,1 @@
+ALTER TABLE reports ADD COLUMN unfilled_color TEXT NOT NULL DEFAULT '';

@@ -55,7 +55,7 @@
         <span class="text-xs text-gray-500 animate-pulse">Running...</span>
       </div>
       <template v-else-if="result && result.is2D">
-        <ReportHeatmap v-if="def.displayMode === 'heatmap'" :result="result" :color="def.color || '#6366f1'" :normalize-by="def.normalizeBy || 'none'" />
+        <ReportHeatmap v-if="def.displayMode === 'heatmap'" :result="result" :color="def.color || '#6366f1'" :normalize-by="def.normalizeBy || 'none'" :unfilled-color="def.unfilledColor" />
         <ReportGroupedBar v-else-if="def.displayMode === 'grouped_bar'" :result="result" :color="def.color || '#6366f1'" :normalize-by="def.normalizeBy || 'none'" />
         <ReportMultiLineChart v-else-if="def.displayMode === 'multi_line'" :result="result" :color="def.color || '#6366f1'" :label-colors="def.labelColors" :normalize-by="def.normalizeBy || 'none'" />
         <div v-else class="h-full flex items-center justify-center">

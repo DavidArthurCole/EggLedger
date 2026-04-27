@@ -230,7 +230,7 @@ const yTicks = computed(() => {
     const y = PAD_TOP + yRange * (1 - frac)
     let label: string
     if (isPct.value) label = `${val.toFixed(0)}%`
-    else if (val % 1 === 0) label = String(val)
+    else if (max % 1 === 0) label = String(Math.round(val))
     else label = val.toFixed(1)
     return { y, label }
   })
