@@ -25,6 +25,7 @@ type AppStorage struct {
 	FilterWarningRead          bool      `json:"filter_warning_read"`
 	WorkerCountWarningRead     bool      `json:"worker_count_warning_read"`
 	PreferredChromiumPath      string    `json:"preferred_chromium_path"`
+	BackupDestPath             string    `json:"backup_dest_path"`
 	AutoRefreshMennoPref       bool      `json:"auto_refresh_menno_pref"`
 	DefaultResolutionX         int       `json:"default_resolution_x"`
 	DefaultResolutionY         int       `json:"default_resolution_y"`
@@ -158,6 +159,9 @@ func (s *AppStorage) loadFromDB() {
 	if v, ok := settings["preferred_chromium_path"]; ok {
 		s.PreferredChromiumPath = v
 	}
+	if v, ok := settings["backup_dest_path"]; ok {
+		s.BackupDestPath = v
+	}
 	if v, ok := settings["auto_refresh_menno_pref"]; ok {
 		s.AutoRefreshMennoPref, _ = strconv.ParseBool(v)
 	}
@@ -285,6 +289,7 @@ func (s *AppStorage) persistAllToDB() {
 		"filter_warning_read":           strconv.FormatBool(s.FilterWarningRead),
 		"worker_count_warning_read":     strconv.FormatBool(s.WorkerCountWarningRead),
 		"preferred_chromium_path":       s.PreferredChromiumPath,
+		"backup_dest_path":              s.BackupDestPath,
 		"auto_refresh_menno_pref":       strconv.FormatBool(s.AutoRefreshMennoPref),
 		"default_resolution_x":          strconv.Itoa(s.DefaultResolutionX),
 		"default_resolution_y":          strconv.Itoa(s.DefaultResolutionY),
@@ -375,6 +380,13 @@ func (s *AppStorage) SetPreferredChromiumPath(path string) {
 	s.PreferredChromiumPath = path
 	s.Unlock()
 	go s.dbSet("preferred_chromium_path", path)
+}
+
+func (s *AppStorage) SetBackupDestPath(path string) {
+	s.Lock()
+	s.BackupDestPath = path
+	s.Unlock()
+	go s.dbSet("backup_dest_path", path)
 }
 
 func (s *AppStorage) SetAutoRefreshMennoPref(flag bool) {

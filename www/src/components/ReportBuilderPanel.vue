@@ -50,14 +50,19 @@
         <!-- Advanced form fields -->
         <template v-else>
 
+        <!-- Info section header -->
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Info</span>
+          <div class="flex-1 h-px bg-gray-700"></div>
+        </div>
+
         <!-- Name -->
         <div class="flex flex-col gap-1">
-          <label for="rb-name" class="text-xs text-gray-400 flex items-center gap-1">
+          <span class="text-xs text-gray-400 flex items-center gap-1">
             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
             Name
-          </label>
+          </span>
           <input
-            id="rb-name"
             v-model="form.name"
             type="text"
             class="bg-darker border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 focus:outline-none focus:border-blue-500"
@@ -67,12 +72,11 @@
 
         <!-- Description -->
         <div class="flex flex-col gap-1">
-          <label for="rb-description" class="text-xs text-gray-400 flex items-center gap-1">
+          <span class="text-xs text-gray-400 flex items-center gap-1">
             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h8"/></svg>
             Description (optional)
-          </label>
+          </span>
           <textarea
-            id="rb-description"
             v-model="form.description"
             rows="2"
             class="bg-darker border border-gray-700 rounded px-2 py-1.5 text-xs text-gray-400 focus:outline-none focus:border-blue-500 resize-none"
@@ -89,12 +93,11 @@
         <!-- Subject + Mode row -->
         <div class="grid grid-cols-2 gap-3">
           <div class="flex flex-col gap-1">
-            <label for="rb-subject" class="text-xs text-gray-400 flex items-center gap-1">
+            <span class="text-xs text-gray-400 flex items-center gap-1">
               <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/></svg>
               Subject
-            </label>
+            </span>
             <select
-              id="rb-subject"
               v-model="form.subject"
               class="bg-darker border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 focus:outline-none focus:border-blue-500"
               @change="onSubjectChange"
@@ -104,12 +107,11 @@
             </select>
           </div>
           <div class="flex flex-col gap-1">
-            <label for="rb-mode" class="text-xs text-gray-400 flex items-center gap-1">
+            <span class="text-xs text-gray-400 flex items-center gap-1">
               <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
               Mode
-            </label>
+            </span>
             <select
-              id="rb-mode"
               v-model="form.mode"
               class="bg-darker border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 focus:outline-none focus:border-blue-500"
               @change="onSubjectOrModeChange"
@@ -123,12 +125,11 @@
         <!-- Display mode + Group by row -->
         <div class="grid grid-cols-2 gap-3">
           <div v-if="!(form.mode === 'time_series' && form.secondaryGroupBy)" class="flex flex-col gap-1">
-            <label for="rb-display-mode" class="text-xs text-gray-400 flex items-center gap-1">
+            <span class="text-xs text-gray-400 flex items-center gap-1">
               <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
               Display
-            </label>
+            </span>
             <select
-              id="rb-display-mode"
               v-model="form.displayMode"
               class="bg-darker border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 focus:outline-none focus:border-blue-500"
               @change="form.chartType = ''"
@@ -149,12 +150,11 @@
             </select>
           </div>
           <div class="flex flex-col gap-1" :class="{ 'col-span-2': form.mode === 'time_series' && form.secondaryGroupBy }">
-            <label for="rb-group-by" class="text-xs text-gray-400 flex items-center gap-1">
+            <span class="text-xs text-gray-400 flex items-center gap-1">
               <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z"/></svg>
               Group by
-            </label>
+            </span>
             <select
-              id="rb-group-by"
               v-model="form.groupBy"
               class="bg-darker border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 focus:outline-none focus:border-blue-500"
             >
@@ -167,12 +167,11 @@
 
         <!-- Chart style (line and bar charts) -->
         <div v-if="form.displayMode === 'line' || form.displayMode === 'bar'" class="flex flex-col gap-1">
-          <label for="rb-chart-type" class="text-xs text-gray-400 flex items-center gap-1">
+          <span class="text-xs text-gray-400 flex items-center gap-1">
             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>
             Style
-          </label>
+          </span>
           <select
-            id="rb-chart-type"
             v-model="form.chartType"
             class="bg-darker border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 focus:outline-none focus:border-blue-500"
           >
@@ -190,12 +189,11 @@
 
         <!-- Secondary Group By -->
         <div class="flex flex-col gap-1">
-          <label for="rb-secondary-group-by" class="text-xs text-gray-400 flex items-center gap-1">
+          <span class="text-xs text-gray-400 flex items-center gap-1">
             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 6H21M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
             Secondary Group By
-          </label>
+          </span>
           <select
-            id="rb-secondary-group-by"
             v-model="form.secondaryGroupBy"
             class="bg-darker border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 focus:outline-none focus:border-blue-500"
             @change="onSecondaryGroupByChange"
@@ -214,12 +212,11 @@
         <!-- Time bucket (time_series only) -->
         <div v-if="form.mode === 'time_series'" class="grid grid-cols-2 gap-3">
           <div class="flex flex-col gap-1">
-            <label for="rb-time-bucket" class="text-xs text-gray-400 flex items-center gap-1">
+            <span class="text-xs text-gray-400 flex items-center gap-1">
               <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
               Time bucket
-            </label>
+            </span>
             <select
-              id="rb-time-bucket"
               v-model="form.timeBucket"
               class="bg-darker border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 focus:outline-none focus:border-blue-500"
             >
@@ -256,10 +253,10 @@
 
         <!-- Value filter -->
         <div class="flex flex-col gap-1">
-          <label for="rb-value-filter-op" class="text-xs text-gray-400 flex items-center gap-1">
+          <span class="text-xs text-gray-400 flex items-center gap-1">
             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
             Filter results where value
-          </label>
+          </span>
           <div class="flex items-center gap-1.5">
             <select
               id="rb-value-filter-op"
@@ -485,7 +482,7 @@
             <span class="text-xs text-gray-400">Preview</span>
             <div
               class="bg-darker rounded-lg border border-gray-700 p-3 overflow-hidden flex flex-col"
-              :style="{ width: (form.gridW * 55) + 'px', height: (form.gridH * 55) + 'px' }"
+              :style="{ width: (form.gridW * 110) + 'px', height: (form.gridH * 110) + 'px' }"
             >
               <div class="text-xs font-medium text-gray-300 mb-2 truncate flex-shrink-0">{{ form.name || 'Untitled report' }}</div>
               <div class="flex-1 min-h-0">

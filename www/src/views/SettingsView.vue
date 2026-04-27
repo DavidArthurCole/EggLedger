@@ -292,6 +292,7 @@
                 class="drop-select-full text-sm bg-darkest"
                 placeholder="Destination path..."
                 v-model="backupDestPath"
+                @change="onBackupDestChange"
               />
               <button
                 type="button"
@@ -564,9 +565,16 @@ async function toggleStorageVisible() {
   await globalThis.setStorageFolderVisible(!nowHidden)
 }
 
+function onBackupDestChange() {
+  globalThis.setBackupDestPath(backupDestPath.value)
+}
+
 async function chooseBackupDest() {
   const path = await globalThis.chooseFolderPath()
-  if (path) backupDestPath.value = path
+  if (path) {
+    backupDestPath.value = path
+    globalThis.setBackupDestPath(path)
+  }
 }
 
 async function chooseMoveDest() {
@@ -683,6 +691,7 @@ onMounted(async () => {
   await checkRefreshNeeded()
   workerCountWarningRead.value = (await globalThis.workerCountWarningRead()) ?? false
   storagePath.value = (await globalThis.getStoragePath()) ?? ''
+  backupDestPath.value = (await globalThis.getBackupDestPath()) ?? ''
   cloudAutoSync.value = (await globalThis.getCloudAutoSync()) ?? false
   await initCloudSync()
 })

@@ -19,10 +19,11 @@
                 backgroundColor: colColors[cIdx],
                 minWidth: '2px',
                 cursor: 'pointer',
+                opacity: barOpacity(rIdx, cIdx),
               }"
-              @mouseenter="(e) => showTooltip(e, [col + ' ' + row, cellLabel(rIdx, cIdx)])"
+              @mouseenter="(e) => onBarEnter(e, rIdx, cIdx, [col + ' ' + row, cellLabel(rIdx, cIdx)])"
               @mousemove="moveTooltip"
-              @mouseleave="hideTooltip"
+              @mouseleave="onBarLeave"
             />
             <span class="text-xs text-gray-500 shrink-0">{{ cellLabel(rIdx, cIdx) }}</span>
           </div>
@@ -57,7 +58,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import type { ReportResult } from '../types/bridge'
 import { useChartTooltip } from '../composables/useChartTooltip'
 
@@ -70,6 +71,24 @@ const props = defineProps<{
 }>()
 
 const { tooltip, showTooltip, moveTooltip, hideTooltip } = useChartTooltip()
+const hoveredKey = ref<string | null>(null)
+let clearTimer: ReturnType<typeof setTimeout> | null = null
+
+function barOpacity(rIdx: number, cIdx: number): number {
+  if (hoveredKey.value === null) return 1
+  return `${rIdx}-${cIdx}` === hoveredKey.value ? 1 : 0.35
+}
+
+function onBarEnter(e: MouseEvent, rIdx: number, cIdx: number, tooltipLines: string[]) {
+  if (clearTimer !== null) { clearTimeout(clearTimer); clearTimer = null }
+  hoveredKey.value = `${rIdx}-${cIdx}`
+  showTooltip(e, tooltipLines)
+}
+
+function onBarLeave() {
+  clearTimer = setTimeout(() => { hoveredKey.value = null; clearTimer = null }, 120)
+  hideTooltip()
+}
 
 const isPct = computed(() =>
   props.normalizeBy === 'row_pct' || props.normalizeBy === 'col_pct' || props.normalizeBy === 'global_pct',

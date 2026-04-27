@@ -358,6 +358,8 @@ declare global {
   // Storage management
   function getStoragePath(): Promise<string>
   function setStorageFolderVisible(visible: boolean): Promise<void>
+  function getBackupDestPath(): Promise<string>
+  function setBackupDestPath(path: string): Promise<void>
   function backupStoragePart(destPath: string, part: 'internal' | 'exports' | 'logs'): Promise<void>
   function moveStorageTo(destPath: string): Promise<void>
 

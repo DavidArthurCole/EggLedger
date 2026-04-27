@@ -15,7 +15,7 @@
 
           <template v-if="cond.topLevel && isBoolField(cond.topLevel)">
             <select
-              class="bg-darker border border-gray-700 rounded px-2.5 py-1.5 text-xs text-gray-300 focus:outline-none min-w-0 opacity-60 cursor-not-allowed"
+              class="bg-darker border border-gray-700 rounded px-2.5 py-1.5 text-xs text-gray-300 focus:outline-none w-14 flex-shrink-0 opacity-60 cursor-not-allowed"
               disabled
             >
               <option value="">is</option>

@@ -953,6 +953,14 @@ func main() {
 		}
 	})
 
+	ui.MustBind("getBackupDestPath", func() string {
+		return _storage.BackupDestPath
+	})
+
+	ui.MustBind("setBackupDestPath", func(path string) {
+		_storage.SetBackupDestPath(path)
+	})
+
 	ui.MustBind("moveStorageTo", func(destPath string) error {
 		action := "moveStorageTo"
 		wrap := func(err error) error { return errors.Wrap(err, action) }

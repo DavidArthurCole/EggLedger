@@ -3,7 +3,7 @@
     <table class="text-xs w-full h-full border-collapse table-fixed">
       <thead>
         <tr>
-          <th class="px-1 py-0.5 text-left font-normal w-36 text-gray-600"></th>
+          <th class="px-1 py-0.5 text-left font-normal w-20 text-gray-600"></th>
           <th
             v-for="col in result.colLabels"
             :key="col"
@@ -21,9 +21,9 @@
             class="text-center px-1 py-0.5"
             :style="cellStyle(rIdx, cIdx)"
             style="cursor: pointer;"
-            @mouseenter="(e) => showTooltip(e, [col + ' ' + row, displayValue(rIdx, cIdx)])"
+            @mouseenter="(e) => { hoveredCell = [rIdx, cIdx]; showTooltip(e, [col + ' ' + row, displayValue(rIdx, cIdx)]) }"
             @mousemove="moveTooltip"
-            @mouseleave="hideTooltip"
+            @mouseleave="() => { hoveredCell = null; hideTooltip() }"
           >{{ displayValue(rIdx, cIdx) }}</td>
         </tr>
       </tbody>
@@ -46,7 +46,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import type { ReportResult } from '../types/bridge'
 import { useChartTooltip } from '../composables/useChartTooltip'
 
@@ -58,6 +58,7 @@ const props = defineProps<{
 }>()
 
 const { tooltip, showTooltip, moveTooltip, hideTooltip } = useChartTooltip()
+const hoveredCell = ref<[number, number] | null>(null)
 
 const isPct = computed(() =>
   props.normalizeBy === 'row_pct' || props.normalizeBy === 'col_pct' || props.normalizeBy === 'global_pct',
@@ -101,8 +102,13 @@ function displayValue(rIdx: number, cIdx: number): string {
 
 function cellStyle(rIdx: number, cIdx: number): Record<string, string> {
   const v = props.result.matrixValues[idx(rIdx, cIdx)] ?? 0
+  const hovered = hoveredCell.value !== null && hoveredCell.value[0] === rIdx && hoveredCell.value[1] === cIdx
   if (v === 0) {
-    return { backgroundColor: safeUnfilledColor.value, color: '#4b5563' }
+    return {
+      backgroundColor: safeUnfilledColor.value,
+      color: '#4b5563',
+      filter: hovered ? 'brightness(1.4)' : '',
+    }
   }
   const max = globalMax.value
   let intensity: number
@@ -120,6 +126,7 @@ function cellStyle(rIdx: number, cIdx: number): Record<string, string> {
   return {
     backgroundColor: `rgb(${r}, ${g}, ${b})`,
     color: intensity > 0.55 ? '#f3f4f6' : '#9ca3af',
+    filter: hovered ? 'brightness(1.4)' : '',
   }
 }
 </script>

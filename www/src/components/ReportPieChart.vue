@@ -30,7 +30,7 @@
         @mouseleave="() => { hoveredIndex = null; hideTooltip() }"
       />
       <!-- Connector lines and labels -->
-      <g v-for="(seg, i) in segments" :key="'lbl-' + i">
+      <g v-for="(seg, i) in segments" :key="'lbl-' + i" style="pointer-events: none;">
         <line
           :x1="seg.innerX"
           :y1="seg.innerY"
