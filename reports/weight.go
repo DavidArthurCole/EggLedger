@@ -9,6 +9,25 @@ import (
 // report definition so callers can throttle or warn before executing expensive
 // queries.
 func ClassifyWeight(def ReportDefinition) string {
+	// Time-series + secondary group-by: time pivot (most expensive case first)
+	if def.SecondaryGroupBy != "" && def.Mode == "time_series" {
+		eitherIsArtifact := isArtifactDimension(def.GroupBy) || isArtifactDimension(def.SecondaryGroupBy)
+		if eitherIsArtifact {
+			if hasDateFilter(def.Filters) {
+				return "MEDIUM"
+			}
+			return "HEAVY"
+		}
+		if !hasDateFilter(def.Filters) {
+			return "HEAVY"
+		}
+		if dateFilterWindowDays(def.Filters) > 90 {
+			return "HEAVY"
+		}
+		return "MEDIUM"
+	}
+
+	// Aggregate 2D pivot
 	if def.SecondaryGroupBy != "" {
 		eitherIsArtifact := isArtifactDimension(def.GroupBy) || isArtifactDimension(def.SecondaryGroupBy)
 		if eitherIsArtifact {
@@ -19,6 +38,8 @@ func ClassifyWeight(def ReportDefinition) string {
 		}
 		return "LOW"
 	}
+
+	// 1D time series
 	if def.Mode == "time_series" {
 		if def.TimeBucket == "custom" {
 			days := customBucketDays(def.CustomBucketN, def.CustomBucketUnit)
@@ -36,6 +57,7 @@ func ClassifyWeight(def ReportDefinition) string {
 		}
 		return "MEDIUM"
 	}
+
 	if def.Mode == "aggregate" && hasArtifactScopeFilter(def.Filters) {
 		return "MEDIUM"
 	}

@@ -77,3 +77,80 @@ func TestClassifyWeight_2D_ArtifactWithDate_IsMedium(t *testing.T) {
 		t.Errorf("want MEDIUM, got %s", got)
 	}
 }
+
+func TestClassifyWeight_TimePivot_NoArtifact_NoDate_IsHeavy(t *testing.T) {
+	def := ReportDefinition{
+		Mode:             "time_series",
+		GroupBy:          "time_bucket",
+		SecondaryGroupBy: "ship_type",
+		TimeBucket:       "month",
+	}
+	got := ClassifyWeight(def)
+	if got != "HEAVY" {
+		t.Errorf("want HEAVY, got %s", got)
+	}
+}
+
+func TestClassifyWeight_TimePivot_NoArtifact_WithRecentDate_IsMedium(t *testing.T) {
+	ago30 := time.Now().AddDate(0, 0, -30).Format("2006-01-02")
+	def := ReportDefinition{
+		Mode:             "time_series",
+		GroupBy:          "time_bucket",
+		SecondaryGroupBy: "ship_type",
+		TimeBucket:       "month",
+		Filters: ReportFilters{
+			And: []FilterCondition{{TopLevel: "launchDT", Op: ">=", Val: ago30}},
+		},
+	}
+	got := ClassifyWeight(def)
+	if got != "MEDIUM" {
+		t.Errorf("want MEDIUM, got %s", got)
+	}
+}
+
+func TestClassifyWeight_TimePivot_NoArtifact_WithOldDate_IsHeavy(t *testing.T) {
+	ago180 := time.Now().AddDate(0, 0, -180).Format("2006-01-02")
+	def := ReportDefinition{
+		Mode:             "time_series",
+		GroupBy:          "time_bucket",
+		SecondaryGroupBy: "ship_type",
+		TimeBucket:       "month",
+		Filters: ReportFilters{
+			And: []FilterCondition{{TopLevel: "launchDT", Op: ">=", Val: ago180}},
+		},
+	}
+	got := ClassifyWeight(def)
+	if got != "HEAVY" {
+		t.Errorf("want HEAVY, got %s", got)
+	}
+}
+
+func TestClassifyWeight_TimePivot_ArtifactSecondary_NoDate_IsHeavy(t *testing.T) {
+	def := ReportDefinition{
+		Mode:             "time_series",
+		GroupBy:          "time_bucket",
+		SecondaryGroupBy: "artifact_name",
+		TimeBucket:       "month",
+	}
+	got := ClassifyWeight(def)
+	if got != "HEAVY" {
+		t.Errorf("want HEAVY, got %s", got)
+	}
+}
+
+func TestClassifyWeight_TimePivot_ArtifactSecondary_WithDate_IsMedium(t *testing.T) {
+	ago30 := time.Now().AddDate(0, 0, -30).Format("2006-01-02")
+	def := ReportDefinition{
+		Mode:             "time_series",
+		GroupBy:          "time_bucket",
+		SecondaryGroupBy: "artifact_name",
+		TimeBucket:       "month",
+		Filters: ReportFilters{
+			And: []FilterCondition{{TopLevel: "launchDT", Op: ">=", Val: ago30}},
+		},
+	}
+	got := ClassifyWeight(def)
+	if got != "MEDIUM" {
+		t.Errorf("want MEDIUM, got %s", got)
+	}
+}

@@ -25,7 +25,7 @@
         :fill="seg.color"
         :opacity="segmentOpacity(i)"
         style="cursor: pointer; transition: opacity 0.1s;"
-        @mouseenter="(e) => { hoveredIndex = i; showTooltip(e, [seg.shortLabel, String(seg.value) + ' (' + seg.pct.toFixed(1) + '%)']) }"
+        @mouseenter="(e) => { hoveredIndex = i; showTooltip(e, [seg.label, String(seg.value) + ' (' + seg.pct.toFixed(1) + '%)']) }"
         @mousemove="moveTooltip"
         @mouseleave="() => { hoveredIndex = null; hideTooltip() }"
       />
@@ -178,9 +178,6 @@ function segmentColors(baseColor: string, count: number): string[] {
   )
 }
 
-function truncateLabel(label: string, maxLen = 16): string {
-  return label.length > maxLen ? label.slice(0, maxLen - 1) + '…' : label
-}
 
 const parsedLabelColors = computed((): Record<string, string> => {
   if (!props.labelColors) return {}
@@ -194,11 +191,13 @@ const parsedLabelColors = computed((): Record<string, string> => {
 const segments = computed(() => {
   const cxVal = cx.value
   const cyVal = cy.value
+  const vwVal = vw.value
   const vhVal = vh.value
   const rVal = r.value
   const elbowRVal = elbowR.value
   const labelOffsetVal = labelOffset.value
   const textXOffVal = textXOff.value
+  const fontSizeVal = fontSize.value
   const minSpacing = minLabelSpacing.value
   const clamp = labelClamp.value
 
@@ -245,6 +244,9 @@ const segments = computed(() => {
   }
 
   let angleOffset = -Math.PI / 2
+  const hMargin = 4
+  const charWidth = fontSizeVal * 0.58
+
   const raw = items.map((item, i) => {
     const sweep = (item.value / total) * 2 * Math.PI
     const startAngle = angleOffset
@@ -254,15 +256,36 @@ const segments = computed(() => {
 
     const innerX = cxVal + Math.cos(midAngle) * rVal
     const innerY = cyVal + Math.sin(midAngle) * rVal
-    const elbowX = cxVal + Math.cos(midAngle) * elbowRVal
+    const rawElbowX = cxVal + Math.cos(midAngle) * elbowRVal
     const rawElbowY = cyVal + Math.sin(midAngle) * elbowRVal
-    const isRight = elbowX >= cxVal
-    const labelX = isRight ? elbowX + labelOffsetVal : elbowX - labelOffsetVal
+    const isRight = rawElbowX >= cxVal
+    const rawLabelX = isRight ? rawElbowX + labelOffsetVal : rawElbowX - labelOffsetVal
+    const rawTextX = isRight ? rawLabelX + textXOffVal : rawLabelX - textXOffVal
+
+    // How many characters fit between the text anchor and the viewBox edge
+    const available = isRight ? vwVal - hMargin - rawTextX : rawTextX - hMargin
+    const maxChars = Math.max(4, Math.floor(available / charWidth))
+    const displayLabel = item.label.length > maxChars
+      ? item.label.slice(0, maxChars - 1) + '…'
+      : item.label
+    const displayWidth = displayLabel.length * charWidth
+
+    // If even the truncated label overflows at the natural position, push labelX inward
+    let labelX = rawLabelX
+    let elbowX = rawElbowX
+    if (isRight && rawTextX + displayWidth > vwVal - hMargin) {
+      labelX = vwVal - hMargin - displayWidth - textXOffVal
+      elbowX = Math.min(rawElbowX, labelX)
+    } else if (!isRight && rawTextX - displayWidth < hMargin) {
+      labelX = hMargin + displayWidth + textXOffVal
+      elbowX = Math.max(rawElbowX, labelX)
+    }
+
     const color = perLabel[item.label] ?? autoColors[i]
 
     return {
       label: item.label,
-      shortLabel: truncateLabel(item.label),
+      shortLabel: displayLabel,
       value: item.value,
       path: slicePath(startAngle, endAngle),
       color,

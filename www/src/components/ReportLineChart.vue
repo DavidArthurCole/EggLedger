@@ -32,7 +32,7 @@
             :y="tick.y"
             text-anchor="end"
             dominant-baseline="middle"
-            style="font-size: 8px; fill: #6b7280;"
+            style="font-size: 10px; fill: #6b7280;"
           >{{ tick.label }}</text>
         </g>
       </template>
@@ -52,8 +52,8 @@
         <text
           :transform="`translate(${p.x}, ${H - PAD_BOTTOM + 4}) rotate(-45)`"
           text-anchor="end"
-          style="font-size: 8px; fill: #6b7280;"
-        >{{ truncateLabel(p.label) }}</text>
+          style="font-size: 10px; fill: #6b7280;"
+        >{{ formatXLabel(p.label) }}</text>
       </g>
 
       <circle
@@ -95,7 +95,7 @@ import { useChartTooltip } from '../composables/useChartTooltip'
 const PAD_LEFT = 36
 const PAD_RIGHT = 8
 const PAD_TOP = 10
-const PAD_BOTTOM = 42
+const PAD_BOTTOM = 60
 
 const props = defineProps<{
   result: ReportResult
@@ -129,8 +129,23 @@ const activePoint = ref<{ x: number; y: number; label: string; value: number } |
 const gradId = `line-grad-${Math.random().toString(36).slice(2, 7)}`
 const { tooltip, showTooltip, moveTooltip, hideTooltip } = useChartTooltip()
 
-function truncateLabel(s: string, max = 14): string {
-  return s.length > max ? s.slice(0, max - 1) + '...' : s
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+function formatXLabel(s: string): string {
+  const ymMatch = s.match(/^(\d{4})-(\d{2})$/)
+  if (ymMatch) {
+    const n = Number.parseInt(ymMatch[2], 10)
+    const yr = ymMatch[1].slice(2)
+    if (n >= 1 && n <= 12) return `${MONTHS[n - 1]} '${yr}`
+    return `W${ymMatch[2]} '${yr}`
+  }
+  const ymdMatch = s.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (ymdMatch) {
+    const m = Number.parseInt(ymdMatch[2], 10)
+    const d = Number.parseInt(ymdMatch[3], 10)
+    return `${d} ${MONTHS[m - 1]}`
+  }
+  return s.length > 10 ? s.slice(0, 9) + '…' : s
 }
 
 function formatValue(v: number): string {
@@ -172,7 +187,7 @@ const areaPath = computed(() => {
   return `${line} L${ps[ps.length - 1].x},${baseline} L${ps[0].x},${baseline} Z`
 })
 
-const MAX_LABELS = 20
+const MAX_LABELS = 12
 const labeledPoints = computed(() => {
   const ps = points.value
   if (ps.length <= MAX_LABELS) return ps
@@ -184,7 +199,7 @@ const yTicks = computed(() => {
   const max = maxVal.value
   if (max === 0) return []
   const yRange = H.value - PAD_TOP - PAD_BOTTOM
-  return [0, 0.33, 0.67, 1].map(frac => {
+  return [0.33, 0.67, 1].map(frac => {
     const val = max * frac
     const y = PAD_TOP + yRange * (1 - frac)
     const label = props.result.isFloat ? val.toFixed(1) : String(Math.round(val))

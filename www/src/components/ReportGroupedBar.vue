@@ -3,29 +3,30 @@
     <div
       v-for="(row, rIdx) in displayRows"
       :key="row"
-      class="flex items-center gap-1 min-w-0"
+      class="flex items-center gap-1 min-w-0 flex-1"
     >
       <span class="text-xs text-gray-400 w-24 shrink-0 text-right truncate" :title="row">{{ row }}</span>
       <div class="flex-1 flex flex-col gap-0.5">
-        <div
-          v-for="(col, cIdx) in displayCols"
-          :key="col"
-          class="flex items-center gap-1"
-        >
+        <template v-for="(col, cIdx) in displayCols" :key="col">
           <div
-            class="h-3 rounded-sm transition-all"
-            :style="{
-              width: barWidth(rIdx, cIdx) + '%',
-              backgroundColor: colColors[cIdx],
-              minWidth: barWidth(rIdx, cIdx) > 0 ? '2px' : '0',
-              cursor: 'pointer',
-            }"
-            @mouseenter="(e) => showTooltip(e, [row + ' x ' + col, String(cellRawValue(rIdx, cIdx))])"
-            @mousemove="moveTooltip"
-            @mouseleave="hideTooltip"
-          />
-          <span class="text-xs text-gray-500 shrink-0">{{ cellLabel(rIdx, cIdx) }}</span>
-        </div>
+            v-if="cellRawValue(rIdx, cIdx) > 0"
+            class="flex items-center gap-1"
+          >
+            <div
+              class="h-3 rounded-sm transition-all"
+              :style="{
+                width: barWidth(rIdx, cIdx) + '%',
+                backgroundColor: colColors[cIdx],
+                minWidth: '2px',
+                cursor: 'pointer',
+              }"
+              @mouseenter="(e) => showTooltip(e, [row + ' x ' + col, cellLabel(rIdx, cIdx)])"
+              @mousemove="moveTooltip"
+              @mouseleave="hideTooltip"
+            />
+            <span class="text-xs text-gray-500 shrink-0">{{ cellLabel(rIdx, cIdx) }}</span>
+          </div>
+        </template>
       </div>
     </div>
     <div class="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 px-1">
@@ -65,9 +66,14 @@ const MAX_COLS = 11
 const props = defineProps<{
   result: ReportResult
   color: string
+  normalizeBy?: string
 }>()
 
 const { tooltip, showTooltip, moveTooltip, hideTooltip } = useChartTooltip()
+
+const isPct = computed(() =>
+  props.normalizeBy === 'row_pct' || props.normalizeBy === 'col_pct' || props.normalizeBy === 'global_pct',
+)
 
 const displayCols = computed(() => {
   const cols = props.result.colLabels ?? []
@@ -102,6 +108,7 @@ function cellRawValue(rIdx: number, cIdx: number): number {
 }
 
 function barWidth(rIdx: number, cIdx: number): number {
+  if (isPct.value) return cellRawValue(rIdx, cIdx)
   const max = globalMax.value
   if (max === 0) return 0
   return (cellRawValue(rIdx, cIdx) / max) * 100
@@ -109,8 +116,8 @@ function barWidth(rIdx: number, cIdx: number): number {
 
 function cellLabel(rIdx: number, cIdx: number): string {
   const v = cellRawValue(rIdx, cIdx)
-  if (v === 0) return ''
-  return v % 1 !== 0 ? v.toFixed(2) : String(v)
+  if (isPct.value) return `${v.toFixed(1)}%`
+  return v % 1 === 0 ? String(v) : v.toFixed(2)
 }
 
 function hexToHsl(hex: string): [number, number, number] {

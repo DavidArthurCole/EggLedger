@@ -1,27 +1,27 @@
 <template>
-  <div class="h-full overflow-auto">
-    <table class="text-xs w-full border-collapse">
+  <div class="h-full w-full overflow-auto pr-1">
+    <table class="text-xs w-full h-full border-collapse table-fixed">
       <thead>
         <tr>
-          <th class="px-1 py-0.5 text-left font-normal min-w-20 text-gray-600"></th>
+          <th class="px-1 py-0.5 text-left font-normal w-36 text-gray-600"></th>
           <th
             v-for="col in result.colLabels"
             :key="col"
-            class="px-1 py-0.5 text-center font-normal min-w-14 text-gray-400 whitespace-nowrap"
+            class="px-1 py-0.5 text-center font-normal text-gray-400 whitespace-nowrap"
             :title="col"
           >{{ col }}</th>
         </tr>
       </thead>
       <tbody>
         <tr v-for="(row, rIdx) in result.rowLabels" :key="row">
-          <td class="px-1 py-0.5 text-right pr-2 whitespace-nowrap text-gray-400">{{ row }}</td>
+          <td class="px-1 py-0.5 text-right pr-2 truncate text-gray-400" :title="row">{{ row }}</td>
           <td
             v-for="(col, cIdx) in result.colLabels"
             :key="col"
             class="text-center px-1 py-0.5"
             :style="cellStyle(rIdx, cIdx)"
             style="cursor: pointer;"
-            @mouseenter="(e) => showTooltip(e, [row + ' x ' + col, String(displayValue(rIdx, cIdx))])"
+            @mouseenter="(e) => showTooltip(e, [row + ' x ' + col, displayValue(rIdx, cIdx)])"
             @mousemove="moveTooltip"
             @mouseleave="hideTooltip"
           >{{ displayValue(rIdx, cIdx) }}</td>
@@ -53,9 +53,14 @@ import { useChartTooltip } from '../composables/useChartTooltip'
 const props = defineProps<{
   result: ReportResult
   color: string
+  normalizeBy?: string
 }>()
 
 const { tooltip, showTooltip, moveTooltip, hideTooltip } = useChartTooltip()
+
+const isPct = computed(() =>
+  props.normalizeBy === 'row_pct' || props.normalizeBy === 'col_pct' || props.normalizeBy === 'global_pct',
+)
 
 const safeColor = computed(() =>
   props.color.startsWith('#') && props.color.length === 7 ? props.color : '#6366f1',
@@ -76,14 +81,21 @@ function idx(rIdx: number, cIdx: number): number {
 function displayValue(rIdx: number, cIdx: number): string {
   const v = props.result.matrixValues[idx(rIdx, cIdx)] ?? 0
   if (v === 0) return '-'
-  return v % 1 !== 0 ? v.toFixed(2) : String(v)
+  if (isPct.value) return `${v.toFixed(1)}%`
+  return v % 1 === 0 ? String(v) : v.toFixed(2)
 }
 
 function cellStyle(rIdx: number, cIdx: number): Record<string, string> {
   const v = props.result.matrixValues[idx(rIdx, cIdx)] ?? 0
+  if (v === 0) return { color: '#4b5563' }
   const max = globalMax.value
-  if (max === 0 || v === 0) return { color: '#4b5563' }
-  const opacity = Math.max(0.1, v / max)
+  let intensity: number
+  if (isPct.value) {
+    intensity = v / 100
+  } else {
+    intensity = max > 0 ? v / max : 0
+  }
+  const opacity = Math.max(0.1, intensity)
   const alphaHex = Math.round(opacity * 255).toString(16).padStart(2, '0')
   return {
     backgroundColor: `${safeColor.value}${alphaHex}`,

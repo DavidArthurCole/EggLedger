@@ -25,7 +25,7 @@
       <!-- Edit form -->
       <div class="flex-1 overflow-y-auto p-5 flex flex-col gap-4">
         <!-- Mode toggle -->
-        <div class="flex rounded-md overflow-hidden border border-gray-700 self-start text-xs">
+        <div v-if="!editingDef" class="flex rounded-md overflow-hidden border border-gray-700 self-start text-xs">
           <button
             type="button"
             class="px-3 py-1.5 transition-colors"
@@ -81,7 +81,7 @@
 
         <!-- Subject + Mode row -->
         <div class="grid grid-cols-2 gap-3">
-          <div v-if="!form.secondaryGroupBy" class="flex flex-col gap-1">
+          <div class="flex flex-col gap-1">
             <label for="rb-subject" class="text-xs text-gray-400 flex items-center gap-1">
               <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/></svg>
               Subject
@@ -115,7 +115,7 @@
 
         <!-- Display mode + Group by row -->
         <div class="grid grid-cols-2 gap-3">
-          <div class="flex flex-col gap-1">
+          <div v-if="!(form.mode === 'time_series' && form.secondaryGroupBy)" class="flex flex-col gap-1">
             <label for="rb-display-mode" class="text-xs text-gray-400 flex items-center gap-1">
               <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
               Display
@@ -130,6 +130,9 @@
                 <option value="heatmap">Heatmap</option>
                 <option value="grouped_bar">Grouped Bar</option>
               </template>
+              <template v-else-if="form.mode === 'time_series'">
+                <option value="line">Line chart</option>
+              </template>
               <template v-else>
                 <option value="bar">Bar chart</option>
                 <option value="line">Line chart</option>
@@ -138,7 +141,7 @@
               </template>
             </select>
           </div>
-          <div class="flex flex-col gap-1">
+          <div class="flex flex-col gap-1" :class="{ 'col-span-2': form.mode === 'time_series' && form.secondaryGroupBy }">
             <label for="rb-group-by" class="text-xs text-gray-400 flex items-center gap-1">
               <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z"/></svg>
               Group by
@@ -179,7 +182,7 @@
         </div>
 
         <!-- Secondary Group By -->
-        <div v-if="form.mode === 'aggregate'" class="flex flex-col gap-1">
+        <div class="flex flex-col gap-1">
           <label for="rb-secondary-group-by" class="text-xs text-gray-400 flex items-center gap-1">
             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 6H21M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
             Secondary Group By
@@ -283,13 +286,13 @@
               Grid size
               <span class="text-gray-500 ml-1">{{ form.gridW }}x{{ form.gridH }}</span>
             </span>
-            <!-- 4x4 visual picker -->
+            <!-- 8x4 visual picker -->
             <div class="flex flex-col gap-0.5 self-start" @mouseleave="clearHover()">
               <div v-for="r in 4" :key="r" class="flex gap-0.5">
                 <div
-                  v-for="c in 4"
+                  v-for="c in 8"
                   :key="c"
-                  class="w-5 h-5 rounded-sm border cursor-pointer transition-colors"
+                  class="w-3.5 h-3.5 rounded-sm border cursor-pointer transition-colors"
                   :class="cellClass(c, r)"
                   @mouseenter="setHover(c, r)"
                   @click="selectCell(c, r)"
@@ -303,7 +306,7 @@
             <span class="text-xs text-gray-400">Preview</span>
             <div
               class="bg-darker rounded-lg border border-gray-700 p-3 overflow-hidden flex flex-col"
-              :style="{ width: (form.gridW * 110) + 'px', height: (form.gridH * 110) + 'px' }"
+              :style="{ width: (form.gridW * 55) + 'px', height: (form.gridH * 55) + 'px' }"
             >
               <div class="text-xs font-medium text-gray-300 mb-2 truncate flex-shrink-0">{{ form.name || 'Untitled report' }}</div>
               <div class="flex-1 min-h-0">
@@ -416,7 +419,7 @@
                   @click="removeOrGroup(gIdx)"
                 >Remove</button>
               </div>
-              <div v-for="(cond, cIdx) in group" :key="cIdx" class="flex gap-1 mb-1">
+              <div v-for="(_cond, cIdx) in group" :key="cIdx" class="flex gap-1 mb-1">
                 <select
                   :value="orGroups[gIdx][cIdx].topLevel"
                   class="text-xs bg-darker border border-gray-700 rounded px-1 py-1 text-gray-300 focus:outline-none flex-1"
@@ -455,8 +458,8 @@
           </div>
         </div>
 
-        <!-- Normalize by (artifacts + aggregate only) -->
-        <div v-if="form.subject === 'artifacts' && form.mode === 'aggregate'" class="flex flex-col gap-2">
+        <!-- Normalize by (aggregate only) -->
+        <div v-if="form.mode === 'aggregate'" class="flex flex-col gap-2">
           <span class="text-xs text-gray-400 flex items-center gap-1">
             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 11h.01M12 11h.01M15 11h.01M4 19h16a2 2 0 002-2V7a2 2 0 00-2-2H4a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
             Normalize by (optional)
@@ -465,9 +468,17 @@
             v-model="form.normalizeBy"
             class="bg-darker border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 focus:outline-none focus:border-blue-500"
           >
-            <option value="none">None (raw count)</option>
-            <option value="launches">Per launch</option>
-            <option value="airtime">Per flight hour</option>
+            <template v-if="form.secondaryGroupBy">
+              <option value="none">None (raw count)</option>
+              <option value="row_pct">Row % (each row sums to 100)</option>
+              <option value="col_pct">Column % (each column sums to 100)</option>
+              <option value="global_pct">Global % (all cells sum to 100)</option>
+            </template>
+            <template v-else>
+              <option value="none">None (raw count)</option>
+              <option value="launches">Per launch</option>
+              <option value="airtime">Per flight hour</option>
+            </template>
           </select>
         </div>
         </template>
@@ -492,10 +503,10 @@
         <button
           type="button"
           class="flex-1 px-3 py-1.5 rounded border border-indigo-600 bg-indigo-700 text-xs text-white hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none"
-          :disabled="!canSave"
+          :disabled="!canSave || isSaving"
           @click="handleSave"
         >
-          Save
+          {{ isSaving ? 'Saving...' : 'Save' }}
         </button>
         </div>
       </div>
@@ -745,7 +756,9 @@ const inferredSubjectLabel = computed(() => {
 
 function onSecondaryGroupByChange() {
   if (form.secondaryGroupBy) {
-    if (!['heatmap', 'grouped_bar'].includes(form.displayMode)) {
+    if (form.mode === 'time_series') {
+      form.displayMode = 'multi_line'
+    } else if (!['heatmap', 'grouped_bar'].includes(form.displayMode)) {
       form.displayMode = 'heatmap'
     }
     if (artifactDimensions.has(form.groupBy) || artifactDimensions.has(form.secondaryGroupBy)) {
@@ -753,7 +766,7 @@ function onSecondaryGroupByChange() {
     } else {
       form.subject = 'missions'
     }
-  } else if (['heatmap', 'grouped_bar'].includes(form.displayMode)) {
+  } else {
     form.displayMode = form.mode === 'time_series' ? 'line' : 'bar'
   }
 }
@@ -795,6 +808,7 @@ const groupByOptions = computed(() => {
   if (form.subject === 'artifacts') return artifactAggregateOptions
   return shipMissionAggregateOptions
 })
+
 
 const missionFilterFields = [
   { value: 'ship', label: 'Ship' },
@@ -841,10 +855,34 @@ function onFieldChange(index: number, field: string) {
   updateAndCondition(index, { topLevel: field, op: defaultOp, val: defaultVal })
 }
 
+function resetAggregateDisplayAndNormalize() {
+  if (form.secondaryGroupBy) {
+    if (!['heatmap', 'grouped_bar'].includes(form.displayMode)) {
+      form.displayMode = 'heatmap'
+    }
+    if (['launches', 'airtime'].includes(form.normalizeBy)) {
+      form.normalizeBy = 'none'
+    }
+  } else {
+    if (!['bar', 'pie', 'grid', 'line'].includes(form.displayMode)) {
+      form.displayMode = 'bar'
+    }
+    if (['row_pct', 'col_pct', 'global_pct'].includes(form.normalizeBy)) {
+      form.normalizeBy = 'none'
+    }
+  }
+}
+
 function onSubjectOrModeChange() {
   const opts = groupByOptions.value
   if (!opts.some(o => o.value === form.groupBy) && opts.length > 0) {
     form.groupBy = opts[0].value
+  }
+  if (form.mode === 'time_series') {
+    form.displayMode = form.secondaryGroupBy ? 'multi_line' : 'line'
+    form.normalizeBy = 'none'
+  } else {
+    resetAggregateDisplayAndNormalize()
   }
 }
 
@@ -879,7 +917,10 @@ function clamp(v: number, min: number, max: number) {
   return Math.min(Math.max(v, min), max)
 }
 
+const isSaving = ref(false)
+
 function handleSave() {
+  isSaving.value = true
   isDirty.value = false
   closeWarning.value = false
   const def: ReportDefinition = {
@@ -897,8 +938,8 @@ function handleSave() {
     filters: toReportFilters(),
     gridX: 0,
     gridY: 0,
-    gridW: clamp(form.gridW, 1, 4),
-    gridH: clamp(form.gridH, 1, 4),
+    gridW: clamp(form.gridW, 1, 8),
+    gridH: clamp(form.gridH, 1, 8),
     color: form.color,
     weight: '',
     sortOrder: 0,
@@ -906,7 +947,7 @@ function handleSave() {
     updatedAt: 0,
     valueFilterOp: form.valueFilterOp,
     valueFilterThreshold: form.valueFilterThreshold,
-    normalizeBy: form.subject === 'artifacts' && form.mode === 'aggregate' ? form.normalizeBy : 'none',
+    normalizeBy: form.mode === 'aggregate' ? form.normalizeBy : 'none',
     secondaryGroupBy: form.secondaryGroupBy,
     chartType: ['line', 'bar'].includes(form.displayMode) ? (form.chartType || '') : '',
     groupId: props.editingDef?.groupId ?? '',
@@ -915,6 +956,7 @@ function handleSave() {
       : '',
   }
   emit('saved', def)
+  setTimeout(() => { isSaving.value = false }, 4000)
 }
 
 function onGuidedApply(partial: {

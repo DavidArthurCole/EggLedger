@@ -1,6 +1,6 @@
 <template>
   <div
-    class="w-full h-full grid gap-x-2 gap-y-1 overflow-y-auto"
+    class="w-full h-full grid gap-x-2 gap-y-1 overflow-y-auto pr-3"
     style="grid-template-columns: max-content 1fr max-content; align-content: start;"
   >
     <template v-for="(pair, i) in sortedPairs" :key="i">

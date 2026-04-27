@@ -17,10 +17,10 @@
     </div>
 
     <!-- Header -->
-    <div class="flex items-start justify-between gap-2 px-3 pt-3 pb-1.5 border-b border-gray-700/50">
+    <div class="flex items-start justify-between gap-2 px-3 pb-1.5 border-b border-gray-700/50" :class="editMode ? 'pt-5' : 'pt-3'">
       <div class="min-w-0 flex-1">
         <span class="text-sm font-medium text-gray-200 truncate block">{{ def.name }}</span>
-        <span class="text-xs text-gray-500">{{ subjectLabel }} - {{ modeLabel }}{{ groupByLabel ? ' - ' + groupByLabel : '' }}</span>
+        <span class="text-xs text-gray-500">{{ subjectLabel }} - {{ modeLabel }}{{ groupByLabel ? ' - ' + groupByLabel : '' }}{{ secondaryGroupByLabel ? ' x ' + secondaryGroupByLabel : '' }}</span>
         <span
           v-if="def.description"
           class="text-xs text-gray-500 truncate block mt-0.5"
@@ -55,10 +55,11 @@
         <span class="text-xs text-gray-500 animate-pulse">Running...</span>
       </div>
       <template v-else-if="result && result.is2D">
-        <ReportHeatmap v-if="def.displayMode === 'heatmap'" :result="result" :color="def.color || '#6366f1'" />
-        <ReportGroupedBar v-else-if="def.displayMode === 'grouped_bar'" :result="result" :color="def.color || '#6366f1'" />
+        <ReportHeatmap v-if="def.displayMode === 'heatmap'" :result="result" :color="def.color || '#6366f1'" :normalize-by="def.normalizeBy || 'none'" />
+        <ReportGroupedBar v-else-if="def.displayMode === 'grouped_bar'" :result="result" :color="def.color || '#6366f1'" :normalize-by="def.normalizeBy || 'none'" />
+        <ReportMultiLineChart v-else-if="def.displayMode === 'multi_line'" :result="result" :color="def.color || '#6366f1'" :label-colors="def.labelColors" :normalize-by="def.normalizeBy || 'none'" />
         <div v-else class="h-full flex items-center justify-center">
-          <span class="text-xs text-gray-600 italic">Select a 2D display mode (Heatmap or Grouped Bar)</span>
+          <span class="text-xs text-gray-600 italic">Select a 2D display mode</span>
         </div>
       </template>
       <div v-else-if="filteredResult && filteredResult.labels?.length > 0 && def.displayMode === 'pie'" class="h-full">
@@ -91,13 +92,15 @@
         </select>
         <button
           type="button"
-          class="text-gray-400 hover:text-gray-200 px-1 text-xs leading-none"
+          class="text-gray-400 hover:text-gray-200 px-1 text-xs leading-none disabled:opacity-40"
           title="Duplicate report"
-          @click="$emit('copy')"
-        >Copy</button>
+          :disabled="isCopying || isDeleting"
+          @click="handleCopy"
+        >{{ isCopying ? 'Copying...' : 'Copy' }}</button>
         <button
           type="button"
-          class="text-blue-400 hover:text-blue-300 px-1 text-xs leading-none"
+          class="text-blue-400 hover:text-blue-300 px-1 text-xs leading-none disabled:opacity-40"
+          :disabled="isCopying || isDeleting"
           @click="$emit('edit')"
         >Edit</button>
         <template v-if="confirmingDelete">
@@ -109,14 +112,16 @@
           >Cancel</button>
           <button
             type="button"
-            class="text-xs text-red-400 hover:text-red-300 font-semibold px-1 leading-none"
-            @click="$emit('delete'); confirmingDelete = false"
-          >Yes</button>
+            class="text-xs text-red-400 hover:text-red-300 font-semibold px-1 leading-none disabled:opacity-40"
+            :disabled="isDeleting"
+            @click="handleDelete"
+          >{{ isDeleting ? 'Deleting...' : 'Yes' }}</button>
         </template>
         <button
           v-else
           type="button"
-          class="text-red-500 hover:text-red-400 px-1 text-xs leading-none"
+          class="text-red-500 hover:text-red-400 px-1 text-xs leading-none disabled:opacity-40"
+          :disabled="isCopying || isDeleting"
           @click="confirmingDelete = true"
         >&#10005;</button>
       </template>
@@ -170,6 +175,7 @@ import ReportBarChart from './ReportBarChart.vue'
 import ReportGroupedBar from './ReportGroupedBar.vue'
 import ReportHeatmap from './ReportHeatmap.vue'
 import ReportLineChart from './ReportLineChart.vue'
+import ReportMultiLineChart from './ReportMultiLineChart.vue'
 import ReportPieChart from './ReportPieChart.vue'
 import ReportVisualGrid from './ReportVisualGrid.vue'
 
@@ -182,7 +188,19 @@ const props = defineProps<{
   stale: boolean
 }>()
 
-defineEmits<{
+const confirmingDelete = ref(false)
+const isCopying = ref(false)
+const isDeleting = ref(false)
+
+watch(() => props.editMode, (val) => {
+  if (!val) {
+    confirmingDelete.value = false
+    isCopying.value = false
+    isDeleting.value = false
+  }
+})
+
+const emit = defineEmits<{
   delete: []
   edit: []
   copy: []
@@ -191,9 +209,17 @@ defineEmits<{
   setGroup: [groupId: string]
 }>()
 
-const confirmingDelete = ref(false)
+function handleCopy() {
+  isCopying.value = true
+  emit('copy')
+  setTimeout(() => { isCopying.value = false }, 4000)
+}
 
-watch(() => props.editMode, (val) => { if (!val) confirmingDelete.value = false })
+function handleDelete() {
+  isDeleting.value = true
+  emit('delete')
+  confirmingDelete.value = false
+}
 
 const showWeightTooltip = ref(false)
 const tooltipX = ref(0)
@@ -230,22 +256,29 @@ const modeLabel = computed(() => {
   return props.def.mode === 'time_series' ? 'Time series' : 'Aggregate'
 })
 
+const dimensionLabelMap: Record<string, string> = {
+  ship_type: 'Ship',
+  duration_type: 'Duration',
+  level: 'Level',
+  mission_type: 'Type',
+  mission_target: 'Target',
+  artifact_name: 'Artifact',
+  rarity: 'Rarity',
+  tier: 'Tier',
+  spec_type: 'Spec',
+  time_bucket: '',
+}
+
 const groupByLabel = computed(() => {
-  const map: Record<string, string> = {
-    ship_type: 'Ship',
-    duration_type: 'Duration',
-    level: 'Level',
-    mission_type: 'Type',
-    mission_target: 'Target',
-    artifact_name: 'Artifact',
-    rarity: 'Rarity',
-    tier: 'Tier',
-    spec_type: 'Spec',
-    time_bucket: '',
-  }
   const g = props.def.groupBy
   if (!g || g === 'time_bucket') return ''
-  return map[g] ?? g
+  return dimensionLabelMap[g] ?? g
+})
+
+const secondaryGroupByLabel = computed(() => {
+  const g = props.def.secondaryGroupBy
+  if (!g) return ''
+  return dimensionLabelMap[g] ?? g
 })
 
 const weightClass = computed(() => {
@@ -328,9 +361,14 @@ const weightFactors = computed((): WeightFactor[] => {
 })
 
 const normalizeLabel = computed(() => {
-  if (props.def.normalizeBy === 'launches') return 'per launch'
-  if (props.def.normalizeBy === 'airtime') return 'per flight hour'
-  return ''
+  switch (props.def.normalizeBy) {
+    case 'launches': return 'per launch'
+    case 'airtime': return 'per flight hour'
+    case 'row_pct': return 'row %'
+    case 'col_pct': return 'col %'
+    case 'global_pct': return 'global %'
+    default: return ''
+  }
 })
 
 const filteredResult = computed(() => {

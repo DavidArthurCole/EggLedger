@@ -79,3 +79,143 @@ func TestGroupByColumn(t *testing.T) {
 		}
 	}
 }
+
+func TestConditionToSQL_LaunchDTUsesStrftime(t *testing.T) {
+	filters := reports.ReportFilters{
+		And: []reports.FilterCondition{
+			{TopLevel: "launchDT", Op: ">=", Val: "2025-01-01"},
+		},
+	}
+	clause, args := reports.BuildWhereClause(filters, "ships")
+	expected := "m.start_timestamp >= strftime('%s', ?)"
+	if !strings.Contains(clause, expected) {
+		t.Errorf("expected %q in clause, got: %s", expected, clause)
+	}
+	if len(args) != 1 || args[0] != "2025-01-01" {
+		t.Errorf("expected arg '2025-01-01', got: %v", args)
+	}
+}
+
+func TestConditionToSQL_ReturnDTLessThan(t *testing.T) {
+	filters := reports.ReportFilters{
+		And: []reports.FilterCondition{
+			{TopLevel: "returnDT", Op: "<", Val: "2025-06-01"},
+		},
+	}
+	clause, args := reports.BuildWhereClause(filters, "ships")
+	expected := "m.return_timestamp < strftime('%s', ?)"
+	if !strings.Contains(clause, expected) {
+		t.Errorf("expected %q in clause, got: %s", expected, clause)
+	}
+	if len(args) != 1 {
+		t.Errorf("expected 1 arg, got: %d", len(args))
+	}
+}
+
+func TestConditionToSQL_LaunchDTEquals(t *testing.T) {
+	filters := reports.ReportFilters{
+		And: []reports.FilterCondition{
+			{TopLevel: "launchDT", Op: "=", Val: "2025-05-15"},
+		},
+	}
+	clause, args := reports.BuildWhereClause(filters, "ships")
+	expected := "m.start_timestamp = strftime('%s', ?)"
+	if !strings.Contains(clause, expected) {
+		t.Errorf("expected %q in clause, got: %s", expected, clause)
+	}
+	if len(args) != 1 || args[0] != "2025-05-15" {
+		t.Errorf("expected arg '2025-05-15', got: %v", args)
+	}
+}
+
+func TestBuildTimePivotQuery_MissionDimensions(t *testing.T) {
+	def := reports.ReportDefinition{
+		Mode:             "time_series",
+		GroupBy:          "time_bucket",
+		SecondaryGroupBy: "ship_type",
+		TimeBucket:       "month",
+		AccountId:        "EI1234",
+		Filters:          reports.ReportFilters{},
+	}
+	baseWhere := "m.player_id = ?"
+	args := []interface{}{"EI1234"}
+	query, outArgs, err := reports.BuildTimePivotQuery(def, baseWhere, args)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(query, "strftime('%Y-%m'") {
+		t.Errorf("expected month format in query, got: %s", query)
+	}
+	if !strings.Contains(query, "m.ship") {
+		t.Errorf("expected m.ship for ship_type secondary, got: %s", query)
+	}
+	if strings.Contains(query, "artifact_drops") {
+		t.Errorf("mission-only query should not join artifact_drops")
+	}
+	if !strings.Contains(query, "GROUP BY bucket, grp") {
+		t.Errorf("expected GROUP BY bucket, grp, got: %s", query)
+	}
+	if len(outArgs) < 1 {
+		t.Errorf("expected at least 1 arg, got %d", len(outArgs))
+	}
+}
+
+func TestBuildTimePivotQuery_ArtifactSecondary_JoinsDrops(t *testing.T) {
+	def := reports.ReportDefinition{
+		Mode:             "time_series",
+		GroupBy:          "time_bucket",
+		SecondaryGroupBy: "artifact_name",
+		TimeBucket:       "month",
+		AccountId:        "EI1234",
+		Filters:          reports.ReportFilters{},
+	}
+	baseWhere := "m.player_id = ?"
+	args := []interface{}{"EI1234"}
+	query, _, err := reports.BuildTimePivotQuery(def, baseWhere, args)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(query, "artifact_drops") {
+		t.Errorf("artifact secondary should join artifact_drops, got: %s", query)
+	}
+	if !strings.Contains(query, "d.artifact_id") {
+		t.Errorf("expected d.artifact_id for artifact_name secondary, got: %s", query)
+	}
+}
+
+func TestBuildTimePivotQuery_CustomBucket_AddsWindowCondition(t *testing.T) {
+	def := reports.ReportDefinition{
+		Mode:             "time_series",
+		GroupBy:          "time_bucket",
+		SecondaryGroupBy: "duration_type",
+		TimeBucket:       "custom",
+		CustomBucketN:    3,
+		CustomBucketUnit: "month",
+		AccountId:        "EI1234",
+		Filters:          reports.ReportFilters{},
+	}
+	baseWhere := "m.player_id = ?"
+	args := []interface{}{"EI1234"}
+	query, outArgs, err := reports.BuildTimePivotQuery(def, baseWhere, args)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(query, "strftime('%s'") {
+		t.Errorf("expected window condition with strftime, got: %s", query)
+	}
+	if len(outArgs) < 2 {
+		t.Errorf("expected at least 2 args (player_id + window modifier), got %d", len(outArgs))
+	}
+}
+
+func TestBuildTimePivotQuery_InvalidSecondary_ReturnsError(t *testing.T) {
+	def := reports.ReportDefinition{
+		Mode:             "time_series",
+		SecondaryGroupBy: "nonexistent_dimension",
+		TimeBucket:       "month",
+	}
+	_, _, err := reports.BuildTimePivotQuery(def, "1=1", nil)
+	if err == nil {
+		t.Error("expected error for invalid secondary group-by")
+	}
+}

@@ -9,8 +9,8 @@
 
     <div
       ref="gridRef"
-      class="grid gap-3"
-      :style="`grid-template-columns: repeat(4, 1fr); grid-auto-rows: ${rowHeight}px;`"
+      class="grid gap-3 relative"
+      :style="`grid-template-columns: repeat(8, 1fr); grid-auto-rows: ${rowHeight}px;`"
       :class="{ 'ring-1 ring-blue-500/40 rounded-lg': draggingIndex !== null && dragOverIndex === displayedReports.length }"
       @dragover.prevent="onGridDragOver($event)"
       @drop.prevent="onGridDrop($event)"
@@ -18,10 +18,11 @@
       <div
         v-for="(def, index) in displayedReports"
         :key="def.id"
+        :data-card-index="index"
         :draggable="editMode"
         :style="{
-          gridColumn: `span ${Math.min(Math.max(def.gridW, 1), 4)}`,
-          gridRow: `span ${Math.min(Math.max(def.gridH, 1), 4)}`,
+          gridColumn: `span ${Math.min(Math.max(def.gridW, 1), 8)}`,
+          gridRow: `span ${Math.min(Math.max(def.gridH, 1), 8)}`,
         }"
         :class="{
           'opacity-40': draggingIndex === index,
@@ -55,6 +56,24 @@
         @dragover.prevent="onDragOver(displayedReports.length)"
         @drop.prevent="onDrop(displayedReports.length)"
       >Move here</div>
+
+      <template v-if="editMode && draggingIndex !== null">
+        <div
+          v-for="(zone, zi) in emptyDropZones"
+          :key="`zone-${zi}`"
+          class="absolute rounded-lg border-2 border-dashed transition-colors pointer-events-auto"
+          :class="dropZoneOverIdx === zi ? 'border-blue-500 bg-blue-500/10' : 'border-gray-700/60'"
+          :style="{
+            left: zone.x + 'px',
+            top: zone.y + 'px',
+            width: zone.width + 'px',
+            height: zone.height + 'px',
+          }"
+          @dragover.prevent="dropZoneOverIdx = zi"
+          @dragleave="dropZoneOverIdx = null"
+          @drop.prevent="onDropToZone(zone)"
+        />
+      </template>
     </div>
 
     <div v-if="displayedReports.length === 0 && reports.length > 0" class="text-xs text-gray-500 text-center mt-8">
@@ -83,7 +102,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import type { ReportDefinition, ReportResult } from '../types/bridge'
 import { AppState } from '../types/bridge'
 import { useReports } from '../composables/useReports'
@@ -112,6 +131,16 @@ const refreshCycle = ref(0)
 const resultCycles = ref<Record<string, number>>({})
 const draggingIndex = ref<number | null>(null)
 const dragOverIndex = ref<number | null>(null)
+
+interface EmptyZone {
+  x: number
+  y: number
+  width: number
+  height: number
+  insertAfter: number
+}
+const emptyDropZones = ref<EmptyZone[]>([])
+const dropZoneOverIdx = ref<number | null>(null)
 const importError = ref<string | null>(null)
 const exportAllMessage = ref<string | null>(null)
 
@@ -122,8 +151,8 @@ let gridObs: ResizeObserver | null = null
 onMounted(() => {
   const update = () => {
     if (!gridRef.value) return
-    // 4 columns, 3 gaps of 12px (gap-3)
-    rowHeight.value = Math.max(120, Math.floor((gridRef.value.clientWidth - 36) / 4))
+    // 8 columns, 7 gaps of 12px (gap-3)
+    rowHeight.value = Math.max(80, Math.floor((gridRef.value.clientWidth - 84) / 8))
   }
   gridObs = new ResizeObserver(update)
   if (gridRef.value) gridObs.observe(gridRef.value)
@@ -247,17 +276,118 @@ async function handleSetGroup(reportId: string, groupId: string) {
   }
 }
 
+interface GridCardPos { col: number; row: number; w: number; h: number; idx: number }
+
+const GRID_COLS = 8
+const GRID_GAP = 12
+
+function buildOccupancy(
+  cardEls: NodeListOf<HTMLElement>,
+  gridRect: DOMRect,
+  colW: number,
+  rowH: number,
+): { cardPositions: GridCardPos[]; occupied: Set<string> } {
+  const cardPositions: GridCardPos[] = []
+  const occupied = new Set<string>()
+  for (const el of cardEls) {
+    const idx = Number(el.dataset.cardIndex)
+    const def = displayedReports.value[idx]
+    if (!def) continue
+    const r = el.getBoundingClientRect()
+    const col = Math.round((r.left - gridRect.left) / (colW + GRID_GAP)) + 1
+    const row = Math.round((r.top - gridRect.top) / (rowH + GRID_GAP)) + 1
+    const w = Math.min(Math.max(def.gridW, 1), GRID_COLS)
+    const h = Math.min(Math.max(def.gridH, 1), 8)
+    cardPositions.push({ col, row, w, h, idx })
+    for (let rr = row; rr < row + h; rr++) {
+      for (let cc = col; cc < col + w; cc++) occupied.add(`${cc},${rr}`)
+    }
+  }
+  return { cardPositions, occupied }
+}
+
+function zoneInsertAfter(cardPositions: GridCardPos[], targetRow: number, runStart: number): number {
+  const zoneFirst = (targetRow - 1) * GRID_COLS + runStart
+  let best = -1
+  for (const cp of cardPositions) {
+    if ((cp.row - 1) * GRID_COLS + cp.col < zoneFirst) best = Math.max(best, cp.idx)
+  }
+  return best
+}
+
+function rowEmptyZones(
+  r: number,
+  occupied: Set<string>,
+  cardPositions: GridCardPos[],
+  colW: number,
+  rowH: number,
+): EmptyZone[] {
+  const zones: EmptyZone[] = []
+  let runStart: number | null = null
+  for (let c = 1; c <= GRID_COLS + 1; c++) {
+    const isEmpty = c <= GRID_COLS && !occupied.has(`${c},${r}`)
+    if (isEmpty && runStart === null) { runStart = c; continue }
+    if (!isEmpty && runStart !== null) {
+      const rs = runStart
+      const runW = c - rs
+      zones.push({
+        x: (rs - 1) * (colW + GRID_GAP),
+        y: (r - 1) * (rowH + GRID_GAP),
+        width: runW * colW + (runW - 1) * GRID_GAP,
+        height: rowH,
+        insertAfter: zoneInsertAfter(cardPositions, r, rs),
+      })
+      runStart = null
+    }
+  }
+  return zones
+}
+
+function computeEmptyZones() {
+  const gridEl = gridRef.value
+  if (!gridEl || draggingIndex.value === null) { emptyDropZones.value = []; return }
+  const gridRect = gridEl.getBoundingClientRect()
+  const colW = (gridRect.width - (GRID_COLS - 1) * GRID_GAP) / GRID_COLS
+  const rowH = rowHeight.value
+  const cardEls = gridEl.querySelectorAll<HTMLElement>('[data-card-index]')
+  const { cardPositions, occupied } = buildOccupancy(cardEls, gridRect, colW, rowH)
+  if (cardPositions.length === 0) { emptyDropZones.value = []; return }
+  const maxRow = Math.max(...cardPositions.map(p => p.row + p.h - 1))
+  const zones: EmptyZone[] = []
+  for (let r = 1; r <= maxRow; r++) zones.push(...rowEmptyZones(r, occupied, cardPositions, colW, rowH))
+  emptyDropZones.value = zones
+}
+
 function onDragStart(index: number, event: DragEvent) {
   draggingIndex.value = index
   if (event.dataTransfer) {
     event.dataTransfer.effectAllowed = 'move'
     event.dataTransfer.setData('text/plain', String(index))
   }
+  nextTick(() => computeEmptyZones())
 }
 
 function onDragEnd() {
   draggingIndex.value = null
   dragOverIndex.value = null
+  dropZoneOverIdx.value = null
+  emptyDropZones.value = []
+}
+
+async function onDropToZone(zone: EmptyZone) {
+  const from = draggingIndex.value
+  draggingIndex.value = null
+  dragOverIndex.value = null
+  dropZoneOverIdx.value = null
+  emptyDropZones.value = []
+  if (from === null) return
+  const ids = reports.value.map(r => r.id)
+  const [moved] = ids.splice(from, 1)
+  let insertAt = zone.insertAfter
+  if (from <= insertAt) insertAt--
+  insertAt = Math.max(insertAt, -1)
+  ids.splice(insertAt + 1, 0, moved)
+  await reorderReports(ids)
 }
 
 function onGridDragOver(event: DragEvent) {

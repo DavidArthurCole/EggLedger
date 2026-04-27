@@ -94,9 +94,9 @@ func conditionToSQL(c FilterCondition) (clause string, arg interface{}, hasArg b
 		col := missionFieldToColumn[c.TopLevel]
 		switch c.Op {
 		case ">", "<", ">=", "<=":
-			return fmt.Sprintf("%s %s ?", col, c.Op), c.Val, true
+			return fmt.Sprintf("%s %s strftime('%%s', ?)", col, c.Op), c.Val, true
 		case "=", "d=":
-			return fmt.Sprintf("%s = ?", col), c.Val, true
+			return fmt.Sprintf("%s = strftime('%%s', ?)", col), c.Val, true
 		}
 		return "", nil, false
 	}
@@ -192,4 +192,49 @@ func CustomWindowCondition(n int, unit string) (string, interface{}) {
 		return "", nil
 	}
 	return "m.start_timestamp >= strftime('%s', 'now', ?)", modifier
+}
+
+// BuildTimePivotQuery generates a time-bucket x secondary-dimension query
+// returning three result columns (bucket, grp, count), grouped by bucket and grp.
+// Returns (query, args, error).
+func BuildTimePivotQuery(def ReportDefinition, baseWhere string, args []interface{}) (string, []interface{}, error) {
+	col2 := GroupByColumn(def.SecondaryGroupBy)
+	if col2 == "" {
+		return "", nil, fmt.Errorf("unsupported secondary group-by dimension %q", def.SecondaryGroupBy)
+	}
+
+	format := TimeBucketFormat(def.TimeBucket, def.CustomBucketUnit)
+	bucketExpr := "strftime('" + format + "', datetime(m.start_timestamp, 'unixepoch'))"
+	needsArtifactJoin := strings.HasPrefix(col2, "d.") || strings.Contains(baseWhere, "d.")
+
+	out := make([]interface{}, len(args))
+	copy(out, args)
+
+	windowWhere := ""
+	if def.TimeBucket == "custom" {
+		cond, modifier := CustomWindowCondition(def.CustomBucketN, def.CustomBucketUnit)
+		if cond != "" {
+			windowWhere = " AND " + cond
+			out = append(out, modifier)
+		}
+	}
+
+	var query string
+	if needsArtifactJoin {
+		query = fmt.Sprintf(`
+            SELECT %s AS bucket, CAST(%s AS TEXT) AS grp, COUNT(*) AS count
+            FROM artifact_drops d
+            JOIN mission m ON d.mission_id = m.mission_id AND d.player_id = m.player_id
+            WHERE %s AND d.drop_index >= 0%s
+            GROUP BY bucket, grp
+            ORDER BY bucket ASC, grp ASC`, bucketExpr, col2, baseWhere, windowWhere)
+	} else {
+		query = fmt.Sprintf(`
+            SELECT %s AS bucket, CAST(%s AS TEXT) AS grp, COUNT(*) AS count
+            FROM mission m
+            WHERE %s%s
+            GROUP BY bucket, grp
+            ORDER BY bucket ASC, grp ASC`, bucketExpr, col2, baseWhere, windowWhere)
+	}
+	return query, out, nil
 }
