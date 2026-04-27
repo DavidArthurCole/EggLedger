@@ -25,6 +25,7 @@ type AppStorage struct {
 	FilterWarningRead          bool      `json:"filter_warning_read"`
 	WorkerCountWarningRead     bool      `json:"worker_count_warning_read"`
 	PreferredChromiumPath      string    `json:"preferred_chromium_path"`
+	BackupDestPath             string    `json:"backup_dest_path"`
 	AutoRefreshMennoPref       bool      `json:"auto_refresh_menno_pref"`
 	DefaultResolutionX         int       `json:"default_resolution_x"`
 	DefaultResolutionY         int       `json:"default_resolution_y"`
@@ -55,6 +56,11 @@ type AppStorage struct {
 	CloudLastPullAt        time.Time `json:"cloud_last_pull_at"`
 	CloudDiscordUsername   string    `json:"cloud_discord_username"`
 	CloudDiscordAvatarURL  string    `json:"cloud_discord_avatar_url"`
+	CloudAutoSync bool `json:"cloud_auto_sync"`
+
+	AutoExportCsv   bool `json:"auto_export_csv"`
+	AutoExportXlsx  bool `json:"auto_export_xlsx"`
+	ExportKeepCount int  `json:"export_keep_count"`
 }
 
 type Account struct {
@@ -156,6 +162,9 @@ func (s *AppStorage) loadFromDB() {
 	}
 	if v, ok := settings["preferred_chromium_path"]; ok {
 		s.PreferredChromiumPath = v
+	}
+	if v, ok := settings["backup_dest_path"]; ok {
+		s.BackupDestPath = v
 	}
 	if v, ok := settings["auto_refresh_menno_pref"]; ok {
 		s.AutoRefreshMennoPref, _ = strconv.ParseBool(v)
@@ -264,6 +273,24 @@ func (s *AppStorage) loadFromDB() {
 	if v, ok := settings["cloud_discord_avatar_url"]; ok {
 		s.CloudDiscordAvatarURL = v
 	}
+	if v, ok := settings["cloud_auto_sync"]; ok {
+		s.CloudAutoSync, _ = strconv.ParseBool(v)
+	}
+	if v, ok := settings["auto_export_csv"]; ok {
+		s.AutoExportCsv, _ = strconv.ParseBool(v)
+	} else {
+		s.AutoExportCsv = true // default on for existing installs
+	}
+	if v, ok := settings["auto_export_xlsx"]; ok {
+		s.AutoExportXlsx, _ = strconv.ParseBool(v)
+	} else {
+		s.AutoExportXlsx = true // default on for existing installs
+	}
+	if v, ok := settings["export_keep_count"]; ok {
+		if n, err := strconv.Atoi(v); err == nil {
+			s.ExportKeepCount = n
+		}
+	}
 }
 
 // persistAllToDB writes every field to the settings table in one transaction.
@@ -281,6 +308,7 @@ func (s *AppStorage) persistAllToDB() {
 		"filter_warning_read":           strconv.FormatBool(s.FilterWarningRead),
 		"worker_count_warning_read":     strconv.FormatBool(s.WorkerCountWarningRead),
 		"preferred_chromium_path":       s.PreferredChromiumPath,
+		"backup_dest_path":              s.BackupDestPath,
 		"auto_refresh_menno_pref":       strconv.FormatBool(s.AutoRefreshMennoPref),
 		"default_resolution_x":          strconv.Itoa(s.DefaultResolutionX),
 		"default_resolution_y":          strconv.Itoa(s.DefaultResolutionY),
@@ -307,6 +335,10 @@ func (s *AppStorage) persistAllToDB() {
 		"cloud_encryption_key":          s.CloudEncryptionKey,
 		"cloud_discord_username":        s.CloudDiscordUsername,
 		"cloud_discord_avatar_url":      s.CloudDiscordAvatarURL,
+		"cloud_auto_sync":               strconv.FormatBool(s.CloudAutoSync),
+		"auto_export_csv":               strconv.FormatBool(s.AutoExportCsv),
+		"auto_export_xlsx":              strconv.FormatBool(s.AutoExportXlsx),
+		"export_keep_count":             strconv.Itoa(s.ExportKeepCount),
 	}
 	s.Unlock()
 	if err := db.SetSettings(context.Background(), settings); err != nil {
@@ -370,6 +402,13 @@ func (s *AppStorage) SetPreferredChromiumPath(path string) {
 	s.PreferredChromiumPath = path
 	s.Unlock()
 	go s.dbSet("preferred_chromium_path", path)
+}
+
+func (s *AppStorage) SetBackupDestPath(path string) {
+	s.Lock()
+	s.BackupDestPath = path
+	s.Unlock()
+	go s.dbSet("backup_dest_path", path)
 }
 
 func (s *AppStorage) SetAutoRefreshMennoPref(flag bool) {
@@ -785,4 +824,69 @@ func (s *AppStorage) SetCloudDiscordAvatarURL(url string) {
 	s.CloudDiscordAvatarURL = url
 	s.Unlock()
 	go s.dbSet("cloud_discord_avatar_url", url)
+}
+
+func (s *AppStorage) GetCloudAutoSync() bool {
+	s.Lock()
+	defer s.Unlock()
+	return s.CloudAutoSync
+}
+
+func (s *AppStorage) SetCloudAutoSync(flag bool) {
+	s.Lock()
+	s.CloudAutoSync = flag
+	s.Unlock()
+	go s.dbSet("cloud_auto_sync", strconv.FormatBool(flag))
+}
+
+func (s *AppStorage) GetAutoExportCsv() bool {
+	s.Lock()
+	defer s.Unlock()
+	return s.AutoExportCsv
+}
+
+func (s *AppStorage) SetAutoExportCsv(flag bool) {
+	s.Lock()
+	s.AutoExportCsv = flag
+	s.Unlock()
+	go s.dbSet("auto_export_csv", strconv.FormatBool(flag))
+}
+
+func (s *AppStorage) GetAutoExportXlsx() bool {
+	s.Lock()
+	defer s.Unlock()
+	return s.AutoExportXlsx
+}
+
+func (s *AppStorage) SetAutoExportXlsx(flag bool) {
+	s.Lock()
+	s.AutoExportXlsx = flag
+	s.Unlock()
+	go s.dbSet("auto_export_xlsx", strconv.FormatBool(flag))
+}
+
+func (s *AppStorage) GetExportKeepCount() int {
+	s.Lock()
+	defer s.Unlock()
+	n := s.ExportKeepCount
+	if n < 0 {
+		return 0
+	}
+	if n > 50 {
+		return 50
+	}
+	return n
+}
+
+func (s *AppStorage) SetExportKeepCount(n int) {
+	if n < 0 {
+		n = 0
+	}
+	if n > 50 {
+		n = 50
+	}
+	s.Lock()
+	s.ExportKeepCount = n
+	s.Unlock()
+	go s.dbSet("export_keep_count", strconv.Itoa(n))
 }

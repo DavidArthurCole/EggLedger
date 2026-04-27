@@ -187,6 +187,7 @@ export interface ReportDefinition {
   mode: string
   displayMode: string
   groupBy: string
+  secondaryGroupBy: string
   timeBucket: string
   customBucketN: number
   customBucketUnit: string
@@ -208,6 +209,8 @@ export interface ReportDefinition {
   normalizeBy: string
   /** JSON-encoded Record<string, string> mapping label to hex color for pie slices */
   labelColors: string
+  /** Hex color for zero-value cells in heatmap; empty string uses default dark */
+  unfilledColor: string
 }
 
 export interface ReportGroup {
@@ -224,11 +227,31 @@ export interface ReportResult {
   floatValues: number[]
   isFloat: boolean
   weight: string
+  rowLabels: string[]
+  colLabels: string[]
+  matrixValues: number[]
+  is2D: boolean
 }
 
 export interface BackfillStatus {
   done: boolean
   progress: number
+}
+
+export interface ExportFilePair {
+  timestamp: string
+  displayDate: string
+  csvPath: string
+  csvSize: number
+  xlsxPath: string
+  xlsxSize: number
+}
+
+export interface ExportGroup {
+  eid: string
+  nickname: string
+  accountColor: string
+  pairs: ExportFilePair[]
 }
 
 export interface CloudSyncStatus {
@@ -351,7 +374,18 @@ declare global {
   // Storage management
   function getStoragePath(): Promise<string>
   function setStorageFolderVisible(visible: boolean): Promise<void>
-  function backupStorageTo(destPath: string): Promise<void>
+  function getBackupDestPath(): Promise<string>
+  function setBackupDestPath(path: string): Promise<void>
+  function getAutoExportCsv(): Promise<boolean>
+  function setAutoExportCsv(flag: boolean): Promise<void>
+  function getAutoExportXlsx(): Promise<boolean>
+  function setAutoExportXlsx(flag: boolean): Promise<void>
+  function getExportKeepCount(): Promise<number>
+  function setExportKeepCount(n: number): Promise<void>
+  function listExportFiles(): Promise<string>
+  function deleteExportFiles(pathsJSON: string): Promise<string>
+  function pruneOldExports(): Promise<string>
+  function backupStoragePart(destPath: string, part: 'internal' | 'exports' | 'logs'): Promise<void>
   function moveStorageTo(destPath: string): Promise<void>
 
   // Updates - returns [version, releaseNotes]
@@ -395,6 +429,9 @@ declare global {
   function disconnectCloud(): Promise<void>
   function syncToCloud(): Promise<void>
   function restoreFromCloud(): Promise<void>
+  function deleteRemoteData(): Promise<string>
+  function getCloudAutoSync(): Promise<boolean>
+  function setCloudAutoSync(flag: boolean): Promise<void>
   // Go-to-JS callbacks (assigned by Vue app, called by Go via lorca)
   var updateKnownAccounts: (accounts: Account[]) => void
   var updateState: (state: string) => void

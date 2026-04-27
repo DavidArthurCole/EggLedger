@@ -17,10 +17,10 @@
     </div>
 
     <!-- Header -->
-    <div class="flex items-start justify-between gap-2 px-3 pt-3 pb-1.5 border-b border-gray-700/50">
+    <div class="flex items-start justify-between gap-2 px-3 pb-1.5 border-b border-gray-700/50" :class="editMode ? 'pt-5' : 'pt-3'">
       <div class="min-w-0 flex-1">
         <span class="text-sm font-medium text-gray-200 truncate block">{{ def.name }}</span>
-        <span class="text-xs text-gray-500">{{ subjectLabel }} - {{ modeLabel }}{{ groupByLabel ? ' - ' + groupByLabel : '' }}</span>
+        <span class="text-xs text-gray-500">{{ subjectLabel }} - {{ modeLabel }}{{ groupByLabel ? ' - ' + groupByLabel : '' }}{{ secondaryGroupByLabel ? ' x ' + secondaryGroupByLabel : '' }}</span>
         <span
           v-if="def.description"
           class="text-xs text-gray-500 truncate block mt-0.5"
@@ -28,6 +28,18 @@
         >{{ def.description }}</span>
       </div>
       <div class="flex items-center gap-1 flex-shrink-0">
+        <button
+          v-if="stale && !running"
+          type="button"
+          class="text-yellow-500 hover:text-yellow-400"
+          title="Results are stale - click to refresh"
+          @click="$emit('run')"
+        >
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10" />
+            <polyline points="12 6 12 12 16 14" />
+          </svg>
+        </button>
         <span
           class="text-xs px-1.5 py-0.5 rounded cursor-default"
           :class="weightClass"
@@ -42,12 +54,20 @@
       <div v-if="running" class="h-full flex items-center justify-center">
         <span class="text-xs text-gray-500 animate-pulse">Running...</span>
       </div>
+      <template v-else-if="result && result.is2D">
+        <ReportHeatmap v-if="def.displayMode === 'heatmap'" :result="result" :color="def.color || '#6366f1'" :normalize-by="def.normalizeBy || 'none'" :unfilled-color="def.unfilledColor" />
+        <ReportGroupedBar v-else-if="def.displayMode === 'grouped_bar'" :result="result" :color="def.color || '#6366f1'" :normalize-by="def.normalizeBy || 'none'" />
+        <ReportMultiLineChart v-else-if="def.displayMode === 'multi_line'" :result="result" :color="def.color || '#6366f1'" :label-colors="def.labelColors" :normalize-by="def.normalizeBy || 'none'" />
+        <div v-else class="h-full flex items-center justify-center">
+          <span class="text-xs text-gray-600 italic">Select a 2D display mode</span>
+        </div>
+      </template>
       <div v-else-if="filteredResult && filteredResult.labels?.length > 0 && def.displayMode === 'pie'" class="h-full">
         <ReportPieChart :result="filteredResult" :color="def.color || '#6366f1'" :label-colors="def.labelColors" />
       </div>
       <template v-else-if="filteredResult && filteredResult.labels?.length > 0">
-        <ReportBarChart v-if="def.displayMode === 'bar' || (!def.displayMode && def.mode === 'aggregate')" :result="filteredResult" :color="def.color || '#6366f1'" :unit-label="normalizeLabel" />
-        <ReportLineChart v-else-if="def.displayMode === 'line' || (!def.displayMode && def.mode === 'time_series')" :result="filteredResult" :color="def.color || '#6366f1'" :unit-label="normalizeLabel" />
+        <ReportBarChart v-if="def.displayMode === 'bar' || (!def.displayMode && def.mode === 'aggregate')" :result="filteredResult" :color="def.color || '#6366f1'" :unit-label="normalizeLabel" :label-colors="def.labelColors" :chart-type="def.chartType" />
+        <ReportLineChart v-else-if="def.displayMode === 'line' || (!def.displayMode && def.mode === 'time_series')" :result="filteredResult" :color="def.color || '#6366f1'" :unit-label="normalizeLabel" :chart-type="def.chartType" />
         <ReportVisualGrid v-else :result="filteredResult" :unit-label="normalizeLabel" />
       </template>
       <div v-else-if="filteredResult && filteredResult.labels?.length === 0" class="h-full flex items-center justify-center">
@@ -63,7 +83,7 @@
       <template v-if="editMode">
         <select
           v-if="groups.length > 0"
-          class="text-xs bg-darker border border-gray-700 rounded px-1 py-0.5 text-gray-500 focus:outline-none max-w-24 mr-auto"
+          class="text-xs bg-darker border border-gray-700 rounded pl-1 pr-6 py-0.5 text-gray-500 focus:outline-none max-w-36 mr-auto"
           :value="def.groupId"
           @change="$emit('setGroup', ($event.target as HTMLSelectElement).value)"
         >
@@ -72,13 +92,15 @@
         </select>
         <button
           type="button"
-          class="text-gray-400 hover:text-gray-200 px-1 text-xs leading-none"
+          class="text-gray-400 hover:text-gray-200 px-1 text-xs leading-none disabled:opacity-40"
           title="Duplicate report"
-          @click="$emit('copy')"
-        >Copy</button>
+          :disabled="isCopying || isDeleting"
+          @click="handleCopy"
+        >{{ isCopying ? 'Copying...' : 'Copy' }}</button>
         <button
           type="button"
-          class="text-blue-400 hover:text-blue-300 px-1 text-xs leading-none"
+          class="text-blue-400 hover:text-blue-300 px-1 text-xs leading-none disabled:opacity-40"
+          :disabled="isCopying || isDeleting"
           @click="$emit('edit')"
         >Edit</button>
         <template v-if="confirmingDelete">
@@ -90,14 +112,16 @@
           >Cancel</button>
           <button
             type="button"
-            class="text-xs text-red-400 hover:text-red-300 font-semibold px-1 leading-none"
-            @click="$emit('delete'); confirmingDelete = false"
-          >Yes</button>
+            class="text-xs text-red-400 hover:text-red-300 font-semibold px-1 leading-none disabled:opacity-40"
+            :disabled="isDeleting"
+            @click="handleDelete"
+          >{{ isDeleting ? 'Deleting...' : 'Yes' }}</button>
         </template>
         <button
           v-else
           type="button"
-          class="text-red-500 hover:text-red-400 px-1 text-xs leading-none"
+          class="text-red-500 hover:text-red-400 px-1 text-xs leading-none disabled:opacity-40"
+          :disabled="isCopying || isDeleting"
           @click="confirmingDelete = true"
         >&#10005;</button>
       </template>
@@ -148,7 +172,10 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import type { ReportDefinition, ReportFilterCondition, ReportResult, ReportGroup } from '../types/bridge'
 import ReportBarChart from './ReportBarChart.vue'
+import ReportGroupedBar from './ReportGroupedBar.vue'
+import ReportHeatmap from './ReportHeatmap.vue'
 import ReportLineChart from './ReportLineChart.vue'
+import ReportMultiLineChart from './ReportMultiLineChart.vue'
 import ReportPieChart from './ReportPieChart.vue'
 import ReportVisualGrid from './ReportVisualGrid.vue'
 
@@ -158,9 +185,22 @@ const props = defineProps<{
   editMode: boolean
   running: boolean
   groups: ReportGroup[]
+  stale: boolean
 }>()
 
-defineEmits<{
+const confirmingDelete = ref(false)
+const isCopying = ref(false)
+const isDeleting = ref(false)
+
+watch(() => props.editMode, (val) => {
+  if (!val) {
+    confirmingDelete.value = false
+    isCopying.value = false
+    isDeleting.value = false
+  }
+})
+
+const emit = defineEmits<{
   delete: []
   edit: []
   copy: []
@@ -169,9 +209,17 @@ defineEmits<{
   setGroup: [groupId: string]
 }>()
 
-const confirmingDelete = ref(false)
+function handleCopy() {
+  isCopying.value = true
+  emit('copy')
+  setTimeout(() => { isCopying.value = false }, 4000)
+}
 
-watch(() => props.editMode, (val) => { if (!val) confirmingDelete.value = false })
+function handleDelete() {
+  isDeleting.value = true
+  emit('delete')
+  confirmingDelete.value = false
+}
 
 const showWeightTooltip = ref(false)
 const tooltipX = ref(0)
@@ -200,7 +248,7 @@ async function onWeightHover(e: MouseEvent) {
 }
 
 const subjectLabel = computed(() => {
-  const map: Record<string, string> = { ships: 'Ships', artifacts: 'Artifacts', missions: 'Missions' }
+  const map: Record<string, string> = { ships: 'Ships', artifacts: 'Artifacts', missions: 'Ships' }
   return map[props.def.subject] ?? props.def.subject
 })
 
@@ -208,22 +256,29 @@ const modeLabel = computed(() => {
   return props.def.mode === 'time_series' ? 'Time series' : 'Aggregate'
 })
 
+const dimensionLabelMap: Record<string, string> = {
+  ship_type: 'Ship',
+  duration_type: 'Duration',
+  level: 'Level',
+  mission_type: 'Type',
+  mission_target: 'Target',
+  artifact_name: 'Artifact',
+  rarity: 'Rarity',
+  tier: 'Tier',
+  spec_type: 'Spec',
+  time_bucket: '',
+}
+
 const groupByLabel = computed(() => {
-  const map: Record<string, string> = {
-    ship_type: 'Ship',
-    duration_type: 'Duration',
-    level: 'Level',
-    mission_type: 'Type',
-    mission_target: 'Target',
-    artifact_name: 'Artifact',
-    rarity: 'Rarity',
-    tier: 'Tier',
-    spec_type: 'Spec',
-    time_bucket: '',
-  }
   const g = props.def.groupBy
   if (!g || g === 'time_bucket') return ''
-  return map[g] ?? g
+  return dimensionLabelMap[g] ?? g
+})
+
+const secondaryGroupByLabel = computed(() => {
+  const g = props.def.secondaryGroupBy
+  if (!g) return ''
+  return dimensionLabelMap[g] ?? g
 })
 
 const weightClass = computed(() => {
@@ -306,9 +361,14 @@ const weightFactors = computed((): WeightFactor[] => {
 })
 
 const normalizeLabel = computed(() => {
-  if (props.def.normalizeBy === 'launches') return 'per launch'
-  if (props.def.normalizeBy === 'airtime') return 'per flight hour'
-  return ''
+  switch (props.def.normalizeBy) {
+    case 'launches': return 'per launch'
+    case 'airtime': return 'per flight hour'
+    case 'row_pct': return 'row %'
+    case 'col_pct': return 'col %'
+    case 'global_pct': return 'global %'
+    default: return ''
+  }
 })
 
 const filteredResult = computed(() => {
@@ -328,6 +388,7 @@ const filteredResult = computed(() => {
   else if (op === '>=') kept = pairs.filter(p => p.value >= threshold)
   else if (op === '<=') kept = pairs.filter(p => p.value <= threshold)
   else if (op === '=') kept = pairs.filter(p => p.value === threshold)
+  else if (op === '!=') kept = pairs.filter(p => p.value !== threshold)
   else kept = pairs
   if (isFloat) {
     return {
@@ -336,6 +397,10 @@ const filteredResult = computed(() => {
       floatValues: kept.map(p => p.value),
       isFloat: true,
       weight: props.result.weight,
+      rowLabels: [] as string[],
+      colLabels: [] as string[],
+      matrixValues: [] as number[],
+      is2D: false,
     }
   }
   return {
@@ -344,6 +409,10 @@ const filteredResult = computed(() => {
     floatValues: [] as number[],
     isFloat: false,
     weight: props.result.weight,
+    rowLabels: [] as string[],
+    colLabels: [] as string[],
+    matrixValues: [] as number[],
+    is2D: false,
   }
 })
 </script>

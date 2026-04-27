@@ -84,7 +84,7 @@
                   <div class="mt-1rem ml-2rem">
                     <span
                       v-if="viewByDate"
-                      class="text-sm font-bold ledger-underline"
+                      class="text-sm font-bold mr-0_5rem ledger-underline"
                     >
                       {{ groupedArrays.year[yearIndex].year }}-{{ groupedArrays.month[yearIndex][monthIndex].month }}-{{ groupedArrays.day[yearIndex][monthIndex][dayIndex].day }}
                     </span>

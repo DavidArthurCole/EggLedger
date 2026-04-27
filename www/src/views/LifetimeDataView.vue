@@ -689,11 +689,11 @@ async function viewLifetimeDataOfEid(filterLoad: boolean) {
   lifetimeState.value = LifetimeLoadState.LoadingMissionData
   lifetimeDataLoadedProgress.value = { percentageDone: '0%', loadedCount: 0, totalCount: ids.length }
 
-  // Bulk-fetch all drops and missions in two round-trips instead of N×2 relay calls
-  const [dropCache, missionCache] = await Promise.all([
-    globalThis.getAllPlayerDrops(activeAccountId.value!),
-    globalThis.viewMissionsOfEid(activeAccountId.value!),
-  ])
+  // Fetch mission metadata in one round-trip; drops are fetched per-mission to avoid
+  // a single 12-15MB relay frame that can stall Chrome's WebSocket receive buffer and
+  // permanently deadlock the CDP channel (blocking all subsequent ui.Eval calls).
+  const missionCache = await globalThis.viewMissionsOfEid(activeAccountId.value!)
+  const dropCache: Record<string, MissionDrop[]> | null = null
 
   let firstMatches: number[] | null = null
   let nonMatch = false

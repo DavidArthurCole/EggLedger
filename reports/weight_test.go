@@ -1,66 +1,156 @@
-package reports_test
+package reports
 
 import (
 	"testing"
-
-	"github.com/DavidArthurCole/EggLedger/reports"
+	"time"
 )
 
-func TestClassifyWeight(t *testing.T) {
-	cases := []struct {
-		name string
-		def  reports.ReportDefinition
-		want string
-	}{
-		{
-			name: "ships aggregate no filters - LOW",
-			def:  reports.ReportDefinition{Subject: "ships", Mode: "aggregate", GroupBy: "ship_type"},
-			want: "LOW",
-		},
-		{
-			name: "artifacts aggregate with date filter - LOW",
-			def: reports.ReportDefinition{
-				Subject: "artifacts", Mode: "aggregate", GroupBy: "rarity",
-				Filters: reports.ReportFilters{And: []reports.FilterCondition{{TopLevel: "launchDT", Op: ">", Val: "1700000000"}}},
-			},
-			want: "LOW",
-		},
-		{
-			name: "artifacts aggregate with artifact-scope filter - MEDIUM",
-			def: reports.ReportDefinition{
-				Subject: "artifacts", Mode: "aggregate", GroupBy: "rarity",
-				Filters: reports.ReportFilters{And: []reports.FilterCondition{{TopLevel: "artifact_rarity", Op: ">=", Val: "2"}}},
-			},
-			want: "MEDIUM",
-		},
-		{
-			name: "time_series 2 months - MEDIUM",
-			def: reports.ReportDefinition{
-				Subject: "ships", Mode: "time_series", GroupBy: "time_bucket",
-				TimeBucket: "custom", CustomBucketN: 60, CustomBucketUnit: "day",
-			},
-			want: "MEDIUM",
-		},
-		{
-			name: "time_series 6 months - HEAVY",
-			def: reports.ReportDefinition{
-				Subject: "ships", Mode: "time_series", GroupBy: "time_bucket",
-				TimeBucket: "custom", CustomBucketN: 6, CustomBucketUnit: "month",
-			},
-			want: "HEAVY",
-		},
-		{
-			name: "artifacts time_series no date bound - HEAVY",
-			def:  reports.ReportDefinition{Subject: "artifacts", Mode: "time_series", GroupBy: "time_bucket", TimeBucket: "month"},
-			want: "HEAVY",
+func TestDateFilterWindowDays_NoFilter(t *testing.T) {
+	got := dateFilterWindowDays(ReportFilters{})
+	if got != 9999 {
+		t.Errorf("want 9999, got %d", got)
+	}
+}
+
+func TestDateFilterWindowDays_WithLaunchGTE(t *testing.T) {
+	ago30 := time.Now().AddDate(0, 0, -30).Format("2006-01-02")
+	f := ReportFilters{
+		And: []FilterCondition{{TopLevel: "launchDT", Op: ">=", Val: ago30}},
+	}
+	got := dateFilterWindowDays(f)
+	if got < 29 || got > 31 {
+		t.Errorf("want ~30, got %d", got)
+	}
+}
+
+func TestDateFilterWindowDays_PicksMostRestrictive(t *testing.T) {
+	ago10 := time.Now().AddDate(0, 0, -10).Format("2006-01-02")
+	ago90 := time.Now().AddDate(0, 0, -90).Format("2006-01-02")
+	f := ReportFilters{
+		And: []FilterCondition{
+			{TopLevel: "launchDT", Op: ">=", Val: ago90},
+			{TopLevel: "launchDT", Op: ">=", Val: ago10},
 		},
 	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			got := reports.ClassifyWeight(tc.def)
-			if got != tc.want {
-				t.Errorf("ClassifyWeight() = %q, want %q", got, tc.want)
-			}
-		})
+	got := dateFilterWindowDays(f)
+	if got < 9 || got > 11 {
+		t.Errorf("want ~10, got %d", got)
+	}
+}
+
+func TestClassifyWeight_2D_NoArtifact_IsLow(t *testing.T) {
+	def := ReportDefinition{
+		Mode:             "aggregate",
+		GroupBy:          "ship_type",
+		SecondaryGroupBy: "duration_type",
+	}
+	got := ClassifyWeight(def)
+	if got != "LOW" {
+		t.Errorf("want LOW, got %s", got)
+	}
+}
+
+func TestClassifyWeight_2D_ArtifactNoDate_IsHeavy(t *testing.T) {
+	def := ReportDefinition{
+		Mode:             "aggregate",
+		GroupBy:          "ship_type",
+		SecondaryGroupBy: "artifact_name",
+	}
+	got := ClassifyWeight(def)
+	if got != "HEAVY" {
+		t.Errorf("want HEAVY, got %s", got)
+	}
+}
+
+func TestClassifyWeight_2D_ArtifactWithDate_IsMedium(t *testing.T) {
+	ago30 := time.Now().AddDate(0, 0, -30).Format("2006-01-02")
+	def := ReportDefinition{
+		Mode:             "aggregate",
+		GroupBy:          "ship_type",
+		SecondaryGroupBy: "artifact_name",
+		Filters: ReportFilters{
+			And: []FilterCondition{{TopLevel: "launchDT", Op: ">=", Val: ago30}},
+		},
+	}
+	got := ClassifyWeight(def)
+	if got != "MEDIUM" {
+		t.Errorf("want MEDIUM, got %s", got)
+	}
+}
+
+func TestClassifyWeight_TimePivot_NoArtifact_NoDate_IsHeavy(t *testing.T) {
+	def := ReportDefinition{
+		Mode:             "time_series",
+		GroupBy:          "time_bucket",
+		SecondaryGroupBy: "ship_type",
+		TimeBucket:       "month",
+	}
+	got := ClassifyWeight(def)
+	if got != "HEAVY" {
+		t.Errorf("want HEAVY, got %s", got)
+	}
+}
+
+func TestClassifyWeight_TimePivot_NoArtifact_WithRecentDate_IsMedium(t *testing.T) {
+	ago30 := time.Now().AddDate(0, 0, -30).Format("2006-01-02")
+	def := ReportDefinition{
+		Mode:             "time_series",
+		GroupBy:          "time_bucket",
+		SecondaryGroupBy: "ship_type",
+		TimeBucket:       "month",
+		Filters: ReportFilters{
+			And: []FilterCondition{{TopLevel: "launchDT", Op: ">=", Val: ago30}},
+		},
+	}
+	got := ClassifyWeight(def)
+	if got != "MEDIUM" {
+		t.Errorf("want MEDIUM, got %s", got)
+	}
+}
+
+func TestClassifyWeight_TimePivot_NoArtifact_WithOldDate_IsHeavy(t *testing.T) {
+	ago180 := time.Now().AddDate(0, 0, -180).Format("2006-01-02")
+	def := ReportDefinition{
+		Mode:             "time_series",
+		GroupBy:          "time_bucket",
+		SecondaryGroupBy: "ship_type",
+		TimeBucket:       "month",
+		Filters: ReportFilters{
+			And: []FilterCondition{{TopLevel: "launchDT", Op: ">=", Val: ago180}},
+		},
+	}
+	got := ClassifyWeight(def)
+	if got != "HEAVY" {
+		t.Errorf("want HEAVY, got %s", got)
+	}
+}
+
+func TestClassifyWeight_TimePivot_ArtifactSecondary_NoDate_IsHeavy(t *testing.T) {
+	def := ReportDefinition{
+		Mode:             "time_series",
+		GroupBy:          "time_bucket",
+		SecondaryGroupBy: "artifact_name",
+		TimeBucket:       "month",
+	}
+	got := ClassifyWeight(def)
+	if got != "HEAVY" {
+		t.Errorf("want HEAVY, got %s", got)
+	}
+}
+
+func TestClassifyWeight_TimePivot_ArtifactSecondary_WithDate_IsMedium(t *testing.T) {
+	ago30 := time.Now().AddDate(0, 0, -30).Format("2006-01-02")
+	def := ReportDefinition{
+		Mode:             "time_series",
+		GroupBy:          "time_bucket",
+		SecondaryGroupBy: "artifact_name",
+		TimeBucket:       "month",
+		Filters: ReportFilters{
+			And: []FilterCondition{{TopLevel: "launchDT", Op: ">=", Val: ago30}},
+		},
+	}
+	got := ClassifyWeight(def)
+	if got != "MEDIUM" {
+		t.Errorf("want MEDIUM, got %s", got)
 	}
 }

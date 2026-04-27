@@ -3,6 +3,8 @@
         v-on:change="handleFilterChange"
         :id="internalId"
         :value="modelValue"
+        :disabled="disabled"
+        :class="disabled ? 'opacity-60 cursor-not-allowed' : ''"
     >
         <option
             v-for="option in optionList"
@@ -38,6 +40,10 @@
             modelValue: {
                 type: String as PropType<string | null>,
                 default: null,
+            },
+            disabled: {
+                type: Boolean,
+                default: false,
             },
         },
         methods: {

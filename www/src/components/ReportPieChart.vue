@@ -1,11 +1,12 @@
 <template>
-  <div ref="containerRef" class="w-full h-full">
-    <svg :viewBox="`0 0 ${vw} ${vh}`" class="w-full h-full" preserveAspectRatio="xMidYMid meet">
+  <div class="w-full h-full flex items-center justify-center">
+  <div ref="containerRef" class="h-full" style="aspect-ratio: 1 / 1; max-width: 100%;">
+    <svg :viewBox="`0 0 ${vw} ${vh}`" class="w-full h-full" preserveAspectRatio="xMidYMid meet" overflow="visible">
       <defs>
         <linearGradient
           v-for="(seg, i) in segments"
           :key="'g-' + i"
-          :id="`lg-${i}`"
+          :id="`lg-${pieId}-${i}`"
           gradientUnits="userSpaceOnUse"
           :x1="seg.innerX"
           :y1="seg.innerY"
@@ -15,6 +16,13 @@
           <stop offset="0%" :stop-color="seg.color" />
           <stop offset="100%" stop-color="#6b7280" />
         </linearGradient>
+        <!-- Clip connector lines to outside the pie circle so the 0.985r overlap is invisible -->
+        <clipPath :id="`clip-outside-${pieId}`" clipPathUnits="userSpaceOnUse">
+          <path
+            clip-rule="evenodd"
+            :d="`M 0 0 H ${vw} V ${vh} H 0 Z M ${cx} ${cy - r} A ${r} ${r} 0 1 0 ${cx} ${cy + r} A ${r} ${r} 0 1 0 ${cx} ${cy - r} Z`"
+          />
+        </clipPath>
       </defs>
       <!-- Pie segments -->
       <path
@@ -22,15 +30,20 @@
         :key="'seg-' + i"
         :d="seg.path"
         :fill="seg.color"
+        :opacity="segmentOpacity(i)"
+        style="cursor: pointer; transition: opacity 0.1s;"
+        @mouseenter="(e) => { hoveredIndex = i; showTooltip(e, [seg.label, String(seg.value) + ' (' + seg.pct.toFixed(1) + '%)']) }"
+        @mousemove="moveTooltip"
+        @mouseleave="() => { hoveredIndex = null; hideTooltip() }"
       />
       <!-- Connector lines and labels -->
-      <g v-for="(seg, i) in segments" :key="'lbl-' + i">
+      <g v-for="(seg, i) in segments" :key="'lbl-' + i" style="pointer-events: none;" :opacity="segmentOpacity(i)" :clip-path="`url(#clip-outside-${pieId})`">
         <line
           :x1="seg.innerX"
           :y1="seg.innerY"
           :x2="seg.elbowX"
           :y2="seg.labelY"
-          :stroke="`url(#lg-${i})`"
+          :stroke="`url(#lg-${pieId}-${i})`"
           :stroke-width="strokeWidth"
         />
         <line
@@ -38,7 +51,7 @@
           :y1="seg.labelY"
           :x2="seg.labelX"
           :y2="seg.labelY"
-          :stroke="`url(#lg-${i})`"
+          :stroke="`url(#lg-${pieId}-${i})`"
           :stroke-width="strokeWidth"
         />
         <text
@@ -60,11 +73,27 @@
       </g>
     </svg>
   </div>
+    <Teleport to="body">
+      <div
+        v-if="tooltip.visible"
+        class="tooltip-floating"
+        :style="{ left: tooltip.x + 'px', top: tooltip.y + 'px' }"
+      >
+        <div
+          v-for="(line, i) in tooltip.lines"
+          :key="i"
+          class="text-xs"
+          :class="i === 0 ? 'text-gray-200 font-medium' : 'text-gray-400'"
+        >{{ line }}</div>
+      </div>
+    </Teleport>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import type { ReportResult } from '../types/bridge'
+import { useChartTooltip } from '../composables/useChartTooltip'
 
 const props = defineProps<{
   result: ReportResult
@@ -72,6 +101,10 @@ const props = defineProps<{
   /** JSON-encoded Record<string, string> mapping label to hex color */
   labelColors?: string
 }>()
+
+const { tooltip, showTooltip, moveTooltip, hideTooltip } = useChartTooltip()
+const hoveredIndex = ref<number | null>(null)
+const pieId = Math.random().toString(36).slice(2, 7)
 
 const containerRef = ref<HTMLDivElement | null>(null)
 const containerSize = ref({ w: 0, h: 0 })
@@ -96,7 +129,7 @@ const cx = computed(() => vw.value / 2)
 const cy = computed(() => vh.value / 2)
 
 // All geometry scales from r. Cap prevents label overflow on very large cards.
-const r = computed(() => Math.min(Math.min(vw.value, vh.value) * 0.38, 120))
+const r = computed(() => Math.min(vw.value, vh.value) * 0.3)
 const elbowR = computed(() => r.value * 1.291)
 const labelOffset = computed(() => r.value * 0.182)
 const textXOff = computed(() => r.value * 0.027)
@@ -108,6 +141,11 @@ const strokeWidth = computed(() => r.value * 0.0145)
 const MAX_SEGMENTS = 10
 const minLabelSpacing = computed(() => r.value * 0.255)
 const labelClamp = computed(() => r.value * 0.145)
+
+function segmentOpacity(i: number): number {
+  if (hoveredIndex.value === null) return 1
+  return i === hoveredIndex.value ? 1 : 0.5
+}
 
 function hexToHsl(hex: string): [number, number, number] {
   const rc = Number.parseInt(hex.slice(1, 3), 16) / 255
@@ -147,9 +185,6 @@ function segmentColors(baseColor: string, count: number): string[] {
   )
 }
 
-function truncateLabel(label: string, maxLen = 16): string {
-  return label.length > maxLen ? label.slice(0, maxLen - 1) + '…' : label
-}
 
 const parsedLabelColors = computed((): Record<string, string> => {
   if (!props.labelColors) return {}
@@ -163,30 +198,29 @@ const parsedLabelColors = computed((): Record<string, string> => {
 const segments = computed(() => {
   const cxVal = cx.value
   const cyVal = cy.value
+  const vwVal = vw.value
   const vhVal = vh.value
   const rVal = r.value
   const elbowRVal = elbowR.value
   const labelOffsetVal = labelOffset.value
   const textXOffVal = textXOff.value
+  const fontSizeVal = fontSize.value
   const minSpacing = minLabelSpacing.value
   const clamp = labelClamp.value
 
   function spreadLabelPositions(rawPositions: number[]): number[] {
+    if (rawPositions.length <= 1) return [...rawPositions]
     const adjusted = [...rawPositions]
     const n = adjusted.length
-    if (n <= 1) return adjusted
-    for (let pass = 0; pass < n; pass++) {
-      let changed = false
-      for (let i = 0; i < n - 1; i++) {
-        const gap = adjusted[i + 1] - adjusted[i]
-        if (gap < minSpacing) {
-          const overlap = minSpacing - gap
-          adjusted[i] -= overlap / 2
-          adjusted[i + 1] += overlap / 2
-          changed = true
-        }
-      }
-      if (!changed) break
+    // Forward pass: clamp to top boundary, then push each label below the previous
+    for (let i = 0; i < n; i++) {
+      const floor = i === 0 ? clamp : adjusted[i - 1] + minSpacing
+      if (adjusted[i] < floor) adjusted[i] = floor
+    }
+    // Backward pass: clamp to bottom boundary, then push each label above the next
+    for (let i = n - 1; i >= 0; i--) {
+      const ceiling = i === n - 1 ? vhVal - clamp : adjusted[i + 1] - minSpacing
+      if (adjusted[i] > ceiling) adjusted[i] = ceiling
     }
     return adjusted
   }
@@ -217,6 +251,9 @@ const segments = computed(() => {
   }
 
   let angleOffset = -Math.PI / 2
+  const hMargin = 4
+  const charWidth = fontSizeVal * 0.58
+
   const raw = items.map((item, i) => {
     const sweep = (item.value / total) * 2 * Math.PI
     const startAngle = angleOffset
@@ -224,17 +261,38 @@ const segments = computed(() => {
     angleOffset = endAngle
     const midAngle = (startAngle + endAngle) / 2
 
-    const innerX = cxVal + Math.cos(midAngle) * rVal
-    const innerY = cyVal + Math.sin(midAngle) * rVal
-    const elbowX = cxVal + Math.cos(midAngle) * elbowRVal
+    const innerX = cxVal + Math.cos(midAngle) * rVal * 0.985
+    const innerY = cyVal + Math.sin(midAngle) * rVal * 0.985
+    const rawElbowX = cxVal + Math.cos(midAngle) * elbowRVal
     const rawElbowY = cyVal + Math.sin(midAngle) * elbowRVal
-    const isRight = elbowX >= cxVal
-    const labelX = isRight ? elbowX + labelOffsetVal : elbowX - labelOffsetVal
+    const isRight = rawElbowX >= cxVal
+    const rawLabelX = isRight ? rawElbowX + labelOffsetVal : rawElbowX - labelOffsetVal
+    const rawTextX = isRight ? rawLabelX + textXOffVal : rawLabelX - textXOffVal
+
+    // How many characters fit between the text anchor and the viewBox edge
+    const available = isRight ? vwVal - hMargin - rawTextX : rawTextX - hMargin
+    const maxChars = Math.max(4, Math.floor(available / charWidth))
+    const displayLabel = item.label.length > maxChars
+      ? item.label.slice(0, maxChars - 1) + '…'
+      : item.label
+    const displayWidth = displayLabel.length * charWidth
+
+    // If even the truncated label overflows at the natural position, push labelX inward
+    let labelX = rawLabelX
+    let elbowX = rawElbowX
+    if (isRight && rawTextX + displayWidth > vwVal - hMargin) {
+      labelX = vwVal - hMargin - displayWidth - textXOffVal
+      elbowX = Math.min(rawElbowX, labelX)
+    } else if (!isRight && rawTextX - displayWidth < hMargin) {
+      labelX = hMargin + displayWidth + textXOffVal
+      elbowX = Math.max(rawElbowX, labelX)
+    }
+
     const color = perLabel[item.label] ?? autoColors[i]
 
     return {
       label: item.label,
-      shortLabel: truncateLabel(item.label),
+      shortLabel: displayLabel,
       value: item.value,
       path: slicePath(startAngle, endAngle),
       color,

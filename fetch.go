@@ -416,7 +416,7 @@ func runFetchPipeline(w *worker, playerId string) {
 		return
 	}
 
-	exportDir := filepath.Join(_rootDir, "exports", "missions")
+	exportDir := filepath.Join(_exportsDir, "missions")
 	if err := os.MkdirAll(exportDir, 0755); err != nil {
 		perror(errors.Wrap(err, "failed to create export directory"))
 		updateState(AppState_FAILED)
@@ -441,28 +441,35 @@ func runFetchPipeline(w *worker, playerId string) {
 
 	filenameTimestamp := time.Now().Format("20060102_150405")
 
-	xlsxFile := filepath.Join(exportDir, playerId+"."+filenameTimestamp+".xlsx")
-	if err := exportMissionsToXlsx(exportMissions, xlsxFile); err != nil {
-		perror(err)
-		updateState(AppState_FAILED)
-		return
-	}
-	if checkInterrupt() {
-		return
-	}
-
-	csvFile := filepath.Join(exportDir, playerId+"."+filenameTimestamp+".csv")
-	if err := exportMissionsToCsv(exportMissions, csvFile); err != nil {
-		perror(err)
-		updateState(AppState_FAILED)
-		return
-	}
-	if checkInterrupt() {
-		return
+	xlsxFile := ""
+	if _storage.GetAutoExportXlsx() {
+		xlsxFile = filepath.Join(exportDir, playerId+"."+filenameTimestamp+".xlsx")
+		if err := exportMissionsToXlsx(exportMissions, xlsxFile); err != nil {
+			perror(err)
+			updateState(AppState_FAILED)
+			return
+		}
+		if checkInterrupt() {
+			return
+		}
 	}
 
-	// Check if both exports are unchanged compared to the last exported pair.
-	exportsUnchanged := lastExportedXlsxFile != "" && lastExportedCsvFile != "" && func() bool {
+	csvFile := ""
+	if _storage.GetAutoExportCsv() {
+		csvFile = filepath.Join(exportDir, playerId+"."+filenameTimestamp+".csv")
+		if err := exportMissionsToCsv(exportMissions, csvFile); err != nil {
+			perror(err)
+			updateState(AppState_FAILED)
+			return
+		}
+		if checkInterrupt() {
+			return
+		}
+	}
+
+	// Dedup only applies when both types were written this run.
+	exportsUnchanged := xlsxFile != "" && csvFile != "" &&
+		lastExportedXlsxFile != "" && lastExportedCsvFile != "" && func() bool {
 		xlsxUnchanged, err := cmpZipFiles(xlsxFile, lastExportedXlsxFile)
 		if err != nil {
 			log.Error(err)
@@ -476,29 +483,37 @@ func runFetchPipeline(w *worker, playerId string) {
 			log.Error(err)
 			return false
 		}
-		if !csvUnchanged {
-			return false
-		}
-		return true
+		return csvUnchanged
 	}()
 
 	if exportsUnchanged {
 		pinfo("exports identical with existing data files, reusing")
-		err = os.Remove(xlsxFile)
-		if err != nil {
+		if err := os.Remove(xlsxFile); err != nil {
 			log.Errorf("error removing %s: %s", xlsxFile, err)
 		}
-		err = os.Remove(csvFile)
-		if err != nil {
+		if err := os.Remove(csvFile); err != nil {
 			log.Errorf("error removing %s: %s", csvFile, err)
 		}
-
 		xlsxFile = lastExportedXlsxFile
 		csvFile = lastExportedCsvFile
 	}
-	xlsxFileRel, _ := filepath.Rel(_rootDir, xlsxFile)
-	csvFileRel, _ := filepath.Rel(_rootDir, csvFile)
-	_updateExportedFiles([]string{strings.TrimSpace(xlsxFileRel), strings.TrimSpace(csvFileRel)})
+
+	var exportedPaths []string
+	for _, f := range []string{xlsxFile, csvFile} {
+		if f == "" {
+			continue
+		}
+		if rel, relErr := filepath.Rel(_rootDir, f); relErr == nil {
+			exportedPaths = append(exportedPaths, strings.TrimSpace(rel))
+		}
+	}
+	_updateExportedFiles(exportedPaths)
+
+	if keepCount := _storage.GetExportKeepCount(); keepCount > 0 {
+		if _, _, pruneErr := pruneExportsForPlayer(_exportsDir, playerId, keepCount); pruneErr != nil {
+			log.Errorf("post-fetch prune for %s: %s", playerId, pruneErr)
+		}
+	}
 
 	runProc.SetSegment("Export", "done")
 	pinfo("done.")

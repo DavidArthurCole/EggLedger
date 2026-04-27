@@ -8,18 +8,21 @@
     </div>
 
     <div
-      class="grid gap-3"
-      style="grid-template-columns: repeat(4, 1fr); grid-auto-rows: 200px;"
+      ref="gridRef"
+      class="grid gap-3 relative"
+      :style="`grid-template-columns: repeat(8, 1fr); grid-auto-rows: ${rowHeight}px;`"
+      :class="{ 'ring-1 ring-blue-500/40 rounded-lg': draggingIndex !== null && dragOverIndex === displayedReports.length }"
       @dragover.prevent="onGridDragOver($event)"
       @drop.prevent="onGridDrop($event)"
     >
       <div
         v-for="(def, index) in displayedReports"
         :key="def.id"
+        :data-card-index="index"
         :draggable="editMode"
         :style="{
-          gridColumn: `span ${Math.min(Math.max(def.gridW, 1), 4)}`,
-          gridRow: `span ${Math.min(Math.max(def.gridH, 1), 4)}`,
+          gridColumn: `span ${Math.min(Math.max(def.gridW, 1), 8)}`,
+          gridRow: `span ${Math.min(Math.max(def.gridH, 1), 8)}`,
         }"
         :class="{
           'opacity-40': draggingIndex === index,
@@ -35,6 +38,7 @@
           :result="results[def.id] ?? null"
           :edit-mode="editMode"
           :running="runningIds.has(def.id)"
+          :stale="isStale(def.id, def.weight)"
           :groups="editMode ? groups : []"
           @run="handleRun(def.id)"
           @edit="openEditor(def)"
@@ -47,10 +51,29 @@
       <div
         v-if="editMode && draggingIndex !== null"
         class="rounded-lg border-2 border-dashed flex items-center justify-center text-xs transition-colors select-none"
+        style="grid-column: 1 / -1;"
         :class="dragOverIndex === displayedReports.length ? 'border-blue-500 bg-blue-500/10 text-blue-400' : 'border-gray-700 text-gray-600'"
         @dragover.prevent="onDragOver(displayedReports.length)"
         @drop.prevent="onDrop(displayedReports.length)"
       >Move here</div>
+
+      <template v-if="editMode && draggingIndex !== null">
+        <div
+          v-for="(zone, zi) in emptyDropZones"
+          :key="`zone-${zi}`"
+          class="rounded-lg border-2 border-dashed transition-colors pointer-events-auto"
+          :class="dropZoneOverIdx === zi ? 'border-blue-500 bg-blue-500/10' : 'border-gray-700/60'"
+          :style="{
+            gridColumn: `${zone.colStart} / ${zone.colEnd}`,
+            gridRow: `${zone.rowStart} / ${zone.rowStart + 1}`,
+            position: 'absolute',
+            inset: '0',
+          }"
+          @dragover.prevent="dropZoneOverIdx = zi"
+          @dragleave="dropZoneOverIdx = null"
+          @drop.prevent="onDropToZone(zone)"
+        />
+      </template>
     </div>
 
     <div v-if="displayedReports.length === 0 && reports.length > 0" class="text-xs text-gray-500 text-center mt-8">
@@ -71,7 +94,7 @@
       v-if="builderOpen"
       :account-id="accountId"
       :editing-def="editingDef"
-      :editing-result-labels="editingDef && results[editingDef.id] ? results[editingDef.id].labels : []"
+      :editing-result-labels="editingDef && results[editingDef.id] && !results[editingDef.id].is2D ? results[editingDef.id].labels : []"
       @saved="handleSaved"
       @close="builderOpen = false"
     />
@@ -79,7 +102,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import type { ReportDefinition, ReportResult } from '../types/bridge'
 import { AppState } from '../types/bridge'
 import { useReports } from '../composables/useReports'
@@ -104,10 +127,37 @@ const builderOpen = ref(false)
 const editingDef = ref<ReportDefinition | null>(null)
 const results = ref<Record<string, ReportResult>>({})
 const runningIds = ref(new Set<string>())
+const refreshCycle = ref(0)
+const resultCycles = ref<Record<string, number>>({})
 const draggingIndex = ref<number | null>(null)
 const dragOverIndex = ref<number | null>(null)
+
+interface EmptyZone {
+  colStart: number
+  colEnd: number
+  rowStart: number
+  insertAfter: number
+}
+const emptyDropZones = ref<EmptyZone[]>([])
+const dropZoneOverIdx = ref<number | null>(null)
 const importError = ref<string | null>(null)
 const exportAllMessage = ref<string | null>(null)
+
+const gridRef = ref<HTMLElement | null>(null)
+const rowHeight = ref(200)
+let gridObs: ResizeObserver | null = null
+
+onMounted(() => {
+  const update = () => {
+    if (!gridRef.value) return
+    rowHeight.value = Math.max(80, Math.floor((gridRef.value.clientWidth - (GRID_COLS - 1) * GRID_GAP) / GRID_COLS))
+  }
+  gridObs = new ResizeObserver(update)
+  if (gridRef.value) gridObs.observe(gridRef.value)
+  update()
+})
+
+onUnmounted(() => { gridObs?.disconnect() })
 
 const displayedReports = computed(() => {
   if (props.groupFilter == null) return reports.value
@@ -124,8 +174,13 @@ onMounted(async () => {
 
 watch(appState, (state) => {
   if (state === AppState.Success) {
+    refreshCycle.value++
     for (const def of reports.value) {
-      handleRun(def.id)
+      if (def.weight !== 'HEAVY') {
+        handleRun(def.id)
+      } else if (resultCycles.value[def.id] !== undefined) {
+        resultCycles.value = { ...resultCycles.value, [def.id]: refreshCycle.value }
+      }
     }
   }
 })
@@ -137,16 +192,23 @@ function openEditor(def: ReportDefinition | null) {
 
 async function handleRun(id: string) {
   runningIds.value = new Set([...runningIds.value, id])
+  const cycleAtStart = refreshCycle.value
   try {
     const result = await executeReport(id)
     if (result) {
       results.value = { ...results.value, [id]: result }
+      resultCycles.value = { ...resultCycles.value, [id]: cycleAtStart }
     }
   } finally {
     const next = new Set(runningIds.value)
     next.delete(id)
     runningIds.value = next
   }
+}
+
+function isStale(id: string, weight: string): boolean {
+  if (weight !== 'HEAVY') return false
+  return resultCycles.value[id] !== undefined && resultCycles.value[id] < refreshCycle.value
 }
 
 async function handleDelete(id: string) {
@@ -212,16 +274,110 @@ async function handleSetGroup(reportId: string, groupId: string) {
   }
 }
 
+interface GridCardPos { col: number; row: number; w: number; h: number; idx: number }
+
+const GRID_COLS = 8
+const GRID_GAP = 12
+
+function buildOccupancyFromLayout(): { cardPositions: GridCardPos[]; occupied: Set<string> } {
+  const cardPositions: GridCardPos[] = []
+  const occupied = new Set<string>()
+  let col = 1
+  let row = 1
+  for (let idx = 0; idx < displayedReports.value.length; idx++) {
+    const def = displayedReports.value[idx]
+    const w = Math.min(Math.max(def.gridW, 1), GRID_COLS)
+    const h = Math.min(Math.max(def.gridH, 1), 8)
+    // Replicate CSS grid auto-placement (row direction, no dense)
+    while (true) {
+      if (col + w - 1 > GRID_COLS) { col = 1; row++ }
+      let fits = true
+      for (let rr = row; rr < row + h && fits; rr++)
+        for (let cc = col; cc < col + w && fits; cc++)
+          if (occupied.has(`${cc},${rr}`)) fits = false
+      if (fits) break
+      col++
+    }
+    cardPositions.push({ col, row, w, h, idx })
+    for (let rr = row; rr < row + h; rr++)
+      for (let cc = col; cc < col + w; cc++) occupied.add(`${cc},${rr}`)
+    col += w
+  }
+  return { cardPositions, occupied }
+}
+
+function zoneInsertAfter(cardPositions: GridCardPos[], targetRow: number, runStart: number): number {
+  const zoneFirst = (targetRow - 1) * GRID_COLS + runStart
+  let best = -1
+  for (const cp of cardPositions) {
+    if ((cp.row - 1) * GRID_COLS + cp.col < zoneFirst) best = Math.max(best, cp.idx)
+  }
+  return best
+}
+
+function rowEmptyZones(
+  r: number,
+  occupied: Set<string>,
+  cardPositions: GridCardPos[],
+): EmptyZone[] {
+  const zones: EmptyZone[] = []
+  let runStart: number | null = null
+  for (let c = 1; c <= GRID_COLS + 1; c++) {
+    const isEmpty = c <= GRID_COLS && !occupied.has(`${c},${r}`)
+    if (isEmpty && runStart === null) { runStart = c; continue }
+    if (!isEmpty && runStart !== null) {
+      zones.push({
+        colStart: runStart,
+        colEnd: c,
+        rowStart: r,
+        insertAfter: zoneInsertAfter(cardPositions, r, runStart),
+      })
+      runStart = null
+    }
+  }
+  return zones
+}
+
+function computeEmptyZones() {
+  if (draggingIndex.value === null) { emptyDropZones.value = []; return }
+  const { cardPositions, occupied } = buildOccupancyFromLayout()
+  if (cardPositions.length === 0) { emptyDropZones.value = []; return }
+  const maxRow = Math.max(...cardPositions.map(p => p.row + p.h - 1))
+  const zones: EmptyZone[] = []
+  for (let r = 1; r <= maxRow; r++) zones.push(...rowEmptyZones(r, occupied, cardPositions))
+  emptyDropZones.value = zones
+}
+
 function onDragStart(index: number, event: DragEvent) {
   draggingIndex.value = index
   if (event.dataTransfer) {
     event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', String(index))
   }
+  nextTick(() => computeEmptyZones())
 }
 
 function onDragEnd() {
   draggingIndex.value = null
   dragOverIndex.value = null
+  dropZoneOverIdx.value = null
+  emptyDropZones.value = []
+}
+
+async function onDropToZone(zone: EmptyZone) {
+  const from = draggingIndex.value
+  draggingIndex.value = null
+  dragOverIndex.value = null
+  dropZoneOverIdx.value = null
+  emptyDropZones.value = []
+  if (from === null) return
+  const ids = reports.value.map(r => r.id)
+  const [moved] = ids.splice(from, 1)
+  let insertAt = zone.insertAfter
+  if (from <= insertAt) insertAt--
+  insertAt = Math.max(insertAt, -1)
+  ids.splice(insertAt + 1, 0, moved)
+  await reorderReports(ids)
 }
 
 function onGridDragOver(event: DragEvent) {
@@ -261,7 +417,7 @@ async function handleSaved(def: ReportDefinition) {
   if (isNew) {
     const saved = await createReport(def)
     runId = saved?.id ?? null
-    if (runId && props.groupFilter) {
+    if (runId && props.groupFilter && def.accountId !== '__global__') {
       await globalThis.setReportGroup(runId, props.groupFilter)
       reports.value = reports.value.map(r =>
         r.id === runId ? { ...r, groupId: props.groupFilter! } : r,

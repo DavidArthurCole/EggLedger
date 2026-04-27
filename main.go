@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -49,7 +50,10 @@ var (
 	_fs embed.FS
 
 	_rootDir     string
+	_dataRootDir string
 	_internalDir string
+	_exportsDir  string
+	_logsDir     string
 
 	_appIsInForbiddenDirectory bool
 
@@ -207,7 +211,10 @@ func init() {
 	}
 	log.Infof("root dir: %s", _rootDir)
 
+	_dataRootDir = resolveDataRootDir(_rootDir)
 	_internalDir = resolveInternalDir(_rootDir)
+	_exportsDir = resolveExportsDir(_rootDir)
+	_logsDir = resolveLogsDir(_rootDir)
 
 	// Make sure the app isn't located in the system/user app directory or
 	// downloads dir.
@@ -250,11 +257,10 @@ func init() {
 	}
 
 	// Set up persistent logging.
-	logdir := filepath.Join(_rootDir, "logs")
-	if err := os.MkdirAll(logdir, 0755); err != nil {
+	if err := os.MkdirAll(_logsDir, 0755); err != nil {
 		log.Error(err)
 	} else {
-		logfile := filepath.Join(logdir, "app.log")
+		logfile := filepath.Join(_logsDir, "app.log")
 		logger := &lumberjack.Logger{
 			Filename:  logfile,
 			MaxSize:   5, // megabytes
@@ -427,6 +433,8 @@ func reportDefToRow(def reports.ReportDefinition) (reportdb.ReportRow, error) {
 		ValueFilterThreshold: def.ValueFilterThreshold,
 		GroupId: def.GroupId,
 		LabelColors: def.LabelColors,
+		SecondaryGroupBy: def.SecondaryGroupBy,
+		UnfilledColor: def.UnfilledColor,
 	}
 	if def.TimeBucket != "" {
 		r.TimeBucket = sql.NullString{String: def.TimeBucket, Valid: true}
@@ -466,6 +474,8 @@ func rowToReportDef(r reportdb.ReportRow) (reports.ReportDefinition, error) {
 		ValueFilterThreshold: r.ValueFilterThreshold,
 		GroupId: r.GroupId,
 		LabelColors: r.LabelColors,
+		SecondaryGroupBy: r.SecondaryGroupBy,
+		UnfilledColor: r.UnfilledColor,
 	}
 	if r.TimeBucket.Valid {
 		def.TimeBucket = r.TimeBucket.String
@@ -905,7 +915,7 @@ func main() {
 	})
 
 	ui.MustBind("getStoragePath", func() string {
-		return _internalDir
+		return _dataRootDir
 	})
 
 	ui.MustBind("setStorageFolderVisible", func(visible bool) {
@@ -920,23 +930,137 @@ func main() {
 		}
 	})
 
-	ui.MustBind("backupStorageTo", func(destPath string) error {
-		action := "backupStorageTo"
+	ui.MustBind("backupStoragePart", func(destPath, part string) error {
+		action := "backupStoragePart"
 		wrap := func(err error) error { return errors.Wrap(err, action) }
 		if destPath == "" {
 			return wrap(errors.New("destination path is required"))
 		}
-		if err := copyDir(_internalDir, destPath); err != nil {
-			return wrap(err)
+		switch part {
+		case "internal":
+			return wrap(copyDir(_internalDir, filepath.Join(destPath, "internal")))
+		case "exports":
+			if _, statErr := os.Stat(_exportsDir); statErr == nil {
+				return wrap(copyDir(_exportsDir, filepath.Join(destPath, "exports")))
+			}
+			return nil
+		case "logs":
+			if _, statErr := os.Stat(_logsDir); statErr == nil {
+				return wrap(copyDir(_logsDir, filepath.Join(destPath, "logs")))
+			}
+			return nil
+		default:
+			return wrap(fmt.Errorf("unknown backup part: %s", part))
 		}
-		return nil
+	})
+
+	ui.MustBind("getBackupDestPath", func() string {
+		return _storage.BackupDestPath
+	})
+
+	ui.MustBind("setBackupDestPath", func(path string) {
+		_storage.SetBackupDestPath(path)
+	})
+
+	ui.MustBind("getAutoExportCsv", func() bool {
+		return _storage.GetAutoExportCsv()
+	})
+	ui.MustBind("setAutoExportCsv", func(flag bool) {
+		_storage.SetAutoExportCsv(flag)
+	})
+	ui.MustBind("getAutoExportXlsx", func() bool {
+		return _storage.GetAutoExportXlsx()
+	})
+	ui.MustBind("setAutoExportXlsx", func(flag bool) {
+		_storage.SetAutoExportXlsx(flag)
+	})
+	ui.MustBind("getExportKeepCount", func() int {
+		return _storage.GetExportKeepCount()
+	})
+	ui.MustBind("setExportKeepCount", func(n int) {
+		_storage.SetExportKeepCount(n)
+	})
+	ui.MustBind("listExportFiles", func() string {
+		groups, err := listExportGroups(_exportsDir)
+		if err != nil {
+			log.Errorf("listExportFiles: %s", err)
+			return "[]"
+		}
+		if groups == nil {
+			return "[]"
+		}
+		accounts := _storage.KnownAccounts
+		accountOrder := make(map[string]int, len(accounts))
+		accountMap := make(map[string]Account, len(accounts))
+		for i, a := range accounts {
+			accountOrder[a.Id] = i
+			accountMap[a.Id] = a
+		}
+		for i, g := range groups {
+			if a, ok := accountMap[g.Eid]; ok {
+				groups[i].Nickname = a.Nickname
+				groups[i].AccountColor = a.AccountColor
+			}
+		}
+		sort.SliceStable(groups, func(i, j int) bool {
+			oi, oki := accountOrder[groups[i].Eid]
+			oj, okj := accountOrder[groups[j].Eid]
+			if oki && okj {
+				return oi < oj
+			}
+			return oki
+		})
+		b, err := json.Marshal(groups)
+		if err != nil {
+			log.Errorf("listExportFiles marshal: %s", err)
+			return "[]"
+		}
+		return string(b)
+	})
+	ui.MustBind("deleteExportFiles", func(pathsJSON string) string {
+		var paths []string
+		if err := json.Unmarshal([]byte(pathsJSON), &paths); err != nil {
+			return "invalid paths JSON: " + err.Error()
+		}
+		for _, p := range paths {
+			if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
+				return err.Error()
+			}
+		}
+		return ""
+	})
+	ui.MustBind("pruneOldExports", func() string {
+		type pruneResult struct {
+			Deleted    int    `json:"deleted"`
+			FreedBytes int64  `json:"freedBytes"`
+			Error      string `json:"error"`
+		}
+		keepCount := _storage.GetExportKeepCount()
+		groups, err := listExportGroups(_exportsDir)
+		if err != nil {
+			b, _ := json.Marshal(pruneResult{Error: err.Error()})
+			return string(b)
+		}
+		var totalDeleted int
+		var totalFreed int64
+		for _, g := range groups {
+			deleted, freed, pruneErr := pruneExportsForPlayer(_exportsDir, g.Eid, keepCount)
+			totalDeleted += deleted
+			totalFreed += freed
+			if pruneErr != nil {
+				b, _ := json.Marshal(pruneResult{Deleted: totalDeleted, FreedBytes: totalFreed, Error: pruneErr.Error()})
+				return string(b)
+			}
+		}
+		b, _ := json.Marshal(pruneResult{Deleted: totalDeleted, FreedBytes: totalFreed})
+		return string(b)
 	})
 
 	ui.MustBind("moveStorageTo", func(destPath string) error {
 		action := "moveStorageTo"
 		wrap := func(err error) error { return errors.Wrap(err, action) }
 
-		absInternal, err := filepath.Abs(_internalDir)
+		absDataRoot, err := filepath.Abs(_dataRootDir)
 		if err != nil {
 			return wrap(err)
 		}
@@ -948,11 +1072,11 @@ func main() {
 		if absDest == "" {
 			return wrap(errors.New("destination path is required"))
 		}
-		if absDest == absInternal {
+		if absDest == absDataRoot {
 			return wrap(errors.New("destination is the same as current location"))
 		}
-		if strings.HasPrefix(absDest, absInternal+string(filepath.Separator)) {
-			return wrap(errors.New("destination cannot be inside the current storage directory"))
+		if strings.HasPrefix(absDest, absDataRoot+string(filepath.Separator)) {
+			return wrap(errors.New("destination cannot be inside the current data directory"))
 		}
 
 		destPreExisted := false
@@ -975,9 +1099,21 @@ func main() {
 			}
 		}
 
-		if err := copyDir(absInternal, absDest); err != nil {
+		if err := copyDir(_internalDir, filepath.Join(absDest, "internal")); err != nil {
 			rollback()
 			return wrap(err)
+		}
+		if _, statErr := os.Stat(_exportsDir); statErr == nil {
+			if err := copyDir(_exportsDir, filepath.Join(absDest, "exports")); err != nil {
+				rollback()
+				return wrap(err)
+			}
+		}
+		if _, statErr := os.Stat(_logsDir); statErr == nil {
+			if err := copyDir(_logsDir, filepath.Join(absDest, "logs")); err != nil {
+				rollback()
+				return wrap(err)
+			}
 		}
 
 		if err := writeBootstrapConfig(absDest); err != nil {
@@ -1465,6 +1601,21 @@ func main() {
 
 	ui.MustBind("restoreFromCloud", func() {
 		handleRestoreFromCloud()
+	})
+
+	ui.MustBind("deleteRemoteData", func() string {
+		if err := handleDeleteRemoteData(); err != nil {
+			return err.Error()
+		}
+		return ""
+	})
+
+	ui.MustBind("getCloudAutoSync", func() bool {
+		return _storage.GetCloudAutoSync()
+	})
+
+	ui.MustBind("setCloudAutoSync", func(flag bool) {
+		_storage.SetCloudAutoSync(flag)
 	})
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")

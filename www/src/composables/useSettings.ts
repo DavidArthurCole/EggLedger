@@ -15,6 +15,8 @@ export const screenshotSafety = ref(false)
 export const showMissionProgress = ref(true)
 export const collapseOlderSections = ref(true)
 export const advancedDropFilter = ref(false)
+export const autoExportCsv = ref(true)
+export const autoExportXlsx = ref(true)
 
 export function maskEid(s: string): string {
   if (!screenshotSafety.value) return s
@@ -38,6 +40,8 @@ export function useSettings() {
     showMissionProgress.value = await globalThis.getShowMissionProgress()
     collapseOlderSections.value = await globalThis.getCollapseOlderSections()
     advancedDropFilter.value = await globalThis.getAdvancedDropFilter()
+    autoExportCsv.value = await globalThis.getAutoExportCsv()
+    autoExportXlsx.value = await globalThis.getAutoExportXlsx()
   }
 
   watch(resolutionX, () => globalThis.setDefaultResolution(resolutionX.value, resolutionY.value))
@@ -52,6 +56,8 @@ export function useSettings() {
   watch(showMissionProgress, () => globalThis.setShowMissionProgress(showMissionProgress.value))
   watch(collapseOlderSections, () => globalThis.setCollapseOlderSections(collapseOlderSections.value))
   watch(advancedDropFilter, () => globalThis.setAdvancedDropFilter(advancedDropFilter.value))
+  watch(autoExportCsv, () => globalThis.setAutoExportCsv(autoExportCsv.value))
+  watch(autoExportXlsx, () => globalThis.setAutoExportXlsx(autoExportXlsx.value))
 
   async function setPreferredBrowser(path: string) {
     if (await globalThis.setPreferredBrowser(path)) {
@@ -71,6 +77,8 @@ export function useSettings() {
     showMissionProgress,
     collapseOlderSections,
     advancedDropFilter,
+    autoExportCsv,
+    autoExportXlsx,
     loadSettings, setPreferredBrowser, refreshBrowserList,
   }
 }

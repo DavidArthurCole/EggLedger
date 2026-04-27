@@ -5,10 +5,50 @@ import (
 	"strconv"
 
 	"github.com/DavidArthurCole/EggLedger/ei"
+	"github.com/DavidArthurCole/EggLedger/ledgerdata"
 )
 
 var rarityNames = []string{"Common", "Rare", "Epic", "Legendary"}
 var tierNames = []string{"T1", "T2", "T3", "T4"}
+
+// artifactDisplayName returns the human-readable display name for an artifact
+// enum value by looking it up in ledgerdata.Config.ArtifactTargets. Falls back
+// to CasedName() if no match is found.
+func artifactDisplayName(v int32) string {
+	protoName := ei.ArtifactSpec_Name(v).String()
+	for _, t := range ledgerdata.Config.ArtifactTargets {
+		if t.Name == protoName {
+			return t.DisplayName
+		}
+	}
+	return ei.ArtifactSpec_Name(v).CasedName()
+}
+
+// numericGroupBys lists every GROUP BY dimension whose raw SQL value is an integer.
+var numericGroupBys = map[string]bool{
+	"ship_type":      true,
+	"duration_type":  true,
+	"level":          true,
+	"mission_type":   true,
+	"rarity":         true,
+	"tier":           true,
+	"artifact_name":  true,
+	"mission_target": true,
+}
+
+// LabelSortLess returns true when raw value rawA should sort before rawB for the
+// given groupBy dimension. Numeric dimensions compare by integer value; all others
+// compare lexicographically.
+func LabelSortLess(groupBy, rawA, rawB string) bool {
+	if numericGroupBys[groupBy] {
+		a, errA := strconv.ParseInt(rawA, 10, 64)
+		b, errB := strconv.ParseInt(rawB, 10, 64)
+		if errA == nil && errB == nil {
+			return a < b
+		}
+	}
+	return rawA < rawB
+}
 
 // FormatLabel converts a raw SQL GROUP BY value to a display string.
 func FormatLabel(groupBy string, rawVal string) string {
@@ -28,13 +68,14 @@ func FormatLabel(groupBy string, rawVal string) string {
 	case "mission_target":
 		v := parseInt()
 		if v < 0 {
-			return "None"
+			return "None (Pre 1.27)"
 		}
-		name := ei.ArtifactSpec_Name(v)
-		return name.CasedName()
+		if v == 0 {
+			return "Untargeted"
+		}
+		return artifactDisplayName(int32(v))
 	case "artifact_name":
-		name := ei.ArtifactSpec_Name(parseInt())
-		return name.CasedName()
+		return artifactDisplayName(int32(parseInt()))
 	case "rarity":
 		i := parseInt()
 		if i >= 0 && i < len(rarityNames) {

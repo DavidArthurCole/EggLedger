@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -35,6 +36,13 @@ func ExecuteReport(ctx context.Context, def ReportDefinition) (ReportResult, err
 	args = append(args, filterArgs...)
 	baseArgs := make([]interface{}, len(args))
 	copy(baseArgs, args)
+
+	if def.SecondaryGroupBy != "" && def.Mode == "time_series" {
+		return executeTimePivotReport(ctx, def, baseWhere, args, baseArgs)
+	}
+	if def.SecondaryGroupBy != "" {
+		return executePivotReport(ctx, def, baseWhere, args, baseArgs)
+	}
 
 	var query string
 	switch def.Mode {
@@ -123,6 +131,300 @@ func ExecuteReport(ctx context.Context, def ReportDefinition) (ReportResult, err
 		Labels: labels,
 		Values: values,
 		Weight: def.Weight,
+	}, nil
+}
+
+// apply2DPctNormalization normalizes a row-major matrix in-place.
+// mode must be "row_pct", "col_pct", or "global_pct"; anything else is a no-op.
+func apply2DPctNormalization(vals []float64, nR, nC int, mode string) {
+	if nR == 0 || nC == 0 {
+		return
+	}
+	switch mode {
+	case "row_pct":
+		for r := 0; r < nR; r++ {
+			var rowSum float64
+			for c := 0; c < nC; c++ {
+				rowSum += vals[r*nC+c]
+			}
+			if rowSum > 0 {
+				for c := 0; c < nC; c++ {
+					vals[r*nC+c] = vals[r*nC+c] / rowSum * 100
+				}
+			}
+		}
+	case "col_pct":
+		for c := 0; c < nC; c++ {
+			var colSum float64
+			for r := 0; r < nR; r++ {
+				colSum += vals[r*nC+c]
+			}
+			if colSum > 0 {
+				for r := 0; r < nR; r++ {
+					vals[r*nC+c] = vals[r*nC+c] / colSum * 100
+				}
+			}
+		}
+	case "global_pct":
+		var total float64
+		for _, v := range vals {
+			total += v
+		}
+		if total > 0 {
+			for i := range vals {
+				vals[i] = vals[i] / total * 100
+			}
+		}
+	}
+}
+
+func buildPivotQuery(def ReportDefinition, baseWhere string, args []interface{}) (string, []interface{}, error) {
+	if def.TimeBucket != "" && def.Mode == "time_series" {
+		return "", nil, fmt.Errorf("time-series pivot is not supported; clear the time bucket or remove the secondary group-by")
+	}
+	col1 := GroupByColumn(def.GroupBy)
+	col2 := GroupByColumn(def.SecondaryGroupBy)
+	if col1 == "" {
+		return "", nil, fmt.Errorf("unsupported group-by dimension %q", def.GroupBy)
+	}
+	if col2 == "" {
+		return "", nil, fmt.Errorf("unsupported secondary group-by dimension %q", def.SecondaryGroupBy)
+	}
+	out := make([]interface{}, len(args))
+	copy(out, args)
+	needsArtifactJoin := strings.HasPrefix(col1, "d.") || strings.HasPrefix(col2, "d.")
+	var query string
+	if needsArtifactJoin {
+		query = fmt.Sprintf(`
+            SELECT CAST(%s AS TEXT), CAST(%s AS TEXT), COUNT(*) AS count
+            FROM artifact_drops d
+            JOIN mission m ON d.mission_id = m.mission_id AND d.player_id = m.player_id
+            WHERE %s AND d.drop_index >= 0
+            GROUP BY %s, %s
+            ORDER BY %s, %s`, col1, col2, baseWhere, col1, col2, col1, col2)
+	} else {
+		query = fmt.Sprintf(`
+            SELECT CAST(%s AS TEXT), CAST(%s AS TEXT), COUNT(*) AS count
+            FROM mission m
+            WHERE %s
+            GROUP BY %s, %s
+            ORDER BY %s, %s`, col1, col2, baseWhere, col1, col2, col1, col2)
+	}
+	return query, out, nil
+}
+
+func executePivotReport(ctx context.Context, def ReportDefinition, baseWhere string, args []interface{}, baseArgs []interface{}) (ReportResult, error) {
+	action := fmt.Sprintf("execute pivot report %s", def.Id)
+	wrap := func(err error) error { return errors.Wrap(err, action) }
+
+	query, queryArgs, err := buildPivotQuery(def, baseWhere, args)
+	if err != nil {
+		return ReportResult{}, wrap(err)
+	}
+
+	rows, err := _missionDB.QueryContext(ctx, query, queryArgs...)
+	if err != nil {
+		return ReportResult{}, wrap(err)
+	}
+	defer rows.Close()
+
+	rowSet := map[string]struct{}{}
+	colSet := map[string]struct{}{}
+	cells := map[string]map[string]float64{}
+
+	type labelEntry struct {
+		display string
+		rawVal  string
+	}
+
+	var rowEntries []labelEntry
+	var colEntries []labelEntry
+
+	for rows.Next() {
+		var rawRow, rawCol string
+		var count int64
+		if err := rows.Scan(&rawRow, &rawCol, &count); err != nil {
+			return ReportResult{}, wrap(err)
+		}
+		rowLabel := FormatLabel(def.GroupBy, rawRow)
+		colLabel := FormatLabel(def.SecondaryGroupBy, rawCol)
+		if _, ok := rowSet[rowLabel]; !ok {
+			rowSet[rowLabel] = struct{}{}
+			rowEntries = append(rowEntries, labelEntry{display: rowLabel, rawVal: rawRow})
+		}
+		if _, ok := colSet[colLabel]; !ok {
+			colSet[colLabel] = struct{}{}
+			colEntries = append(colEntries, labelEntry{display: colLabel, rawVal: rawCol})
+		}
+		if cells[rowLabel] == nil {
+			cells[rowLabel] = map[string]float64{}
+		}
+		cells[rowLabel][colLabel] = float64(count)
+	}
+	if err := rows.Err(); err != nil {
+		return ReportResult{}, wrap(err)
+	}
+
+	sort.SliceStable(rowEntries, func(i, j int) bool {
+		return LabelSortLess(def.GroupBy, rowEntries[i].rawVal, rowEntries[j].rawVal)
+	})
+	sort.SliceStable(colEntries, func(i, j int) bool {
+		return LabelSortLess(def.SecondaryGroupBy, colEntries[i].rawVal, colEntries[j].rawVal)
+	})
+
+	rowLabels := make([]string, len(rowEntries))
+	colLabels := make([]string, len(colEntries))
+	for i, e := range rowEntries {
+		rowLabels[i] = e.display
+	}
+	for i, e := range colEntries {
+		colLabels[i] = e.display
+	}
+
+	matrixValues := make([]float64, len(rowLabels)*len(colLabels))
+	for r, row := range rowLabels {
+		for c, col := range colLabels {
+			matrixValues[r*len(colLabels)+c] = cells[row][col]
+		}
+	}
+
+	pctMode := def.NormalizeBy
+	if pctMode == "row_pct" || pctMode == "col_pct" || pctMode == "global_pct" {
+		apply2DPctNormalization(matrixValues, len(rowLabels), len(colLabels), pctMode)
+	} else if pctMode != "" && pctMode != "none" {
+		col1 := GroupByColumn(def.GroupBy)
+		if col1 != "" && !strings.HasPrefix(col1, "d.") {
+			var denomQuery string
+			if pctMode == "airtime" {
+				denomQuery = fmt.Sprintf(
+					`SELECT CAST(%s AS TEXT), SUM(CAST(m.return_timestamp - m.start_timestamp AS REAL) / 3600.0) FROM mission m WHERE %s GROUP BY %s`,
+					col1, baseWhere, col1,
+				)
+			} else {
+				denomQuery = fmt.Sprintf(
+					`SELECT CAST(%s AS TEXT), COUNT(*) FROM mission m WHERE %s GROUP BY %s`,
+					col1, baseWhere, col1,
+				)
+			}
+			denomRows, err := _missionDB.QueryContext(ctx, denomQuery, baseArgs...)
+			if err != nil {
+				return ReportResult{}, wrap(err)
+			}
+			defer denomRows.Close()
+			denomMap := map[string]float64{}
+			for denomRows.Next() {
+				var rawKey string
+				var denom float64
+				if err := denomRows.Scan(&rawKey, &denom); err != nil {
+					return ReportResult{}, wrap(err)
+				}
+				denomMap[FormatLabel(def.GroupBy, rawKey)] = denom
+			}
+			if err := denomRows.Err(); err != nil {
+				return ReportResult{}, wrap(err)
+			}
+			for r, row := range rowLabels {
+				d := denomMap[row]
+				if d > 0 {
+					for c := range colLabels {
+						matrixValues[r*len(colLabels)+c] /= d
+					}
+				}
+			}
+		}
+	}
+
+	return ReportResult{
+		RowLabels:    rowLabels,
+		ColLabels:    colLabels,
+		MatrixValues: matrixValues,
+		Is2D:         true,
+		Weight:       def.Weight,
+	}, nil
+}
+
+func executeTimePivotReport(ctx context.Context, def ReportDefinition, baseWhere string, args []interface{}, baseArgs []interface{}) (ReportResult, error) {
+	// baseArgs is the pre-filter arg snapshot; accepted for caller consistency but not used
+	// since time-series pivots do not support airtime/launches normalization.
+	action := fmt.Sprintf("execute time pivot report %s", def.Id)
+	wrap := func(err error) error { return errors.Wrap(err, action) }
+
+	query, queryArgs, err := BuildTimePivotQuery(def, baseWhere, args)
+	if err != nil {
+		return ReportResult{}, wrap(err)
+	}
+
+	rows, err := _missionDB.QueryContext(ctx, query, queryArgs...)
+	if err != nil {
+		return ReportResult{}, wrap(err)
+	}
+	defer rows.Close()
+
+	var bucketLabels []string
+	bucketSet := map[string]struct{}{}
+	groupSet := map[string]struct{}{}
+	cells := map[string]map[string]float64{}
+
+	type grpEntry struct {
+		display string
+		rawVal  string
+	}
+	var grpEntries []grpEntry
+
+	for rows.Next() {
+		var rawBucket, rawGrp string
+		var count int64
+		if err := rows.Scan(&rawBucket, &rawGrp, &count); err != nil {
+			return ReportResult{}, wrap(err)
+		}
+		grpLabel := FormatLabel(def.SecondaryGroupBy, rawGrp)
+		if _, ok := bucketSet[rawBucket]; !ok {
+			bucketSet[rawBucket] = struct{}{}
+			bucketLabels = append(bucketLabels, rawBucket)
+		}
+		if _, ok := groupSet[grpLabel]; !ok {
+			groupSet[grpLabel] = struct{}{}
+			grpEntries = append(grpEntries, grpEntry{display: grpLabel, rawVal: rawGrp})
+		}
+		if cells[rawBucket] == nil {
+			cells[rawBucket] = map[string]float64{}
+		}
+		cells[rawBucket][grpLabel] = float64(count)
+	}
+	if err := rows.Err(); err != nil {
+		return ReportResult{}, wrap(err)
+	}
+
+	sort.SliceStable(grpEntries, func(i, j int) bool {
+		return LabelSortLess(def.SecondaryGroupBy, grpEntries[i].rawVal, grpEntries[j].rawVal)
+	})
+	groupLabels := make([]string, len(grpEntries))
+	for i, e := range grpEntries {
+		groupLabels[i] = e.display
+	}
+
+	nR := len(bucketLabels)
+	nC := len(groupLabels)
+	matrixValues := make([]float64, nR*nC)
+	for r, bucket := range bucketLabels {
+		for c, grp := range groupLabels {
+			if cells[bucket] != nil {
+				matrixValues[r*nC+c] = cells[bucket][grp]
+			}
+		}
+	}
+
+	pctMode := def.NormalizeBy
+	if pctMode == "row_pct" || pctMode == "col_pct" || pctMode == "global_pct" {
+		apply2DPctNormalization(matrixValues, nR, nC, pctMode)
+	}
+
+	return ReportResult{
+		RowLabels:    bucketLabels,
+		ColLabels:    groupLabels,
+		MatrixValues: matrixValues,
+		Is2D:         true,
+		Weight:       def.Weight,
 	}, nil
 }
 
