@@ -8,8 +8,10 @@
     </div>
 
     <div
+      ref="gridRef"
       class="grid gap-3"
-      style="grid-template-columns: repeat(4, 1fr); grid-auto-rows: 200px;"
+      :style="`grid-template-columns: repeat(4, 1fr); grid-auto-rows: ${rowHeight}px;`"
+      :class="{ 'ring-1 ring-blue-500/40 rounded-lg': draggingIndex !== null && dragOverIndex === displayedReports.length }"
       @dragover.prevent="onGridDragOver($event)"
       @drop.prevent="onGridDrop($event)"
     >
@@ -48,6 +50,7 @@
       <div
         v-if="editMode && draggingIndex !== null"
         class="rounded-lg border-2 border-dashed flex items-center justify-center text-xs transition-colors select-none"
+        style="grid-column: 1 / -1;"
         :class="dragOverIndex === displayedReports.length ? 'border-blue-500 bg-blue-500/10 text-blue-400' : 'border-gray-700 text-gray-600'"
         @dragover.prevent="onDragOver(displayedReports.length)"
         @drop.prevent="onDrop(displayedReports.length)"
@@ -80,7 +83,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import type { ReportDefinition, ReportResult } from '../types/bridge'
 import { AppState } from '../types/bridge'
 import { useReports } from '../composables/useReports'
@@ -111,6 +114,23 @@ const draggingIndex = ref<number | null>(null)
 const dragOverIndex = ref<number | null>(null)
 const importError = ref<string | null>(null)
 const exportAllMessage = ref<string | null>(null)
+
+const gridRef = ref<HTMLElement | null>(null)
+const rowHeight = ref(200)
+let gridObs: ResizeObserver | null = null
+
+onMounted(() => {
+  const update = () => {
+    if (!gridRef.value) return
+    // 4 columns, 3 gaps of 12px (gap-3)
+    rowHeight.value = Math.max(120, Math.floor((gridRef.value.clientWidth - 36) / 4))
+  }
+  gridObs = new ResizeObserver(update)
+  if (gridRef.value) gridObs.observe(gridRef.value)
+  update()
+})
+
+onUnmounted(() => { gridObs?.disconnect() })
 
 const displayedReports = computed(() => {
   if (props.groupFilter == null) return reports.value
@@ -231,6 +251,7 @@ function onDragStart(index: number, event: DragEvent) {
   draggingIndex.value = index
   if (event.dataTransfer) {
     event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', String(index))
   }
 }
 

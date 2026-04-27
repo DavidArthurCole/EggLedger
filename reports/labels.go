@@ -5,10 +5,24 @@ import (
 	"strconv"
 
 	"github.com/DavidArthurCole/EggLedger/ei"
+	"github.com/DavidArthurCole/EggLedger/ledgerdata"
 )
 
 var rarityNames = []string{"Common", "Rare", "Epic", "Legendary"}
 var tierNames = []string{"T1", "T2", "T3", "T4"}
+
+// artifactDisplayName returns the human-readable display name for an artifact
+// enum value by looking it up in ledgerdata.Config.ArtifactTargets. Falls back
+// to CasedName() if no match is found.
+func artifactDisplayName(v int32) string {
+	protoName := ei.ArtifactSpec_Name(v).String()
+	for _, t := range ledgerdata.Config.ArtifactTargets {
+		if t.Name == protoName {
+			return t.DisplayName
+		}
+	}
+	return ei.ArtifactSpec_Name(v).CasedName()
+}
 
 // FormatLabel converts a raw SQL GROUP BY value to a display string.
 func FormatLabel(groupBy string, rawVal string) string {
@@ -33,10 +47,9 @@ func FormatLabel(groupBy string, rawVal string) string {
 		if v == 0 {
 			return "Untargeted"
 		}
-		return ei.ArtifactSpec_Name(v).CasedName()
+		return artifactDisplayName(int32(v))
 	case "artifact_name":
-		name := ei.ArtifactSpec_Name(parseInt())
-		return name.CasedName()
+		return artifactDisplayName(int32(parseInt()))
 	case "rarity":
 		i := parseInt()
 		if i >= 0 && i < len(rarityNames) {

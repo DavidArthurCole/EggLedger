@@ -1,11 +1,11 @@
 <template>
-  <div class="h-full w-full">
+  <div ref="containerRef" class="h-full w-full">
     <svg
       v-if="points.length >= 2"
       ref="svgRef"
       :viewBox="`0 0 ${W} ${H}`"
       class="w-full h-full overflow-visible"
-      preserveAspectRatio="none"
+      preserveAspectRatio="xMidYMid meet"
       @mousemove="onMouseMove"
       @mouseleave="onMouseLeave"
     >
@@ -88,16 +88,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import type { ReportResult } from '../types/bridge'
 import { useChartTooltip } from '../composables/useChartTooltip'
 
-const W = 300
-const H = 130
 const PAD_LEFT = 36
 const PAD_RIGHT = 8
 const PAD_TOP = 10
-const PAD_BOTTOM = 30
+const PAD_BOTTOM = 42
 
 const props = defineProps<{
   result: ReportResult
@@ -106,12 +104,32 @@ const props = defineProps<{
   chartType?: string
 }>()
 
+const containerRef = ref<HTMLDivElement | null>(null)
+const containerSize = ref({ w: 300, h: 130 })
+let lineObs: ResizeObserver | null = null
+
+onMounted(() => {
+  if (!containerRef.value) return
+  const rect = containerRef.value.getBoundingClientRect()
+  containerSize.value = { w: rect.width || 300, h: rect.height || 130 }
+  lineObs = new ResizeObserver(entries => {
+    const e = entries[0]
+    if (e) containerSize.value = { w: e.contentRect.width, h: e.contentRect.height }
+  })
+  lineObs.observe(containerRef.value)
+})
+
+onUnmounted(() => { lineObs?.disconnect() })
+
+const W = computed(() => containerSize.value.w || 300)
+const H = computed(() => containerSize.value.h || 130)
+
 const svgRef = ref<SVGSVGElement | null>(null)
 const activePoint = ref<{ x: number; y: number; label: string; value: number } | null>(null)
 const gradId = `line-grad-${Math.random().toString(36).slice(2, 7)}`
 const { tooltip, showTooltip, moveTooltip, hideTooltip } = useChartTooltip()
 
-function truncateLabel(s: string, max = 10): string {
+function truncateLabel(s: string, max = 14): string {
   return s.length > max ? s.slice(0, max - 1) + '...' : s
 }
 
@@ -132,8 +150,8 @@ const points = computed(() => {
   const labels = props.result.labels ?? []
   if (vs.length < 2) return []
   const max = Math.max(...vs, 1)
-  const xStep = (W - PAD_LEFT - PAD_RIGHT) / (vs.length - 1)
-  const yRange = H - PAD_TOP - PAD_BOTTOM
+  const xStep = (W.value - PAD_LEFT - PAD_RIGHT) / (vs.length - 1)
+  const yRange = H.value - PAD_TOP - PAD_BOTTOM
   return vs.map((v, i) => ({
     x: PAD_LEFT + i * xStep,
     y: PAD_TOP + yRange * (1 - v / max),
@@ -149,12 +167,12 @@ const linePoints = computed(() =>
 const areaPath = computed(() => {
   const ps = points.value
   if (ps.length < 2) return ''
-  const baseline = PAD_TOP + (H - PAD_TOP - PAD_BOTTOM)
+  const baseline = PAD_TOP + (H.value - PAD_TOP - PAD_BOTTOM)
   const line = ps.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ')
   return `${line} L${ps[ps.length - 1].x},${baseline} L${ps[0].x},${baseline} Z`
 })
 
-const MAX_LABELS = 8
+const MAX_LABELS = 20
 const labeledPoints = computed(() => {
   const ps = points.value
   if (ps.length <= MAX_LABELS) return ps
@@ -165,7 +183,7 @@ const labeledPoints = computed(() => {
 const yTicks = computed(() => {
   const max = maxVal.value
   if (max === 0) return []
-  const yRange = H - PAD_TOP - PAD_BOTTOM
+  const yRange = H.value - PAD_TOP - PAD_BOTTOM
   return [0, 0.33, 0.67, 1].map(frac => {
     const val = max * frac
     const y = PAD_TOP + yRange * (1 - frac)
@@ -178,7 +196,7 @@ function onMouseMove(e: MouseEvent) {
   const svg = svgRef.value
   if (!svg || points.value.length === 0) return
   const rect = svg.getBoundingClientRect()
-  const svgX = (e.clientX - rect.left) * (W / rect.width)
+  const svgX = (e.clientX - rect.left) * (W.value / rect.width)
   let nearest = points.value[0]
   let minDist = Math.abs(points.value[0].x - svgX)
   for (const p of points.value) {

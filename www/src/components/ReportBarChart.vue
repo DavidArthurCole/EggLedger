@@ -4,7 +4,7 @@
     style="grid-template-columns: max-content 1fr max-content; align-content: start;"
   >
     <template v-for="(pair, i) in sortedPairs" :key="i">
-      <span class="text-gray-400 truncate text-xs text-right self-center" style="max-width: 8rem;">{{ pair.label }}</span>
+      <span class="text-gray-400 text-xs text-right self-center leading-tight" style="max-width: 9rem;">{{ pair.label }}</span>
       <div class="bg-gray-800 rounded-sm h-4 min-w-0 self-center">
         <div
           class="h-4 rounded-sm"

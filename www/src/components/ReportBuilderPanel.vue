@@ -229,9 +229,6 @@
               <span class="text-xs text-gray-400 truncate">{{ label }}</span>
             </div>
           </div>
-          <p v-else class="text-xs text-gray-600 italic">
-            Run the report once to set per-{{ form.displayMode === 'pie' ? 'slice' : 'bar' }} colors.
-          </p>
         </div>
 
         <!-- Time bucket (time_series only) -->
@@ -410,7 +407,6 @@
                 @click="addOrGroup"
               >+ Add OR Group</button>
             </div>
-            <div v-if="orGroups.length === 0" class="text-xs text-gray-600 italic">No OR groups</div>
             <div v-for="(group, gIdx) in orGroups" :key="gIdx" class="mb-2 border border-gray-700 rounded p-2">
               <div class="flex items-center justify-between mb-1">
                 <span class="text-xs text-gray-500">Group {{ gIdx + 1 }}</span>

@@ -1,11 +1,12 @@
 <template>
-  <div ref="containerRef" class="w-full h-full">
+  <div class="w-full h-full flex items-center justify-center">
+  <div ref="containerRef" class="h-full" style="aspect-ratio: 1 / 1; max-width: 100%;">
     <svg :viewBox="`0 0 ${vw} ${vh}`" class="w-full h-full" preserveAspectRatio="xMidYMid meet" overflow="visible">
       <defs>
         <linearGradient
           v-for="(seg, i) in segments"
           :key="'g-' + i"
-          :id="`lg-${i}`"
+          :id="`lg-${pieId}-${i}`"
           gradientUnits="userSpaceOnUse"
           :x1="seg.innerX"
           :y1="seg.innerY"
@@ -35,7 +36,7 @@
           :y1="seg.innerY"
           :x2="seg.elbowX"
           :y2="seg.labelY"
-          :stroke="`url(#lg-${i})`"
+          :stroke="`url(#lg-${pieId}-${i})`"
           :stroke-width="strokeWidth"
         />
         <line
@@ -43,7 +44,7 @@
           :y1="seg.labelY"
           :x2="seg.labelX"
           :y2="seg.labelY"
-          :stroke="`url(#lg-${i})`"
+          :stroke="`url(#lg-${pieId}-${i})`"
           :stroke-width="strokeWidth"
         />
         <text
@@ -64,6 +65,7 @@
         >{{ seg.pct.toFixed(1) }}%</text>
       </g>
     </svg>
+  </div>
     <Teleport to="body">
       <div
         v-if="tooltip.visible"
@@ -95,6 +97,7 @@ const props = defineProps<{
 
 const { tooltip, showTooltip, moveTooltip, hideTooltip } = useChartTooltip()
 const hoveredIndex = ref<number | null>(null)
+const pieId = Math.random().toString(36).slice(2, 7)
 
 const containerRef = ref<HTMLDivElement | null>(null)
 const containerSize = ref({ w: 0, h: 0 })

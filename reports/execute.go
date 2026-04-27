@@ -131,7 +131,7 @@ func ExecuteReport(ctx context.Context, def ReportDefinition) (ReportResult, err
 }
 
 func buildPivotQuery(def ReportDefinition, baseWhere string, args []interface{}) (string, []interface{}, error) {
-	if def.TimeBucket != "" {
+	if def.TimeBucket != "" && def.Mode == "time_series" {
 		return "", nil, fmt.Errorf("time-series pivot is not supported; clear the time bucket or remove the secondary group-by")
 	}
 	col1 := GroupByColumn(def.GroupBy)
