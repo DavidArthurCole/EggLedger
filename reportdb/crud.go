@@ -136,7 +136,7 @@ func RetrieveAccountReports(ctx context.Context, accountId string) ([]ReportRow,
             grid_x, grid_y, grid_w, grid_h, weight, color, description, chart_type,
             sort_order, created_at, updated_at, value_filter_op, value_filter_threshold, group_id,
             normalize_by, label_colors, secondary_group_by, unfilled_color
-            FROM reports WHERE account_id = ? ORDER BY sort_order ASC, created_at ASC`, accountId)
+            FROM reports WHERE (account_id = ? OR account_id = '__global__') ORDER BY sort_order ASC, created_at ASC`, accountId)
 		if err != nil {
 			return err
 		}

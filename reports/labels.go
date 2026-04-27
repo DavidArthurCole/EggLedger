@@ -24,6 +24,32 @@ func artifactDisplayName(v int32) string {
 	return ei.ArtifactSpec_Name(v).CasedName()
 }
 
+// numericGroupBys lists every GROUP BY dimension whose raw SQL value is an integer.
+var numericGroupBys = map[string]bool{
+	"ship_type":      true,
+	"duration_type":  true,
+	"level":          true,
+	"mission_type":   true,
+	"rarity":         true,
+	"tier":           true,
+	"artifact_name":  true,
+	"mission_target": true,
+}
+
+// LabelSortLess returns true when raw value rawA should sort before rawB for the
+// given groupBy dimension. Numeric dimensions compare by integer value; all others
+// compare lexicographically.
+func LabelSortLess(groupBy, rawA, rawB string) bool {
+	if numericGroupBys[groupBy] {
+		a, errA := strconv.ParseInt(rawA, 10, 64)
+		b, errB := strconv.ParseInt(rawB, 10, 64)
+		if errA == nil && errB == nil {
+			return a < b
+		}
+	}
+	return rawA < rawB
+}
+
 // FormatLabel converts a raw SQL GROUP BY value to a display string.
 func FormatLabel(groupBy string, rawVal string) string {
 	parseInt := func() int {

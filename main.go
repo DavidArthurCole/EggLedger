@@ -961,6 +961,90 @@ func main() {
 		_storage.SetBackupDestPath(path)
 	})
 
+	ui.MustBind("getAutoExportCsv", func() bool {
+		return _storage.GetAutoExportCsv()
+	})
+	ui.MustBind("setAutoExportCsv", func(flag bool) {
+		_storage.SetAutoExportCsv(flag)
+	})
+	ui.MustBind("getAutoExportXlsx", func() bool {
+		return _storage.GetAutoExportXlsx()
+	})
+	ui.MustBind("setAutoExportXlsx", func(flag bool) {
+		_storage.SetAutoExportXlsx(flag)
+	})
+	ui.MustBind("getExportKeepCount", func() int {
+		return _storage.GetExportKeepCount()
+	})
+	ui.MustBind("setExportKeepCount", func(n int) {
+		_storage.SetExportKeepCount(n)
+	})
+	ui.MustBind("listExportFiles", func() string {
+		groups, err := listExportGroups(_exportsDir)
+		if err != nil {
+			log.Errorf("listExportFiles: %s", err)
+			return "[]"
+		}
+		if groups == nil {
+			return "[]"
+		}
+		accounts := _storage.KnownAccounts
+		accountMap := make(map[string]Account, len(accounts))
+		for _, a := range accounts {
+			accountMap[a.Id] = a
+		}
+		for i, g := range groups {
+			if a, ok := accountMap[g.Eid]; ok {
+				groups[i].Nickname = a.Nickname
+				groups[i].AccountColor = a.AccountColor
+			}
+		}
+		b, err := json.Marshal(groups)
+		if err != nil {
+			log.Errorf("listExportFiles marshal: %s", err)
+			return "[]"
+		}
+		return string(b)
+	})
+	ui.MustBind("deleteExportFiles", func(pathsJSON string) string {
+		var paths []string
+		if err := json.Unmarshal([]byte(pathsJSON), &paths); err != nil {
+			return "invalid paths JSON: " + err.Error()
+		}
+		for _, p := range paths {
+			if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
+				return err.Error()
+			}
+		}
+		return ""
+	})
+	ui.MustBind("pruneOldExports", func() string {
+		type pruneResult struct {
+			Deleted    int    `json:"deleted"`
+			FreedBytes int64  `json:"freedBytes"`
+			Error      string `json:"error"`
+		}
+		keepCount := _storage.GetExportKeepCount()
+		groups, err := listExportGroups(_exportsDir)
+		if err != nil {
+			b, _ := json.Marshal(pruneResult{Error: err.Error()})
+			return string(b)
+		}
+		var totalDeleted int
+		var totalFreed int64
+		for _, g := range groups {
+			deleted, freed, pruneErr := pruneExportsForPlayer(_exportsDir, g.Eid, keepCount)
+			totalDeleted += deleted
+			totalFreed += freed
+			if pruneErr != nil {
+				b, _ := json.Marshal(pruneResult{Deleted: totalDeleted, FreedBytes: totalFreed, Error: pruneErr.Error()})
+				return string(b)
+			}
+		}
+		b, _ := json.Marshal(pruneResult{Deleted: totalDeleted, FreedBytes: totalFreed})
+		return string(b)
+	})
+
 	ui.MustBind("moveStorageTo", func(destPath string) error {
 		action := "moveStorageTo"
 		wrap := func(err error) error { return errors.Wrap(err, action) }

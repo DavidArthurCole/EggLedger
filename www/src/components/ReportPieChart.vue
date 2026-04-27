@@ -16,6 +16,13 @@
           <stop offset="0%" :stop-color="seg.color" />
           <stop offset="100%" stop-color="#6b7280" />
         </linearGradient>
+        <!-- Clip connector lines to outside the pie circle so the 0.985r overlap is invisible -->
+        <clipPath :id="`clip-outside-${pieId}`" clipPathUnits="userSpaceOnUse">
+          <path
+            clip-rule="evenodd"
+            :d="`M 0 0 H ${vw} V ${vh} H 0 Z M ${cx} ${cy - r} A ${r} ${r} 0 1 0 ${cx} ${cy + r} A ${r} ${r} 0 1 0 ${cx} ${cy - r} Z`"
+          />
+        </clipPath>
       </defs>
       <!-- Pie segments -->
       <path
@@ -30,7 +37,7 @@
         @mouseleave="() => { hoveredIndex = null; hideTooltip() }"
       />
       <!-- Connector lines and labels -->
-      <g v-for="(seg, i) in segments" :key="'lbl-' + i" style="pointer-events: none;">
+      <g v-for="(seg, i) in segments" :key="'lbl-' + i" style="pointer-events: none;" :opacity="segmentOpacity(i)" :clip-path="`url(#clip-outside-${pieId})`">
         <line
           :x1="seg.innerX"
           :y1="seg.innerY"
@@ -254,8 +261,8 @@ const segments = computed(() => {
     angleOffset = endAngle
     const midAngle = (startAngle + endAngle) / 2
 
-    const innerX = cxVal + Math.cos(midAngle) * rVal
-    const innerY = cyVal + Math.sin(midAngle) * rVal
+    const innerX = cxVal + Math.cos(midAngle) * rVal * 0.985
+    const innerY = cyVal + Math.sin(midAngle) * rVal * 0.985
     const rawElbowX = cxVal + Math.cos(midAngle) * elbowRVal
     const rawElbowY = cyVal + Math.sin(midAngle) * elbowRVal
     const isRight = rawElbowX >= cxVal

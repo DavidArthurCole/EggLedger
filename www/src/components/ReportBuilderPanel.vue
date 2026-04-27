@@ -24,22 +24,6 @@
 
       <!-- Edit form -->
       <div class="flex-1 overflow-y-auto p-5 flex flex-col gap-4">
-        <!-- Mode toggle -->
-        <div v-if="!editingDef" class="flex rounded-md overflow-hidden border border-gray-700 self-start text-xs">
-          <button
-            type="button"
-            class="px-3 py-1.5 transition-colors"
-            :class="builderMode === 'basic' ? 'bg-indigo-700 text-white' : 'bg-darker text-gray-400 hover:text-gray-200'"
-            @click="builderMode = 'basic'"
-          >Basic</button>
-          <button
-            type="button"
-            class="px-3 py-1.5 transition-colors"
-            :class="builderMode === 'advanced' ? 'bg-indigo-700 text-white' : 'bg-darker text-gray-400 hover:text-gray-200'"
-            @click="builderMode = 'advanced'"
-          >Advanced</button>
-        </div>
-
         <!-- Guided mode -->
         <ReportBuilderGuided
           v-if="builderMode === 'basic'"
@@ -47,14 +31,20 @@
           @apply="onGuidedApply"
         />
 
-        <!-- Advanced form fields -->
-        <template v-else>
-
-        <!-- Info section header -->
-        <div class="flex items-center gap-2">
+        <!-- Info section header (shown in advanced mode; contains the Basic/Advanced toggle when adding) -->
+        <div v-if="builderMode === 'advanced'" class="flex items-center gap-2">
           <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Info</span>
           <div class="flex-1 h-px bg-gray-700"></div>
+          <div v-if="!editingDef" class="flex rounded-md overflow-hidden border border-gray-700 flex-shrink-0 text-xs">
+            <button type="button" class="px-3 py-1.5 transition-colors bg-darker text-gray-400 hover:text-gray-200"
+              @click="builderMode = 'basic'">Basic</button>
+            <button type="button" class="px-3 py-1.5 transition-colors bg-indigo-700 text-white"
+              @click="builderMode = 'advanced'">Advanced</button>
+          </div>
         </div>
+
+        <!-- Advanced form fields -->
+        <template v-if="builderMode === 'advanced'">
 
         <!-- Name -->
         <div class="flex flex-col gap-1">
@@ -82,6 +72,16 @@
             class="bg-darker border border-gray-700 rounded px-2 py-1.5 text-xs text-gray-400 focus:outline-none focus:border-blue-500 resize-none"
             placeholder="What does this report show?"
           />
+        </div>
+
+        <!-- Share toggle (new reports only, multi-account) -->
+        <div v-if="!editingDef && knownAccountCount > 1" class="flex items-center gap-2">
+          <input id="shareWithAllCheck" type="checkbox" class="ext-opt-check" v-model="shareWithAll" />
+          <label for="shareWithAllCheck" class="text-xs text-gray-400 cursor-pointer select-none">Share with all accounts</label>
+        </div>
+        <!-- Shared report indicator (editing an existing shared report) -->
+        <div v-if="editingDef?.accountId === '__global__'" class="flex items-center gap-1">
+          <span class="text-xs px-1.5 py-0.5 rounded border border-indigo-700 bg-indigo-900/40 text-indigo-400">Shared report</span>
         </div>
 
         <!-- Data section header -->
@@ -598,6 +598,8 @@ const possibleTargets = ref<PossibleTarget[]>([])
 const isDirty = ref(false)
 const closeWarning = ref(false)
 const builderMode = ref<'basic' | 'advanced'>('basic')
+const shareWithAll = ref(false)
+const knownAccountCount = ref(0)
 const hoverW = ref(0)
 const hoverH = ref(0)
 const labelColorsMap = ref<Record<string, string>>({})
@@ -694,6 +696,7 @@ watch(
       Object.assign(form, makeBlankForm())
       labelColorsMap.value = {}
       clearFilters()
+      shareWithAll.value = false
     }
     nextTick(() => { isDirty.value = false })
   },
@@ -960,13 +963,19 @@ function clamp(v: number, min: number, max: number) {
 
 const isSaving = ref(false)
 
+function resolveAccountId(): string {
+  if (props.editingDef?.accountId === '__global__') return '__global__'
+  if (shareWithAll.value) return '__global__'
+  return props.accountId
+}
+
 function handleSave() {
   isSaving.value = true
   isDirty.value = false
   closeWarning.value = false
   const def: ReportDefinition = {
     id: props.editingDef?.id ?? '',
-    accountId: props.accountId,
+    accountId: resolveAccountId(),
     name: form.name.trim(),
     description: form.description,
     subject: form.subject,
@@ -1019,7 +1028,11 @@ function onGuidedApply(partial: {
 }
 
 onMounted(async () => {
-  possibleTargets.value = await globalThis.getPossibleTargets()
+  const [, accounts] = await Promise.all([
+    globalThis.getPossibleTargets().then(v => { possibleTargets.value = v }),
+    globalThis.knownAccounts(),
+  ])
+  knownAccountCount.value = accounts.length
   nextTick(() => {
     const el = document.querySelector('.overlay-report') as HTMLElement | null
     el?.focus()

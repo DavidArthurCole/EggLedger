@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -230,8 +231,14 @@ func executePivotReport(ctx context.Context, def ReportDefinition, baseWhere str
 	rowSet := map[string]struct{}{}
 	colSet := map[string]struct{}{}
 	cells := map[string]map[string]float64{}
-	var rowLabels []string
-	var colLabels []string
+
+	type labelEntry struct {
+		display string
+		rawVal  string
+	}
+
+	var rowEntries []labelEntry
+	var colEntries []labelEntry
 
 	for rows.Next() {
 		var rawRow, rawCol string
@@ -243,11 +250,11 @@ func executePivotReport(ctx context.Context, def ReportDefinition, baseWhere str
 		colLabel := FormatLabel(def.SecondaryGroupBy, rawCol)
 		if _, ok := rowSet[rowLabel]; !ok {
 			rowSet[rowLabel] = struct{}{}
-			rowLabels = append(rowLabels, rowLabel)
+			rowEntries = append(rowEntries, labelEntry{display: rowLabel, rawVal: rawRow})
 		}
 		if _, ok := colSet[colLabel]; !ok {
 			colSet[colLabel] = struct{}{}
-			colLabels = append(colLabels, colLabel)
+			colEntries = append(colEntries, labelEntry{display: colLabel, rawVal: rawCol})
 		}
 		if cells[rowLabel] == nil {
 			cells[rowLabel] = map[string]float64{}
@@ -256,6 +263,22 @@ func executePivotReport(ctx context.Context, def ReportDefinition, baseWhere str
 	}
 	if err := rows.Err(); err != nil {
 		return ReportResult{}, wrap(err)
+	}
+
+	sort.SliceStable(rowEntries, func(i, j int) bool {
+		return LabelSortLess(def.GroupBy, rowEntries[i].rawVal, rowEntries[j].rawVal)
+	})
+	sort.SliceStable(colEntries, func(i, j int) bool {
+		return LabelSortLess(def.SecondaryGroupBy, colEntries[i].rawVal, colEntries[j].rawVal)
+	})
+
+	rowLabels := make([]string, len(rowEntries))
+	colLabels := make([]string, len(colEntries))
+	for i, e := range rowEntries {
+		rowLabels[i] = e.display
+	}
+	for i, e := range colEntries {
+		colLabels[i] = e.display
 	}
 
 	matrixValues := make([]float64, len(rowLabels)*len(colLabels))
@@ -338,10 +361,15 @@ func executeTimePivotReport(ctx context.Context, def ReportDefinition, baseWhere
 	defer rows.Close()
 
 	var bucketLabels []string
-	var groupLabels []string
 	bucketSet := map[string]struct{}{}
 	groupSet := map[string]struct{}{}
 	cells := map[string]map[string]float64{}
+
+	type grpEntry struct {
+		display string
+		rawVal  string
+	}
+	var grpEntries []grpEntry
 
 	for rows.Next() {
 		var rawBucket, rawGrp string
@@ -356,7 +384,7 @@ func executeTimePivotReport(ctx context.Context, def ReportDefinition, baseWhere
 		}
 		if _, ok := groupSet[grpLabel]; !ok {
 			groupSet[grpLabel] = struct{}{}
-			groupLabels = append(groupLabels, grpLabel)
+			grpEntries = append(grpEntries, grpEntry{display: grpLabel, rawVal: rawGrp})
 		}
 		if cells[rawBucket] == nil {
 			cells[rawBucket] = map[string]float64{}
@@ -365,6 +393,14 @@ func executeTimePivotReport(ctx context.Context, def ReportDefinition, baseWhere
 	}
 	if err := rows.Err(); err != nil {
 		return ReportResult{}, wrap(err)
+	}
+
+	sort.SliceStable(grpEntries, func(i, j int) bool {
+		return LabelSortLess(def.SecondaryGroupBy, grpEntries[i].rawVal, grpEntries[j].rawVal)
+	})
+	groupLabels := make([]string, len(grpEntries))
+	for i, e := range grpEntries {
+		groupLabels[i] = e.display
 	}
 
 	nR := len(bucketLabels)

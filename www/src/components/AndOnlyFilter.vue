@@ -49,7 +49,7 @@
               />
               <select
                 v-else-if="valueOptionsFor(cond.topLevel).length > 0"
-                class="bg-darker border border-gray-700 rounded px-2.5 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500 min-w-0"
+                class="bg-darker border border-gray-700 rounded px-2.5 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500 min-w-28"
                 :value="cond.val"
                 @change="$emit('update', i, { val: ($event.target as HTMLSelectElement).value })"
               >

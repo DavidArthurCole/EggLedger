@@ -34,7 +34,15 @@
       <div
         v-for="(col, cIdx) in displayCols"
         :key="col"
-        class="flex items-center gap-1"
+        class="flex items-center gap-1 select-none"
+        :class="{
+          'opacity-40': dragLegendFrom === cIdx,
+          'cursor-grab': col !== 'Other',
+        }"
+        :draggable="col !== 'Other'"
+        @dragstart.stop="col !== 'Other' && startLegendDrag(cIdx)"
+        @dragover.prevent
+        @drop.prevent="col !== 'Other' && onLegendDrop(cIdx)"
       >
         <div class="w-2 h-2 rounded-sm shrink-0" :style="{ backgroundColor: colColors[cIdx] }" />
         <span class="text-xs text-gray-400 truncate max-w-28" :title="col">{{ col }}</span>
@@ -58,7 +66,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type { ReportResult } from '../types/bridge'
 import { useChartTooltip } from '../composables/useChartTooltip'
 
@@ -73,6 +81,35 @@ const props = defineProps<{
 const { tooltip, showTooltip, moveTooltip, hideTooltip } = useChartTooltip()
 const hoveredKey = ref<string | null>(null)
 let clearTimer: ReturnType<typeof setTimeout> | null = null
+
+const colOrder = ref<number[]>([])
+const dragLegendFrom = ref<number | null>(null)
+
+watch(
+  () => props.result,
+  (r) => {
+    colOrder.value = Array.from({ length: r?.colLabels?.length ?? 0 }, (_, i) => i)
+    dragLegendFrom.value = null
+  },
+  { immediate: true },
+)
+
+function startLegendDrag(displayIdx: number) {
+  dragLegendFrom.value = displayIdx
+}
+
+function onLegendDrop(targetDisplayIdx: number) {
+  if (dragLegendFrom.value === null || dragLegendFrom.value === targetDisplayIdx) {
+    dragLegendFrom.value = null
+    return
+  }
+  const fromIdx = dragLegendFrom.value
+  const newOrder = [...colOrder.value]
+  const [moved] = newOrder.splice(fromIdx, 1)
+  newOrder.splice(targetDisplayIdx, 0, moved)
+  colOrder.value = newOrder
+  dragLegendFrom.value = null
+}
 
 function barOpacity(rIdx: number, cIdx: number): number {
   if (hoveredKey.value === null) return 1
@@ -94,10 +131,13 @@ const isPct = computed(() =>
   props.normalizeBy === 'row_pct' || props.normalizeBy === 'col_pct' || props.normalizeBy === 'global_pct',
 )
 
+const hasOtherGroup = computed(() => (props.result.colLabels?.length ?? 0) > MAX_COLS + 1)
+
 const displayCols = computed(() => {
-  const cols = props.result.colLabels ?? []
-  if (cols.length <= MAX_COLS + 1) return cols
-  return [...cols.slice(0, MAX_COLS), 'Other']
+  const rawCols = props.result.colLabels ?? []
+  const ordered = colOrder.value.map((i) => rawCols[i])
+  if (ordered.length <= MAX_COLS + 1) return ordered
+  return [...ordered.slice(0, MAX_COLS), 'Other']
 })
 
 const displayRows = computed(() => props.result.rowLabels ?? [])
@@ -114,16 +154,17 @@ function rawColCount(): number {
   return props.result.colLabels?.length ?? 0
 }
 
-function cellRawValue(rIdx: number, cIdx: number): number {
+function cellRawValue(rIdx: number, cDisplayIdx: number): number {
   const nCols = rawColCount()
-  if (cIdx >= MAX_COLS) {
+  if (hasOtherGroup.value && cDisplayIdx >= MAX_COLS) {
     let sum = 0
-    for (let c = MAX_COLS; c < nCols; c++) {
-      sum += props.result.matrixValues[rIdx * nCols + c] ?? 0
+    for (let c = MAX_COLS; c < colOrder.value.length; c++) {
+      sum += props.result.matrixValues[rIdx * nCols + colOrder.value[c]] ?? 0
     }
     return sum
   }
-  return props.result.matrixValues[rIdx * nCols + cIdx] ?? 0
+  const origCIdx = colOrder.value[cDisplayIdx]
+  return props.result.matrixValues[rIdx * nCols + origCIdx] ?? 0
 }
 
 function barWidth(rIdx: number, cIdx: number): number {
@@ -157,11 +198,13 @@ function hexToHsl(hex: string): [number, number, number] {
 }
 
 const colColors = computed(() => {
-  const n = displayCols.value.length
-  if (n === 0) return []
+  const totalCols = props.result.colLabels?.length ?? 0
+  if (totalCols === 0) return []
   const [h, s] = hexToHsl(props.color.startsWith('#') && props.color.length === 7 ? props.color : '#6366f1')
-  return displayCols.value.map((_, i) => {
-    const hue = (h + (360 / n) * i) % 360
+  return displayCols.value.map((col, dIdx) => {
+    if (col === 'Other') return '#6b7280'
+    const origIdx = colOrder.value[dIdx]
+    const hue = (h + (360 / totalCols) * origIdx) % 360
     return `hsl(${hue.toFixed(0)}, ${s.toFixed(0)}%, 55%)`
   })
 })

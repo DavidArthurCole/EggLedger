@@ -238,6 +238,22 @@ export interface BackfillStatus {
   progress: number
 }
 
+export interface ExportFilePair {
+  timestamp: string
+  displayDate: string
+  csvPath: string
+  csvSize: number
+  xlsxPath: string
+  xlsxSize: number
+}
+
+export interface ExportGroup {
+  eid: string
+  nickname: string
+  accountColor: string
+  pairs: ExportFilePair[]
+}
+
 export interface CloudSyncStatus {
   connected: boolean
   username: string
@@ -360,6 +376,15 @@ declare global {
   function setStorageFolderVisible(visible: boolean): Promise<void>
   function getBackupDestPath(): Promise<string>
   function setBackupDestPath(path: string): Promise<void>
+  function getAutoExportCsv(): Promise<boolean>
+  function setAutoExportCsv(flag: boolean): Promise<void>
+  function getAutoExportXlsx(): Promise<boolean>
+  function setAutoExportXlsx(flag: boolean): Promise<void>
+  function getExportKeepCount(): Promise<number>
+  function setExportKeepCount(n: number): Promise<void>
+  function listExportFiles(): Promise<string>
+  function deleteExportFiles(pathsJSON: string): Promise<string>
+  function pruneOldExports(): Promise<string>
   function backupStoragePart(destPath: string, part: 'internal' | 'exports' | 'logs'): Promise<void>
   function moveStorageTo(destPath: string): Promise<void>
 
