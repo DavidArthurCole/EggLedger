@@ -592,9 +592,7 @@ async function viewRowOfMissions(missionIds: string[]) {
   openMultiMissionOverlay()
   missionsBeingViewed.value = []
   multiViewMissionData.value = []
-  dropCachePreloading.value = true
-  const dropCache = await globalThis.getAllPlayerDrops(loadedEid.value ?? '')
-  dropCachePreloading.value = false
+  const dropCache: Record<string, MissionDrop[]> | null = null
   const missionInfoLookup: Record<string, DatabaseMission> = {}
   for (const m of allLoadedMissions.value ?? []) missionInfoLookup[m.missionId] = m
   const mennoCache = new Map<string, MennoConfigItem[]>()
