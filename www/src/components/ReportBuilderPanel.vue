@@ -81,7 +81,7 @@
 
         <!-- Subject + Mode row -->
         <div class="grid grid-cols-2 gap-3">
-          <div class="flex flex-col gap-1">
+          <div v-if="!form.secondaryGroupBy" class="flex flex-col gap-1">
             <label for="rb-subject" class="text-xs text-gray-400 flex items-center gap-1">
               <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/></svg>
               Subject
@@ -94,7 +94,6 @@
             >
               <option value="ships">Ships</option>
               <option value="artifacts">Artifacts</option>
-              <option value="missions">Missions</option>
             </select>
           </div>
           <div class="flex flex-col gap-1">
@@ -125,11 +124,18 @@
               id="rb-display-mode"
               v-model="form.displayMode"
               class="bg-darker border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 focus:outline-none focus:border-blue-500"
+              @change="form.chartType = ''"
             >
-              <option value="bar">Bar chart</option>
-              <option value="line">Line chart</option>
-              <option value="pie">Pie chart</option>
-              <option value="grid">Table</option>
+              <template v-if="form.secondaryGroupBy">
+                <option value="heatmap">Heatmap</option>
+                <option value="grouped_bar">Grouped Bar</option>
+              </template>
+              <template v-else>
+                <option value="bar">Bar chart</option>
+                <option value="line">Line chart</option>
+                <option value="pie">Pie chart</option>
+                <option value="grid">Table</option>
+              </template>
             </select>
           </div>
           <div class="flex flex-col gap-1">
@@ -149,6 +155,52 @@
           </div>
         </div>
 
+        <!-- Chart style (line and bar charts) -->
+        <div v-if="form.displayMode === 'line' || form.displayMode === 'bar'" class="flex flex-col gap-1">
+          <label for="rb-chart-type" class="text-xs text-gray-400 flex items-center gap-1">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>
+            Style
+          </label>
+          <select
+            id="rb-chart-type"
+            v-model="form.chartType"
+            class="bg-darker border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 focus:outline-none focus:border-blue-500"
+          >
+            <template v-if="form.displayMode === 'line'">
+              <option value="">Filled area</option>
+              <option value="line">Line only</option>
+            </template>
+            <template v-else-if="form.displayMode === 'bar'">
+              <option value="">Default order</option>
+              <option value="bar_desc">Sorted descending</option>
+              <option value="bar_asc">Sorted ascending</option>
+            </template>
+          </select>
+        </div>
+
+        <!-- Secondary Group By -->
+        <div v-if="form.mode === 'aggregate'" class="flex flex-col gap-1">
+          <label for="rb-secondary-group-by" class="text-xs text-gray-400 flex items-center gap-1">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 6H21M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+            Secondary Group By
+          </label>
+          <select
+            id="rb-secondary-group-by"
+            v-model="form.secondaryGroupBy"
+            class="bg-darker border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 focus:outline-none focus:border-blue-500"
+            @change="onSecondaryGroupByChange"
+          >
+            <option value="">None (1D)</option>
+            <optgroup label="Mission">
+              <option v-for="opt in shipMissionAggregateOptions.filter(o => o.value !== form.groupBy)" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+            </optgroup>
+            <optgroup label="Artifact">
+              <option v-for="opt in artifactAggregateOptions.filter(o => o.value !== form.groupBy)" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+            </optgroup>
+          </select>
+          <p v-if="form.secondaryGroupBy" class="text-xs text-gray-500 mt-0.5">Counting: {{ inferredSubjectLabel }}</p>
+        </div>
+
         <!-- Color picker (bar/line/pie only) -->
         <div v-if="form.displayMode !== 'grid'" class="flex flex-col gap-1">
           <span class="text-xs text-gray-400 flex items-center gap-1">
@@ -158,15 +210,15 @@
           <ColorPicker v-model="form.color" />
         </div>
 
-        <!-- Per-slice colors (pie only) -->
-        <div v-if="form.displayMode === 'pie'" class="flex flex-col gap-2">
+        <!-- Per-slice / per-bar colors -->
+        <div v-if="form.displayMode === 'pie' || form.displayMode === 'bar'" class="flex flex-col gap-2">
           <span class="text-xs text-gray-400 flex items-center gap-1">
             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/></svg>
-            Slice colors
+            {{ form.displayMode === 'pie' ? 'Slice colors' : 'Bar colors' }}
           </span>
-          <div v-if="pieLabels.length > 0" class="grid grid-cols-2 gap-1.5">
+          <div v-if="chartLabels.length > 0" class="grid grid-cols-2 gap-1.5">
             <div
-              v-for="label in pieLabels"
+              v-for="label in chartLabels"
               :key="label"
               class="flex items-center gap-2 min-w-0"
             >
@@ -177,7 +229,9 @@
               <span class="text-xs text-gray-400 truncate">{{ label }}</span>
             </div>
           </div>
-          <p v-else class="text-xs text-gray-600 italic">Run the report once to set per-slice colors.</p>
+          <p v-else class="text-xs text-gray-600 italic">
+            Run the report once to set per-{{ form.displayMode === 'pie' ? 'slice' : 'bar' }} colors.
+          </p>
         </div>
 
         <!-- Time bucket (time_series only) -->
@@ -290,6 +344,37 @@
           </div>
         </div>
 
+        <!-- Value filter -->
+        <div class="flex flex-col gap-1">
+          <label for="rb-value-filter-op" class="text-xs text-gray-400 flex items-center gap-1">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+            Filter results where value
+          </label>
+          <div class="flex items-center gap-1.5">
+            <select
+              id="rb-value-filter-op"
+              v-model="form.valueFilterOp"
+              class="text-xs bg-darker border border-gray-700 rounded px-1 py-1 text-gray-300 focus:outline-none focus:border-indigo-500 w-20"
+            >
+              <option value="">Off</option>
+              <option value=">">&gt;</option>
+              <option value="<">&lt;</option>
+              <option value=">=">&gt;=</option>
+              <option value="<=">&lt;=</option>
+              <option value="=">=</option>
+              <option value="!=">!=</option>
+            </select>
+            <input
+              v-if="form.valueFilterOp"
+              v-model.number="form.valueFilterThreshold"
+              type="number"
+              step="any"
+              class="text-xs bg-darker border border-gray-700 rounded px-2 py-1 text-gray-300 focus:outline-none focus:border-indigo-500 flex-1 min-w-0"
+              placeholder="0"
+            />
+          </div>
+        </div>
+
         <!-- Filters -->
         <div class="flex flex-col gap-2">
           <div class="flex items-center justify-between">
@@ -314,35 +399,63 @@
             @update="updateAndCondition"
             @field-change="onFieldChange"
           />
-        </div>
 
-        <!-- Value filter -->
-        <div class="flex flex-col gap-2">
-          <span class="text-xs text-gray-400 flex items-center gap-1">
-            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-            Value filter (optional)
-          </span>
-          <div class="flex items-center gap-2">
-            <span class="text-xs text-gray-500">Only show results where count</span>
-            <select
-              v-model="form.valueFilterOp"
-              class="bg-darker border border-gray-700 rounded px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
-            >
-              <option value="">None</option>
-              <option value=">">&gt; (greater than)</option>
-              <option value=">=">&gt;= (at least)</option>
-              <option value="<">&lt; (less than)</option>
-              <option value="<=">&lt;= (at most)</option>
-              <option value="=">=  (equal to)</option>
-            </select>
-            <input
-              v-if="form.valueFilterOp"
-              v-model.number="form.valueFilterThreshold"
-              type="number"
-              min="0"
-              class="bg-darker border border-gray-700 rounded px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-blue-500 w-20"
-              placeholder="0"
-            />
+          <!-- OR Groups -->
+          <div class="mt-2">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-xs text-gray-500 font-medium">OR Groups</span>
+              <button
+                type="button"
+                class="text-xs text-indigo-400 hover:text-indigo-300"
+                @click="addOrGroup"
+              >+ Add OR Group</button>
+            </div>
+            <div v-if="orGroups.length === 0" class="text-xs text-gray-600 italic">No OR groups</div>
+            <div v-for="(group, gIdx) in orGroups" :key="gIdx" class="mb-2 border border-gray-700 rounded p-2">
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-xs text-gray-500">Group {{ gIdx + 1 }}</span>
+                <button
+                  type="button"
+                  class="text-xs text-red-500 hover:text-red-400"
+                  @click="removeOrGroup(gIdx)"
+                >Remove</button>
+              </div>
+              <div v-for="(cond, cIdx) in group" :key="cIdx" class="flex gap-1 mb-1">
+                <select
+                  :value="orGroups[gIdx][cIdx].topLevel"
+                  class="text-xs bg-darker border border-gray-700 rounded px-1 py-1 text-gray-300 focus:outline-none flex-1"
+                  @change="updateOrCondition(gIdx, cIdx, { topLevel: ($event.target as HTMLSelectElement).value, op: '', val: '' })"
+                >
+                  <option value="">Field...</option>
+                  <optgroup label="Mission">
+                    <option v-for="f in missionFilterFields" :key="f.value" :value="f.value">{{ f.label }}</option>
+                  </optgroup>
+                  <optgroup v-if="form.subject === 'artifacts'" label="Artifact">
+                    <option v-for="f in artifactFilterFields" :key="f.value" :value="f.value">{{ f.label }}</option>
+                  </optgroup>
+                </select>
+                <select
+                  :value="orGroups[gIdx][cIdx].op"
+                  class="text-xs bg-darker border border-gray-700 rounded px-1 py-1 text-gray-300 focus:outline-none w-14"
+                  @change="updateOrCondition(gIdx, cIdx, { op: ($event.target as HTMLSelectElement).value })"
+                >
+                  <option v-for="op in getOpsForField(orGroups[gIdx][cIdx].topLevel)" :key="op.value" :value="op.value">{{ op.label }}</option>
+                </select>
+                <input
+                  v-if="!isBoolField(orGroups[gIdx][cIdx].topLevel)"
+                  :value="orGroups[gIdx][cIdx].val"
+                  :type="isDateField(orGroups[gIdx][cIdx].topLevel) ? 'date' : 'text'"
+                  class="text-xs bg-darker border border-gray-700 rounded px-2 py-1 text-gray-300 focus:outline-none flex-1 min-w-0"
+                  @input="updateOrCondition(gIdx, cIdx, { val: ($event.target as HTMLInputElement).value })"
+                />
+                <button type="button" class="text-gray-500 hover:text-red-400 text-xs px-1" @click="removeFromOrGroup(gIdx, cIdx)">x</button>
+              </div>
+              <button
+                type="button"
+                class="text-xs text-gray-500 hover:text-gray-300"
+                @click="addToOrGroup(gIdx)"
+              >+ Condition</button>
+            </div>
           </div>
         </div>
 
@@ -419,7 +532,21 @@ const emit = defineEmits<{
   close: []
 }>()
 
-const { andConditions, addAndCondition, removeAndCondition, updateAndCondition, toReportFilters, fromReportFilters, clearFilters } = useReportFilters()
+const {
+  andConditions,
+  orGroups,
+  addAndCondition,
+  removeAndCondition,
+  updateAndCondition,
+  addOrGroup,
+  removeOrGroup,
+  addToOrGroup,
+  removeFromOrGroup,
+  updateOrCondition,
+  toReportFilters,
+  fromReportFilters,
+  clearFilters,
+} = useReportFilters()
 
 const possibleTargets = ref<PossibleTarget[]>([])
 const isDirty = ref(false)
@@ -473,6 +600,7 @@ function makeBlankForm() {
     mode: 'aggregate',
     displayMode: 'bar',
     groupBy: 'ship_type',
+    secondaryGroupBy: '',
     timeBucket: 'month',
     customBucketN: 3,
     customBucketUnit: 'month',
@@ -482,6 +610,7 @@ function makeBlankForm() {
     valueFilterOp: '',
     valueFilterThreshold: 0,
     normalizeBy: 'none',
+    chartType: '',
   }
 }
 
@@ -496,7 +625,7 @@ watch(
     if (def) {
       form.name = def.name
       form.description = def.description || ''
-      form.subject = def.subject
+      form.subject = def.subject === 'missions' ? 'ships' : def.subject
       form.mode = def.mode
       form.displayMode = def.displayMode
       form.groupBy = def.groupBy
@@ -509,6 +638,8 @@ watch(
       form.valueFilterOp = def.valueFilterOp || ''
       form.valueFilterThreshold = def.valueFilterThreshold || 0
       form.normalizeBy = def.normalizeBy || 'none'
+      form.secondaryGroupBy = def.secondaryGroupBy || ''
+      form.chartType = def.chartType || ''
       labelColorsMap.value = parseLabelColors(def.labelColors)
       fromReportFilters(def.filters)
     } else {
@@ -523,10 +654,11 @@ watch(
 
 watch(form, () => { isDirty.value = true }, { deep: true })
 watch(andConditions, () => { isDirty.value = true }, { deep: true })
+watch(orGroups, () => { isDirty.value = true }, { deep: true })
 watch(labelColorsMap, () => { isDirty.value = true }, { deep: true })
 
-const pieLabels = computed(() => {
-  if (form.displayMode !== 'pie') return []
+const chartLabels = computed(() => {
+  if (form.displayMode !== 'pie' && form.displayMode !== 'bar') return []
   const resultLabels = props.editingResultLabels ?? []
   if (resultLabels.length > 0) return resultLabels
   return Object.keys(labelColorsMap.value)
@@ -576,13 +708,13 @@ function setLabelColor(label: string, color: string) {
 
 function getLabelColor(label: string): string {
   if (labelColorsMap.value[label]) return labelColorsMap.value[label]
-  const idx = pieLabels.value.indexOf(label)
-  const colors = autoSliceColors(form.color, pieLabels.value.length)
+  const idx = chartLabels.value.indexOf(label)
+  const colors = autoSliceColors(form.color, chartLabels.value.length)
   return idx >= 0 ? (colors[idx] ?? form.color) : form.color
 }
 
 const subjectLabel = computed(() => {
-  const map: Record<string, string> = { ships: 'Ships', artifacts: 'Artifacts', missions: 'Missions' }
+  const map: Record<string, string> = { ships: 'Ships', artifacts: 'Artifacts' }
   return map[form.subject] ?? form.subject
 })
 
@@ -606,6 +738,61 @@ const artifactAggregateOptions = [
 ]
 
 const timeSeriesOption = [{ value: 'time_bucket', label: 'Time Bucket' }]
+
+const artifactDimensions = new Set(['artifact_name', 'rarity', 'tier', 'spec_type'])
+
+const inferredSubjectLabel = computed(() => {
+  if (!form.secondaryGroupBy) return ''
+  const eitherArtifact = artifactDimensions.has(form.groupBy) || artifactDimensions.has(form.secondaryGroupBy)
+  return eitherArtifact ? 'Artifact drops' : 'Missions'
+})
+
+function onSecondaryGroupByChange() {
+  if (form.secondaryGroupBy) {
+    if (!['heatmap', 'grouped_bar'].includes(form.displayMode)) {
+      form.displayMode = 'heatmap'
+    }
+    if (artifactDimensions.has(form.groupBy) || artifactDimensions.has(form.secondaryGroupBy)) {
+      form.subject = 'artifacts'
+    } else {
+      form.subject = 'missions'
+    }
+  } else if (['heatmap', 'grouped_bar'].includes(form.displayMode)) {
+    form.displayMode = form.mode === 'time_series' ? 'line' : 'bar'
+  }
+}
+
+function getOpsForField(field: string): { value: string, label: string }[] {
+  if (dateFields.has(field)) {
+    return [
+      { value: '=', label: 'on' },
+      { value: '<', label: 'before' },
+      { value: '>', label: 'after' },
+      { value: '<=', label: 'on or before' },
+      { value: '>=', label: 'on or after' },
+    ]
+  }
+  if (field === 'target' || field === 'type' || field === 'farm') {
+    return [
+      { value: '=', label: 'is' },
+      { value: '!=', label: 'is not' },
+    ]
+  }
+  if (field === 'artifact_name' || field === 'artifact_spec_type') {
+    return [
+      { value: '=', label: 'is' },
+      { value: '!=', label: 'is not' },
+    ]
+  }
+  return [
+    { value: '=', label: 'is' },
+    { value: '!=', label: 'is not' },
+    { value: '>', label: 'greater than' },
+    { value: '<', label: 'less than' },
+    { value: '>=', label: 'at least' },
+    { value: '<=', label: 'at most' },
+  ]
+}
 
 const groupByOptions = computed(() => {
   if (form.mode === 'time_series') return timeSeriesOption
@@ -724,9 +911,10 @@ function handleSave() {
     valueFilterOp: form.valueFilterOp,
     valueFilterThreshold: form.valueFilterThreshold,
     normalizeBy: form.subject === 'artifacts' && form.mode === 'aggregate' ? form.normalizeBy : 'none',
-    chartType: '',
+    secondaryGroupBy: form.secondaryGroupBy,
+    chartType: ['line', 'bar'].includes(form.displayMode) ? (form.chartType || '') : '',
     groupId: props.editingDef?.groupId ?? '',
-    labelColors: form.displayMode === 'pie' && Object.keys(labelColorsMap.value).length > 0
+    labelColors: ['pie', 'bar'].includes(form.displayMode) && Object.keys(labelColorsMap.value).length > 0
       ? JSON.stringify(labelColorsMap.value)
       : '',
   }

@@ -28,6 +28,18 @@
         >{{ def.description }}</span>
       </div>
       <div class="flex items-center gap-1 flex-shrink-0">
+        <button
+          v-if="stale && !running"
+          type="button"
+          class="text-yellow-500 hover:text-yellow-400"
+          title="Results are stale - click to refresh"
+          @click="$emit('run')"
+        >
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10" />
+            <polyline points="12 6 12 12 16 14" />
+          </svg>
+        </button>
         <span
           class="text-xs px-1.5 py-0.5 rounded cursor-default"
           :class="weightClass"
@@ -42,12 +54,19 @@
       <div v-if="running" class="h-full flex items-center justify-center">
         <span class="text-xs text-gray-500 animate-pulse">Running...</span>
       </div>
+      <template v-else-if="result && result.is2D">
+        <ReportHeatmap v-if="def.displayMode === 'heatmap'" :result="result" :color="def.color || '#6366f1'" />
+        <ReportGroupedBar v-else-if="def.displayMode === 'grouped_bar'" :result="result" :color="def.color || '#6366f1'" />
+        <div v-else class="h-full flex items-center justify-center">
+          <span class="text-xs text-gray-600 italic">Select a 2D display mode (Heatmap or Grouped Bar)</span>
+        </div>
+      </template>
       <div v-else-if="filteredResult && filteredResult.labels?.length > 0 && def.displayMode === 'pie'" class="h-full">
         <ReportPieChart :result="filteredResult" :color="def.color || '#6366f1'" :label-colors="def.labelColors" />
       </div>
       <template v-else-if="filteredResult && filteredResult.labels?.length > 0">
-        <ReportBarChart v-if="def.displayMode === 'bar' || (!def.displayMode && def.mode === 'aggregate')" :result="filteredResult" :color="def.color || '#6366f1'" :unit-label="normalizeLabel" />
-        <ReportLineChart v-else-if="def.displayMode === 'line' || (!def.displayMode && def.mode === 'time_series')" :result="filteredResult" :color="def.color || '#6366f1'" :unit-label="normalizeLabel" />
+        <ReportBarChart v-if="def.displayMode === 'bar' || (!def.displayMode && def.mode === 'aggregate')" :result="filteredResult" :color="def.color || '#6366f1'" :unit-label="normalizeLabel" :label-colors="def.labelColors" :chart-type="def.chartType" />
+        <ReportLineChart v-else-if="def.displayMode === 'line' || (!def.displayMode && def.mode === 'time_series')" :result="filteredResult" :color="def.color || '#6366f1'" :unit-label="normalizeLabel" :chart-type="def.chartType" />
         <ReportVisualGrid v-else :result="filteredResult" :unit-label="normalizeLabel" />
       </template>
       <div v-else-if="filteredResult && filteredResult.labels?.length === 0" class="h-full flex items-center justify-center">
@@ -148,6 +167,8 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import type { ReportDefinition, ReportFilterCondition, ReportResult, ReportGroup } from '../types/bridge'
 import ReportBarChart from './ReportBarChart.vue'
+import ReportGroupedBar from './ReportGroupedBar.vue'
+import ReportHeatmap from './ReportHeatmap.vue'
 import ReportLineChart from './ReportLineChart.vue'
 import ReportPieChart from './ReportPieChart.vue'
 import ReportVisualGrid from './ReportVisualGrid.vue'
@@ -158,6 +179,7 @@ const props = defineProps<{
   editMode: boolean
   running: boolean
   groups: ReportGroup[]
+  stale: boolean
 }>()
 
 defineEmits<{
@@ -200,7 +222,7 @@ async function onWeightHover(e: MouseEvent) {
 }
 
 const subjectLabel = computed(() => {
-  const map: Record<string, string> = { ships: 'Ships', artifacts: 'Artifacts', missions: 'Missions' }
+  const map: Record<string, string> = { ships: 'Ships', artifacts: 'Artifacts', missions: 'Ships' }
   return map[props.def.subject] ?? props.def.subject
 })
 
@@ -328,6 +350,7 @@ const filteredResult = computed(() => {
   else if (op === '>=') kept = pairs.filter(p => p.value >= threshold)
   else if (op === '<=') kept = pairs.filter(p => p.value <= threshold)
   else if (op === '=') kept = pairs.filter(p => p.value === threshold)
+  else if (op === '!=') kept = pairs.filter(p => p.value !== threshold)
   else kept = pairs
   if (isFloat) {
     return {
@@ -336,6 +359,10 @@ const filteredResult = computed(() => {
       floatValues: kept.map(p => p.value),
       isFloat: true,
       weight: props.result.weight,
+      rowLabels: [] as string[],
+      colLabels: [] as string[],
+      matrixValues: [] as number[],
+      is2D: false,
     }
   }
   return {
@@ -344,6 +371,10 @@ const filteredResult = computed(() => {
     floatValues: [] as number[],
     isFloat: false,
     weight: props.result.weight,
+    rowLabels: [] as string[],
+    colLabels: [] as string[],
+    matrixValues: [] as number[],
+    is2D: false,
   }
 })
 </script>

@@ -5,7 +5,7 @@
       <div class="flex flex-col gap-1.5">
         <div class="flex flex-wrap items-center gap-2.5">
           <select
-            class="bg-darker border border-gray-700 rounded px-2.5 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500 min-w-0"
+            class="bg-darker border border-gray-700 rounded px-2.5 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500 min-w-28"
             :value="cond.topLevel"
             @change="onFieldChange(i, ($event.target as HTMLSelectElement).value)"
           >

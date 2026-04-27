@@ -187,6 +187,7 @@ export interface ReportDefinition {
   mode: string
   displayMode: string
   groupBy: string
+  secondaryGroupBy: string
   timeBucket: string
   customBucketN: number
   customBucketUnit: string
@@ -224,6 +225,10 @@ export interface ReportResult {
   floatValues: number[]
   isFloat: boolean
   weight: string
+  rowLabels: string[]
+  colLabels: string[]
+  matrixValues: number[]
+  is2D: boolean
 }
 
 export interface BackfillStatus {

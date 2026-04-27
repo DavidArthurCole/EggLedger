@@ -1,6 +1,6 @@
 <template>
   <div ref="containerRef" class="w-full h-full">
-    <svg :viewBox="`0 0 ${vw} ${vh}`" class="w-full h-full" preserveAspectRatio="xMidYMid meet">
+    <svg :viewBox="`0 0 ${vw} ${vh}`" class="w-full h-full" preserveAspectRatio="xMidYMid meet" overflow="visible">
       <defs>
         <linearGradient
           v-for="(seg, i) in segments"
@@ -22,6 +22,11 @@
         :key="'seg-' + i"
         :d="seg.path"
         :fill="seg.color"
+        :opacity="segmentOpacity(i)"
+        style="cursor: pointer; transition: opacity 0.1s;"
+        @mouseenter="(e) => { hoveredIndex = i; showTooltip(e, [seg.shortLabel, String(seg.value) + ' (' + seg.pct.toFixed(1) + '%)']) }"
+        @mousemove="moveTooltip"
+        @mouseleave="() => { hoveredIndex = null; hideTooltip() }"
       />
       <!-- Connector lines and labels -->
       <g v-for="(seg, i) in segments" :key="'lbl-' + i">
@@ -59,12 +64,27 @@
         >{{ seg.pct.toFixed(1) }}%</text>
       </g>
     </svg>
+    <Teleport to="body">
+      <div
+        v-if="tooltip.visible"
+        class="tooltip-floating"
+        :style="{ left: tooltip.x + 'px', top: tooltip.y + 'px' }"
+      >
+        <div
+          v-for="(line, i) in tooltip.lines"
+          :key="i"
+          class="text-xs"
+          :class="i === 0 ? 'text-gray-200 font-medium' : 'text-gray-400'"
+        >{{ line }}</div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import type { ReportResult } from '../types/bridge'
+import { useChartTooltip } from '../composables/useChartTooltip'
 
 const props = defineProps<{
   result: ReportResult
@@ -72,6 +92,9 @@ const props = defineProps<{
   /** JSON-encoded Record<string, string> mapping label to hex color */
   labelColors?: string
 }>()
+
+const { tooltip, showTooltip, moveTooltip, hideTooltip } = useChartTooltip()
+const hoveredIndex = ref<number | null>(null)
 
 const containerRef = ref<HTMLDivElement | null>(null)
 const containerSize = ref({ w: 0, h: 0 })
@@ -96,7 +119,7 @@ const cx = computed(() => vw.value / 2)
 const cy = computed(() => vh.value / 2)
 
 // All geometry scales from r. Cap prevents label overflow on very large cards.
-const r = computed(() => Math.min(Math.min(vw.value, vh.value) * 0.38, 120))
+const r = computed(() => Math.min(vw.value, vh.value) * 0.3)
 const elbowR = computed(() => r.value * 1.291)
 const labelOffset = computed(() => r.value * 0.182)
 const textXOff = computed(() => r.value * 0.027)
@@ -108,6 +131,11 @@ const strokeWidth = computed(() => r.value * 0.0145)
 const MAX_SEGMENTS = 10
 const minLabelSpacing = computed(() => r.value * 0.255)
 const labelClamp = computed(() => r.value * 0.145)
+
+function segmentOpacity(i: number): number {
+  if (hoveredIndex.value === null) return 1
+  return i === hoveredIndex.value ? 1 : 0.5
+}
 
 function hexToHsl(hex: string): [number, number, number] {
   const rc = Number.parseInt(hex.slice(1, 3), 16) / 255

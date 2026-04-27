@@ -432,6 +432,7 @@ func reportDefToRow(def reports.ReportDefinition) (reportdb.ReportRow, error) {
 		ValueFilterThreshold: def.ValueFilterThreshold,
 		GroupId: def.GroupId,
 		LabelColors: def.LabelColors,
+		SecondaryGroupBy: def.SecondaryGroupBy,
 	}
 	if def.TimeBucket != "" {
 		r.TimeBucket = sql.NullString{String: def.TimeBucket, Valid: true}
@@ -471,6 +472,7 @@ func rowToReportDef(r reportdb.ReportRow) (reports.ReportDefinition, error) {
 		ValueFilterThreshold: r.ValueFilterThreshold,
 		GroupId: r.GroupId,
 		LabelColors: r.LabelColors,
+		SecondaryGroupBy: r.SecondaryGroupBy,
 	}
 	if r.TimeBucket.Valid {
 		def.TimeBucket = r.TimeBucket.String

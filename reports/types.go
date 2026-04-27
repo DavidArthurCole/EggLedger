@@ -22,6 +22,7 @@ type ReportDefinition struct {
 	Mode             string        `json:"mode"`
 	DisplayMode      string        `json:"displayMode"`
 	GroupBy          string        `json:"groupBy"`
+	SecondaryGroupBy string        `json:"secondaryGroupBy"`
 	TimeBucket       string        `json:"timeBucket"`
 	CustomBucketN    int           `json:"customBucketN"`
 	CustomBucketUnit string        `json:"customBucketUnit"`
@@ -51,4 +52,8 @@ type ReportResult struct {
 	FloatValues []float64 `json:"floatValues"`
 	IsFloat     bool      `json:"isFloat"`
 	Weight      string    `json:"weight"`
+	RowLabels    []string  `json:"rowLabels"`
+	ColLabels    []string  `json:"colLabels"`
+	MatrixValues []float64 `json:"matrixValues"`
+	Is2D         bool      `json:"is2D"`
 }

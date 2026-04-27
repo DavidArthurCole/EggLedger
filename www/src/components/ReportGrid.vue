@@ -35,6 +35,7 @@
           :result="results[def.id] ?? null"
           :edit-mode="editMode"
           :running="runningIds.has(def.id)"
+          :stale="isStale(def.id, def.weight)"
           :groups="editMode ? groups : []"
           @run="handleRun(def.id)"
           @edit="openEditor(def)"
@@ -71,7 +72,7 @@
       v-if="builderOpen"
       :account-id="accountId"
       :editing-def="editingDef"
-      :editing-result-labels="editingDef && results[editingDef.id] ? results[editingDef.id].labels : []"
+      :editing-result-labels="editingDef && results[editingDef.id] && !results[editingDef.id].is2D ? results[editingDef.id].labels : []"
       @saved="handleSaved"
       @close="builderOpen = false"
     />
@@ -104,6 +105,8 @@ const builderOpen = ref(false)
 const editingDef = ref<ReportDefinition | null>(null)
 const results = ref<Record<string, ReportResult>>({})
 const runningIds = ref(new Set<string>())
+const refreshCycle = ref(0)
+const resultCycles = ref<Record<string, number>>({})
 const draggingIndex = ref<number | null>(null)
 const dragOverIndex = ref<number | null>(null)
 const importError = ref<string | null>(null)
@@ -124,8 +127,13 @@ onMounted(async () => {
 
 watch(appState, (state) => {
   if (state === AppState.Success) {
+    refreshCycle.value++
     for (const def of reports.value) {
-      handleRun(def.id)
+      if (def.weight !== 'HEAVY') {
+        handleRun(def.id)
+      } else if (resultCycles.value[def.id] !== undefined) {
+        resultCycles.value = { ...resultCycles.value, [def.id]: refreshCycle.value }
+      }
     }
   }
 })
@@ -137,16 +145,23 @@ function openEditor(def: ReportDefinition | null) {
 
 async function handleRun(id: string) {
   runningIds.value = new Set([...runningIds.value, id])
+  const cycleAtStart = refreshCycle.value
   try {
     const result = await executeReport(id)
     if (result) {
       results.value = { ...results.value, [id]: result }
+      resultCycles.value = { ...resultCycles.value, [id]: cycleAtStart }
     }
   } finally {
     const next = new Set(runningIds.value)
     next.delete(id)
     runningIds.value = next
   }
+}
+
+function isStale(id: string, weight: string): boolean {
+  if (weight !== 'HEAVY') return false
+  return resultCycles.value[id] !== undefined && resultCycles.value[id] < refreshCycle.value
 }
 
 async function handleDelete(id: string) {

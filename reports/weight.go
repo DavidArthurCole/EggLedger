@@ -1,11 +1,24 @@
 package reports
 
-import "strings"
+import (
+	"strings"
+	"time"
+)
 
 // ClassifyWeight assigns a heuristic cost tier (LOW, MEDIUM, HEAVY) to a
 // report definition so callers can throttle or warn before executing expensive
 // queries.
 func ClassifyWeight(def ReportDefinition) string {
+	if def.SecondaryGroupBy != "" {
+		eitherIsArtifact := isArtifactDimension(def.GroupBy) || isArtifactDimension(def.SecondaryGroupBy)
+		if eitherIsArtifact {
+			if hasDateFilter(def.Filters) {
+				return "MEDIUM"
+			}
+			return "HEAVY"
+		}
+		return "LOW"
+	}
 	if def.Mode == "time_series" {
 		if def.TimeBucket == "custom" {
 			days := customBucketDays(def.CustomBucketN, def.CustomBucketUnit)
@@ -59,8 +72,31 @@ func hasDateFilter(f ReportFilters) bool {
 
 // dateFilterWindowDays returns a rough estimate of the filter window in days.
 // Returns a large sentinel (9999) if the window cannot be determined.
-func dateFilterWindowDays(_ ReportFilters) int {
-	return 9999
+func dateFilterWindowDays(f ReportFilters) int {
+	minDays := 9999
+	all := make([]FilterCondition, 0, len(f.And))
+	all = append(all, f.And...)
+	for _, group := range f.Or {
+		all = append(all, group...)
+	}
+	now := time.Now()
+	for _, c := range all {
+		if c.TopLevel != "launchDT" && c.TopLevel != "returnDT" {
+			continue
+		}
+		if c.Op != ">" && c.Op != ">=" {
+			continue
+		}
+		t, err := time.Parse("2006-01-02", c.Val)
+		if err != nil {
+			continue
+		}
+		days := int(now.Sub(t).Hours() / 24)
+		if days < minDays {
+			minDays = days
+		}
+	}
+	return minDays
 }
 
 func hasArtifactScopeFilter(f ReportFilters) bool {
@@ -76,6 +112,14 @@ func hasArtifactScopeFilter(f ReportFilters) bool {
 				return true
 			}
 		}
+	}
+	return false
+}
+
+func isArtifactDimension(groupBy string) bool {
+	switch groupBy {
+	case "artifact_name", "rarity", "tier", "spec_type":
+		return true
 	}
 	return false
 }
