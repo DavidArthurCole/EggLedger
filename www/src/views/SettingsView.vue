@@ -6,7 +6,7 @@
         <span class="text-gray-500 text-xs italic ml-1">(effective on restart)</span><br />
         <div class="mt-0_5rem">
           <span class="section-heading">Preferred Browser</span><br />
-          <div ref="containerRef" class="text-sm relative w-full flex-grow focus-within:z-10 pl-0_5rem">
+          <div ref="containerRef" class="text-sm relative w-1/2 flex-grow focus-within:z-10 pl-0_5rem">
             <div v-if="preferredBrowser" class="ledger-input-overlay" style="padding-left: 1.25rem;">
               <span>{{ preferredBrowser }}</span> (<img v-if="getBrowserIcon(preferredBrowser)" :src="getBrowserIcon(preferredBrowser)" :alt="getBrowserDisplayName(preferredBrowser)" class="inline-block w-4 h-4 align-text-bottom mr-1" /><span class="text-gray-300">{{ getBrowserDisplayName(preferredBrowser) }}</span>)
             </div>
@@ -287,7 +287,7 @@
         <div class="mt-1rem">
           <span class="section-heading">Backup Storage</span><br />
           <div class="mt-0_25rem pl-0_5rem text-xs text-gray-500">
-            Copies all app data into the chosen folder. The original files are not modified.
+            Copies selected data into the chosen folder. The original files are not modified.
           </div>
           <div class="mt-0_5rem pl-0_5rem">
             <div class="flex flex-row items-center gap-2 max-w-[50%]">
@@ -339,7 +339,7 @@
         <div class="mt-1rem">
           <span class="section-heading">Move Storage</span><br />
           <div class="mt-0_25rem pl-0_5rem text-xs text-gray-500">
-            Copies all app data (databases, exports, logs) into the chosen folder, then restarts. The old files are NOT deleted automatically.
+            Copies all app data into the chosen folder, then restarts. Old files are NOT deleted automatically.
           </div>
           <div class="mt-0_5rem pl-0_5rem">
             <div class="flex flex-row items-center gap-2 max-w-[50%]">

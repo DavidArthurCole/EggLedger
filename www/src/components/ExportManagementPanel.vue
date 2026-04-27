@@ -38,19 +38,19 @@
         <div v-for="group in exportGroups" :key="group.eid" class="mb-1">
           <button
             type="button"
-            class="w-full flex items-center gap-1 text-left text-xs text-gray-400 hover:text-gray-300 py-0.5"
+            class="group w-full flex items-center gap-1 text-left text-xs text-gray-400 hover:text-gray-300 py-0.5"
             @click="toggleCollapse(group.eid)"
           >
             <span class="text-gray-500 w-3">{{ collapsed.has(group.eid) ? '▶' : '▼' }}</span>
+            <span v-if="group.nickname" class="font-medium group-hover:brightness-125" :style="group.accountColor ? { color: '#' + group.accountColor } : {}">{{ group.nickname }}</span>
             <span class="font-mono">
               <template v-if="screenshotSafety">EI<span class="inline-block bg-gray-500 rounded-sm align-middle" style="width:5rem;height:0.75em;"></span></template>
               <template v-else>{{ group.eid }}</template>
             </span>
-            <span v-if="group.nickname && !screenshotSafety" class="ml-1 font-medium" :style="group.accountColor ? { color: '#' + group.accountColor } : {}">{{ group.nickname }}</span>
             <span class="text-gray-500 ml-1">· {{ group.pairs.length }} export(s) · {{ formattedSize(groupSize(group)) }}</span>
           </button>
           <div v-if="!collapsed.has(group.eid)" class="pl-4 mt-1">
-            <table class="text-xs w-full">
+            <table class="text-xs">
               <thead>
                 <tr class="text-gray-500">
                   <th class="text-left pr-4 font-normal pb-0.5">Date</th>

@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -989,8 +990,10 @@ func main() {
 			return "[]"
 		}
 		accounts := _storage.KnownAccounts
+		accountOrder := make(map[string]int, len(accounts))
 		accountMap := make(map[string]Account, len(accounts))
-		for _, a := range accounts {
+		for i, a := range accounts {
+			accountOrder[a.Id] = i
 			accountMap[a.Id] = a
 		}
 		for i, g := range groups {
@@ -999,6 +1002,14 @@ func main() {
 				groups[i].AccountColor = a.AccountColor
 			}
 		}
+		sort.SliceStable(groups, func(i, j int) bool {
+			oi, oki := accountOrder[groups[i].Eid]
+			oj, okj := accountOrder[groups[j].Eid]
+			if oki && okj {
+				return oi < oj
+			}
+			return oki
+		})
 		b, err := json.Marshal(groups)
 		if err != nil {
 			log.Errorf("listExportFiles marshal: %s", err)
