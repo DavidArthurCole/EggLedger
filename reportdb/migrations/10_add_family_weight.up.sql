@@ -1,0 +1,1 @@
+ALTER TABLE reports ADD COLUMN family_weight TEXT NOT NULL DEFAULT '';

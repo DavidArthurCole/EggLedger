@@ -211,6 +211,13 @@ export interface ReportDefinition {
   labelColors: string
   /** Hex color for zero-value cells in heatmap; empty string uses default dark */
   unfilledColor: string
+  /** Artifact family ID for crafting-weighted aggregation; empty string = disabled */
+  familyWeight: string
+}
+
+export interface FamilyMeta {
+  id: string
+  name: string
 }
 
 export interface ReportGroup {
@@ -409,6 +416,7 @@ declare global {
   function getAccountReports(accountId: string): Promise<string>
   function executeReport(id: string): Promise<string>
   function reorderReports(idsJSON: string): Promise<boolean>
+  function getFamilyList(): Promise<string>
   function getReportBackfillStatus(): Promise<string>
   function exportReport(id: string): Promise<string>
   function exportAllReports(accountId: string, destPath: string): Promise<string>

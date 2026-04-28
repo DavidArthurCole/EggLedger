@@ -35,9 +35,9 @@ import (
 	"github.com/DavidArthurCole/EggLedger/reportdb"
 	"github.com/DavidArthurCole/EggLedger/reports"
 	"github.com/davidarthurcole/lorca"
+	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/writer"
-	"github.com/google/uuid"
 	"github.com/skratchdot/open-golang/open"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
@@ -141,11 +141,11 @@ type ExportedFile struct {
 }
 
 type DatabaseAccount struct {
-	Id                 string  `json:"id"`
-	Nickname           string  `json:"nickname"`
-	MissionCount       int     `json:"missionCount"`
-	EBString           string  `json:"ebString"`
-	AccountColor       string  `json:"accountColor"`
+	Id                  string  `json:"id"`
+	Nickname            string  `json:"nickname"`
+	MissionCount        int     `json:"missionCount"`
+	EBString            string  `json:"ebString"`
+	AccountColor        string  `json:"accountColor"`
 	LastMissionReturnDT float64 `json:"lastMissionReturnDT"`
 }
 
@@ -279,6 +279,10 @@ func init() {
 	}
 	_eiAfxConfigMissions = eiafx.Config.MissionParameters
 	_eiAfxConfigArtis = eiafx.Config.ArtifactParameters
+
+	if err := eiafx.LoadDataConfig(_internalDir); err != nil {
+		log.Warnf("eiafx data config load failed, family weight disabled: %v", err)
+	}
 
 	if err := ledgerdata.LoadConfig(_internalDir); err != nil {
 		log.Fatal("ledgerdata.LoadConfig: ", err)
@@ -428,13 +432,14 @@ func reportDefToRow(def reports.ReportDefinition) (reportdb.ReportRow, error) {
 		GridX: def.GridX, GridY: def.GridY, GridW: def.GridW, GridH: def.GridH,
 		Weight: def.Weight, Color: def.Color,
 		Description: def.Description, ChartType: def.ChartType,
-		SortOrder: def.SortOrder,
-		ValueFilterOp: def.ValueFilterOp,
+		SortOrder:            def.SortOrder,
+		ValueFilterOp:        def.ValueFilterOp,
 		ValueFilterThreshold: def.ValueFilterThreshold,
-		GroupId: def.GroupId,
-		LabelColors: def.LabelColors,
-		SecondaryGroupBy: def.SecondaryGroupBy,
-		UnfilledColor: def.UnfilledColor,
+		GroupId:              def.GroupId,
+		LabelColors:          def.LabelColors,
+		SecondaryGroupBy:     def.SecondaryGroupBy,
+		UnfilledColor:        def.UnfilledColor,
+		FamilyWeight:         def.FamilyWeight,
 	}
 	if def.TimeBucket != "" {
 		r.TimeBucket = sql.NullString{String: def.TimeBucket, Valid: true}
@@ -470,12 +475,13 @@ func rowToReportDef(r reportdb.ReportRow) (reports.ReportDefinition, error) {
 		Description: r.Description, ChartType: chartType,
 		SortOrder: r.SortOrder,
 		CreatedAt: r.CreatedAt, UpdatedAt: r.UpdatedAt,
-		ValueFilterOp: r.ValueFilterOp,
+		ValueFilterOp:        r.ValueFilterOp,
 		ValueFilterThreshold: r.ValueFilterThreshold,
-		GroupId: r.GroupId,
-		LabelColors: r.LabelColors,
-		SecondaryGroupBy: r.SecondaryGroupBy,
-		UnfilledColor: r.UnfilledColor,
+		GroupId:              r.GroupId,
+		LabelColors:          r.LabelColors,
+		SecondaryGroupBy:     r.SecondaryGroupBy,
+		UnfilledColor:        r.UnfilledColor,
+		FamilyWeight:         r.FamilyWeight,
 	}
 	if r.TimeBucket.Valid {
 		def.TimeBucket = r.TimeBucket.String
@@ -1579,6 +1585,15 @@ func main() {
 
 	ui.MustBind("getReportBackfillStatus", func() string {
 		out, _ := json.Marshal(GetBackfillStatus())
+		return string(out)
+	})
+
+	ui.MustBind("getFamilyList", func() string {
+		fams := eiafx.Families
+		if fams == nil {
+			fams = []eiafx.FamilyMeta{}
+		}
+		out, _ := json.Marshal(fams)
 		return string(out)
 	})
 

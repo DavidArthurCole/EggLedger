@@ -1,6 +1,7 @@
 package eiafx
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 	"os"
@@ -12,35 +13,33 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-const _downloadURL = "https://raw.githubusercontent.com/DavidArthurCole/EggLedger/master/eiafx/eiafx-config-min.json"
+const _configDownloadURL = "https://raw.githubusercontent.com/DavidArthurCole/EggLedger/master/eiafx/eiafx-config-min.json"
+const _dataDownloadURL = "https://raw.githubusercontent.com/DavidArthurCole/EggLedger/master/eiafx/eiafx-data-min.json"
 
-// tryDownloadFresh attempts to download a fresh copy of eiafx-config-min.json
-// and write it to cacheFile. Called in a goroutine - never blocks startup.
-// Failures are logged as warnings; the embedded fallback remains active.
-func tryDownloadFresh(cacheFile string) {
+// tryDownloadRaw fetches url, runs validate on the body, then writes to cacheFile.
+// Called in a goroutine - never blocks startup. Failures are logged as warnings.
+func tryDownloadRaw(url, cacheFile string, validate func([]byte) error) {
 	client := &http.Client{Timeout: 15 * time.Second}
-	resp, err := client.Get(_downloadURL)
+	resp, err := client.Get(url)
 	if err != nil {
-		log.Warnf("eiafx: download failed: %v", err)
+		log.Warnf("eiafx: download failed (%s): %v", url, err)
 		return
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.Warnf("eiafx: download returned HTTP %d", resp.StatusCode)
+		log.Warnf("eiafx: download returned HTTP %d (%s)", resp.StatusCode, url)
 		return
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Warnf("eiafx: reading download body: %v", err)
+		log.Warnf("eiafx: reading download body (%s): %v", url, err)
 		return
 	}
 
-	// Validate the downloaded JSON before writing.
-	var c ei.ArtifactsConfigurationResponse
-	if err := protojson.Unmarshal(body, &c); err != nil {
-		log.Warnf("eiafx: downloaded JSON is invalid: %v", err)
+	if err := validate(body); err != nil {
+		log.Warnf("eiafx: downloaded content is invalid (%s): %v", url, err)
 		return
 	}
 
@@ -53,4 +52,20 @@ func tryDownloadFresh(cacheFile string) {
 		return
 	}
 	log.Infof("eiafx: cache refreshed at %s", cacheFile)
+}
+
+// tryDownloadFresh downloads a fresh eiafx-config-min.json and validates it as protojson.
+func tryDownloadFresh(cacheFile string) {
+	tryDownloadRaw(_configDownloadURL, cacheFile, func(body []byte) error {
+		var c ei.ArtifactsConfigurationResponse
+		return protojson.Unmarshal(body, &c)
+	})
+}
+
+// tryDownloadDataFresh downloads a fresh eiafx-data-min.json and validates it as JSON.
+func tryDownloadDataFresh(cacheFile string) {
+	tryDownloadRaw(_dataDownloadURL, cacheFile, func(body []byte) error {
+		var v json.RawMessage
+		return json.Unmarshal(body, &v)
+	})
 }

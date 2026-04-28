@@ -238,3 +238,134 @@ func BuildTimePivotQuery(def ReportDefinition, baseWhere string, args []interfac
 	}
 	return query, out, nil
 }
+
+// FamilyWeightClause builds a SQL fragment filtering artifact_drops to a set of afx_ids.
+// ids should be eiafx.FamilyAFXIds[familyId]. Returns ("", nil) if ids is empty.
+func FamilyWeightClause(ids []int) (string, []interface{}) {
+	if len(ids) == 0 {
+		return "", nil
+	}
+	placeholders := make([]string, len(ids))
+	args := make([]interface{}, len(ids))
+	for i, id := range ids {
+		placeholders[i] = "?"
+		args[i] = id
+	}
+	return "d.artifact_id IN (" + strings.Join(placeholders, ", ") + ")", args
+}
+
+// BuildWeightedAggregateQuery generates a 1D aggregate query with hidden d.artifact_id
+// and d.level columns so execute.go can apply per-tier crafting weights to the count.
+func BuildWeightedAggregateQuery(def ReportDefinition, baseWhere string, baseArgs []interface{}, fwClause string, fwArgs []interface{}) (string, []interface{}) {
+	args := make([]interface{}, len(baseArgs))
+	copy(args, baseArgs)
+	args = append(args, fwArgs...)
+
+	groupCol := GroupByColumn(def.GroupBy)
+	where := baseWhere + " AND " + fwClause
+
+	query := fmt.Sprintf(`
+        SELECT CAST(%s AS TEXT), CAST(d.artifact_id AS INTEGER), CAST(d.level AS INTEGER), COUNT(*) AS count
+        FROM artifact_drops d
+        JOIN mission m ON d.mission_id = m.mission_id AND d.player_id = m.player_id
+        WHERE %s AND d.drop_index >= 0
+        GROUP BY %s, d.artifact_id, d.level
+        ORDER BY count DESC`, groupCol, where, groupCol)
+
+	return query, args
+}
+
+// BuildWeightedPivotQuery generates a 2D pivot query with hidden d.artifact_id and d.level
+// columns for per-tier weight accumulation. Returns an error if either dimension is invalid.
+func BuildWeightedPivotQuery(def ReportDefinition, baseWhere string, baseArgs []interface{}, fwClause string, fwArgs []interface{}) (string, []interface{}, error) {
+	col1 := GroupByColumn(def.GroupBy)
+	col2 := GroupByColumn(def.SecondaryGroupBy)
+	if col1 == "" {
+		return "", nil, fmt.Errorf("unsupported group-by dimension %q", def.GroupBy)
+	}
+	if col2 == "" {
+		return "", nil, fmt.Errorf("unsupported secondary group-by dimension %q", def.SecondaryGroupBy)
+	}
+
+	args := make([]interface{}, len(baseArgs))
+	copy(args, baseArgs)
+	args = append(args, fwArgs...)
+
+	where := baseWhere + " AND " + fwClause
+	query := fmt.Sprintf(`
+        SELECT CAST(%s AS TEXT), CAST(%s AS TEXT), CAST(d.artifact_id AS INTEGER), CAST(d.level AS INTEGER), COUNT(*) AS count
+        FROM artifact_drops d
+        JOIN mission m ON d.mission_id = m.mission_id AND d.player_id = m.player_id
+        WHERE %s AND d.drop_index >= 0
+        GROUP BY %s, %s, d.artifact_id, d.level
+        ORDER BY %s, %s`, col1, col2, where, col1, col2, col1, col2)
+
+	return query, args, nil
+}
+
+// BuildWeightedTimeSeriesQuery generates a time-bucketed query with hidden d.artifact_id
+// and d.level columns for per-tier weight accumulation.
+func BuildWeightedTimeSeriesQuery(def ReportDefinition, baseWhere string, baseArgs []interface{}, fwClause string, fwArgs []interface{}) (string, []interface{}) {
+	args := make([]interface{}, len(baseArgs))
+	copy(args, baseArgs)
+	args = append(args, fwArgs...)
+
+	format := TimeBucketFormat(def.TimeBucket, def.CustomBucketUnit)
+	bucketExpr := "strftime('" + format + "', datetime(m.start_timestamp, 'unixepoch'))"
+	where := baseWhere + " AND " + fwClause
+
+	windowWhere := ""
+	if def.TimeBucket == "custom" {
+		cond, modifier := CustomWindowCondition(def.CustomBucketN, def.CustomBucketUnit)
+		if cond != "" {
+			windowWhere = " AND " + cond
+			args = append(args, modifier)
+		}
+	}
+
+	query := fmt.Sprintf(`
+        SELECT %s AS bucket, CAST(d.artifact_id AS INTEGER), CAST(d.level AS INTEGER), COUNT(*) AS count
+        FROM artifact_drops d
+        JOIN mission m ON d.mission_id = m.mission_id AND d.player_id = m.player_id
+        WHERE %s AND d.drop_index >= 0%s
+        GROUP BY bucket, d.artifact_id, d.level
+        ORDER BY bucket ASC`, bucketExpr, where, windowWhere)
+
+	return query, args
+}
+
+// BuildWeightedTimePivotQuery generates a time-bucket x secondary-dimension query
+// with hidden artifact_id/level columns for weight accumulation.
+func BuildWeightedTimePivotQuery(def ReportDefinition, baseWhere string, baseArgs []interface{}, fwClause string, fwArgs []interface{}) (string, []interface{}, error) {
+	col2 := GroupByColumn(def.SecondaryGroupBy)
+	if col2 == "" {
+		return "", nil, fmt.Errorf("unsupported secondary group-by dimension %q", def.SecondaryGroupBy)
+	}
+
+	args := make([]interface{}, len(baseArgs))
+	copy(args, baseArgs)
+	args = append(args, fwArgs...)
+
+	format := TimeBucketFormat(def.TimeBucket, def.CustomBucketUnit)
+	bucketExpr := "strftime('" + format + "', datetime(m.start_timestamp, 'unixepoch'))"
+	where := baseWhere + " AND " + fwClause
+
+	windowWhere := ""
+	if def.TimeBucket == "custom" {
+		cond, modifier := CustomWindowCondition(def.CustomBucketN, def.CustomBucketUnit)
+		if cond != "" {
+			windowWhere = " AND " + cond
+			args = append(args, modifier)
+		}
+	}
+
+	query := fmt.Sprintf(`
+        SELECT %s AS bucket, CAST(%s AS TEXT) AS grp, CAST(d.artifact_id AS INTEGER), CAST(d.level AS INTEGER), COUNT(*) AS count
+        FROM artifact_drops d
+        JOIN mission m ON d.mission_id = m.mission_id AND d.player_id = m.player_id
+        WHERE %s AND d.drop_index >= 0%s
+        GROUP BY bucket, grp, d.artifact_id, d.level
+        ORDER BY bucket ASC, grp ASC`, bucketExpr, col2, where, windowWhere)
+
+	return query, args, nil
+}

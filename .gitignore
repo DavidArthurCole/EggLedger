@@ -12,6 +12,7 @@ EggLedger.exe*
 EggLedger
 /logs/
 /eiafx/eiafx-config.json
+/eiafx/eiafx-data.json
 metadata.json
 sign.env.ps1
 sign-local.ps1

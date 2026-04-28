@@ -20,7 +20,7 @@
     <div class="flex items-start justify-between gap-2 px-3 pb-1.5 border-b border-gray-700/50" :class="editMode ? 'pt-5' : 'pt-3'">
       <div class="min-w-0 flex-1">
         <span class="text-sm font-medium text-gray-200 truncate block">{{ def.name }}</span>
-        <span class="text-xs text-gray-500">{{ subjectLabel }} - {{ modeLabel }}{{ groupByLabel ? ' - ' + groupByLabel : '' }}{{ secondaryGroupByLabel ? ' x ' + secondaryGroupByLabel : '' }}</span>
+        <span class="text-xs text-gray-500">{{ subjectLabel }} - {{ modeLabel }}{{ groupByLabel ? ' - ' + groupByLabel : '' }}{{ secondaryGroupByLabel ? ' x ' + secondaryGroupByLabel : '' }}{{ familyWeightLabel ? ' - ' + familyWeightLabel : '' }}</span>
         <span
           v-if="def.description"
           class="text-xs text-gray-500 truncate block mt-0.5"
@@ -279,6 +279,13 @@ const secondaryGroupByLabel = computed(() => {
   const g = props.def.secondaryGroupBy
   if (!g) return ''
   return dimensionLabelMap[g] ?? g
+})
+
+const familyWeightLabel = computed(() => {
+  const fw = props.def.familyWeight
+  if (!fw) return ''
+  const name = fw.split('-').map((w, i) => i === 0 ? w.charAt(0).toUpperCase() + w.slice(1) : w).join(' ')
+  return name + ' (weighted)'
 })
 
 const weightClass = computed(() => {

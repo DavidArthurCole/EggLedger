@@ -127,6 +127,22 @@
           </div>
         </div>
 
+        <!-- Family weight (artifacts only) -->
+        <div v-if="form.subject === 'artifacts'" class="flex flex-col gap-1">
+          <span class="text-xs text-gray-400 flex items-center gap-1">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/></svg>
+            Family weight (optional)
+          </span>
+          <select
+            v-model="form.familyWeight"
+            class="bg-darker border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 focus:outline-none focus:border-blue-500"
+          >
+            <option value="">None (raw count)</option>
+            <option v-for="fam in familyList" :key="fam.id" :value="fam.id">{{ fam.name }}</option>
+          </select>
+          <p v-if="form.familyWeight" class="text-xs text-gray-500 mt-0.5">Drops weighted by T1-equivalent crafting cost</p>
+        </div>
+
         <!-- Display mode + Group by row -->
         <div class="grid grid-cols-2 gap-3">
           <div v-if="!(form.mode === 'time_series' && form.secondaryGroupBy)" class="flex flex-col gap-1">
@@ -404,6 +420,10 @@
               <option value="row_pct">Row % (each row sums to 100)</option>
               <option value="col_pct">Column % (each column sums to 100)</option>
               <option value="global_pct">Global % (all cells sum to 100)</option>
+              <template v-if="canNormalizePivotPerLaunch">
+                <option value="launches">Per launch (per cell)</option>
+                <option value="airtime">Per flight hour (per cell)</option>
+              </template>
             </template>
             <template v-else>
               <option value="none">None (raw count)</option>
@@ -560,7 +580,7 @@
 
 <script setup lang="ts">
 import { reactive, computed, watch, ref, onMounted, nextTick } from 'vue'
-import type { ReportDefinition, ReportFilterCondition, PossibleTarget } from '../types/bridge'
+import type { ReportDefinition, ReportFilterCondition, PossibleTarget, FamilyMeta } from '../types/bridge'
 import { useReportFilters } from '../composables/useReportFilters'
 import AndOnlyFilter from './AndOnlyFilter.vue'
 import ReportBuilderGuided from './ReportBuilderGuided.vue'
@@ -600,6 +620,7 @@ const {
 } = useReportFilters()
 
 const possibleTargets = ref<PossibleTarget[]>([])
+const familyList = ref<FamilyMeta[]>([])
 const isDirty = ref(false)
 const closeWarning = ref(false)
 const builderMode = ref<'basic' | 'advanced'>('basic')
@@ -665,6 +686,7 @@ function makeBlankForm() {
     valueFilterThreshold: 0,
     normalizeBy: 'none',
     chartType: '',
+    familyWeight: '',
   }
 }
 
@@ -695,6 +717,7 @@ watch(
       form.normalizeBy = def.normalizeBy || 'none'
       form.secondaryGroupBy = def.secondaryGroupBy || ''
       form.chartType = def.chartType || ''
+      form.familyWeight = def.familyWeight || ''
       labelColorsMap.value = parseLabelColors(def.labelColors)
       fromReportFilters(def.filters)
     } else {
@@ -799,7 +822,7 @@ const artifactDimensions = new Set(['artifact_name', 'rarity', 'tier', 'spec_typ
 
 const inferredSubjectLabel = computed(() => {
   if (!form.secondaryGroupBy) return ''
-  const eitherArtifact = artifactDimensions.has(form.groupBy) || artifactDimensions.has(form.secondaryGroupBy)
+  const eitherArtifact = artifactDimensions.has(form.groupBy) || artifactDimensions.has(form.secondaryGroupBy) || !!form.familyWeight
   return eitherArtifact ? 'Artifact drops' : 'Missions'
 })
 
@@ -810,10 +833,12 @@ function onSecondaryGroupByChange() {
     } else if (!['heatmap', 'grouped_bar'].includes(form.displayMode)) {
       form.displayMode = 'heatmap'
     }
-    if (artifactDimensions.has(form.groupBy) || artifactDimensions.has(form.secondaryGroupBy)) {
-      form.subject = 'artifacts'
-    } else {
-      form.subject = 'missions'
+    if (!form.familyWeight) {
+      if (artifactDimensions.has(form.groupBy) || artifactDimensions.has(form.secondaryGroupBy)) {
+        form.subject = 'artifacts'
+      } else {
+        form.subject = 'ships'
+      }
     }
   } else {
     form.displayMode = form.mode === 'time_series' ? 'line' : 'bar'
@@ -854,8 +879,13 @@ function getOpsForField(field: string): { value: string, label: string }[] {
 
 const groupByOptions = computed(() => {
   if (form.mode === 'time_series') return timeSeriesOption
-  if (form.subject === 'artifacts') return artifactAggregateOptions
+  if (form.subject === 'artifacts') return [...shipMissionAggregateOptions, ...artifactAggregateOptions]
   return shipMissionAggregateOptions
+})
+
+const canNormalizePivotPerLaunch = computed(() => {
+  if (!form.secondaryGroupBy) return false
+  return !artifactDimensions.has(form.groupBy) && !artifactDimensions.has(form.secondaryGroupBy)
 })
 
 
@@ -909,7 +939,8 @@ function resetAggregateDisplayAndNormalize() {
     if (!['heatmap', 'grouped_bar'].includes(form.displayMode)) {
       form.displayMode = 'heatmap'
     }
-    if (['launches', 'airtime'].includes(form.normalizeBy)) {
+    const perCellOk = !artifactDimensions.has(form.groupBy) && !artifactDimensions.has(form.secondaryGroupBy)
+    if (['launches', 'airtime'].includes(form.normalizeBy) && !perCellOk) {
       form.normalizeBy = 'none'
     }
   } else {
@@ -937,6 +968,7 @@ function onSubjectOrModeChange() {
 
 function onSubjectChange() {
   clearFilters()
+  if (form.subject !== 'artifacts') form.familyWeight = ''
   onSubjectOrModeChange()
 }
 
@@ -1010,6 +1042,7 @@ function handleSave() {
       ? JSON.stringify(labelColorsMap.value)
       : '',
     unfilledColor: form.displayMode === 'heatmap' ? (form.unfilledColor || '') : '',
+    familyWeight: form.subject === 'artifacts' ? (form.familyWeight || '') : '',
   }
   emit('saved', def)
   setTimeout(() => { isSaving.value = false }, 4000)
@@ -1036,6 +1069,7 @@ onMounted(async () => {
   const [, accounts] = await Promise.all([
     globalThis.getPossibleTargets().then(v => { possibleTargets.value = v }),
     globalThis.knownAccounts(),
+    globalThis.getFamilyList().then(json => { familyList.value = JSON.parse(json) as FamilyMeta[] }),
   ])
   knownAccountCount.value = accounts.length
   nextTick(() => {
