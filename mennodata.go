@@ -265,30 +265,11 @@ func handleLoadMennoData() bool {
 	return true
 }
 
-// protoToMennoDuration converts a proto MissionInfo_DurationType int to the
-// duration ID used in Menno community data.
-// Proto:  TUTORIAL=0, SHORT=1, LONG=2, EPIC=3
-// Menno:  SHORT=0,    LONG=1,  EPIC=2, TUTORIAL=3
-func protoToMennoDuration(protoDuration int) int {
-	switch protoDuration {
-	case 0:
-		return 3 // TUTORIAL
-	case 1:
-		return 0 // SHORT
-	case 2:
-		return 1 // LONG
-	case 3:
-		return 2 // EPIC
-	default:
-		return protoDuration
-	}
-}
-
-func filterMennoItems(ship, mennoDuration, shipLevel, targetArtifact int) []ConfigurationItem {
+func filterMennoItems(ship, shipDuration, shipLevel, targetArtifact int) []ConfigurationItem {
 	var result []ConfigurationItem
 	for _, item := range _latestMennoData.ConfigurationItems {
 		sc := item.ShipConfiguration
-		if sc.ShipType.Id == ship && sc.ShipDurationType.Id == mennoDuration &&
+		if sc.ShipType.Id == ship && sc.ShipDurationType.Id == shipDuration &&
 			sc.Level == shipLevel && sc.TargetArtifact.Id == targetArtifact {
 			result = append(result, item)
 		}
@@ -308,10 +289,9 @@ func handleGetMennoData(ship, shipDuration, shipLevel, targetArtifact int) []Con
 			return nil
 		}
 	}
-	mennoDuration := protoToMennoDuration(shipDuration)
-	items := filterMennoItems(ship, mennoDuration, shipLevel, targetArtifact)
+	items := filterMennoItems(ship, shipDuration, shipLevel, targetArtifact)
 	if len(items) == 0 && targetArtifact != mennoNoTarget {
-		items = filterMennoItems(ship, mennoDuration, shipLevel, mennoNoTarget)
+		items = filterMennoItems(ship, shipDuration, shipLevel, mennoNoTarget)
 	}
 	return items
 }

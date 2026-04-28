@@ -77,7 +77,7 @@ func mennoMatcherFor(groupBy string) mennoMatcher {
 			if err != nil {
 				return false
 			}
-			return item.ShipConfiguration.ShipDurationType.Id == protoToMennoDuration(v)
+			return item.ShipConfiguration.ShipDurationType.Id == v
 		}
 	case "level":
 		return func(item ConfigurationItem, rawVal string) bool {

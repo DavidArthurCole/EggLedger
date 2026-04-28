@@ -507,7 +507,7 @@ async function viewSpecificMission(missionId: string, returnValues = false, drop
 
   const mi = newMissionViewData.missionInfo as (DatabaseMission & { targetInt?: number }) | undefined
   if (mi) {
-    const mennoTargetInt = mi.targetInt === -1 ? 1000 : (mi.targetInt ?? 1000)
+    const mennoTargetInt = mi.targetInt === -1 ? 10000 : (mi.targetInt ?? 10000)
     const mennoShip = mi.ship
     const mennoDuration = mi.durationType
     const mennoLevel = mi.level

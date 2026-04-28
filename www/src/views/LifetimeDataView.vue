@@ -727,10 +727,10 @@ async function viewLifetimeDataOfEid(filterLoad: boolean) {
     const durationArg = Number.parseInt(lifetimeOneDurationInt.value ?? String(firstMatches[1]))
     const levelArg = Number.parseInt(lifetimeOneLevelInt.value ?? String(firstMatches[2]))
     const targetRaw = Number.parseInt(lifetimeOneTargetInt.value ?? String(firstMatches[3]))
-    const targetArg = targetRaw === -1 ? 1000 : targetRaw
+    const targetArg = targetRaw === -1 ? 10000 : targetRaw
     const mennoConfigItems = await getMennoData(shipArg, durationArg, levelArg, targetArg)
     if (mennoConfigItems) {
-      newData.mennoData = {
+      lifetimeData.value!.mennoData = {
         configs: mennoConfigItems as unknown as LedgerData['mennoData']['configs'],
         totalDropsCount: mennoConfigItems.reduce(
           (acc: number, cur: { totalDrops: number }) => acc + cur.totalDrops,
