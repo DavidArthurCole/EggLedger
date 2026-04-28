@@ -148,7 +148,7 @@
         type="button"
         class="px-6 py-2 text-base font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-500 active:bg-blue-700 disabled:opacity-50"
         :disabled="!activeAccountId"
-        @click="void viewLifetimeDataOfEid(false)"
+        @click="void viewLifetimeDataOfEid(true)"
       >
         Load Lifetime Data
       </button>
