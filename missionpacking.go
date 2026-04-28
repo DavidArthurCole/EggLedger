@@ -79,6 +79,7 @@ func computeMissionFilterCols(startTimestamp float64, resp *ei.CompleteMissionRe
 		DurationType:    int32(durationType),
 		Level:           level,
 		Capacity:        capacity,
+		NominalCapacity: int32(nominalCap),
 		IsDubCap:        isDubCap,
 		IsBuggedCap:     isBuggedCap,
 		Target:          target,

@@ -27,8 +27,9 @@ func executeWeightedAggregate(ctx context.Context, def ReportDefinition, baseWhe
 
 	for rows.Next() {
 		var rawLabel string
-		var artifactId, level, count int64
-		if err := rows.Scan(&rawLabel, &artifactId, &level, &count); err != nil {
+		var artifactId, level int64
+		var capWeight float64
+		if err := rows.Scan(&rawLabel, &artifactId, &level, &capWeight); err != nil {
 			return ReportResult{}, wrap(err)
 		}
 		w := eiafx.CraftingWeights[[2]int{int(artifactId), int(level)}]
@@ -41,7 +42,7 @@ func executeWeightedAggregate(ctx context.Context, def ReportDefinition, baseWhe
 			seen[rawLabel] = true
 			rawOrder = append(rawOrder, rawLabel)
 		}
-		accum[rawLabel] += float64(count) * w
+		accum[rawLabel] += capWeight * w
 	}
 	if err := rows.Err(); err != nil {
 		return ReportResult{}, wrap(err)
@@ -140,8 +141,9 @@ func executeWeightedPivot(ctx context.Context, def ReportDefinition, baseWhere s
 
 	for rows.Next() {
 		var rawRow, rawCol string
-		var artifactId, level, count int64
-		if err := rows.Scan(&rawRow, &rawCol, &artifactId, &level, &count); err != nil {
+		var artifactId, level int64
+		var capWeight float64
+		if err := rows.Scan(&rawRow, &rawCol, &artifactId, &level, &capWeight); err != nil {
 			return ReportResult{}, wrap(err)
 		}
 		w := eiafx.CraftingWeights[[2]int{int(artifactId), int(level)}]
@@ -163,7 +165,7 @@ func executeWeightedPivot(ctx context.Context, def ReportDefinition, baseWhere s
 		if cells[rowLabel] == nil {
 			cells[rowLabel] = map[string]float64{}
 		}
-		cells[rowLabel][colLabel] += float64(count) * w
+		cells[rowLabel][colLabel] += capWeight * w
 	}
 	if err := rows.Err(); err != nil {
 		return ReportResult{}, wrap(err)
@@ -269,8 +271,9 @@ func executeWeightedTimeSeries(ctx context.Context, def ReportDefinition, baseWh
 
 	for rows.Next() {
 		var rawBucket string
-		var artifactId, level, count int64
-		if err := rows.Scan(&rawBucket, &artifactId, &level, &count); err != nil {
+		var artifactId, level int64
+		var capWeight float64
+		if err := rows.Scan(&rawBucket, &artifactId, &level, &capWeight); err != nil {
 			return ReportResult{}, wrap(err)
 		}
 		w := eiafx.CraftingWeights[[2]int{int(artifactId), int(level)}]
@@ -283,7 +286,7 @@ func executeWeightedTimeSeries(ctx context.Context, def ReportDefinition, baseWh
 			seen[rawBucket] = true
 			buckets = append(buckets, rawBucket)
 		}
-		accum[rawBucket] += float64(count) * w
+		accum[rawBucket] += capWeight * w
 	}
 	if err := rows.Err(); err != nil {
 		return ReportResult{}, wrap(err)
@@ -330,8 +333,9 @@ func executeWeightedTimePivot(ctx context.Context, def ReportDefinition, baseWhe
 
 	for rows.Next() {
 		var rawBucket, rawGrp string
-		var artifactId, level, count int64
-		if err := rows.Scan(&rawBucket, &rawGrp, &artifactId, &level, &count); err != nil {
+		var artifactId, level int64
+		var capWeight float64
+		if err := rows.Scan(&rawBucket, &rawGrp, &artifactId, &level, &capWeight); err != nil {
 			return ReportResult{}, wrap(err)
 		}
 		w := eiafx.CraftingWeights[[2]int{int(artifactId), int(level)}]
@@ -352,7 +356,7 @@ func executeWeightedTimePivot(ctx context.Context, def ReportDefinition, baseWhe
 		if cells[rawBucket] == nil {
 			cells[rawBucket] = map[string]float64{}
 		}
-		cells[rawBucket][grpLabel] += float64(count) * w
+		cells[rawBucket][grpLabel] += capWeight * w
 	}
 	if err := rows.Err(); err != nil {
 		return ReportResult{}, wrap(err)

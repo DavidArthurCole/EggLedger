@@ -618,6 +618,23 @@ func main() {
 	defer reportdb.CloseReportDB()
 	reports.SetMissionDB(db.GetDB())
 	go BackfillArtifactDrops()
+	go func() {
+		lookup := func(ship, durationType, level int32) int32 {
+			_nominalShipCapacitiesOnce.Do(initNominalShipCapacities)
+			if caps, ok := _nominalShipCapacities[ei.MissionInfo_Spaceship(ship)][ei.MissionInfo_DurationType(durationType)]; ok && int(level) < len(caps) {
+				return int32(caps[int(level)])
+			}
+			return 0
+		}
+		n, err := db.BackfillNominalCapacities(context.Background(), lookup)
+		if err != nil {
+			log.Errorf("BackfillNominalCapacities: %v", err)
+			return
+		}
+		if n > 0 {
+			log.Infof("BackfillNominalCapacities: updated %d missions", n)
+		}
+	}()
 
 	ui.MustBind("getDefaultScalingFactor", func() float64 {
 		return _storage.GetDefaultScalingFactor()

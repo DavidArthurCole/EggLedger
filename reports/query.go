@@ -265,12 +265,15 @@ func BuildWeightedAggregateQuery(def ReportDefinition, baseWhere string, baseArg
 	where := baseWhere + " AND " + fwClause
 
 	query := fmt.Sprintf(`
-        SELECT CAST(%s AS TEXT), CAST(d.artifact_id AS INTEGER), CAST(d.level AS INTEGER), COUNT(*) AS count
+        SELECT CAST(%s AS TEXT), CAST(d.artifact_id AS INTEGER), CAST(d.level AS INTEGER),
+               SUM(CASE WHEN m.nominal_capacity > 0 AND m.capacity > 0
+                        THEN CAST(m.nominal_capacity AS REAL) / CAST(m.capacity AS REAL)
+                        ELSE 1.0 END) AS cap_weight
         FROM artifact_drops d
         JOIN mission m ON d.mission_id = m.mission_id AND d.player_id = m.player_id
         WHERE %s AND d.drop_index >= 0
         GROUP BY %s, d.artifact_id, d.level
-        ORDER BY count DESC`, groupCol, where, groupCol)
+        ORDER BY cap_weight DESC`, groupCol, where, groupCol)
 
 	return query, args
 }
@@ -293,7 +296,10 @@ func BuildWeightedPivotQuery(def ReportDefinition, baseWhere string, baseArgs []
 
 	where := baseWhere + " AND " + fwClause
 	query := fmt.Sprintf(`
-        SELECT CAST(%s AS TEXT), CAST(%s AS TEXT), CAST(d.artifact_id AS INTEGER), CAST(d.level AS INTEGER), COUNT(*) AS count
+        SELECT CAST(%s AS TEXT), CAST(%s AS TEXT), CAST(d.artifact_id AS INTEGER), CAST(d.level AS INTEGER),
+               SUM(CASE WHEN m.nominal_capacity > 0 AND m.capacity > 0
+                        THEN CAST(m.nominal_capacity AS REAL) / CAST(m.capacity AS REAL)
+                        ELSE 1.0 END) AS cap_weight
         FROM artifact_drops d
         JOIN mission m ON d.mission_id = m.mission_id AND d.player_id = m.player_id
         WHERE %s AND d.drop_index >= 0
@@ -324,7 +330,10 @@ func BuildWeightedTimeSeriesQuery(def ReportDefinition, baseWhere string, baseAr
 	}
 
 	query := fmt.Sprintf(`
-        SELECT %s AS bucket, CAST(d.artifact_id AS INTEGER), CAST(d.level AS INTEGER), COUNT(*) AS count
+        SELECT %s AS bucket, CAST(d.artifact_id AS INTEGER), CAST(d.level AS INTEGER),
+               SUM(CASE WHEN m.nominal_capacity > 0 AND m.capacity > 0
+                        THEN CAST(m.nominal_capacity AS REAL) / CAST(m.capacity AS REAL)
+                        ELSE 1.0 END) AS cap_weight
         FROM artifact_drops d
         JOIN mission m ON d.mission_id = m.mission_id AND d.player_id = m.player_id
         WHERE %s AND d.drop_index >= 0%s
@@ -360,7 +369,10 @@ func BuildWeightedTimePivotQuery(def ReportDefinition, baseWhere string, baseArg
 	}
 
 	query := fmt.Sprintf(`
-        SELECT %s AS bucket, CAST(%s AS TEXT) AS grp, CAST(d.artifact_id AS INTEGER), CAST(d.level AS INTEGER), COUNT(*) AS count
+        SELECT %s AS bucket, CAST(%s AS TEXT) AS grp, CAST(d.artifact_id AS INTEGER), CAST(d.level AS INTEGER),
+               SUM(CASE WHEN m.nominal_capacity > 0 AND m.capacity > 0
+                        THEN CAST(m.nominal_capacity AS REAL) / CAST(m.capacity AS REAL)
+                        ELSE 1.0 END) AS cap_weight
         FROM artifact_drops d
         JOIN mission m ON d.mission_id = m.mission_id AND d.player_id = m.player_id
         WHERE %s AND d.drop_index >= 0%s
