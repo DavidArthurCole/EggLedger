@@ -350,11 +350,16 @@ export function useFilters(options: UseFiltersOptions) {
     if (targetId.includes('filter-top')) {
       const parsedParts = stripSuffixFromParts(targetId.split('-'))
       const index = Number.parseInt(parsedParts[parsedParts.length - 1])
-      const opts = new Set(getFilterValueOptions(targetEl.value ?? '').map((o) => String(o.value)))
-      if (!opts.has(String(filterOperators.value[index]))) filterOperators.value[index] = null
-      if (!opts.has(String(filterValues.value[index]))) {
-        filterValues.value[index] = null
-        dFilterValues.value[index] = null
+      const newTop = targetEl.value ?? ''
+      if (newTop === 'dubcap' || newTop === 'buggedcap') {
+        filterOperators.value[index] = '='
+      } else {
+        const opts = new Set(getFilterValueOptions(newTop).map((o) => String(o.value)))
+        if (!opts.has(String(filterOperators.value[index]))) filterOperators.value[index] = null
+        if (!opts.has(String(filterValues.value[index]))) {
+          filterValues.value[index] = null
+          dFilterValues.value[index] = null
+        }
       }
     }
   }
@@ -372,13 +377,18 @@ export function useFilters(options: UseFiltersOptions) {
     updateFilterNoReCount()
     updateValueStyling(targetEl, true)
     if (targetId.includes('filter-top')) {
-      const opts = new Set(getFilterValueOptions(targetEl.value ?? '').map((o) => String(o.value)))
-      if (!opts.has(String(orFilterOperators.value[index][orIndex]))) {
-        orFilterOperators.value[index][orIndex] = null
-      }
-      if (!opts.has(String(orFilterValues.value[index][orIndex]))) {
-        orFilterValues.value[index][orIndex] = null
-        dOrFilterValues.value[index][orIndex] = null
+      const newTop = targetEl.value ?? ''
+      if (newTop === 'dubcap' || newTop === 'buggedcap') {
+        orFilterOperators.value[index][orIndex] = '='
+      } else {
+        const opts = new Set(getFilterValueOptions(newTop).map((o) => String(o.value)))
+        if (!opts.has(String(orFilterOperators.value[index][orIndex]))) {
+          orFilterOperators.value[index][orIndex] = null
+        }
+        if (!opts.has(String(orFilterValues.value[index][orIndex]))) {
+          orFilterValues.value[index][orIndex] = null
+          dOrFilterValues.value[index][orIndex] = null
+        }
       }
     }
   }

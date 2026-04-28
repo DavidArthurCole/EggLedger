@@ -460,6 +460,12 @@ watch(activeAccountId, (id) => {
   if (id) void loadMissions(id)
 }, { immediate: true })
 
+watch(isFetching, (val, prev) => {
+  if (prev === true && !val && activeAccountId.value) {
+    void loadMissions(activeAccountId.value)
+  }
+})
+
 async function getSpecificMissionData(eid: string, missionId: string, extendedInfo: boolean, dropCache: Record<string, MissionDrop[]> | null = null, knownMissionInfo: DatabaseMission | null = null): Promise<ViewMissionData | null> {
   const missionInfo = knownMissionInfo ?? await globalThis.getMissionInfo(eid, missionId)
   if (missionInfo.ship == null || missionInfo.ship < 0 || !missionInfo.missionId) return null

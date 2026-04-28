@@ -358,12 +358,23 @@ func executePivotReport(ctx context.Context, def ReportDefinition, baseWhere str
 		}
 	}
 
+	rawRowLabels := make([]string, len(rowEntries))
+	rawColLabels := make([]string, len(colEntries))
+	for i, e := range rowEntries {
+		rawRowLabels[i] = e.rawVal
+	}
+	for i, e := range colEntries {
+		rawColLabels[i] = e.rawVal
+	}
+
 	return ReportResult{
 		RowLabels:    rowLabels,
 		ColLabels:    colLabels,
 		MatrixValues: matrixValues,
 		Is2D:         true,
 		Weight:       def.Weight,
+		RawRowLabels: rawRowLabels,
+		RawColLabels: rawColLabels,
 	}, nil
 }
 
@@ -443,12 +454,19 @@ func executeTimePivotReport(ctx context.Context, def ReportDefinition, baseWhere
 		apply2DPctNormalization(matrixValues, nR, nC, pctMode)
 	}
 
+	rawGrpLabels := make([]string, len(grpEntries))
+	for i, e := range grpEntries {
+		rawGrpLabels[i] = e.rawVal
+	}
+
 	return ReportResult{
 		RowLabels:    bucketLabels,
 		ColLabels:    groupLabels,
 		MatrixValues: matrixValues,
 		Is2D:         true,
 		Weight:       def.Weight,
+		RawRowLabels: bucketLabels,
+		RawColLabels: rawGrpLabels,
 	}, nil
 }
 

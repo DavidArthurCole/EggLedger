@@ -45,17 +45,36 @@ type ReportDefinition struct {
 	LabelColors          string        `json:"labelColors"`
 	UnfilledColor        string        `json:"unfilledColor"`
 	FamilyWeight         string        `json:"familyWeight"`
+	MennoEnabled         bool          `json:"mennoEnabled"`
+	MennoCompareMode     string        `json:"mennoCompareMode"`
+	MinSampleSize        int           `json:"minSampleSize"`
 }
 
 // ReportResult is the computed output of executing a report.
 type ReportResult struct {
-	Labels       []string  `json:"labels"`
-	Values       []int64   `json:"values"`
-	FloatValues  []float64 `json:"floatValues"`
-	IsFloat      bool      `json:"isFloat"`
-	Weight       string    `json:"weight"`
-	RowLabels    []string  `json:"rowLabels"`
-	ColLabels    []string  `json:"colLabels"`
-	MatrixValues []float64 `json:"matrixValues"`
-	Is2D         bool      `json:"is2D"`
+	Labels              []string  `json:"labels"`
+	Values              []int64   `json:"values"`
+	FloatValues         []float64 `json:"floatValues"`
+	IsFloat             bool      `json:"isFloat"`
+	Weight              string    `json:"weight"`
+	RowLabels           []string  `json:"rowLabels"`
+	ColLabels           []string  `json:"colLabels"`
+	MatrixValues        []float64 `json:"matrixValues"`
+	Is2D                bool      `json:"is2D"`
+	RawRowLabels        []string  `json:"rawRowLabels"`
+	RawColLabels        []string  `json:"rawColLabels"`
+	RawPerMissionValues []float64 `json:"rawPerMissionValues,omitempty"`
+	AirtimeMatrixValues []float64 `json:"airtimeMatrixValues,omitempty"`
+	MissionCountMatrix  []int64   `json:"missionCountMatrix,omitempty"`
+}
+
+// MennoComparableGroupBy returns true if the groupBy dimension can be matched
+// against Menno community data.
+func MennoComparableGroupBy(groupBy string) bool {
+	switch groupBy {
+	case "ship_type", "duration_type", "level", "mission_target",
+		"artifact_name", "rarity", "tier":
+		return true
+	}
+	return false
 }

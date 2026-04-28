@@ -42,6 +42,9 @@ type ReportRow struct {
 	SecondaryGroupBy     string
 	UnfilledColor        string
 	FamilyWeight         string
+	MennoEnabled         bool
+	MennoCompareMode     string
+	MinSampleSize        int
 }
 
 func InsertReport(ctx context.Context, r ReportRow) error {
@@ -57,13 +60,15 @@ func InsertReport(ctx context.Context, r ReportRow) error {
                 time_bucket, custom_bucket_n, custom_bucket_unit, filters,
                 grid_x, grid_y, grid_w, grid_h, weight, color, description, chart_type,
                 sort_order, created_at, updated_at, value_filter_op, value_filter_threshold, group_id,
-                normalize_by, label_colors, secondary_group_by, unfilled_color, family_weight)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                normalize_by, label_colors, secondary_group_by, unfilled_color, family_weight,
+                menno_enabled, menno_compare_mode, min_sample_size)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			r.Id, r.AccountId, r.Name, r.Subject, r.Mode, r.DisplayMode, r.GroupBy,
 			r.TimeBucket, r.CustomBucketN, r.CustomBucketUnit, string(filtersJSON),
 			r.GridX, r.GridY, r.GridW, r.GridH, r.Weight, r.Color, r.Description, r.ChartType,
 			r.SortOrder, now, now, r.ValueFilterOp, r.ValueFilterThreshold, r.GroupId,
-			r.NormalizeBy, r.LabelColors, r.SecondaryGroupBy, r.UnfilledColor, r.FamilyWeight)
+			r.NormalizeBy, r.LabelColors, r.SecondaryGroupBy, r.UnfilledColor, r.FamilyWeight,
+			r.MennoEnabled, r.MennoCompareMode, r.MinSampleSize)
 		if err != nil {
 			return errors.Wrap(err, action)
 		}
@@ -85,7 +90,8 @@ func UpdateReport(ctx context.Context, r ReportRow) error {
                 grid_x=?, grid_y=?, grid_w=?, grid_h=?, weight=?, color=?,
                 description=?, chart_type=?, sort_order=?, updated_at=?,
                 value_filter_op=?, value_filter_threshold=?, group_id=?,
-                normalize_by=?, label_colors=?, secondary_group_by=?, unfilled_color=?, family_weight=?
+                normalize_by=?, label_colors=?, secondary_group_by=?, unfilled_color=?, family_weight=?,
+                menno_enabled=?, menno_compare_mode=?, min_sample_size=?
             WHERE id=?`,
 			r.Name, r.Subject, r.Mode, r.DisplayMode, r.GroupBy,
 			r.TimeBucket, r.CustomBucketN, r.CustomBucketUnit, string(filtersJSON),
@@ -93,6 +99,7 @@ func UpdateReport(ctx context.Context, r ReportRow) error {
 			r.Description, r.ChartType, r.SortOrder, now,
 			r.ValueFilterOp, r.ValueFilterThreshold, r.GroupId,
 			r.NormalizeBy, r.LabelColors, r.SecondaryGroupBy, r.UnfilledColor, r.FamilyWeight,
+			r.MennoEnabled, r.MennoCompareMode, r.MinSampleSize,
 			r.Id)
 		if err != nil {
 			return errors.Wrap(err, action)
@@ -115,13 +122,15 @@ func RetrieveReport(ctx context.Context, id string) (*ReportRow, error) {
             group_by, time_bucket, custom_bucket_n, custom_bucket_unit, filters,
             grid_x, grid_y, grid_w, grid_h, weight, color, description, chart_type,
             sort_order, created_at, updated_at, value_filter_op, value_filter_threshold, group_id,
-            normalize_by, label_colors, secondary_group_by, unfilled_color, family_weight
+            normalize_by, label_colors, secondary_group_by, unfilled_color, family_weight,
+            menno_enabled, menno_compare_mode, min_sample_size
             FROM reports WHERE id = ?`, id)
 		return row.Scan(&r.Id, &r.AccountId, &r.Name, &r.Subject, &r.Mode, &r.DisplayMode,
 			&r.GroupBy, &r.TimeBucket, &r.CustomBucketN, &r.CustomBucketUnit, &r.FiltersJSON,
 			&r.GridX, &r.GridY, &r.GridW, &r.GridH, &r.Weight, &r.Color, &r.Description, &r.ChartType,
 			&r.SortOrder, &r.CreatedAt, &r.UpdatedAt, &r.ValueFilterOp, &r.ValueFilterThreshold, &r.GroupId,
-			&r.NormalizeBy, &r.LabelColors, &r.SecondaryGroupBy, &r.UnfilledColor, &r.FamilyWeight)
+			&r.NormalizeBy, &r.LabelColors, &r.SecondaryGroupBy, &r.UnfilledColor, &r.FamilyWeight,
+			&r.MennoEnabled, &r.MennoCompareMode, &r.MinSampleSize)
 	})
 	if err != nil {
 		return nil, err
@@ -136,7 +145,8 @@ func RetrieveAccountReports(ctx context.Context, accountId string) ([]ReportRow,
             group_by, time_bucket, custom_bucket_n, custom_bucket_unit, filters,
             grid_x, grid_y, grid_w, grid_h, weight, color, description, chart_type,
             sort_order, created_at, updated_at, value_filter_op, value_filter_threshold, group_id,
-            normalize_by, label_colors, secondary_group_by, unfilled_color, family_weight
+            normalize_by, label_colors, secondary_group_by, unfilled_color, family_weight,
+            menno_enabled, menno_compare_mode, min_sample_size
             FROM reports WHERE (account_id = ? OR account_id = '__global__') ORDER BY sort_order ASC, created_at ASC`, accountId)
 		if err != nil {
 			return err
@@ -148,7 +158,8 @@ func RetrieveAccountReports(ctx context.Context, accountId string) ([]ReportRow,
 				&r.GroupBy, &r.TimeBucket, &r.CustomBucketN, &r.CustomBucketUnit, &r.FiltersJSON,
 				&r.GridX, &r.GridY, &r.GridW, &r.GridH, &r.Weight, &r.Color, &r.Description, &r.ChartType,
 				&r.SortOrder, &r.CreatedAt, &r.UpdatedAt, &r.ValueFilterOp, &r.ValueFilterThreshold,
-				&r.GroupId, &r.NormalizeBy, &r.LabelColors, &r.SecondaryGroupBy, &r.UnfilledColor, &r.FamilyWeight); err != nil {
+				&r.GroupId, &r.NormalizeBy, &r.LabelColors, &r.SecondaryGroupBy, &r.UnfilledColor, &r.FamilyWeight,
+				&r.MennoEnabled, &r.MennoCompareMode, &r.MinSampleSize); err != nil {
 				return err
 			}
 			rows = append(rows, r)

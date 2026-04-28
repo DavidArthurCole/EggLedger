@@ -194,13 +194,69 @@ func executeWeightedPivot(ctx context.Context, def ReportDefinition, baseWhere s
 		}
 	}
 
+	// Always compute mission counts for weighted pivots so the frontend can apply
+	// a minimum sample size threshold regardless of normalization mode.
+	col1mc := GroupByColumn(def.GroupBy)
+	col2mc := GroupByColumn(def.SecondaryGroupBy)
+	mcMap := map[string]map[string]float64{}
+	if col1mc != "" && !strings.HasPrefix(col1mc, "d.") && col2mc != "" && !strings.HasPrefix(col2mc, "d.") {
+		mcQuery := fmt.Sprintf(
+			`SELECT CAST(%s AS TEXT), CAST(%s AS TEXT), COUNT(*) FROM mission m WHERE %s GROUP BY %s, %s`,
+			col1mc, col2mc, baseWhere, col1mc, col2mc,
+		)
+		mcRows, err := _missionDB.QueryContext(ctx, mcQuery, baseArgs...)
+		if err != nil {
+			return ReportResult{}, wrap(err)
+		}
+		defer mcRows.Close()
+		for mcRows.Next() {
+			var rawKey1, rawKey2 string
+			var cnt float64
+			if err := mcRows.Scan(&rawKey1, &rawKey2, &cnt); err != nil {
+				return ReportResult{}, wrap(err)
+			}
+			k1 := FormatLabel(def.GroupBy, rawKey1)
+			k2 := FormatLabel(def.SecondaryGroupBy, rawKey2)
+			if mcMap[k1] == nil {
+				mcMap[k1] = map[string]float64{}
+			}
+			mcMap[k1][k2] = cnt
+		}
+		if err := mcRows.Err(); err != nil {
+			return ReportResult{}, wrap(err)
+		}
+	}
+
+	missionCountMatrix := make([]int64, len(rowLabels)*len(colLabels))
+	for r, row := range rowLabels {
+		for c, col := range colLabels {
+			missionCountMatrix[r*len(colLabels)+c] = int64(mcMap[row][col])
+		}
+	}
+
 	pctMode := def.NormalizeBy
+	var rawPerMissionValues []float64
 	if pctMode == "row_pct" || pctMode == "col_pct" || pctMode == "global_pct" {
 		apply2DPctNormalization(matrixValues, len(rowLabels), len(colLabels), pctMode)
 	} else if pctMode != "" && pctMode != "none" {
 		col1 := GroupByColumn(def.GroupBy)
 		col2 := GroupByColumn(def.SecondaryGroupBy)
 		if col1 != "" && !strings.HasPrefix(col1, "d.") && col2 != "" && !strings.HasPrefix(col2, "d.") {
+			if pctMode == "airtime" {
+				// Compute per-mission values alongside airtime values so ratio
+				// comparisons against community data (which uses mission counts)
+				// are apples-to-apples.
+				rawPerMissionValues = make([]float64, len(rowLabels)*len(colLabels))
+				copy(rawPerMissionValues, matrixValues)
+				for r, row := range rowLabels {
+					for c, col := range colLabels {
+						if d := mcMap[row][col]; d > 0 {
+							rawPerMissionValues[r*len(colLabels)+c] /= d
+						}
+					}
+				}
+			}
+
 			var denomQuery string
 			if pctMode == "airtime" {
 				denomQuery = fmt.Sprintf(
@@ -245,12 +301,25 @@ func executeWeightedPivot(ctx context.Context, def ReportDefinition, baseWhere s
 		}
 	}
 
+	rawRowLabels := make([]string, len(rowEntries))
+	rawColLabels := make([]string, len(colEntries))
+	for i, e := range rowEntries {
+		rawRowLabels[i] = e.rawVal
+	}
+	for i, e := range colEntries {
+		rawColLabels[i] = e.rawVal
+	}
+
 	return ReportResult{
-		RowLabels:    rowLabels,
-		ColLabels:    colLabels,
-		MatrixValues: matrixValues,
-		Is2D:         true,
-		Weight:       def.Weight,
+		RowLabels:           rowLabels,
+		ColLabels:           colLabels,
+		MatrixValues:        matrixValues,
+		Is2D:                true,
+		Weight:              def.Weight,
+		RawRowLabels:        rawRowLabels,
+		RawColLabels:        rawColLabels,
+		RawPerMissionValues: rawPerMissionValues,
+		MissionCountMatrix:  missionCountMatrix,
 	}, nil
 }
 
@@ -386,11 +455,18 @@ func executeWeightedTimePivot(ctx context.Context, def ReportDefinition, baseWhe
 		apply2DPctNormalization(matrixValues, nR, nC, pctMode)
 	}
 
+	rawGrpLabels := make([]string, len(grpEntries))
+	for i, e := range grpEntries {
+		rawGrpLabels[i] = e.rawVal
+	}
+
 	return ReportResult{
 		RowLabels:    bucketLabels,
 		ColLabels:    groupLabels,
 		MatrixValues: matrixValues,
 		Is2D:         true,
 		Weight:       def.Weight,
+		RawRowLabels: bucketLabels,
+		RawColLabels: rawGrpLabels,
 	}, nil
 }

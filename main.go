@@ -440,6 +440,9 @@ func reportDefToRow(def reports.ReportDefinition) (reportdb.ReportRow, error) {
 		SecondaryGroupBy:     def.SecondaryGroupBy,
 		UnfilledColor:        def.UnfilledColor,
 		FamilyWeight:         def.FamilyWeight,
+		MennoEnabled:         def.MennoEnabled,
+		MennoCompareMode:     def.MennoCompareMode,
+		MinSampleSize:        def.MinSampleSize,
 	}
 	if def.TimeBucket != "" {
 		r.TimeBucket = sql.NullString{String: def.TimeBucket, Valid: true}
@@ -482,6 +485,9 @@ func rowToReportDef(r reportdb.ReportRow) (reports.ReportDefinition, error) {
 		SecondaryGroupBy:     r.SecondaryGroupBy,
 		UnfilledColor:        r.UnfilledColor,
 		FamilyWeight:         r.FamilyWeight,
+		MennoEnabled:         r.MennoEnabled,
+		MennoCompareMode:     r.MennoCompareMode,
+		MinSampleSize:        r.MinSampleSize,
 	}
 	if r.TimeBucket.Valid {
 		def.TimeBucket = r.TimeBucket.String
@@ -547,7 +553,7 @@ func main() {
 		return resolutionPrefs[0], resolutionPrefs[1]
 	}()
 	appIconPath := buildAppIconPath()
-	u, err := lorca.New("", "", browser, widthPreference, heightPreference, appIconPath, args...)
+	u, err := lorca.New("", "", browser, widthPreference, heightPreference, "EggLedger", appIconPath, args...)
 	if err != nil {
 		log.Fatal("lorca err: ", err)
 	}
@@ -687,7 +693,9 @@ func main() {
 			log.Errorf("restartApp: failed to start new instance: %v", err)
 			return
 		}
-		ui.Close()
+		// Close in a goroutine so this handler returns first, letting the relay
+		// send the nil response before the WebSocket is torn down.
+		go ui.Close()
 	})
 
 	ui.MustBind("setAutoRefreshMennoPreference", func(flag bool) {
@@ -1251,6 +1259,10 @@ func main() {
 
 	ui.MustBind("getMennoData", handleGetMennoData)
 
+	ui.MustBind("executeMennoComparison", func(reportId, rawRowLabelsJSON, rawColLabelsJSON string) string {
+		return handleExecuteMennoComparison(reportId, rawRowLabelsJSON, rawColLabelsJSON)
+	})
+
 	ui.MustBind("createReport", func(defJSON string) string {
 		var def reports.ReportDefinition
 		if err := json.Unmarshal([]byte(defJSON), &def); err != nil {
@@ -1672,6 +1684,8 @@ func main() {
 		}
 	}()
 	ui.MustLoad(fmt.Sprintf("http://%s/", ln.Addr()))
+	ui.SetBlockBackNavigation(true)
+	ui.SetAppUserModelID("EggLedger.EggLedger")
 
 	// Wait until the interrupt signal arrives or browser window is closed.
 	sigc := make(chan os.Signal, 1)

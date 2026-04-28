@@ -797,7 +797,9 @@ const sessionFlashing = ref(false)
 function triggerFlash(flashRef: Ref<boolean>) {
   flashRef.value = true
   nextTick(() => {
-    requestAnimationFrame(() => { flashRef.value = false })
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => { flashRef.value = false })
+    })
   })
 }
 

@@ -35,7 +35,7 @@
 
     <!-- Filter panel -->
     <div
-      v-if="doesDataExist && ((lifetimeData != null && !lifetimeDataBeingLoaded) || lifetimeDataBeingFiltered)"
+      v-if="doesDataExist && !lifetimeDataBeingLoaded"
       class="filter-panel"
     >
       <span
@@ -72,6 +72,7 @@
         />
         <hr class="mt-1rem w-full" />
         <button
+          v-if="lifetimeData != null"
           id="lifetime-filter-apply-button"
           type="submit"
           class="apply-filter-button"

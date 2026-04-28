@@ -34,10 +34,13 @@
             class="text-center px-1 py-0.5"
             :style="cellStyle(dRowIdx, dColIdx)"
             style="cursor: pointer;"
-            @mouseenter="(e) => { hoveredCell = [dRowIdx, dColIdx]; showTooltip(e, [result.colLabels[origColIdx] + ' ' + result.rowLabels[origRowIdx], displayValue(dRowIdx, dColIdx)]) }"
+            @mouseenter="(e) => { hoveredCell = [dRowIdx, dColIdx]; showTooltip(e, tooltipLines(dRowIdx, dColIdx, origColIdx, origRowIdx)) }"
             @mousemove="moveTooltip"
             @mouseleave="() => { hoveredCell = null; hideTooltip() }"
-          >{{ displayValue(dRowIdx, dColIdx) }}</td>
+          >
+            <div class="leading-none">{{ displayValue(dRowIdx, dColIdx) }}</div>
+            <div v-if="secondaryValues" class="leading-none opacity-70" style="font-size: 0.65rem;">{{ secondaryDisplayValue(dRowIdx, dColIdx) }}</div>
+          </td>
         </tr>
       </tbody>
     </table>
@@ -68,6 +71,13 @@ const props = defineProps<{
   color: string
   normalizeBy?: string
   unfilledColor?: string
+  secondaryValues?: number[]
+  /** When present, overrides cell background intensity using ratio semantics (1.0=community avg, 2.0=full intensity). Display values are unaffected. */
+  colorValues?: number[]
+  /** Per-cell mission counts; used with minSampleSize to suppress low-sample cells */
+  missionCounts?: number[]
+  /** Cells with fewer missions than this are shown as "—"; 0 = disabled */
+  minSampleSize?: number
 }>()
 
 const { tooltip, showTooltip, moveTooltip, hideTooltip } = useChartTooltip()
@@ -145,31 +155,84 @@ const safeUnfilledColor = computed(() => {
   return c.startsWith('#') && c.length === 7 ? c : '#1f2937'
 })
 
+function isBelowThreshold(flatIdx: number): boolean {
+  const threshold = props.minSampleSize ?? 0
+  if (threshold <= 0 || !props.missionCounts) return false
+  return (props.missionCounts[flatIdx] ?? 0) < threshold
+}
+
+function tooltipLines(dRowIdx: number, dColIdx: number, origColIdx: number, origRowIdx: number): string[] {
+  const flatIdx = idx(dRowIdx, dColIdx)
+  const label = props.result.colLabels[origColIdx] + ' ' + props.result.rowLabels[origRowIdx]
+  if (isBelowThreshold(flatIdx)) {
+    const count = props.missionCounts?.[flatIdx] ?? 0
+    return [label, `Insufficient data (n=${count})`]
+  }
+  return [label, displayValue(dRowIdx, dColIdx)]
+}
+
 function displayValue(dRowIdx: number, dColIdx: number): string {
-  const v = props.result.matrixValues[idx(dRowIdx, dColIdx)] ?? 0
+  const flatIdx = idx(dRowIdx, dColIdx)
+  if (isBelowThreshold(flatIdx)) return '-'
+  const v = props.result.matrixValues[flatIdx] ?? 0
+  if (props.normalizeBy === 'ratio') {
+    if (v === 0) return '-'
+    return `x${v.toFixed(2)}`
+  }
   if (v === 0) return '0'
   if (isPct.value) return `${v.toFixed(1)}%`
   return v % 1 === 0 ? String(v) : v.toFixed(2)
 }
 
+function secondaryDisplayValue(dRowIdx: number, dColIdx: number): string {
+  if (!props.secondaryValues) return ''
+  const flatIdx = idx(dRowIdx, dColIdx)
+  if (isBelowThreshold(flatIdx)) return ''
+  const v = props.secondaryValues[flatIdx] ?? 0
+  if (v === 0) return '0'
+  if (isPct.value) return `${v.toFixed(1)}%`
+  return v % 1 === 0 ? String(v) : v.toFixed(2)
+}
+
+function relativeLuminance(r: number, g: number, b: number): number {
+  const toLinear = (c: number) => {
+    const s = c / 255
+    return s <= 0.04045 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4)
+  }
+  return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b)
+}
+
+function cellIntensity(flatIdx: number, v: number): number {
+  if (props.colorValues) {
+    const cv = props.colorValues[flatIdx] ?? 0
+    return Math.max(0.12, cv > 0 ? Math.min(cv / 2, 1) : 0)
+  }
+  if (isPct.value) return Math.max(0.12, v / 100)
+  if (props.normalizeBy === 'ratio') return Math.max(0.12, Math.min(v / 2, 1))
+  return Math.max(0.12, globalMax.value > 0 ? v / globalMax.value : 0)
+}
+
 function cellStyle(dRowIdx: number, dColIdx: number): Record<string, string> {
-  const v = props.result.matrixValues[idx(dRowIdx, dColIdx)] ?? 0
+  const flatIdx = idx(dRowIdx, dColIdx)
+  const v = props.result.matrixValues[flatIdx] ?? 0
   const hovered = hoveredCell.value !== null && hoveredCell.value[0] === dRowIdx && hoveredCell.value[1] === dColIdx
-  if (v === 0) {
+  if (isBelowThreshold(flatIdx)) {
+    const [ur, ug, ub] = hexToRgb(safeUnfilledColor.value)
     return {
       backgroundColor: safeUnfilledColor.value,
-      color: '#4b5563',
+      color: relativeLuminance(ur, ug, ub) > 0.179 ? '#1f2937' : '#6b7280',
       filter: hovered ? 'brightness(1.4)' : '',
     }
   }
-  const max = globalMax.value
-  let intensity: number
-  if (isPct.value) {
-    intensity = v / 100
-  } else {
-    intensity = max > 0 ? v / max : 0
+  if (v === 0) {
+    const [ur, ug, ub] = hexToRgb(safeUnfilledColor.value)
+    return {
+      backgroundColor: safeUnfilledColor.value,
+      color: relativeLuminance(ur, ug, ub) > 0.179 ? '#1f2937' : '#6b7280',
+      filter: hovered ? 'brightness(1.4)' : '',
+    }
   }
-  intensity = Math.max(0.12, intensity)
+  const intensity = cellIntensity(flatIdx, v)
   const [fr, fg, fb] = hexToRgb(safeColor.value)
   const [br, bg, bb] = hexToRgb(safeUnfilledColor.value)
   const r = Math.round(br + (fr - br) * intensity)
@@ -177,7 +240,7 @@ function cellStyle(dRowIdx: number, dColIdx: number): Record<string, string> {
   const b = Math.round(bb + (fb - bb) * intensity)
   return {
     backgroundColor: `rgb(${r}, ${g}, ${b})`,
-    color: intensity > 0.55 ? '#f3f4f6' : '#9ca3af',
+    color: relativeLuminance(r, g, b) > 0.179 ? '#1f2937' : '#f3f4f6',
     filter: hovered ? 'brightness(1.4)' : '',
   }
 }

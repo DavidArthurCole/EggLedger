@@ -55,7 +55,29 @@
         <span class="text-xs text-gray-500 animate-pulse">Running...</span>
       </div>
       <template v-else-if="result && result.is2D">
-        <ReportHeatmap v-if="def.displayMode === 'heatmap'" :result="result" :color="def.color || '#6366f1'" :normalize-by="def.normalizeBy || 'none'" :unfilled-color="def.unfilledColor" />
+        <template v-if="def.mennoEnabled && mennoResult && def.mennoCompareMode === 'side_by_side' && def.displayMode === 'heatmap'">
+          <div class="flex gap-1 h-full">
+            <div class="flex-1 min-w-0 flex flex-col">
+              <span class="text-xs text-gray-500 text-center mb-0.5">Yours</span>
+              <div class="flex-1 min-h-0">
+                <ReportHeatmap :result="result" :color="def.color || '#6366f1'" :normalize-by="def.normalizeBy || 'none'" :unfilled-color="def.unfilledColor" :mission-counts="result.missionCountMatrix" :min-sample-size="def.minSampleSize" />
+              </div>
+            </div>
+            <div class="flex-1 min-w-0 flex flex-col">
+              <span class="text-xs text-gray-500 text-center mb-0.5">Community</span>
+              <div class="flex-1 min-h-0">
+                <ReportHeatmap :result="mennoAirtimeResult!" :color="def.color || '#6366f1'" :normalize-by="def.normalizeBy || 'none'" :unfilled-color="def.unfilledColor" />
+              </div>
+            </div>
+          </div>
+        </template>
+        <template v-else-if="def.mennoEnabled && mennoResult && def.mennoCompareMode === 'ratio' && def.displayMode === 'heatmap' && ratioResult">
+          <ReportHeatmap :result="ratioResult!" :color="def.color || '#6366f1'" :normalize-by="'ratio'" :unfilled-color="def.unfilledColor" :mission-counts="result.missionCountMatrix" :min-sample-size="def.minSampleSize" />
+        </template>
+        <template v-else-if="def.mennoEnabled && mennoResult && def.mennoCompareMode === 'dual_value' && def.displayMode === 'heatmap'">
+          <ReportHeatmap :result="userPerMissionResult!" :color="def.color || '#6366f1'" :normalize-by="def.normalizeBy || 'none'" :unfilled-color="def.unfilledColor" :secondary-values="mennoResult.matrixValues" :color-values="ratioMatrix.map(v => v ?? 0)" :mission-counts="result.missionCountMatrix" :min-sample-size="def.minSampleSize" />
+        </template>
+        <ReportHeatmap v-else-if="def.displayMode === 'heatmap'" :result="result" :color="def.color || '#6366f1'" :normalize-by="def.normalizeBy || 'none'" :unfilled-color="def.unfilledColor" :mission-counts="result.missionCountMatrix" :min-sample-size="def.minSampleSize" />
         <ReportGroupedBar v-else-if="def.displayMode === 'grouped_bar'" :result="result" :color="def.color || '#6366f1'" :normalize-by="def.normalizeBy || 'none'" />
         <ReportMultiLineChart v-else-if="def.displayMode === 'multi_line'" :result="result" :color="def.color || '#6366f1'" :label-colors="def.labelColors" :normalize-by="def.normalizeBy || 'none'" />
         <div v-else class="h-full flex items-center justify-center">
@@ -182,11 +204,54 @@ import ReportVisualGrid from './ReportVisualGrid.vue'
 const props = defineProps<{
   def: ReportDefinition
   result: ReportResult | null
+  mennoResult: ReportResult | null
   editMode: boolean
   running: boolean
   groups: ReportGroup[]
   stale: boolean
 }>()
+
+// When normalizeBy="airtime", substitute Menno's per-nominal-hour values so the
+// side_by_side panels are both in per-flight-hour units. Fast ships (e.g. Chicken
+// Heavy Short at 0.75h nominal) correctly appear hotter than slow ships.
+const mennoAirtimeResult = computed((): ReportResult | null => {
+  if (!props.mennoResult) return null
+  const avm = props.def.normalizeBy === 'airtime' ? props.mennoResult.airtimeMatrixValues : undefined
+  if (!avm?.length) return props.mennoResult
+  return { ...props.mennoResult, matrixValues: avm }
+})
+
+// For dual_value: substitute per-mission values so the displayed top/bottom numbers
+// are in the same units as the ratio heatmap (rawPerMissionValues / menno.matrixValues).
+// This ensures top ÷ bottom = ratio shown. The airtime variant would show
+// per-actual-hour vs per-nominal-hour which inflates the apparent ratio via boosting.
+const userPerMissionResult = computed((): ReportResult | null => {
+  if (!props.result) return null
+  const rpm = props.result.rawPerMissionValues
+  if (!rpm?.length) return props.result
+  return { ...props.result, matrixValues: rpm }
+})
+
+const ratioMatrix = computed((): (number | null)[] => {
+  if (!props.result?.matrixValues || !props.mennoResult?.matrixValues) return []
+  const numeratorValues = props.result.rawPerMissionValues ?? props.result.matrixValues
+  return numeratorValues.map((userVal, i) => {
+    const mennoVal = props.mennoResult!.matrixValues[i] ?? 0
+    if (mennoVal === 0) return null
+    return userVal / mennoVal
+  })
+})
+
+const ratioResult = computed((): ReportResult | null => {
+  if (!props.result || !props.mennoResult) return null
+  const vals = ratioMatrix.value
+  if (!vals.length) return null
+  return {
+    ...props.result,
+    matrixValues: vals.map(v => v ?? 0),
+    isFloat: true,
+  } as ReportResult
+})
 
 const confirmingDelete = ref(false)
 const isCopying = ref(false)

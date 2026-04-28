@@ -213,6 +213,12 @@ export interface ReportDefinition {
   unfilledColor: string
   /** Artifact family ID for crafting-weighted aggregation; empty string = disabled */
   familyWeight: string
+  /** Menno community data comparison enabled */
+  mennoEnabled: boolean
+  /** "side_by_side" | "ratio" | "dual_value" */
+  mennoCompareMode: string
+  /** Minimum mission count per cell; cells below this show "—" in heatmaps. 0 = disabled */
+  minSampleSize: number
 }
 
 export interface FamilyMeta {
@@ -238,6 +244,14 @@ export interface ReportResult {
   colLabels: string[]
   matrixValues: number[]
   is2D: boolean
+  rawRowLabels: string[]
+  rawColLabels: string[]
+  /** Per-mission (not per-airtime) values; present when normalizeBy="airtime" */
+  rawPerMissionValues?: number[]
+  /** Per-nominal-flight-hour values from Menno community data; present when both ship and duration axes are known */
+  airtimeMatrixValues?: number[]
+  /** Per-cell mission counts for weighted 2D pivots; used for minimum sample size filtering */
+  missionCountMatrix?: number[]
 }
 
 export interface BackfillStatus {
@@ -429,6 +443,7 @@ declare global {
   function setReportGroup(reportId: string, groupId: string): Promise<boolean>
   function exportGroupReports(groupId: string): Promise<string>
   function importGroupReports(accountId: string, jsonStr: string): Promise<string>
+  function executeMennoComparison(reportId: string, rawRowLabels: string, rawColLabels: string): Promise<string>
 
   // Cloud sync
   function checkCloudReachable(): Promise<boolean>

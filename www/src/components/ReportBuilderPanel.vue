@@ -230,6 +230,32 @@
           <p v-if="form.secondaryGroupBy" class="text-xs text-gray-500 mt-0.5">Counting: {{ inferredSubjectLabel }}</p>
         </div>
 
+        <div v-if="isMennoEligible" class="flex flex-col gap-2">
+          <div class="flex items-center gap-2">
+            <input
+              id="mennoEnabledCheck"
+              type="checkbox"
+              class="ext-opt-check"
+              v-model="form.mennoEnabled"
+            />
+            <label for="mennoEnabledCheck" class="text-xs text-gray-400 cursor-pointer select-none flex items-center gap-1">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+              Compare with Menno community data
+            </label>
+          </div>
+          <div v-if="form.mennoEnabled" class="flex flex-col gap-1 pl-5">
+            <span class="text-xs text-gray-400">Comparison display</span>
+            <select
+              v-model="form.mennoCompareMode"
+              class="bg-darker border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 focus:outline-none focus:border-blue-500"
+            >
+              <option value="side_by_side">Side by side</option>
+              <option value="ratio">Ratio (x)</option>
+              <option value="dual_value">Dual value</option>
+            </select>
+          </div>
+        </div>
+
         <!-- Time bucket (time_series only) -->
         <div v-if="form.mode === 'time_series'" class="grid grid-cols-2 gap-3">
           <div class="flex flex-col gap-1">
@@ -388,8 +414,24 @@
                     <option v-for="op in getOpsForField(orGroups[gIdx][cIdx].topLevel)" :key="op.value" :value="op.value">{{ op.label }}</option>
                   </select>
                   <input
+                    v-if="isDateField(orGroups[gIdx][cIdx].topLevel)"
                     :value="orGroups[gIdx][cIdx].val"
-                    :type="isDateField(orGroups[gIdx][cIdx].topLevel) ? 'date' : 'text'"
+                    type="date"
+                    class="text-xs bg-darker border border-gray-700 rounded px-2 py-1 text-gray-300 focus:outline-none flex-1 min-w-0"
+                    @input="updateOrCondition(gIdx, cIdx, { val: ($event.target as HTMLInputElement).value })"
+                  />
+                  <select
+                    v-else-if="valueOptionsForField(orGroups[gIdx][cIdx].topLevel).length > 0"
+                    :value="orGroups[gIdx][cIdx].val"
+                    class="text-xs bg-darker border border-gray-700 rounded px-2 py-1 text-gray-300 focus:outline-none flex-1 min-w-0"
+                    @change="updateOrCondition(gIdx, cIdx, { val: ($event.target as HTMLSelectElement).value })"
+                  >
+                    <option v-for="opt in valueOptionsForField(orGroups[gIdx][cIdx].topLevel)" :key="opt.value" :value="opt.value">{{ opt.text }}</option>
+                  </select>
+                  <input
+                    v-else
+                    :value="orGroups[gIdx][cIdx].val"
+                    type="text"
                     class="text-xs bg-darker border border-gray-700 rounded px-2 py-1 text-gray-300 focus:outline-none flex-1 min-w-0"
                     @input="updateOrCondition(gIdx, cIdx, { val: ($event.target as HTMLInputElement).value })"
                   />
@@ -455,6 +497,20 @@
             </span>
             <ColorPicker v-model="form.unfilledColor" />
           </div>
+        </div>
+
+        <!-- Min sample size (heatmap + 2D only) -->
+        <div v-if="form.displayMode === 'heatmap' && form.secondaryGroupBy" class="flex items-center gap-2">
+          <span class="text-xs text-gray-400 whitespace-nowrap">Min sample size</span>
+          <input
+            type="number"
+            min="0"
+            step="1"
+            class="w-16 bg-transparent border border-white/10 rounded px-1 py-0.5 text-xs text-gray-300 focus:outline-none focus:border-white/30"
+            :value="form.minSampleSize"
+            @input="form.minSampleSize = Number(($event.target as HTMLInputElement).value)"
+          />
+          <span class="text-xs text-gray-500">cells below this count show "—"</span>
         </div>
 
         <!-- Per-slice / per-bar colors -->
@@ -687,6 +743,9 @@ function makeBlankForm() {
     normalizeBy: 'none',
     chartType: '',
     familyWeight: '',
+    mennoEnabled: false,
+    mennoCompareMode: 'side_by_side',
+    minSampleSize: 0,
   }
 }
 
@@ -718,6 +777,9 @@ watch(
       form.secondaryGroupBy = def.secondaryGroupBy || ''
       form.chartType = def.chartType || ''
       form.familyWeight = def.familyWeight || ''
+      form.mennoEnabled = def.mennoEnabled ?? false
+      form.mennoCompareMode = def.mennoCompareMode || 'side_by_side'
+      form.minSampleSize = def.minSampleSize ?? 0
       labelColorsMap.value = parseLabelColors(def.labelColors)
       fromReportFilters(def.filters)
     } else {
@@ -888,6 +950,18 @@ const canNormalizePivotPerLaunch = computed(() => {
   return !artifactDimensions.has(form.groupBy) && !artifactDimensions.has(form.secondaryGroupBy)
 })
 
+const mennoComparableGroupBys = new Set([
+  'ship_type', 'duration_type', 'level', 'mission_target',
+  'artifact_name', 'rarity', 'tier',
+])
+
+const isMennoEligible = computed(() =>
+  form.subject === 'artifacts' &&
+  !!form.secondaryGroupBy &&
+  mennoComparableGroupBys.has(form.groupBy) &&
+  mennoComparableGroupBys.has(form.secondaryGroupBy),
+)
+
 
 const missionFilterFields = [
   { value: 'ship', label: 'Ship' },
@@ -910,7 +984,7 @@ const artifactFilterFields = [
 ]
 
 const filterFieldOptions = computed(() => ({
-  mission: form.subject === 'artifacts' ? [] : missionFilterFields,
+  mission: missionFilterFields,
   artifact: form.subject === 'artifacts' ? artifactFilterFields : [],
 }))
 
@@ -1043,6 +1117,9 @@ function handleSave() {
       : '',
     unfilledColor: form.displayMode === 'heatmap' ? (form.unfilledColor || '') : '',
     familyWeight: form.subject === 'artifacts' ? (form.familyWeight || '') : '',
+    mennoEnabled: isMennoEligible.value ? form.mennoEnabled : false,
+    mennoCompareMode: form.mennoCompareMode || 'side_by_side',
+    minSampleSize: form.displayMode === 'heatmap' && form.secondaryGroupBy ? (form.minSampleSize || 0) : 0,
   }
   emit('saved', def)
   setTimeout(() => { isSaving.value = false }, 4000)
