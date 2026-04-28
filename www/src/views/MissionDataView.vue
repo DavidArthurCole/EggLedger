@@ -226,6 +226,7 @@ import {
   inventoryVisualizerSort,
 } from '../composables/useMissionSorting'
 import { useMissionListGrouping } from '../composables/useMissionListGrouping'
+import { AppState } from '../types/bridge'
 import type {
   DatabaseMission,
   MissionDrop,
@@ -241,7 +242,7 @@ import type { ViewMissionData, InnerDrop, MennoConfigItem } from '../types/missi
 
 // Shared state
 
-const { existingData, activeTab } = useAppState()
+const { existingData, activeTab, appState } = useAppState()
 const { mennoDataLoaded, getMennoData, load: loadMennoData } = useMennoData()
 const { isFetching } = useFetch()
 const { activeAccountId } = useActiveAccount()
@@ -460,8 +461,8 @@ watch(activeAccountId, (id) => {
   if (id) void loadMissions(id)
 }, { immediate: true })
 
-watch(isFetching, (val, prev) => {
-  if (prev === true && !val && activeAccountId.value) {
+watch(appState, (val) => {
+  if (val === AppState.Success && activeAccountId.value) {
     void loadMissions(activeAccountId.value)
   }
 })
