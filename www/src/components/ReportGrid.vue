@@ -164,9 +164,7 @@ const displayedReports = computed(() => {
   return reports.value.filter(r => r.groupId === props.groupFilter)
 })
 
-onMounted(async () => {
-  await loadReports(props.accountId)
-  await loadGroups(props.accountId)
+onMounted(() => {
   for (const def of reports.value) {
     handleRun(def.id)
   }

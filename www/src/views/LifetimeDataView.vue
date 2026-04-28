@@ -196,12 +196,10 @@ import { useAppState } from '../composables/useAppState'
 import { useMennoData } from '../composables/useMennoData'
 import { useFilters } from '../composables/useFilters'
 import { useActiveAccount } from '../composables/useActiveAccount'
+import { useSharedConfigs } from '../composables/useSharedConfigs'
 import type {
   DatabaseMission,
   MissionDrop,
-  PossibleTarget,
-  PossibleArtifact,
-  PossibleMission,
 } from '../types/bridge'
 import FullFilter from '../components/FullFilter.vue'
 import NoDataFallback from '../components/NoDataFallback.vue'
@@ -214,6 +212,7 @@ import SegmentedProgressBar, { type ProgressSegment } from '../components/Segmen
 const { existingData, activeTab } = useAppState()
 const { mennoDataLoaded, getMennoData, load: loadMennoData } = useMennoData()
 const { activeAccountId } = useActiveAccount()
+const { artifactConfigs, maxQuality, durationConfigs, possibleTargets, loadSharedConfigs } = useSharedConfigs()
 
 // Types local to this view
 
@@ -492,12 +491,6 @@ function reSortLifetime() {
   }
 }
 
-// Artifact/mission configs (loaded in onMounted, passed to useFilters)
-const possibleTargets = ref<PossibleTarget[]>([])
-const maxQuality = ref<number>(0)
-const artifactConfigs = ref<PossibleArtifact[]>([])
-const durationConfigs = ref<PossibleMission[]>([])
-
 // Filter composable
 const {
   dataFilter, orDataFilter, filterHasChanged, getFilterValueOptions,
@@ -768,11 +761,7 @@ async function onFilterSubmit(event: Event) {
 // Lifecycle
 
 onMounted(async () => {
-  artifactConfigs.value = await globalThis.getAfxConfigs()
-  maxQuality.value = await globalThis.getMaxQuality()
-  durationConfigs.value = await globalThis.getDurationConfigs()
-  possibleTargets.value = await globalThis.getPossibleTargets()
-
+  await loadSharedConfigs()
   await loadMennoData()
 
   lifetimeSortMethod.value = (await globalThis.getLifetimeSortMethod()) as 'default' | 'iv' | 'count' | 'random'

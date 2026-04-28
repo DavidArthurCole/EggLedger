@@ -218,6 +218,7 @@ import { useFetch } from '../composables/useFetch'
 import { useFilters } from '../composables/useFilters'
 import { useActiveAccount } from '../composables/useActiveAccount'
 import { collapseOlderSections } from '../composables/useSettings'
+import { useSharedConfigs } from '../composables/useSharedConfigs'
 import {
   type DropLike,
   sortGroupAlreadyCombed,
@@ -228,9 +229,6 @@ import { useMissionListGrouping } from '../composables/useMissionListGrouping'
 import type {
   DatabaseMission,
   MissionDrop,
-  PossibleTarget,
-  PossibleArtifact,
-  PossibleMission,
 } from '../types/bridge'
 import FullFilter from '../components/FullFilter.vue'
 import SearchOverSelector from '../components/SearchOverSelector.vue'
@@ -247,6 +245,7 @@ const { existingData, activeTab } = useAppState()
 const { mennoDataLoaded, getMennoData, load: loadMennoData } = useMennoData()
 const { isFetching } = useFetch()
 const { activeAccountId } = useActiveAccount()
+const { artifactConfigs, maxQuality, durationConfigs, possibleTargets, loadSharedConfigs } = useSharedConfigs()
 
 // Account load state
 
@@ -326,13 +325,6 @@ function toggleFilter(event: Event) {
   event.preventDefault()
   hideFilter.value = !hideFilter.value
 }
-
-// Artifact/mission configs (loaded in onMounted, passed to useFilters)
-
-const possibleTargets = ref<PossibleTarget[]>([])
-const maxQuality = ref<number>(0)
-const artifactConfigs = ref<PossibleArtifact[]>([])
-const durationConfigs = ref<PossibleMission[]>([])
 
 // Filter composable
 
@@ -638,14 +630,11 @@ onMounted(async () => {
   showExpectedDropsPerShip.value = await globalThis.getMissionShowExpectedDrops()
   multiViewMode.value = (await globalThis.getMissionMultiViewMode()) as 'off' | 'row' | 'free'
   viewMissionSortMethod.value = (await globalThis.getMissionSortMethod()) as 'default' | 'iv'
-  settingsLoaded = true
 
-  artifactConfigs.value = await globalThis.getAfxConfigs()
-  maxQuality.value = await globalThis.getMaxQuality()
-  durationConfigs.value = await globalThis.getDurationConfigs()
-  possibleTargets.value = await globalThis.getPossibleTargets()
-
+  await loadSharedConfigs()
   await loadMennoData()
+
+  settingsLoaded = true
 
   // Pre-cache a few filter value options
   getFilterValueOptions('ship')

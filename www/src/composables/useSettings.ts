@@ -18,6 +18,8 @@ export const advancedDropFilter = ref(false)
 export const autoExportCsv = ref(true)
 export const autoExportXlsx = ref(true)
 
+let _loadingSettings = false
+
 export function maskEid(s: string): string {
   if (!screenshotSafety.value) return s
   return s.replaceAll(/EI\d{16}/g, 'EI[eid-bar]')
@@ -25,6 +27,7 @@ export function maskEid(s: string): string {
 
 export function useSettings() {
   async function loadSettings() {
+    _loadingSettings = true
     const res = await globalThis.getDefaultResolution()
     resolutionX.value = res[0]
     resolutionY.value = res[1]
@@ -42,22 +45,23 @@ export function useSettings() {
     advancedDropFilter.value = await globalThis.getAdvancedDropFilter()
     autoExportCsv.value = await globalThis.getAutoExportCsv()
     autoExportXlsx.value = await globalThis.getAutoExportXlsx()
+    _loadingSettings = false
   }
 
-  watch(resolutionX, () => globalThis.setDefaultResolution(resolutionX.value, resolutionY.value))
-  watch(resolutionY, () => globalThis.setDefaultResolution(resolutionX.value, resolutionY.value))
-  watch(scalingFactor, () => globalThis.setDefaultScalingFactor(scalingFactor.value))
-  watch(startInFullscreen, () => globalThis.setStartInFullscreen(startInFullscreen.value))
-  watch(autoRefreshMenno, () => globalThis.setAutoRefreshMennoPreference(autoRefreshMenno.value))
-  watch(autoRetry, () => globalThis.setAutoRetryPreference(autoRetry.value))
-  watch(hideTimeoutErrors, () => globalThis.setHideTimeoutErrors(hideTimeoutErrors.value))
-  watch(workerCount, () => globalThis.setWorkerCount(workerCount.value))
-  watch(screenshotSafety, () => globalThis.setScreenshotSafety(screenshotSafety.value))
-  watch(showMissionProgress, () => globalThis.setShowMissionProgress(showMissionProgress.value))
-  watch(collapseOlderSections, () => globalThis.setCollapseOlderSections(collapseOlderSections.value))
-  watch(advancedDropFilter, () => globalThis.setAdvancedDropFilter(advancedDropFilter.value))
-  watch(autoExportCsv, () => globalThis.setAutoExportCsv(autoExportCsv.value))
-  watch(autoExportXlsx, () => globalThis.setAutoExportXlsx(autoExportXlsx.value))
+  watch(resolutionX, () => { if (!_loadingSettings) globalThis.setDefaultResolution(resolutionX.value, resolutionY.value) })
+  watch(resolutionY, () => { if (!_loadingSettings) globalThis.setDefaultResolution(resolutionX.value, resolutionY.value) })
+  watch(scalingFactor, () => { if (!_loadingSettings) globalThis.setDefaultScalingFactor(scalingFactor.value) })
+  watch(startInFullscreen, () => { if (!_loadingSettings) globalThis.setStartInFullscreen(startInFullscreen.value) })
+  watch(autoRefreshMenno, () => { if (!_loadingSettings) globalThis.setAutoRefreshMennoPreference(autoRefreshMenno.value) })
+  watch(autoRetry, () => { if (!_loadingSettings) globalThis.setAutoRetryPreference(autoRetry.value) })
+  watch(hideTimeoutErrors, () => { if (!_loadingSettings) globalThis.setHideTimeoutErrors(hideTimeoutErrors.value) })
+  watch(workerCount, () => { if (!_loadingSettings) globalThis.setWorkerCount(workerCount.value) })
+  watch(screenshotSafety, () => { if (!_loadingSettings) globalThis.setScreenshotSafety(screenshotSafety.value) })
+  watch(showMissionProgress, () => { if (!_loadingSettings) globalThis.setShowMissionProgress(showMissionProgress.value) })
+  watch(collapseOlderSections, () => { if (!_loadingSettings) globalThis.setCollapseOlderSections(collapseOlderSections.value) })
+  watch(advancedDropFilter, () => { if (!_loadingSettings) globalThis.setAdvancedDropFilter(advancedDropFilter.value) })
+  watch(autoExportCsv, () => { if (!_loadingSettings) globalThis.setAutoExportCsv(autoExportCsv.value) })
+  watch(autoExportXlsx, () => { if (!_loadingSettings) globalThis.setAutoExportXlsx(autoExportXlsx.value) })
 
   async function setPreferredBrowser(path: string) {
     if (await globalThis.setPreferredBrowser(path)) {

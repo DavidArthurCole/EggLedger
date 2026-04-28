@@ -7,11 +7,11 @@
     </TabBar>
 
     <LedgerView v-show="activeTab === 'Ledger'" />
-    <MissionDataView v-show="activeTab === 'Mission Data'" />
-    <LifetimeDataView v-show="activeTab === 'Lifetime Data'" />
-    <ReportsView v-show="activeTab === 'Reports'" />
-    <SettingsView v-show="activeTab === 'Settings'" />
-    <AboutView v-show="activeTab === 'About'" />
+    <MissionDataView v-if="visited.has('Mission Data')" v-show="activeTab === 'Mission Data'" />
+    <LifetimeDataView v-if="visited.has('Lifetime Data')" v-show="activeTab === 'Lifetime Data'" />
+    <ReportsView v-if="visited.has('Reports')" v-show="activeTab === 'Reports'" />
+    <SettingsView v-if="visited.has('Settings')" v-show="activeTab === 'Settings'" />
+    <AboutView v-if="visited.has('About')" v-show="activeTab === 'About'" />
 
     <div v-if="apiVersionIsStale && !apiStaleBannerDismissed" class="flex-shrink-0 flex items-center justify-between px-4 py-2 bg-yellow-900 text-yellow-200 text-sm">
       <span>The API version constants in this build (v{{ compiledApiVersion }}) may be outdated. Fetches may fail. Check for a newer EggLedger release.</span>
@@ -42,7 +42,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import TabBar from './components/TabBar.vue'
 import SettingsView from './views/SettingsView.vue'
 import LedgerView from './views/LedgerView.vue'
@@ -77,6 +77,11 @@ const tabList = ['Ledger', 'Mission Data', 'Lifetime Data', 'Reports', 'Settings
 const mounted = ref(false)
 const updateModalDismissed = ref(false)
 const apiStaleBannerDismissed = ref(false)
+const visited = ref(new Set(['Ledger']))
+
+watch(activeTab, (tab) => {
+  visited.value = new Set([...visited.value, tab])
+}, { immediate: true })
 
 onMounted(async () => {
   await initAppState()

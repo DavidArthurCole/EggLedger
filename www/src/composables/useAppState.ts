@@ -20,19 +20,38 @@ const processLogs = ref<ProcessSnapshot[]>([])
 
 export function useAppState() {
   async function initAppState() {
-    appVersion.value = await globalThis.appVersion()
-    appDirectory.value = await globalThis.appDirectory()
-    appIsInForbiddenDirectory.value = await globalThis.appIsInForbiddenDirectory()
-    appIsTranslocated.value = await globalThis.appIsTranslocated()
-    knownAccounts.value = (await globalThis.knownAccounts()) ?? []
-    existingData.value = await globalThis.getExistingData()
+    const [
+      version,
+      directory,
+      forbidden,
+      translocated,
+      accounts,
+      data,
+      [hasUpdate, releaseNotes],
+      stale,
+      apiVer,
+    ] = await Promise.all([
+      globalThis.appVersion(),
+      globalThis.appDirectory(),
+      globalThis.appIsInForbiddenDirectory(),
+      globalThis.appIsTranslocated(),
+      globalThis.knownAccounts(),
+      globalThis.getExistingData(),
+      globalThis.checkForUpdates(),
+      globalThis.isApiVersionStale(),
+      globalThis.getCompiledApiVersion(),
+    ])
 
-    const [hasUpdate, releaseNotes] = await globalThis.checkForUpdates()
+    appVersion.value = version
+    appDirectory.value = directory
+    appIsInForbiddenDirectory.value = forbidden
+    appIsTranslocated.value = translocated
+    knownAccounts.value = accounts ?? []
+    existingData.value = data
     appHasUpdate.value = hasUpdate
     appReleaseNotes.value = releaseNotes
-
-    apiVersionIsStale.value = await globalThis.isApiVersionStale()
-    compiledApiVersion.value = await globalThis.getCompiledApiVersion()
+    apiVersionIsStale.value = stale
+    compiledApiVersion.value = apiVer
 
     // Register Go-to-JS callbacks
     globalThis.updateKnownAccounts = (accounts) => { knownAccounts.value = accounts ?? [] }
