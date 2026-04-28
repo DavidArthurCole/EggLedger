@@ -43,7 +43,7 @@
                     <span class="text-red-700">Not enough data to determine drop rate.</span>
                 </span>
                 <span v-else class="text-gray-400">
-                    <span class="text-green-500">{{ getDropCalcs(hoveredItem.id, hoveredItem.level, hoveredItem.rarity)![0] }}</span> expected drops
+                    <span class="text-green-500">{{ getDropCalcs(hoveredItem.id, hoveredItem.level, hoveredItem.rarity)![0].toFixed(2) }}</span> expected drops
                 </span>
             </span>
 

@@ -475,15 +475,17 @@ input[type=number] {
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-transparent;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-corner {
-  @apply bg-transparent;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-button {
-  @apply hidden;
+  display: none;
+  height: 0;
+  width: 0;
 }
 
 .gh-markdown-content a {

@@ -265,6 +265,21 @@ func handleLoadMennoData() bool {
 	return true
 }
 
+func filterMennoItems(ship, shipDuration, shipLevel, targetArtifact int) []ConfigurationItem {
+	var result []ConfigurationItem
+	for _, item := range _latestMennoData.ConfigurationItems {
+		sc := item.ShipConfiguration
+		if sc.ShipType.Id == ship && sc.ShipDurationType.Id == shipDuration &&
+			sc.Level == shipLevel && sc.TargetArtifact.Id == targetArtifact {
+			result = append(result, item)
+		}
+	}
+	return result
+}
+
+// mennoNoTarget is the sentinel target ID Menno uses when no target artifact is set.
+const mennoNoTarget = 10000
+
 func handleGetMennoData(ship, shipDuration, shipLevel, targetArtifact int) []ConfigurationItem {
 	if len(_latestMennoData.ConfigurationItems) == 0 {
 		var err error
@@ -274,17 +289,11 @@ func handleGetMennoData(ship, shipDuration, shipLevel, targetArtifact int) []Con
 			return nil
 		}
 	}
-	filteredMennoData := MennoData{}
-	for _, configurationItem := range _latestMennoData.ConfigurationItems {
-		sc := configurationItem.ShipConfiguration
-		if sc.ShipType.Id == ship && sc.ShipDurationType.Id == shipDuration &&
-			sc.Level == shipLevel && sc.TargetArtifact.Id == targetArtifact {
-			filteredMennoData.ConfigurationItems = append(
-				filteredMennoData.ConfigurationItems, configurationItem,
-			)
-		}
+	items := filterMennoItems(ship, shipDuration, shipLevel, targetArtifact)
+	if len(items) == 0 && targetArtifact != mennoNoTarget {
+		items = filterMennoItems(ship, shipDuration, shipLevel, mennoNoTarget)
 	}
-	return filteredMennoData.ConfigurationItems
+	return items
 }
 
 func handleUpdateMennoData(onDone func(bool), onProgress func(MennoDownloadProgress)) {

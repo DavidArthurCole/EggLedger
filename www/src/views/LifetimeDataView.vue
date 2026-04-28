@@ -35,7 +35,7 @@
 
     <!-- Filter panel -->
     <div
-      v-if="doesDataExist && ((lifetimeData != null && !lifetimeDataBeingLoaded) || lifetimeDataBeingFiltered)"
+      v-if="doesDataExist && !lifetimeDataBeingLoaded"
       class="filter-panel"
     >
       <span
@@ -72,6 +72,7 @@
         />
         <hr class="mt-1rem w-full" />
         <button
+          v-if="lifetimeData != null"
           id="lifetime-filter-apply-button"
           type="submit"
           class="apply-filter-button"
@@ -147,7 +148,7 @@
         type="button"
         class="px-6 py-2 text-base font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-500 active:bg-blue-700 disabled:opacity-50"
         :disabled="!activeAccountId"
-        @click="void viewLifetimeDataOfEid(false)"
+        @click="void viewLifetimeDataOfEid(true)"
       >
         Load Lifetime Data
       </button>
@@ -196,12 +197,10 @@ import { useAppState } from '../composables/useAppState'
 import { useMennoData } from '../composables/useMennoData'
 import { useFilters } from '../composables/useFilters'
 import { useActiveAccount } from '../composables/useActiveAccount'
+import { useSharedConfigs } from '../composables/useSharedConfigs'
 import type {
   DatabaseMission,
   MissionDrop,
-  PossibleTarget,
-  PossibleArtifact,
-  PossibleMission,
 } from '../types/bridge'
 import FullFilter from '../components/FullFilter.vue'
 import NoDataFallback from '../components/NoDataFallback.vue'
@@ -214,6 +213,7 @@ import SegmentedProgressBar, { type ProgressSegment } from '../components/Segmen
 const { existingData, activeTab } = useAppState()
 const { mennoDataLoaded, getMennoData, load: loadMennoData } = useMennoData()
 const { activeAccountId } = useActiveAccount()
+const { artifactConfigs, maxQuality, durationConfigs, possibleTargets, loadSharedConfigs } = useSharedConfigs()
 
 // Types local to this view
 
@@ -492,12 +492,6 @@ function reSortLifetime() {
   }
 }
 
-// Artifact/mission configs (loaded in onMounted, passed to useFilters)
-const possibleTargets = ref<PossibleTarget[]>([])
-const maxQuality = ref<number>(0)
-const artifactConfigs = ref<PossibleArtifact[]>([])
-const durationConfigs = ref<PossibleMission[]>([])
-
 // Filter composable
 const {
   dataFilter, orDataFilter, filterHasChanged, getFilterValueOptions,
@@ -733,10 +727,10 @@ async function viewLifetimeDataOfEid(filterLoad: boolean) {
     const durationArg = Number.parseInt(lifetimeOneDurationInt.value ?? String(firstMatches[1]))
     const levelArg = Number.parseInt(lifetimeOneLevelInt.value ?? String(firstMatches[2]))
     const targetRaw = Number.parseInt(lifetimeOneTargetInt.value ?? String(firstMatches[3]))
-    const targetArg = targetRaw === -1 ? 1000 : targetRaw
+    const targetArg = targetRaw === -1 ? 10000 : targetRaw
     const mennoConfigItems = await getMennoData(shipArg, durationArg, levelArg, targetArg)
     if (mennoConfigItems) {
-      newData.mennoData = {
+      lifetimeData.value!.mennoData = {
         configs: mennoConfigItems as unknown as LedgerData['mennoData']['configs'],
         totalDropsCount: mennoConfigItems.reduce(
           (acc: number, cur: { totalDrops: number }) => acc + cur.totalDrops,
@@ -768,11 +762,7 @@ async function onFilterSubmit(event: Event) {
 // Lifecycle
 
 onMounted(async () => {
-  artifactConfigs.value = await globalThis.getAfxConfigs()
-  maxQuality.value = await globalThis.getMaxQuality()
-  durationConfigs.value = await globalThis.getDurationConfigs()
-  possibleTargets.value = await globalThis.getPossibleTargets()
-
+  await loadSharedConfigs()
   await loadMennoData()
 
   lifetimeSortMethod.value = (await globalThis.getLifetimeSortMethod()) as 'default' | 'iv' | 'count' | 'random'

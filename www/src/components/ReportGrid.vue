@@ -36,6 +36,7 @@
         <ReportCard
           :def="def"
           :result="results[def.id] ?? null"
+          :menno-result="mennoResults[def.id] ?? null"
           :edit-mode="editMode"
           :running="runningIds.has(def.id)"
           :stale="isStale(def.id, def.weight)"
@@ -118,7 +119,7 @@ const props = defineProps<{
   editMode?: boolean
 }>()
 
-const { reports, loadReports, deleteReport, reorderReports, executeReport, createReport, updateReport } = useReports()
+const { reports, loadReports, deleteReport, reorderReports, executeReport, executeMennoComparison, createReport, updateReport } = useReports()
 const { groups, loadGroups } = useReportGroups()
 const { appState } = useAppState()
 
@@ -126,6 +127,7 @@ const editMode = computed(() => props.editMode ?? false)
 const builderOpen = ref(false)
 const editingDef = ref<ReportDefinition | null>(null)
 const results = ref<Record<string, ReportResult>>({})
+const mennoResults = ref<Record<string, ReportResult>>({})
 const runningIds = ref(new Set<string>())
 const refreshCycle = ref(0)
 const resultCycles = ref<Record<string, number>>({})
@@ -164,9 +166,7 @@ const displayedReports = computed(() => {
   return reports.value.filter(r => r.groupId === props.groupFilter)
 })
 
-onMounted(async () => {
-  await loadReports(props.accountId)
-  await loadGroups(props.accountId)
+onMounted(() => {
   for (const def of reports.value) {
     handleRun(def.id)
   }
@@ -198,6 +198,23 @@ async function handleRun(id: string) {
     if (result) {
       results.value = { ...results.value, [id]: result }
       resultCycles.value = { ...resultCycles.value, [id]: cycleAtStart }
+      const def = reports.value.find(r => r.id === id)
+      if (
+        def?.mennoEnabled &&
+        result.is2D &&
+        result.rawRowLabels?.length &&
+        result.rawColLabels?.length
+      ) {
+        executeMennoComparison(id, result.rawRowLabels, result.rawColLabels).then(mennoResult => {
+          if (mennoResult) {
+            mennoResults.value = { ...mennoResults.value, [id]: mennoResult }
+          }
+        })
+      } else {
+        const next = { ...mennoResults.value }
+        delete next[id]
+        mennoResults.value = next
+      }
     }
   } finally {
     const next = new Set(runningIds.value)

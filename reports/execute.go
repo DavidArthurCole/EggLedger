@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/DavidArthurCole/EggLedger/eiafx"
 	"github.com/pkg/errors"
 )
 
@@ -36,6 +37,23 @@ func ExecuteReport(ctx context.Context, def ReportDefinition) (ReportResult, err
 	args = append(args, filterArgs...)
 	baseArgs := make([]interface{}, len(args))
 	copy(baseArgs, args)
+
+	if def.FamilyWeight != "" {
+		ids := eiafx.FamilyAFXIds[def.FamilyWeight]
+		fwClause, fwArgs := FamilyWeightClause(ids)
+		if fwClause != "" {
+			if def.SecondaryGroupBy != "" && def.Mode == "time_series" {
+				return executeWeightedTimePivot(ctx, def, baseWhere, args, fwClause, fwArgs)
+			}
+			if def.SecondaryGroupBy != "" {
+				return executeWeightedPivot(ctx, def, baseWhere, args, baseArgs, fwClause, fwArgs)
+			}
+			if def.Mode == "time_series" {
+				return executeWeightedTimeSeries(ctx, def, baseWhere, args, fwClause, fwArgs)
+			}
+			return executeWeightedAggregate(ctx, def, baseWhere, args, baseArgs, fwClause, fwArgs)
+		}
+	}
 
 	if def.SecondaryGroupBy != "" && def.Mode == "time_series" {
 		return executeTimePivotReport(ctx, def, baseWhere, args, baseArgs)
@@ -293,17 +311,18 @@ func executePivotReport(ctx context.Context, def ReportDefinition, baseWhere str
 		apply2DPctNormalization(matrixValues, len(rowLabels), len(colLabels), pctMode)
 	} else if pctMode != "" && pctMode != "none" {
 		col1 := GroupByColumn(def.GroupBy)
-		if col1 != "" && !strings.HasPrefix(col1, "d.") {
+		col2 := GroupByColumn(def.SecondaryGroupBy)
+		if col1 != "" && !strings.HasPrefix(col1, "d.") && col2 != "" && !strings.HasPrefix(col2, "d.") {
 			var denomQuery string
 			if pctMode == "airtime" {
 				denomQuery = fmt.Sprintf(
-					`SELECT CAST(%s AS TEXT), SUM(CAST(m.return_timestamp - m.start_timestamp AS REAL) / 3600.0) FROM mission m WHERE %s GROUP BY %s`,
-					col1, baseWhere, col1,
+					`SELECT CAST(%s AS TEXT), CAST(%s AS TEXT), SUM(CAST(m.return_timestamp - m.start_timestamp AS REAL) / 3600.0) FROM mission m WHERE %s GROUP BY %s, %s`,
+					col1, col2, baseWhere, col1, col2,
 				)
 			} else {
 				denomQuery = fmt.Sprintf(
-					`SELECT CAST(%s AS TEXT), COUNT(*) FROM mission m WHERE %s GROUP BY %s`,
-					col1, baseWhere, col1,
+					`SELECT CAST(%s AS TEXT), CAST(%s AS TEXT), COUNT(*) FROM mission m WHERE %s GROUP BY %s, %s`,
+					col1, col2, baseWhere, col1, col2,
 				)
 			}
 			denomRows, err := _missionDB.QueryContext(ctx, denomQuery, baseArgs...)
@@ -311,27 +330,41 @@ func executePivotReport(ctx context.Context, def ReportDefinition, baseWhere str
 				return ReportResult{}, wrap(err)
 			}
 			defer denomRows.Close()
-			denomMap := map[string]float64{}
+			denomMap := map[string]map[string]float64{}
 			for denomRows.Next() {
-				var rawKey string
+				var rawKey1, rawKey2 string
 				var denom float64
-				if err := denomRows.Scan(&rawKey, &denom); err != nil {
+				if err := denomRows.Scan(&rawKey1, &rawKey2, &denom); err != nil {
 					return ReportResult{}, wrap(err)
 				}
-				denomMap[FormatLabel(def.GroupBy, rawKey)] = denom
+				k1 := FormatLabel(def.GroupBy, rawKey1)
+				k2 := FormatLabel(def.SecondaryGroupBy, rawKey2)
+				if denomMap[k1] == nil {
+					denomMap[k1] = map[string]float64{}
+				}
+				denomMap[k1][k2] = denom
 			}
 			if err := denomRows.Err(); err != nil {
 				return ReportResult{}, wrap(err)
 			}
+			nC := len(colLabels)
 			for r, row := range rowLabels {
-				d := denomMap[row]
-				if d > 0 {
-					for c := range colLabels {
-						matrixValues[r*len(colLabels)+c] /= d
+				for c, col := range colLabels {
+					if d := denomMap[row][col]; d > 0 {
+						matrixValues[r*nC+c] /= d
 					}
 				}
 			}
 		}
+	}
+
+	rawRowLabels := make([]string, len(rowEntries))
+	rawColLabels := make([]string, len(colEntries))
+	for i, e := range rowEntries {
+		rawRowLabels[i] = e.rawVal
+	}
+	for i, e := range colEntries {
+		rawColLabels[i] = e.rawVal
 	}
 
 	return ReportResult{
@@ -340,6 +373,8 @@ func executePivotReport(ctx context.Context, def ReportDefinition, baseWhere str
 		MatrixValues: matrixValues,
 		Is2D:         true,
 		Weight:       def.Weight,
+		RawRowLabels: rawRowLabels,
+		RawColLabels: rawColLabels,
 	}, nil
 }
 
@@ -419,12 +454,19 @@ func executeTimePivotReport(ctx context.Context, def ReportDefinition, baseWhere
 		apply2DPctNormalization(matrixValues, nR, nC, pctMode)
 	}
 
+	rawGrpLabels := make([]string, len(grpEntries))
+	for i, e := range grpEntries {
+		rawGrpLabels[i] = e.rawVal
+	}
+
 	return ReportResult{
 		RowLabels:    bucketLabels,
 		ColLabels:    groupLabels,
 		MatrixValues: matrixValues,
 		Is2D:         true,
 		Weight:       def.Weight,
+		RawRowLabels: bucketLabels,
+		RawColLabels: rawGrpLabels,
 	}, nil
 }
 

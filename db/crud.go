@@ -57,6 +57,7 @@ type MissionFilterCols struct {
 	DurationType    int32
 	Level           int32
 	Capacity        int32
+	NominalCapacity int32
 	IsDubCap        bool
 	IsBuggedCap     bool
 	Target          int32
@@ -85,6 +86,7 @@ type MissionMeta struct {
 	DurationType    int32
 	Level           int32
 	Capacity        int32
+	NominalCapacity int32
 	IsDubCap        bool
 	IsBuggedCap     bool
 	Target          int32
@@ -109,10 +111,10 @@ func InsertCompleteMission(ctx context.Context, playerId string, missionId strin
 		return transact(ctx, action, func(tx *sql.Tx) error {
 			_, err := tx.ExecContext(ctx, `INSERT INTO
 				mission(player_id, mission_id, start_timestamp, complete_payload, mission_type,
-				        ship, duration_type, level, capacity, is_dub_cap, is_bugged_cap, target, return_timestamp)
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+				        ship, duration_type, level, capacity, nominal_capacity, is_dub_cap, is_bugged_cap, target, return_timestamp)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
 				playerId, missionId, startTimestamp, compressedPayload, missionType,
-				cols.Ship, cols.DurationType, cols.Level, cols.Capacity,
+				cols.Ship, cols.DurationType, cols.Level, cols.Capacity, cols.NominalCapacity,
 				isDubCapInt, isBuggedCapInt, cols.Target, cols.ReturnTimestamp)
 			if err != nil {
 				return err
@@ -429,10 +431,10 @@ func ResolvePendingFilterCols(
 				}
 				if _, serr := tx.ExecContext(ctx,
 					`UPDATE mission SET
-					 ship = ?, duration_type = ?, level = ?, capacity = ?,
+					 ship = ?, duration_type = ?, level = ?, capacity = ?, nominal_capacity = ?,
 					 is_dub_cap = ?, is_bugged_cap = ?, target = ?, return_timestamp = ?
 					 WHERE player_id = ? AND mission_id = ?;`,
-					u.cols.Ship, u.cols.DurationType, u.cols.Level, u.cols.Capacity,
+					u.cols.Ship, u.cols.DurationType, u.cols.Level, u.cols.Capacity, u.cols.NominalCapacity,
 					isDubCapInt, isBuggedCapInt, u.cols.Target, u.cols.ReturnTimestamp,
 					playerId, u.missionId,
 				); serr != nil {
@@ -458,7 +460,7 @@ func RetrievePlayerMissionMeta(ctx context.Context, playerId string) ([]MissionM
 		return transact(ctx, action, func(tx *sql.Tx) error {
 			rows, err := tx.QueryContext(ctx,
 				`SELECT mission_id, start_timestamp, return_timestamp,
-				        ship, duration_type, level, capacity,
+				        ship, duration_type, level, capacity, nominal_capacity,
 				        is_dub_cap, is_bugged_cap, target, mission_type
 				 FROM mission
 				 WHERE player_id = ? AND ship != -1
@@ -473,7 +475,7 @@ func RetrievePlayerMissionMeta(ctx context.Context, playerId string) ([]MissionM
 				var isDubCapInt, isBuggedCapInt int
 				if err := rows.Scan(
 					&m.MissionId, &m.StartTimestamp, &m.ReturnTimestamp,
-					&m.Ship, &m.DurationType, &m.Level, &m.Capacity,
+					&m.Ship, &m.DurationType, &m.Level, &m.Capacity, &m.NominalCapacity,
 					&isDubCapInt, &isBuggedCapInt, &m.Target, &m.MissionType,
 				); err != nil {
 					return err
@@ -782,4 +784,68 @@ func SetSettings(ctx context.Context, settings map[string]string) error {
 			return nil
 		})
 	})
+}
+
+// BackfillNominalCapacities updates missions where nominal_capacity = 0 but ship != -1
+// (i.e., migration-6 columns are already resolved). The lookupFn receives the stored
+// ship, duration_type, and level integers and returns the nominal capacity for that triple.
+// Returns the number of rows updated.
+func BackfillNominalCapacities(ctx context.Context, lookupFn func(ship, durationType, level int32) int32) (int, error) {
+	action := "backfill nominal capacities"
+	wrap := func(err error) error { return errors.Wrap(err, action) }
+
+	type row struct {
+		missionId    string
+		playerId     string
+		ship         int32
+		durationType int32
+		level        int32
+	}
+	var pending []row
+
+	err := DoDBOperation(ctx, func(ctx context.Context, db *sql.DB) error {
+		return transact(ctx, action, func(tx *sql.Tx) error {
+			rows, err := tx.QueryContext(ctx,
+				`SELECT mission_id, player_id, ship, duration_type, level
+				 FROM mission
+				 WHERE nominal_capacity = 0 AND ship != -1;`)
+			if err != nil {
+				return err
+			}
+			defer rows.Close()
+			for rows.Next() {
+				var r row
+				if err := rows.Scan(&r.missionId, &r.playerId, &r.ship, &r.durationType, &r.level); err != nil {
+					return err
+				}
+				pending = append(pending, r)
+			}
+			return rows.Err()
+		})
+	})
+	if err != nil {
+		return 0, wrap(err)
+	}
+	if len(pending) == 0 {
+		return 0, nil
+	}
+
+	err = DoDBOperation(ctx, func(ctx context.Context, db *sql.DB) error {
+		return transact(ctx, action, func(tx *sql.Tx) error {
+			for _, r := range pending {
+				nomCap := lookupFn(r.ship, r.durationType, r.level)
+				if _, serr := tx.ExecContext(ctx,
+					`UPDATE mission SET nominal_capacity = ? WHERE player_id = ? AND mission_id = ?;`,
+					nomCap, r.playerId, r.missionId,
+				); serr != nil {
+					return serr
+				}
+			}
+			return nil
+		})
+	})
+	if err != nil {
+		return 0, wrap(err)
+	}
+	return len(pending), nil
 }

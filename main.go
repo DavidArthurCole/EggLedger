@@ -35,9 +35,9 @@ import (
 	"github.com/DavidArthurCole/EggLedger/reportdb"
 	"github.com/DavidArthurCole/EggLedger/reports"
 	"github.com/davidarthurcole/lorca"
+	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/writer"
-	"github.com/google/uuid"
 	"github.com/skratchdot/open-golang/open"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
@@ -141,11 +141,11 @@ type ExportedFile struct {
 }
 
 type DatabaseAccount struct {
-	Id                 string  `json:"id"`
-	Nickname           string  `json:"nickname"`
-	MissionCount       int     `json:"missionCount"`
-	EBString           string  `json:"ebString"`
-	AccountColor       string  `json:"accountColor"`
+	Id                  string  `json:"id"`
+	Nickname            string  `json:"nickname"`
+	MissionCount        int     `json:"missionCount"`
+	EBString            string  `json:"ebString"`
+	AccountColor        string  `json:"accountColor"`
 	LastMissionReturnDT float64 `json:"lastMissionReturnDT"`
 }
 
@@ -279,6 +279,10 @@ func init() {
 	}
 	_eiAfxConfigMissions = eiafx.Config.MissionParameters
 	_eiAfxConfigArtis = eiafx.Config.ArtifactParameters
+
+	if err := eiafx.LoadDataConfig(_internalDir); err != nil {
+		log.Warnf("eiafx data config load failed, family weight disabled: %v", err)
+	}
 
 	if err := ledgerdata.LoadConfig(_internalDir); err != nil {
 		log.Fatal("ledgerdata.LoadConfig: ", err)
@@ -428,13 +432,17 @@ func reportDefToRow(def reports.ReportDefinition) (reportdb.ReportRow, error) {
 		GridX: def.GridX, GridY: def.GridY, GridW: def.GridW, GridH: def.GridH,
 		Weight: def.Weight, Color: def.Color,
 		Description: def.Description, ChartType: def.ChartType,
-		SortOrder: def.SortOrder,
-		ValueFilterOp: def.ValueFilterOp,
+		SortOrder:            def.SortOrder,
+		ValueFilterOp:        def.ValueFilterOp,
 		ValueFilterThreshold: def.ValueFilterThreshold,
-		GroupId: def.GroupId,
-		LabelColors: def.LabelColors,
-		SecondaryGroupBy: def.SecondaryGroupBy,
-		UnfilledColor: def.UnfilledColor,
+		GroupId:              def.GroupId,
+		LabelColors:          def.LabelColors,
+		SecondaryGroupBy:     def.SecondaryGroupBy,
+		UnfilledColor:        def.UnfilledColor,
+		FamilyWeight:         def.FamilyWeight,
+		MennoEnabled:         def.MennoEnabled,
+		MennoCompareMode:     def.MennoCompareMode,
+		MinSampleSize:        def.MinSampleSize,
 	}
 	if def.TimeBucket != "" {
 		r.TimeBucket = sql.NullString{String: def.TimeBucket, Valid: true}
@@ -470,12 +478,16 @@ func rowToReportDef(r reportdb.ReportRow) (reports.ReportDefinition, error) {
 		Description: r.Description, ChartType: chartType,
 		SortOrder: r.SortOrder,
 		CreatedAt: r.CreatedAt, UpdatedAt: r.UpdatedAt,
-		ValueFilterOp: r.ValueFilterOp,
+		ValueFilterOp:        r.ValueFilterOp,
 		ValueFilterThreshold: r.ValueFilterThreshold,
-		GroupId: r.GroupId,
-		LabelColors: r.LabelColors,
-		SecondaryGroupBy: r.SecondaryGroupBy,
-		UnfilledColor: r.UnfilledColor,
+		GroupId:              r.GroupId,
+		LabelColors:          r.LabelColors,
+		SecondaryGroupBy:     r.SecondaryGroupBy,
+		UnfilledColor:        r.UnfilledColor,
+		FamilyWeight:         r.FamilyWeight,
+		MennoEnabled:         r.MennoEnabled,
+		MennoCompareMode:     r.MennoCompareMode,
+		MinSampleSize:        r.MinSampleSize,
 	}
 	if r.TimeBucket.Valid {
 		def.TimeBucket = r.TimeBucket.String
@@ -541,7 +553,7 @@ func main() {
 		return resolutionPrefs[0], resolutionPrefs[1]
 	}()
 	appIconPath := buildAppIconPath()
-	u, err := lorca.New("", "", browser, widthPreference, heightPreference, appIconPath, args...)
+	u, err := lorca.New("", "", browser, widthPreference, heightPreference, "EggLedger", appIconPath, args...)
 	if err != nil {
 		log.Fatal("lorca err: ", err)
 	}
@@ -612,6 +624,23 @@ func main() {
 	defer reportdb.CloseReportDB()
 	reports.SetMissionDB(db.GetDB())
 	go BackfillArtifactDrops()
+	go func() {
+		lookup := func(ship, durationType, level int32) int32 {
+			_nominalShipCapacitiesOnce.Do(initNominalShipCapacities)
+			if caps, ok := _nominalShipCapacities[ei.MissionInfo_Spaceship(ship)][ei.MissionInfo_DurationType(durationType)]; ok && int(level) < len(caps) {
+				return int32(caps[int(level)])
+			}
+			return 0
+		}
+		n, err := db.BackfillNominalCapacities(context.Background(), lookup)
+		if err != nil {
+			log.Errorf("BackfillNominalCapacities: %v", err)
+			return
+		}
+		if n > 0 {
+			log.Infof("BackfillNominalCapacities: updated %d missions", n)
+		}
+	}()
 
 	ui.MustBind("getDefaultScalingFactor", func() float64 {
 		return _storage.GetDefaultScalingFactor()
@@ -664,7 +693,9 @@ func main() {
 			log.Errorf("restartApp: failed to start new instance: %v", err)
 			return
 		}
-		ui.Close()
+		// Close in a goroutine so this handler returns first, letting the relay
+		// send the nil response before the WebSocket is torn down.
+		go ui.Close()
 	})
 
 	ui.MustBind("setAutoRefreshMennoPreference", func(flag bool) {
@@ -1228,6 +1259,10 @@ func main() {
 
 	ui.MustBind("getMennoData", handleGetMennoData)
 
+	ui.MustBind("executeMennoComparison", func(reportId, rawRowLabelsJSON, rawColLabelsJSON string) string {
+		return handleExecuteMennoComparison(reportId, rawRowLabelsJSON, rawColLabelsJSON)
+	})
+
 	ui.MustBind("createReport", func(defJSON string) string {
 		var def reports.ReportDefinition
 		if err := json.Unmarshal([]byte(defJSON), &def); err != nil {
@@ -1582,6 +1617,15 @@ func main() {
 		return string(out)
 	})
 
+	ui.MustBind("getFamilyList", func() string {
+		fams := eiafx.Families
+		if fams == nil {
+			fams = []eiafx.FamilyMeta{}
+		}
+		out, _ := json.Marshal(fams)
+		return string(out)
+	})
+
 	ui.MustBind("checkCloudReachable", handleCheckCloudReachable)
 
 	ui.MustBind("getCloudSyncStatus", func() string {
@@ -1640,6 +1684,8 @@ func main() {
 		}
 	}()
 	ui.MustLoad(fmt.Sprintf("http://%s/", ln.Addr()))
+	ui.SetBlockBackNavigation(true)
+	ui.SetAppUserModelID("EggLedger.EggLedger")
 
 	// Wait until the interrupt signal arrives or browser window is closed.
 	sigc := make(chan os.Signal, 1)

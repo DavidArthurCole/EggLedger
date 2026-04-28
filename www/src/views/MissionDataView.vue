@@ -218,6 +218,7 @@ import { useFetch } from '../composables/useFetch'
 import { useFilters } from '../composables/useFilters'
 import { useActiveAccount } from '../composables/useActiveAccount'
 import { collapseOlderSections } from '../composables/useSettings'
+import { useSharedConfigs } from '../composables/useSharedConfigs'
 import {
   type DropLike,
   sortGroupAlreadyCombed,
@@ -225,12 +226,10 @@ import {
   inventoryVisualizerSort,
 } from '../composables/useMissionSorting'
 import { useMissionListGrouping } from '../composables/useMissionListGrouping'
+import { AppState } from '../types/bridge'
 import type {
   DatabaseMission,
   MissionDrop,
-  PossibleTarget,
-  PossibleArtifact,
-  PossibleMission,
 } from '../types/bridge'
 import FullFilter from '../components/FullFilter.vue'
 import SearchOverSelector from '../components/SearchOverSelector.vue'
@@ -243,10 +242,11 @@ import type { ViewMissionData, InnerDrop, MennoConfigItem } from '../types/missi
 
 // Shared state
 
-const { existingData, activeTab } = useAppState()
+const { existingData, activeTab, appState } = useAppState()
 const { mennoDataLoaded, getMennoData, load: loadMennoData } = useMennoData()
 const { isFetching } = useFetch()
 const { activeAccountId } = useActiveAccount()
+const { artifactConfigs, maxQuality, durationConfigs, possibleTargets, loadSharedConfigs } = useSharedConfigs()
 
 // Account load state
 
@@ -326,13 +326,6 @@ function toggleFilter(event: Event) {
   event.preventDefault()
   hideFilter.value = !hideFilter.value
 }
-
-// Artifact/mission configs (loaded in onMounted, passed to useFilters)
-
-const possibleTargets = ref<PossibleTarget[]>([])
-const maxQuality = ref<number>(0)
-const artifactConfigs = ref<PossibleArtifact[]>([])
-const durationConfigs = ref<PossibleMission[]>([])
 
 // Filter composable
 
@@ -468,6 +461,12 @@ watch(activeAccountId, (id) => {
   if (id) void loadMissions(id)
 }, { immediate: true })
 
+watch(appState, (val) => {
+  if (val === AppState.Success && activeAccountId.value) {
+    void loadMissions(activeAccountId.value)
+  }
+})
+
 async function getSpecificMissionData(eid: string, missionId: string, extendedInfo: boolean, dropCache: Record<string, MissionDrop[]> | null = null, knownMissionInfo: DatabaseMission | null = null): Promise<ViewMissionData | null> {
   const missionInfo = knownMissionInfo ?? await globalThis.getMissionInfo(eid, missionId)
   if (missionInfo.ship == null || missionInfo.ship < 0 || !missionInfo.missionId) return null
@@ -509,7 +508,7 @@ async function viewSpecificMission(missionId: string, returnValues = false, drop
 
   const mi = newMissionViewData.missionInfo as (DatabaseMission & { targetInt?: number }) | undefined
   if (mi) {
-    const mennoTargetInt = mi.targetInt === -1 ? 1000 : (mi.targetInt ?? 1000)
+    const mennoTargetInt = mi.targetInt === -1 ? 10000 : (mi.targetInt ?? 10000)
     const mennoShip = mi.ship
     const mennoDuration = mi.durationType
     const mennoLevel = mi.level
@@ -638,14 +637,11 @@ onMounted(async () => {
   showExpectedDropsPerShip.value = await globalThis.getMissionShowExpectedDrops()
   multiViewMode.value = (await globalThis.getMissionMultiViewMode()) as 'off' | 'row' | 'free'
   viewMissionSortMethod.value = (await globalThis.getMissionSortMethod()) as 'default' | 'iv'
-  settingsLoaded = true
 
-  artifactConfigs.value = await globalThis.getAfxConfigs()
-  maxQuality.value = await globalThis.getMaxQuality()
-  durationConfigs.value = await globalThis.getDurationConfigs()
-  possibleTargets.value = await globalThis.getPossibleTargets()
-
+  await loadSharedConfigs()
   await loadMennoData()
+
+  settingsLoaded = true
 
   // Pre-cache a few filter value options
   getFilterValueOptions('ship')

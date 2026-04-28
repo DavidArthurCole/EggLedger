@@ -1,6 +1,8 @@
 import { ref, computed, nextTick } from 'vue'
 import type { ConfigurationItem, MennoDownloadProgress } from '../types/bridge'
 
+let _mennoLoaded = false
+
 const secondsSinceLastUpdate = ref(Number.MAX_SAFE_INTEGER)
 const mennoDataLoaded = ref(false)
 const mennoRefreshing = ref(false)
@@ -52,7 +54,9 @@ export function useMennoData() {
   }
 
   async function load(): Promise<boolean> {
+    if (_mennoLoaded) return true
     const ok = await globalThis.loadMennoData()
+    if (ok) _mennoLoaded = true
     mennoDataLoaded.value = ok
     return ok
   }

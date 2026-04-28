@@ -219,3 +219,130 @@ func TestBuildTimePivotQuery_InvalidSecondary_ReturnsError(t *testing.T) {
 		t.Error("expected error for invalid secondary group-by")
 	}
 }
+
+func TestFamilyWeightClause_Empty(t *testing.T) {
+	clause, args := reports.FamilyWeightClause(nil)
+	if clause != "" {
+		t.Errorf("empty ids should return empty clause, got: %s", clause)
+	}
+	if len(args) != 0 {
+		t.Errorf("empty ids should return no args, got: %v", args)
+	}
+}
+
+func TestFamilyWeightClause_SingleId(t *testing.T) {
+	clause, args := reports.FamilyWeightClause([]int{1})
+	if !strings.Contains(clause, "d.artifact_id IN") {
+		t.Errorf("expected IN clause, got: %s", clause)
+	}
+	if len(args) != 1 || args[0] != 1 {
+		t.Errorf("expected [1], got: %v", args)
+	}
+}
+
+func TestFamilyWeightClause_MultipleIds(t *testing.T) {
+	clause, args := reports.FamilyWeightClause([]int{1, 2, 23})
+	if !strings.Contains(clause, "?, ?, ?") {
+		t.Errorf("expected 3 placeholders, got: %s", clause)
+	}
+	if len(args) != 3 {
+		t.Errorf("expected 3 args, got %d", len(args))
+	}
+}
+
+func TestBuildWeightedAggregateQuery_IncludesHiddenColumns(t *testing.T) {
+	def := reports.ReportDefinition{
+		Subject:      "artifacts",
+		Mode:         "aggregate",
+		GroupBy:      "ship_type",
+		FamilyWeight: "tachyon-stone",
+	}
+	baseWhere := "m.player_id = ?"
+	baseArgs := []interface{}{"EI1234"}
+	fwClause := "d.artifact_id IN (?, ?)"
+	fwArgs := []interface{}{1, 2}
+	query, args := reports.BuildWeightedAggregateQuery(def, baseWhere, baseArgs, fwClause, fwArgs)
+	if !strings.Contains(query, "d.artifact_id") {
+		t.Errorf("expected d.artifact_id in query, got: %s", query)
+	}
+	if !strings.Contains(query, "d.level") {
+		t.Errorf("expected d.level in query, got: %s", query)
+	}
+	if !strings.Contains(query, "artifact_drops") {
+		t.Errorf("expected artifact_drops join, got: %s", query)
+	}
+	if len(args) != 3 {
+		t.Errorf("expected 3 args (1 base + 2 fw), got %d", len(args))
+	}
+}
+
+func TestBuildWeightedPivotQuery_IncludesHiddenColumns(t *testing.T) {
+	def := reports.ReportDefinition{
+		Subject:          "artifacts",
+		Mode:             "aggregate",
+		GroupBy:          "ship_type",
+		SecondaryGroupBy: "duration_type",
+		FamilyWeight:     "tachyon-stone",
+	}
+	query, args, err := reports.BuildWeightedPivotQuery(def, "m.player_id = ?", []interface{}{"EI1234"}, "d.artifact_id IN (?)", []interface{}{1})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(query, "d.artifact_id") {
+		t.Errorf("expected d.artifact_id in query, got: %s", query)
+	}
+	if !strings.Contains(query, "d.level") {
+		t.Errorf("expected d.level in query, got: %s", query)
+	}
+	if len(args) != 2 {
+		t.Errorf("expected 2 args, got %d", len(args))
+	}
+}
+
+func TestBuildWeightedTimeSeriesQuery_IncludesHiddenColumns(t *testing.T) {
+	def := reports.ReportDefinition{
+		Subject:      "artifacts",
+		Mode:         "time_series",
+		TimeBucket:   "month",
+		FamilyWeight: "tachyon-stone",
+	}
+	query, args := reports.BuildWeightedTimeSeriesQuery(def, "m.player_id = ?", []interface{}{"EI1234"}, "d.artifact_id IN (?)", []interface{}{1})
+	if !strings.Contains(query, "d.artifact_id") {
+		t.Errorf("expected d.artifact_id in query, got: %s", query)
+	}
+	if !strings.Contains(query, "d.level") {
+		t.Errorf("expected d.level in query, got: %s", query)
+	}
+	if !strings.Contains(query, "bucket") {
+		t.Errorf("expected bucket in query, got: %s", query)
+	}
+	if len(args) != 2 {
+		t.Errorf("expected 2 args (1 base + 1 fw), got %d", len(args))
+	}
+}
+
+func TestBuildWeightedTimePivotQuery_IncludesHiddenColumns(t *testing.T) {
+	def := reports.ReportDefinition{
+		Subject:          "artifacts",
+		Mode:             "time_series",
+		TimeBucket:       "month",
+		SecondaryGroupBy: "ship_type",
+		FamilyWeight:     "tachyon-stone",
+	}
+	query, args, err := reports.BuildWeightedTimePivotQuery(def, "m.player_id = ?", []interface{}{"EI1234"}, "d.artifact_id IN (?)", []interface{}{1})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(query, "d.artifact_id") {
+		t.Errorf("expected d.artifact_id in query, got: %s", query)
+	}
+	if !strings.Contains(query, "d.level") {
+		t.Errorf("expected d.level in query, got: %s", query)
+	}
+	if !strings.Contains(query, "grp") {
+		t.Errorf("expected grp alias in query, got: %s", query)
+	}
+	if len(args) != 2 {
+		t.Errorf("expected 2 args (1 base + 1 fw), got %d", len(args))
+	}
+}

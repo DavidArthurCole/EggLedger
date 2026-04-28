@@ -16,10 +16,15 @@
         </svg>
       </button>
       <!-- Header -->
-      <div class="flex items-center px-5 py-3 border-b border-gray-700 flex-shrink-0">
+      <div class="flex items-center px-5 py-3 border-b border-gray-700 flex-shrink-0 gap-3">
         <span class="text-sm font-semibold text-gray-200">
           {{ editingDef ? 'Edit Report' : 'Add Report' }}
         </span>
+        <div v-if="!editingDef && builderMode === 'basic'" class="flex rounded-md overflow-hidden border border-gray-700 flex-shrink-0 text-xs">
+          <button type="button" class="px-3 py-1.5 transition-colors bg-indigo-700 text-white">Basic</button>
+          <button type="button" class="px-3 py-1.5 transition-colors bg-darker text-gray-400 hover:text-gray-200"
+            @click="builderMode = 'advanced'">Advanced</button>
+        </div>
       </div>
 
       <!-- Edit form -->
@@ -122,6 +127,22 @@
           </div>
         </div>
 
+        <!-- Family weight (artifacts only) -->
+        <div v-if="form.subject === 'artifacts'" class="flex flex-col gap-1">
+          <span class="text-xs text-gray-400 flex items-center gap-1">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/></svg>
+            Family weight (optional)
+          </span>
+          <select
+            v-model="form.familyWeight"
+            class="bg-darker border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 focus:outline-none focus:border-blue-500"
+          >
+            <option value="">None (raw count)</option>
+            <option v-for="fam in familyList" :key="fam.id" :value="fam.id">{{ fam.name }}</option>
+          </select>
+          <p v-if="form.familyWeight" class="text-xs text-gray-500 mt-0.5">Drops weighted by T1-equivalent crafting cost</p>
+        </div>
+
         <!-- Display mode + Group by row -->
         <div class="grid grid-cols-2 gap-3">
           <div v-if="!(form.mode === 'time_series' && form.secondaryGroupBy)" class="flex flex-col gap-1">
@@ -207,6 +228,32 @@
             </optgroup>
           </select>
           <p v-if="form.secondaryGroupBy" class="text-xs text-gray-500 mt-0.5">Counting: {{ inferredSubjectLabel }}</p>
+        </div>
+
+        <div v-if="isMennoEligible" class="flex flex-col gap-2">
+          <div class="flex items-center gap-2">
+            <input
+              id="mennoEnabledCheck"
+              type="checkbox"
+              class="ext-opt-check"
+              v-model="form.mennoEnabled"
+            />
+            <label for="mennoEnabledCheck" class="text-xs text-gray-400 cursor-pointer select-none flex items-center gap-1">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+              Compare with Menno community data
+            </label>
+          </div>
+          <div v-if="form.mennoEnabled" class="flex flex-col gap-1 pl-5">
+            <span class="text-xs text-gray-400">Comparison display</span>
+            <select
+              v-model="form.mennoCompareMode"
+              class="bg-darker border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 focus:outline-none focus:border-blue-500"
+            >
+              <option value="side_by_side">Side by side</option>
+              <option value="ratio">Ratio (x)</option>
+              <option value="dual_value">Dual value</option>
+            </select>
+          </div>
         </div>
 
         <!-- Time bucket (time_series only) -->
@@ -367,8 +414,24 @@
                     <option v-for="op in getOpsForField(orGroups[gIdx][cIdx].topLevel)" :key="op.value" :value="op.value">{{ op.label }}</option>
                   </select>
                   <input
+                    v-if="isDateField(orGroups[gIdx][cIdx].topLevel)"
                     :value="orGroups[gIdx][cIdx].val"
-                    :type="isDateField(orGroups[gIdx][cIdx].topLevel) ? 'date' : 'text'"
+                    type="date"
+                    class="text-xs bg-darker border border-gray-700 rounded px-2 py-1 text-gray-300 focus:outline-none flex-1 min-w-0"
+                    @input="updateOrCondition(gIdx, cIdx, { val: ($event.target as HTMLInputElement).value })"
+                  />
+                  <select
+                    v-else-if="valueOptionsForField(orGroups[gIdx][cIdx].topLevel).length > 0"
+                    :value="orGroups[gIdx][cIdx].val"
+                    class="text-xs bg-darker border border-gray-700 rounded px-2 py-1 text-gray-300 focus:outline-none flex-1 min-w-0"
+                    @change="updateOrCondition(gIdx, cIdx, { val: ($event.target as HTMLSelectElement).value })"
+                  >
+                    <option v-for="opt in valueOptionsForField(orGroups[gIdx][cIdx].topLevel)" :key="opt.value" :value="opt.value">{{ opt.text }}</option>
+                  </select>
+                  <input
+                    v-else
+                    :value="orGroups[gIdx][cIdx].val"
+                    type="text"
                     class="text-xs bg-darker border border-gray-700 rounded px-2 py-1 text-gray-300 focus:outline-none flex-1 min-w-0"
                     @input="updateOrCondition(gIdx, cIdx, { val: ($event.target as HTMLInputElement).value })"
                   />
@@ -399,6 +462,10 @@
               <option value="row_pct">Row % (each row sums to 100)</option>
               <option value="col_pct">Column % (each column sums to 100)</option>
               <option value="global_pct">Global % (all cells sum to 100)</option>
+              <template v-if="canNormalizePivotPerLaunch">
+                <option value="launches">Per launch (per cell)</option>
+                <option value="airtime">Per flight hour (per cell)</option>
+              </template>
             </template>
             <template v-else>
               <option value="none">None (raw count)</option>
@@ -430,6 +497,20 @@
             </span>
             <ColorPicker v-model="form.unfilledColor" />
           </div>
+        </div>
+
+        <!-- Min sample size (heatmap + 2D only) -->
+        <div v-if="form.displayMode === 'heatmap' && form.secondaryGroupBy" class="flex items-center gap-2">
+          <span class="text-xs text-gray-400 whitespace-nowrap">Min sample size</span>
+          <input
+            type="number"
+            min="0"
+            step="1"
+            class="w-16 bg-transparent border border-white/10 rounded px-1 py-0.5 text-xs text-gray-300 focus:outline-none focus:border-white/30"
+            :value="form.minSampleSize"
+            @input="form.minSampleSize = Number(($event.target as HTMLInputElement).value)"
+          />
+          <span class="text-xs text-gray-500">cells below this count show "—"</span>
         </div>
 
         <!-- Per-slice / per-bar colors -->
@@ -555,7 +636,7 @@
 
 <script setup lang="ts">
 import { reactive, computed, watch, ref, onMounted, nextTick } from 'vue'
-import type { ReportDefinition, ReportFilterCondition, PossibleTarget } from '../types/bridge'
+import type { ReportDefinition, ReportFilterCondition, PossibleTarget, FamilyMeta } from '../types/bridge'
 import { useReportFilters } from '../composables/useReportFilters'
 import AndOnlyFilter from './AndOnlyFilter.vue'
 import ReportBuilderGuided from './ReportBuilderGuided.vue'
@@ -595,6 +676,7 @@ const {
 } = useReportFilters()
 
 const possibleTargets = ref<PossibleTarget[]>([])
+const familyList = ref<FamilyMeta[]>([])
 const isDirty = ref(false)
 const closeWarning = ref(false)
 const builderMode = ref<'basic' | 'advanced'>('basic')
@@ -660,6 +742,10 @@ function makeBlankForm() {
     valueFilterThreshold: 0,
     normalizeBy: 'none',
     chartType: '',
+    familyWeight: '',
+    mennoEnabled: false,
+    mennoCompareMode: 'side_by_side',
+    minSampleSize: 0,
   }
 }
 
@@ -690,6 +776,10 @@ watch(
       form.normalizeBy = def.normalizeBy || 'none'
       form.secondaryGroupBy = def.secondaryGroupBy || ''
       form.chartType = def.chartType || ''
+      form.familyWeight = def.familyWeight || ''
+      form.mennoEnabled = def.mennoEnabled ?? false
+      form.mennoCompareMode = def.mennoCompareMode || 'side_by_side'
+      form.minSampleSize = def.minSampleSize ?? 0
       labelColorsMap.value = parseLabelColors(def.labelColors)
       fromReportFilters(def.filters)
     } else {
@@ -794,7 +884,7 @@ const artifactDimensions = new Set(['artifact_name', 'rarity', 'tier', 'spec_typ
 
 const inferredSubjectLabel = computed(() => {
   if (!form.secondaryGroupBy) return ''
-  const eitherArtifact = artifactDimensions.has(form.groupBy) || artifactDimensions.has(form.secondaryGroupBy)
+  const eitherArtifact = artifactDimensions.has(form.groupBy) || artifactDimensions.has(form.secondaryGroupBy) || !!form.familyWeight
   return eitherArtifact ? 'Artifact drops' : 'Missions'
 })
 
@@ -805,10 +895,12 @@ function onSecondaryGroupByChange() {
     } else if (!['heatmap', 'grouped_bar'].includes(form.displayMode)) {
       form.displayMode = 'heatmap'
     }
-    if (artifactDimensions.has(form.groupBy) || artifactDimensions.has(form.secondaryGroupBy)) {
-      form.subject = 'artifacts'
-    } else {
-      form.subject = 'missions'
+    if (!form.familyWeight) {
+      if (artifactDimensions.has(form.groupBy) || artifactDimensions.has(form.secondaryGroupBy)) {
+        form.subject = 'artifacts'
+      } else {
+        form.subject = 'ships'
+      }
     }
   } else {
     form.displayMode = form.mode === 'time_series' ? 'line' : 'bar'
@@ -849,9 +941,26 @@ function getOpsForField(field: string): { value: string, label: string }[] {
 
 const groupByOptions = computed(() => {
   if (form.mode === 'time_series') return timeSeriesOption
-  if (form.subject === 'artifacts') return artifactAggregateOptions
+  if (form.subject === 'artifacts') return [...shipMissionAggregateOptions, ...artifactAggregateOptions]
   return shipMissionAggregateOptions
 })
+
+const canNormalizePivotPerLaunch = computed(() => {
+  if (!form.secondaryGroupBy) return false
+  return !artifactDimensions.has(form.groupBy) && !artifactDimensions.has(form.secondaryGroupBy)
+})
+
+const mennoComparableGroupBys = new Set([
+  'ship_type', 'duration_type', 'level', 'mission_target',
+  'artifact_name', 'rarity', 'tier',
+])
+
+const isMennoEligible = computed(() =>
+  form.subject === 'artifacts' &&
+  !!form.secondaryGroupBy &&
+  mennoComparableGroupBys.has(form.groupBy) &&
+  mennoComparableGroupBys.has(form.secondaryGroupBy),
+)
 
 
 const missionFilterFields = [
@@ -875,7 +984,7 @@ const artifactFilterFields = [
 ]
 
 const filterFieldOptions = computed(() => ({
-  mission: form.subject === 'artifacts' ? [] : missionFilterFields,
+  mission: missionFilterFields,
   artifact: form.subject === 'artifacts' ? artifactFilterFields : [],
 }))
 
@@ -904,7 +1013,8 @@ function resetAggregateDisplayAndNormalize() {
     if (!['heatmap', 'grouped_bar'].includes(form.displayMode)) {
       form.displayMode = 'heatmap'
     }
-    if (['launches', 'airtime'].includes(form.normalizeBy)) {
+    const perCellOk = !artifactDimensions.has(form.groupBy) && !artifactDimensions.has(form.secondaryGroupBy)
+    if (['launches', 'airtime'].includes(form.normalizeBy) && !perCellOk) {
       form.normalizeBy = 'none'
     }
   } else {
@@ -932,6 +1042,7 @@ function onSubjectOrModeChange() {
 
 function onSubjectChange() {
   clearFilters()
+  if (form.subject !== 'artifacts') form.familyWeight = ''
   onSubjectOrModeChange()
 }
 
@@ -1005,6 +1116,10 @@ function handleSave() {
       ? JSON.stringify(labelColorsMap.value)
       : '',
     unfilledColor: form.displayMode === 'heatmap' ? (form.unfilledColor || '') : '',
+    familyWeight: form.subject === 'artifacts' ? (form.familyWeight || '') : '',
+    mennoEnabled: isMennoEligible.value ? form.mennoEnabled : false,
+    mennoCompareMode: form.mennoCompareMode || 'side_by_side',
+    minSampleSize: form.displayMode === 'heatmap' && form.secondaryGroupBy ? (form.minSampleSize || 0) : 0,
   }
   emit('saved', def)
   setTimeout(() => { isSaving.value = false }, 4000)
@@ -1031,6 +1146,7 @@ onMounted(async () => {
   const [, accounts] = await Promise.all([
     globalThis.getPossibleTargets().then(v => { possibleTargets.value = v }),
     globalThis.knownAccounts(),
+    globalThis.getFamilyList().then(json => { familyList.value = JSON.parse(json) as FamilyMeta[] }),
   ])
   knownAccountCount.value = accounts.length
   nextTick(() => {

@@ -4,6 +4,20 @@ import type { BackfillStatus, ReportDefinition, ReportResult } from '../types/br
 const reports = ref<ReportDefinition[]>([])
 const backfillStatus = ref<BackfillStatus>({ done: false, progress: 0 })
 
+async function executeMennoComparison(
+  id: string,
+  rawRowLabels: string[],
+  rawColLabels: string[],
+): Promise<ReportResult | null> {
+  const json = await globalThis.executeMennoComparison(
+    id,
+    JSON.stringify(rawRowLabels),
+    JSON.stringify(rawColLabels),
+  )
+  if (!json || json === '{}') return null
+  return JSON.parse(json) as ReportResult
+}
+
 export function useReports() {
   async function loadReports(accountId: string): Promise<void> {
     const json = await globalThis.getAccountReports(accountId)
@@ -64,6 +78,7 @@ export function useReports() {
     updateReport,
     deleteReport,
     executeReport,
+    executeMennoComparison,
     reorderReports,
     refreshBackfillStatus,
   }

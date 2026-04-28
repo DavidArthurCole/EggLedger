@@ -135,9 +135,9 @@ const backfillSegments = computed<ProgressSegment[]>(() => [{
 }])
 
 async function loadAccountReports(id: string) {
-  loadedAccountId.value = id
   await loadReports(id)
   await loadGroups(id)
+  loadedAccountId.value = id
   selectedGroupId.value = null
 }
 
