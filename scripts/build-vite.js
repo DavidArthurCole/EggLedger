@@ -42,15 +42,31 @@ function computeSourceHash() {
   return hash.digest('hex');
 }
 
+const forceRebuild = process.argv.includes('--force');
 const currentHash = computeSourceHash();
 
-if (fs.existsSync(hashFilePath)) {
+function distHasContent() {
+  const distDir = 'www/dist';
+  try {
+    return fs.readdirSync(distDir).length > 0;
+  } catch {
+    return false;
+  }
+}
+
+if (forceRebuild) {
+  console.log('Force rebuild requested.');
+} else if (fs.existsSync(hashFilePath)) {
   const storedHash = fs.readFileSync(hashFilePath, 'utf-8').trim();
   if (storedHash === currentHash) {
-    console.log('Vite sources unchanged. Skipping build.');
-    process.exit(0);
+    if (distHasContent()) {
+      console.log('Vite sources unchanged. Skipping build.');
+      process.exit(0);
+    }
+    console.log('Hash matches but dist is missing or empty. Rebuilding...');
+  } else {
+    console.log('Vite source hash mismatch. Rebuilding...');
   }
-  console.log('Vite source hash mismatch. Rebuilding...');
 } else {
   console.log('Hash file not found. Rebuilding...');
 }
