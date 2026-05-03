@@ -55,16 +55,18 @@
           :stroke-width="strokeWidth"
         />
         <text
+          v-for="(line, li) in seg.labelLines"
+          :key="'line-' + li"
           :x="seg.textX"
-          :y="seg.labelY"
+          :y="seg.labelY + (li - (seg.labelLines.length - 1) / 2) * pctYOffset"
           :text-anchor="seg.anchor"
           dominant-baseline="middle"
           :font-size="fontSize"
           fill="#9ca3af"
-        >{{ seg.shortLabel }}</text>
+        >{{ line }}</text>
         <text
           :x="seg.textX"
-          :y="seg.labelY + pctYOffset"
+          :y="seg.labelY + (seg.labelLines.length + 1) / 2 * pctYOffset"
           :text-anchor="seg.anchor"
           dominant-baseline="middle"
           :font-size="fontSizePct"
@@ -141,6 +143,22 @@ const strokeWidth = computed(() => r.value * 0.0145)
 const MAX_SEGMENTS = 10
 const minLabelSpacing = computed(() => r.value * 0.255)
 const labelClamp = computed(() => r.value * 0.145)
+
+function wrapLabel(label: string, maxChars: number): string[] {
+  if (label.length <= maxChars) return [label]
+  const words = label.split(' ')
+  if (words.length === 1) return [label.slice(0, maxChars - 1).trimEnd() + '…']
+  let line1 = ''
+  let splitIdx = 0
+  for (let wi = 0; wi < words.length; wi++) {
+    const cand = wi === 0 ? words[0] : `${line1} ${words[wi]}`
+    if (cand.length <= maxChars) { line1 = cand; splitIdx = wi + 1 }
+    else break
+  }
+  if (!line1) return [label.slice(0, maxChars - 1).trimEnd() + '…']
+  const rest = words.slice(splitIdx).join(' ')
+  return [line1, rest.length <= maxChars ? rest : rest.slice(0, maxChars - 1).trimEnd() + '…']
+}
 
 function segmentOpacity(i: number): number {
   if (hoveredIndex.value === null) return 1
@@ -269,22 +287,30 @@ const segments = computed(() => {
     const rawLabelX = isRight ? rawElbowX + labelOffsetVal : rawElbowX - labelOffsetVal
     const rawTextX = isRight ? rawLabelX + textXOffVal : rawLabelX - textXOffVal
 
-    // How many characters fit between the text anchor and the viewBox edge
-    const available = isRight ? vwVal - hMargin - rawTextX : rawTextX - hMargin
-    const maxChars = Math.max(4, Math.floor(available / charWidth))
-    const displayLabel = item.label.length > maxChars
-      ? item.label.slice(0, maxChars - 1) + '…'
-      : item.label
-    const displayWidth = displayLabel.length * charWidth
+    // Compute the label's minimum allowed distance from the pie, using the pie's actual
+    // horizontal extent at the label's Y. Labels above/below center get more room because
+    // the pie is narrower there. labelOffsetVal is added as the minimum visual gap, matching
+    // the natural callout gap for non-overflowing labels.
+    const dyFromCenter = rawElbowY - cyVal
+    const pieExtentAtY = Math.abs(dyFromCenter) >= rVal ? 0 : Math.sqrt(rVal * rVal - dyFromCenter * dyFromCenter)
+    const minLabelPosR = cxVal + pieExtentAtY + labelOffsetVal
+    const minLabelPosL = cxVal - pieExtentAtY - labelOffsetVal
+    const maxAvailable = isRight
+      ? vwVal - hMargin - minLabelPosR - textXOffVal
+      : minLabelPosL - textXOffVal - hMargin
+    const maxChars = Math.max(4, Math.floor(maxAvailable / charWidth))
+    const labelLines = wrapLabel(item.label, maxChars)
+    const displayWidth = Math.max(...labelLines.map(l => l.length)) * charWidth
 
-    // If even the truncated label overflows at the natural position, push labelX inward
+    // If the label overflows the viewBox at its natural position, push it inward — but
+    // never past the minimum gap from the pie (preserves visual callout separation).
     let labelX = rawLabelX
     let elbowX = rawElbowX
     if (isRight && rawTextX + displayWidth > vwVal - hMargin) {
-      labelX = vwVal - hMargin - displayWidth - textXOffVal
+      labelX = Math.max(minLabelPosR, vwVal - hMargin - displayWidth - textXOffVal)
       elbowX = Math.min(rawElbowX, labelX)
     } else if (!isRight && rawTextX - displayWidth < hMargin) {
-      labelX = hMargin + displayWidth + textXOffVal
+      labelX = Math.min(minLabelPosL, hMargin + displayWidth + textXOffVal)
       elbowX = Math.max(rawElbowX, labelX)
     }
 
@@ -292,7 +318,7 @@ const segments = computed(() => {
 
     return {
       label: item.label,
-      shortLabel: displayLabel,
+      labelLines,
       value: item.value,
       path: slicePath(startAngle, endAngle),
       color,
@@ -325,9 +351,37 @@ const segments = computed(() => {
     labelYMap[segIdx] = Math.max(clamp, Math.min(vhVal - clamp, rightSpread[sortPos]))
   })
 
-  return raw.map((seg, i) => ({
-    ...seg,
-    labelY: labelYMap[i] ?? seg.rawElbowY,
-  }))
+  return raw.map((seg, i) => {
+    const labelY = labelYMap[i] ?? seg.rawElbowY
+
+    // After spreading, the label may have moved to a Y closer to center where the pie
+    // is wider. Re-check that labelX is outside the pie boundary at the actual labelY.
+    const dy = labelY - cyVal
+    const extentAtY = Math.abs(dy) >= rVal ? 0 : Math.sqrt(rVal * rVal - dy * dy)
+    let { labelX, elbowX, labelLines } = seg
+
+    if (seg.isRight) {
+      const minLabelX = cxVal + extentAtY + labelOffsetVal
+      if (labelX < minLabelX) {
+        labelX = minLabelX
+        elbowX = Math.min(seg.elbowX, labelX)
+        const avail = vwVal - hMargin - minLabelX - textXOffVal
+        const maxC = Math.max(4, Math.floor(avail / charWidth))
+        labelLines = wrapLabel(seg.label, maxC)
+      }
+    } else {
+      const maxLabelX = cxVal - extentAtY - labelOffsetVal
+      if (labelX > maxLabelX) {
+        labelX = maxLabelX
+        elbowX = Math.max(seg.elbowX, labelX)
+        const avail = maxLabelX - textXOffVal - hMargin
+        const maxC = Math.max(4, Math.floor(avail / charWidth))
+        labelLines = wrapLabel(seg.label, maxC)
+      }
+    }
+
+    const textX = seg.isRight ? labelX + textXOffVal : labelX - textXOffVal
+    return { ...seg, labelY, labelX, elbowX, textX, labelLines }
+  })
 })
 </script>

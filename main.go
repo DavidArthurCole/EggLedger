@@ -670,8 +670,7 @@ func main() {
 	})
 
 	ui.MustBind("getDetectedBrowsers", func() []string {
-		lorca.RefreshFoundPaths()
-		return lorca.FoundPaths()
+		return lorca.FindAllBrowsers(prefBrowserPath)
 	})
 
 	ui.MustBind("getPreferredBrowser", func() string {

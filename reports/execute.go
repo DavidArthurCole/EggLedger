@@ -95,6 +95,14 @@ func ExecuteReport(ctx context.Context, def ReportDefinition) (ReportResult, err
 		return ReportResult{}, wrap(err)
 	}
 
+	if def.Mode == "time_series" && len(rawLabels) > 0 {
+		rawLabels, values = fillTimeSeriesGaps(def.TimeBucket, def.CustomBucketUnit, rawLabels, values)
+		labels = make([]string, len(rawLabels))
+		for i, rl := range rawLabels {
+			labels[i] = FormatLabel(def.GroupBy, rl)
+		}
+	}
+
 	if def.NormalizeBy != "" && def.NormalizeBy != "none" && def.Mode == "aggregate" {
 		groupCol := GroupByColumn(def.GroupBy)
 		if groupCol == "" || strings.HasPrefix(groupCol, "d.") {
@@ -447,6 +455,11 @@ func executeTimePivotReport(ctx context.Context, def ReportDefinition, baseWhere
 				matrixValues[r*nC+c] = cells[bucket][grp]
 			}
 		}
+	}
+
+	if nR > 0 {
+		bucketLabels, matrixValues = fillTimePivotGaps(def.TimeBucket, def.CustomBucketUnit, bucketLabels, nC, matrixValues)
+		nR = len(bucketLabels)
 	}
 
 	pctMode := def.NormalizeBy

@@ -70,8 +70,9 @@
             position: 'absolute',
             inset: '0',
           }"
-          @dragover.prevent="dropZoneOverIdx = zi"
-          @dragleave="dropZoneOverIdx = null"
+          @dragenter="onZoneDragEnter(zi)"
+          @dragover.prevent
+          @dragleave="onZoneDragLeave"
           @drop.prevent="onDropToZone(zone)"
         />
       </template>
@@ -296,6 +297,48 @@ interface GridCardPos { col: number; row: number; w: number; h: number; idx: num
 const GRID_COLS = 8
 const GRID_GAP = 12
 
+function clampDims(gridW: number, gridH: number): { w: number; h: number } {
+  return { w: Math.min(Math.max(gridW, 1), GRID_COLS), h: Math.min(Math.max(gridH, 1), 8) }
+}
+
+function markOccupied(occupied: Set<string>, col: number, row: number, w: number, h: number) {
+  for (let rr = row; rr < row + h; rr++)
+    for (let cc = col; cc < col + w; cc++) occupied.add(`${cc},${rr}`)
+}
+
+function cellsFit(occupied: Set<string>, c: number, r: number, w: number, h: number): boolean {
+  for (let rr = r; rr < r + h; rr++)
+    for (let cc = c; cc < c + w; cc++)
+      if (occupied.has(`${cc},${rr}`)) return false
+  return true
+}
+
+// Replicates CSS grid auto-placement (row direction, no dense).
+function findPlacement(occupied: Set<string>, w: number, h: number, col: number, row: number): { col: number; row: number } {
+  let c = col
+  let r = row
+  while (true) {
+    if (c + w - 1 > GRID_COLS) { c = 1; r++ }
+    if (cellsFit(occupied, c, r, w, h)) return { col: c, row: r }
+    c++
+  }
+}
+
+function simulatePlacement(defs: ReportDefinition[]): { col: number; row: number; occupied: Set<string> } {
+  const occupied = new Set<string>()
+  let col = 1
+  let row = 1
+  for (const def of defs) {
+    const { w, h } = clampDims(def.gridW, def.gridH)
+    const pos = findPlacement(occupied, w, h, col, row)
+    col = pos.col
+    row = pos.row
+    markOccupied(occupied, col, row, w, h)
+    col += w
+  }
+  return { col, row, occupied }
+}
+
 function buildOccupancyFromLayout(): { cardPositions: GridCardPos[]; occupied: Set<string> } {
   const cardPositions: GridCardPos[] = []
   const occupied = new Set<string>()
@@ -303,21 +346,12 @@ function buildOccupancyFromLayout(): { cardPositions: GridCardPos[]; occupied: S
   let row = 1
   for (let idx = 0; idx < displayedReports.value.length; idx++) {
     const def = displayedReports.value[idx]
-    const w = Math.min(Math.max(def.gridW, 1), GRID_COLS)
-    const h = Math.min(Math.max(def.gridH, 1), 8)
-    // Replicate CSS grid auto-placement (row direction, no dense)
-    while (true) {
-      if (col + w - 1 > GRID_COLS) { col = 1; row++ }
-      let fits = true
-      for (let rr = row; rr < row + h && fits; rr++)
-        for (let cc = col; cc < col + w && fits; cc++)
-          if (occupied.has(`${cc},${rr}`)) fits = false
-      if (fits) break
-      col++
-    }
+    const { w, h } = clampDims(def.gridW, def.gridH)
+    const pos = findPlacement(occupied, w, h, col, row)
+    col = pos.col
+    row = pos.row
     cardPositions.push({ col, row, w, h, idx })
-    for (let rr = row; rr < row + h; rr++)
-      for (let cc = col; cc < col + w; cc++) occupied.add(`${cc},${rr}`)
+    markOccupied(occupied, col, row, w, h)
     col += w
   }
   return { cardPositions, occupied }
@@ -330,6 +364,26 @@ function zoneInsertAfter(cardPositions: GridCardPos[], targetRow: number, runSta
     if ((cp.row - 1) * GRID_COLS + cp.col < zoneFirst) best = Math.max(best, cp.idx)
   }
   return best
+}
+
+function findInsertIndexForZone(zone: EmptyZone, fromIdx: number): number {
+  const defs = displayedReports.value
+  const draggedDef = defs[fromIdx]
+  if (!draggedDef) return fromIdx
+
+  const withoutDragged = defs.filter((_, i) => i !== fromIdx)
+  const { w: dw, h: dh } = clampDims(draggedDef.gridW, draggedDef.gridH)
+
+  for (let insertPos = 0; insertPos <= withoutDragged.length; insertPos++) {
+    const { col, row, occupied } = simulatePlacement(withoutDragged.slice(0, insertPos))
+    const pos = findPlacement(occupied, dw, dh, col, row)
+    if (pos.col === zone.colStart && pos.row === zone.rowStart) return insertPos
+  }
+
+  // Fallback: use zone.insertAfter
+  let insertAt = zone.insertAfter
+  if (fromIdx <= insertAt) insertAt--
+  return Math.max(insertAt + 1, 0)
 }
 
 function rowEmptyZones(
@@ -365,6 +419,20 @@ function computeEmptyZones() {
   emptyDropZones.value = zones
 }
 
+let _dragleaveTimer: ReturnType<typeof setTimeout> | null = null
+
+function onZoneDragEnter(zi: number) {
+  if (_dragleaveTimer !== null) { clearTimeout(_dragleaveTimer); _dragleaveTimer = null }
+  dropZoneOverIdx.value = zi
+}
+
+function onZoneDragLeave() {
+  _dragleaveTimer = setTimeout(() => {
+    dropZoneOverIdx.value = null
+    _dragleaveTimer = null
+  }, 60)
+}
+
 function onDragStart(index: number, event: DragEvent) {
   draggingIndex.value = index
   if (event.dataTransfer) {
@@ -375,6 +443,7 @@ function onDragStart(index: number, event: DragEvent) {
 }
 
 function onDragEnd() {
+  if (_dragleaveTimer !== null) { clearTimeout(_dragleaveTimer); _dragleaveTimer = null }
   draggingIndex.value = null
   dragOverIndex.value = null
   dropZoneOverIdx.value = null
@@ -382,18 +451,17 @@ function onDragEnd() {
 }
 
 async function onDropToZone(zone: EmptyZone) {
+  if (_dragleaveTimer !== null) { clearTimeout(_dragleaveTimer); _dragleaveTimer = null }
   const from = draggingIndex.value
   draggingIndex.value = null
   dragOverIndex.value = null
   dropZoneOverIdx.value = null
   emptyDropZones.value = []
   if (from === null) return
+  const insertPos = findInsertIndexForZone(zone, from)
   const ids = reports.value.map(r => r.id)
   const [moved] = ids.splice(from, 1)
-  let insertAt = zone.insertAfter
-  if (from <= insertAt) insertAt--
-  insertAt = Math.max(insertAt, -1)
-  ids.splice(insertAt + 1, 0, moved)
+  ids.splice(insertPos, 0, moved)
   await reorderReports(ids)
 }
 
@@ -406,6 +474,12 @@ function onGridDragOver(event: DragEvent) {
 
 function onGridDrop(event: DragEvent) {
   if (draggingIndex.value === null) return
+  // Prefer the last-hovered zone — covers the case where dragleave fired just
+  // before drop due to cursor landing on the gap between zone and card edges.
+  if (dropZoneOverIdx.value !== null) {
+    const zone = emptyDropZones.value[dropZoneOverIdx.value]
+    if (zone) { onDropToZone(zone); return }
+  }
   if ((event.target as Element) === (event.currentTarget as Element)) {
     onDrop(displayedReports.value.length)
   }

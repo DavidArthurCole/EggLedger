@@ -366,6 +366,8 @@ func executeWeightedTimeSeries(ctx context.Context, def ReportDefinition, baseWh
 		floatValues[i] = accum[b]
 	}
 
+	buckets, floatValues = fillTimeSeriesGapsFloat(def.TimeBucket, def.CustomBucketUnit, buckets, floatValues)
+
 	return ReportResult{
 		Labels:      buckets,
 		FloatValues: floatValues,
@@ -448,6 +450,11 @@ func executeWeightedTimePivot(ctx context.Context, def ReportDefinition, baseWhe
 				matrixValues[r*nC+c] = cells[bucket][grp]
 			}
 		}
+	}
+
+	if nR > 0 {
+		bucketLabels, matrixValues = fillTimePivotGaps(def.TimeBucket, def.CustomBucketUnit, bucketLabels, nC, matrixValues)
+		nR = len(bucketLabels)
 	}
 
 	pctMode := def.NormalizeBy
