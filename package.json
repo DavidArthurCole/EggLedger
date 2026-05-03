@@ -29,7 +29,7 @@
     "typecheck": "vue-tsc --noEmit --project www/tsconfig.json"
   },
   "dependencies": {
-    "marked": "^18.0.0",
+    "marked": "^18.0.2",
     "vue": "^3.5.32"
   }
 }
