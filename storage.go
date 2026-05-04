@@ -27,6 +27,7 @@ type AppStorage struct {
 	PreferredChromiumPath      string    `json:"preferred_chromium_path"`
 	BackupDestPath             string    `json:"backup_dest_path"`
 	AutoRefreshMennoPref       bool      `json:"auto_refresh_menno_pref"`
+	MennoContributePref        bool      `json:"menno_contribute_pref"`
 	DefaultResolutionX         int       `json:"default_resolution_x"`
 	DefaultResolutionY         int       `json:"default_resolution_y"`
 	DefaultScalingFactor       float64   `json:"default_scaling_factor"`
@@ -169,6 +170,9 @@ func (s *AppStorage) loadFromDB() {
 	if v, ok := settings["auto_refresh_menno_pref"]; ok {
 		s.AutoRefreshMennoPref, _ = strconv.ParseBool(v)
 	}
+	if v, ok := settings["menno_contribute_pref"]; ok {
+		s.MennoContributePref, _ = strconv.ParseBool(v)
+	}
 	if v, ok := settings["default_resolution_x"]; ok {
 		s.DefaultResolutionX, _ = strconv.Atoi(v)
 	}
@@ -310,6 +314,7 @@ func (s *AppStorage) persistAllToDB() {
 		"preferred_chromium_path":       s.PreferredChromiumPath,
 		"backup_dest_path":              s.BackupDestPath,
 		"auto_refresh_menno_pref":       strconv.FormatBool(s.AutoRefreshMennoPref),
+		"menno_contribute_pref":         strconv.FormatBool(s.MennoContributePref),
 		"default_resolution_x":          strconv.Itoa(s.DefaultResolutionX),
 		"default_resolution_y":          strconv.Itoa(s.DefaultResolutionY),
 		"default_scaling_factor":        strconv.FormatFloat(s.DefaultScalingFactor, 'f', -1, 64),
@@ -416,6 +421,19 @@ func (s *AppStorage) SetAutoRefreshMennoPref(flag bool) {
 	s.AutoRefreshMennoPref = flag
 	s.Unlock()
 	go s.dbSet("auto_refresh_menno_pref", strconv.FormatBool(flag))
+}
+
+func (s *AppStorage) GetMennoContributePref() bool {
+	s.Lock()
+	defer s.Unlock()
+	return s.MennoContributePref
+}
+
+func (s *AppStorage) SetMennoContributePref(flag bool) {
+	s.Lock()
+	s.MennoContributePref = flag
+	s.Unlock()
+	go s.dbSet("menno_contribute_pref", strconv.FormatBool(flag))
 }
 
 func (s *AppStorage) SetDefaultResolution(x, y int) {

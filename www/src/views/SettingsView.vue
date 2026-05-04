@@ -414,6 +414,17 @@
           />
           <label for="autoRefreshMennoCheckbox" class="ext-opt-label">Automatically refresh Menno data once weekly</label>
         </div>
+        <div class="flex items-center gap-2 mt-2">
+          <input
+            id="menno-contribute-pref"
+            type="checkbox"
+            :checked="mennoContributePref"
+            @change="onContributeToggle"
+          />
+          <label for="menno-contribute-pref" class="text-sm cursor-pointer select-none">
+            Contribute my drop data to Menno's database
+          </label>
+        </div>
         <div v-if="autoRefreshMenno" class="mt-0_5rem text-xs text-gray-500 italic">
           <span v-if="nextWeeklyRefreshString">Next run after {{ nextWeeklyRefreshString }}</span>
           <span v-else>Will run on next launch</span>
@@ -532,6 +543,37 @@
         </div>
       </div>
     </div>
+
+    <dialog
+      ref="consentDialogRef"
+      class="rounded-lg border border-gray-600 bg-gray-800 text-gray-100 p-6 max-w-md w-full shadow-2xl backdrop:bg-black/50"
+      @cancel.prevent="cancelConsent"
+    >
+      <h3 class="text-base font-semibold mb-4">Contribute Drop Data</h3>
+      <div class="space-y-3 text-sm text-gray-300 mb-6">
+        <p>Opt in to contribute your past ship's drops to Menno's drop data collection tool.</p>
+        <p>All drop rates shown in Artifact Explorer come from data submitted to this tool. Opt-in to help improve this data.</p>
+        <p>
+          If you consent to the study, your EID will be sent to a tool run by Menno to pull down your
+          past missions and collect drop data. Your EID will not be stored, only the drop data from
+          your missions.
+        </p>
+      </div>
+      <div class="flex justify-end gap-3">
+        <button
+          class="px-4 py-2 rounded text-sm bg-gray-700 hover:bg-gray-600 transition-colors"
+          @click="cancelConsent"
+        >
+          Cancel
+        </button>
+        <button
+          class="px-4 py-2 rounded text-sm bg-blue-600 hover:bg-blue-500 transition-colors font-medium"
+          @click="agreeConsent"
+        >
+          I Agree
+        </button>
+      </div>
+    </dialog>
   </div>
 </template>
 
@@ -575,6 +617,9 @@ const {
   open: openPrefBrowserDropdown,
   close: closePrefBrowserDropdown,
 } = useDropdownSelector((pref) => { setPreferredBrowser(pref) })
+
+const mennoContributePref = ref(false)
+const consentDialogRef = ref<HTMLDialogElement | null>(null)
 
 const storagePath = ref('')
 const storageFolderHidden = ref(true)
@@ -733,12 +778,35 @@ async function onManualRefresh(e: Event) {
   await refresh()
 }
 
+function onContributeToggle(event: Event) {
+  const checked = (event.target as HTMLInputElement).checked
+  if (checked) {
+    mennoContributePref.value = false
+    consentDialogRef.value?.showModal()
+  } else {
+    mennoContributePref.value = false
+    globalThis.setMennoContributePref(false)
+  }
+}
+
+function agreeConsent() {
+  mennoContributePref.value = true
+  globalThis.setMennoContributePref(true)
+  consentDialogRef.value?.close()
+}
+
+function cancelConsent() {
+  mennoContributePref.value = false
+  consentDialogRef.value?.close()
+}
+
 onMounted(async () => {
   globalThis.addEventListener('resize', onResize)
   await loadSettings()
   await refreshBrowserList()
   await checkRefreshNeeded()
   workerCountWarningRead.value = (await globalThis.workerCountWarningRead()) ?? false
+  mennoContributePref.value = await globalThis.getMennoContributePref()
   storagePath.value = (await globalThis.getStoragePath()) ?? ''
   backupDestPath.value = (await globalThis.getBackupDestPath()) ?? ''
   cloudAutoSync.value = (await globalThis.getCloudAutoSync()) ?? false

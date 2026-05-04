@@ -422,6 +422,9 @@ declare global {
   function secondsSinceLastMennoUpdate(): Promise<number>
   function loadMennoData(): Promise<boolean>
   function getMennoData(ship: number, shipDuration: number, shipLevel: number, targetArtifact: number): Promise<ConfigurationItem[]>
+  function getMennoContributePref(): Promise<boolean>
+  function setMennoContributePref(flag: boolean): Promise<void>
+  var onMennoContributionSuccess: () => void
 
   // Reports
   function createReport(defJSON: string): Promise<string>

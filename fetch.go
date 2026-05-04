@@ -265,7 +265,8 @@ func runFetchPipeline(w *worker, playerId string) {
 		missionLabelByID[mission.GetIdentifier()] = label
 	}
 
-	total := len(newMissionIds)
+	newCount := len(newMissionIds)
+	total := newCount
 	finished := 0
 	failed := 0
 	retried := 0
@@ -517,6 +518,15 @@ func runFetchPipeline(w *worker, playerId string) {
 
 	runProc.SetSegment("Export", "done")
 	pinfo("done.")
+	if newCount > 0 && _storage.GetMennoContributePref() {
+		go func() {
+			submitCtx, cancelSubmit := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancelSubmit()
+			if err := submitEidToMenno(submitCtx, playerId); err == nil {
+				_ui.Eval(`globalThis.onMennoContributionSuccess()`)
+			}
+		}()
+	}
 	updateState(AppState_SUCCESS)
 }
 

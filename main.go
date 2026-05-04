@@ -1258,6 +1258,13 @@ func main() {
 
 	ui.MustBind("getMennoData", handleGetMennoData)
 
+	ui.MustBind("getMennoContributePref", func() bool {
+		return _storage.GetMennoContributePref()
+	})
+	ui.MustBind("setMennoContributePref", func(flag bool) {
+		_storage.SetMennoContributePref(flag)
+	})
+
 	ui.MustBind("executeMennoComparison", func(reportId, rawRowLabelsJSON, rawColLabelsJSON string) string {
 		return handleExecuteMennoComparison(reportId, rawRowLabelsJSON, rawColLabelsJSON)
 	})
