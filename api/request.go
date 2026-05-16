@@ -3,7 +3,9 @@
 package api
 
 import (
+	"bytes"
 	"compress/gzip"
+	"compress/zlib"
 	"context"
 	"encoding/base64"
 	"fmt"
@@ -162,7 +164,18 @@ func DecodeAPIResponse(apiUrl string, payload []byte, msg proto.Message, authent
 			err = fmt.Errorf("unmarshaling %s response as AuthenticatedMessage (%#v): %w", apiUrl, string(payload), err)
 			return interpretUnmarshalError(err)
 		}
-		err = proto.Unmarshal(authMsg.Message, msg)
+		msgBytes := authMsg.Message
+		if authMsg.GetCompressed() {
+			zr, zErr := zlib.NewReader(bytes.NewReader(msgBytes))
+			if zErr != nil {
+				return fmt.Errorf("opening zlib reader for AuthenticatedMessage payload in %s: %w", apiUrl, zErr)
+			}
+			msgBytes, zErr = io.ReadAll(zr)
+			if zErr != nil {
+				return fmt.Errorf("decompressing AuthenticatedMessage payload in %s: %w", apiUrl, zErr)
+			}
+		}
+		err = proto.Unmarshal(msgBytes, msg)
 		if err != nil {
 			err = fmt.Errorf("unmarshaling AuthenticatedMessage payload in %s response (%#v): %w", apiUrl, string(payload), err)
 			return interpretUnmarshalError(err)
