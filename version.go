@@ -146,14 +146,21 @@ func getLatestTagIncludingPreReleases() (string, string, error) {
 	return highestTag, highestBody, nil
 }
 
-// expectedAssetName returns the expected binary name for the current platform.
-// e.g. "EggLedger_windows_amd64.exe" or "EggLedger_darwin_arm64"
+// expectedAssetName returns the release asset filename for the current platform.
 func expectedAssetName() string {
-	name := fmt.Sprintf("EggLedger_%s_%s", runtime.GOOS, runtime.GOARCH)
-	if runtime.GOOS == "windows" {
-		name += ".exe"
+	switch runtime.GOOS {
+	case "windows":
+		return "EggLedger.exe"
+	case "linux":
+		return "EggLedger-linux.tar.gz"
+	case "darwin":
+		if runtime.GOARCH == "arm64" {
+			return "EggLedger-mac-arm64.zip"
+		}
+		return "EggLedger-mac.zip"
+	default:
+		return fmt.Sprintf("EggLedger_%s_%s", runtime.GOOS, runtime.GOARCH)
 	}
-	return name
 }
 
 // getUpdateAssetURL fetches the GitHub releases API for the given tag and returns

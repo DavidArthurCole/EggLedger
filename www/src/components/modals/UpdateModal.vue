@@ -17,12 +17,18 @@
           class="text-left flex-1 bg-darkerer overflow-auto gh-markdown-content max-h-60vh p-1rem rounded-md"
           v-html="renderedNotes"
         ></div>
-        <div class="mt-1rem flex-auto justify-center items-center">
-          <a v-external-link class="items-center justify-center text-gray-200 hover:text-gray-300" href="https://github.com/DavidArthurCole/EggLedger/releases/latest">
-            <button class="min-w-30vw btn btn-outline-dark p-0_5rem pr-2rem pl-2rem rounded-md bg-blue-500 border-blue-600 hover:bg-blue-600 hover:border-blue-700">
-              Download
-            </button>
-          </a>
+        <div class="mt-1rem flex-auto justify-center items-center space-y-2">
+          <div v-if="updateInProgress" class="text-sm text-blue-300">
+            Downloading<span v-if="updateProgress.total > 0"> - {{ Math.round(updateProgress.downloaded / updateProgress.total * 100) }}%</span>...
+          </div>
+          <p v-if="updateError" class="text-sm text-red-400">{{ updateError }}</p>
+          <button
+            v-if="!updateInProgress"
+            class="min-w-30vw btn btn-outline-dark p-0_5rem pr-2rem pl-2rem rounded-md bg-blue-500 border-blue-600 hover:bg-blue-600 hover:border-blue-700"
+            @click="startUpdate"
+          >
+            Update Now
+          </button>
         </div>
       </div>
     </div>
@@ -30,7 +36,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { marked } from 'marked'
 
 const props = defineProps<{
@@ -42,4 +48,23 @@ const props = defineProps<{
 defineEmits<{ close: [] }>()
 
 const renderedNotes = computed(() => marked.parse(props.releaseNotes || '') as string)
+
+const updateInProgress = ref(false)
+const updateProgress = ref({ downloaded: 0, total: 0 })
+const updateError = ref('')
+
+async function startUpdate() {
+  if (!props.releaseTag) return
+  updateInProgress.value = true
+  updateError.value = ''
+  globalThis.updateDownloadProgress = (downloaded, total) => {
+    updateProgress.value = { downloaded, total }
+  }
+  try {
+    await globalThis.downloadAndInstallUpdate(props.releaseTag)
+  } catch (e: unknown) {
+    updateError.value = e instanceof Error ? e.message : String(e)
+    updateInProgress.value = false
+  }
+}
 </script>
