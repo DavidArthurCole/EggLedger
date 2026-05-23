@@ -67,8 +67,8 @@ func cleanStaleUpdateBinaries() {
 	exeDir := filepath.Dir(self)
 
 	patterns := []string{
-		filepath.Join(exeDir, "EggLedger_*_new"),
-		filepath.Join(exeDir, "EggLedger_*_new.exe"),
+		filepath.Join(exeDir, "EggLedger*_new"),
+		filepath.Join(exeDir, "EggLedger*_new.exe"),
 	}
 	for _, pattern := range patterns {
 		matches, err := filepath.Glob(pattern)
