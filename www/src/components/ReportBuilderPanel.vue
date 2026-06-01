@@ -308,7 +308,7 @@
             <select
               id="rb-value-filter-op"
               v-model="form.valueFilterOp"
-              class="text-xs bg-darker border border-gray-700 rounded px-1 py-1 text-gray-300 focus:outline-none focus:border-indigo-500 w-20"
+              class="rb-control w-24"
             >
               <option value="">Off</option>
               <option value=">">&gt;</option>
@@ -323,7 +323,7 @@
               v-model.number="form.valueFilterThreshold"
               type="number"
               step="any"
-              class="text-xs bg-darker border border-gray-700 rounded px-2 py-1 text-gray-300 focus:outline-none focus:border-indigo-500 flex-1 min-w-0"
+              class="rb-control flex-1 min-w-0"
               placeholder="0"
             />
           </div>
@@ -349,9 +349,11 @@
             :and-conditions="andConditions"
             :filter-field-options="filterFieldOptions"
             :possible-targets="possibleTargets"
+            :drop-options="dropOptions"
             @remove="removeAndCondition"
             @update="updateAndCondition"
             @field-change="onFieldChange"
+            @open-drop-picker="openAndDropPicker"
           />
 
           <!-- OR Groups -->
@@ -373,10 +375,10 @@
                   @click="removeOrGroup(gIdx)"
                 >Remove</button>
               </div>
-              <div v-for="(_cond, cIdx) in group" :key="cIdx" class="flex gap-1 mb-1">
+              <div v-for="(_cond, cIdx) in group" :key="cIdx" class="flex flex-wrap items-center gap-2.5 mb-1.5">
                 <select
                   :value="orGroups[gIdx][cIdx].topLevel"
-                  class="text-xs bg-darker border border-gray-700 rounded px-1 py-1 text-gray-300 focus:outline-none flex-1"
+                  class="rb-control flex-1"
                   @change="updateOrCondition(gIdx, cIdx, { topLevel: ($event.target as HTMLSelectElement).value, op: '', val: '' })"
                 >
                   <option value="">Field...</option>
@@ -389,14 +391,14 @@
                 </select>
                 <template v-if="isBoolField(orGroups[gIdx][cIdx].topLevel)">
                   <select
-                    class="text-xs bg-darker border border-gray-700 rounded px-1 py-1 text-gray-300 focus:outline-none w-14 opacity-60 cursor-not-allowed"
+                    class="rb-control w-14 opacity-60 cursor-not-allowed"
                     disabled
                   >
                     <option>is</option>
                   </select>
                   <select
                     :value="orGroups[gIdx][cIdx].op"
-                    class="text-xs bg-darker border border-gray-700 rounded px-1 py-1 text-gray-300 focus:outline-none"
+                    class="rb-control"
                     @change="updateOrCondition(gIdx, cIdx, { op: ($event.target as HTMLSelectElement).value })"
                   >
                     <option value="true">True</option>
@@ -406,24 +408,33 @@
                 <template v-else>
                   <select
                     :value="orGroups[gIdx][cIdx].op"
-                    class="text-xs bg-darker border border-gray-700 rounded px-1 py-1 text-gray-300 focus:outline-none w-14"
+                    class="rb-control w-14"
                     :disabled="getOpsForField(orGroups[gIdx][cIdx].topLevel).length <= 1"
                     :class="getOpsForField(orGroups[gIdx][cIdx].topLevel).length <= 1 ? 'opacity-60 cursor-not-allowed' : ''"
                     @change="updateOrCondition(gIdx, cIdx, { op: ($event.target as HTMLSelectElement).value })"
                   >
                     <option v-for="op in getOpsForField(orGroups[gIdx][cIdx].topLevel)" :key="op.value" :value="op.value">{{ op.label }}</option>
                   </select>
+                  <button
+                    v-if="orGroups[gIdx][cIdx].topLevel === 'drops'"
+                    type="button"
+                    class="rb-control hover:border-blue-500 flex-1 min-w-0 text-left"
+                    :class="dropColorClass(orGroups[gIdx][cIdx].val)"
+                    @click="openOrDropPicker(gIdx, cIdx, $event)"
+                  >
+                    {{ orDropLabel(orGroups[gIdx][cIdx].val) }}
+                  </button>
                   <input
-                    v-if="isDateField(orGroups[gIdx][cIdx].topLevel)"
+                    v-else-if="isDateField(orGroups[gIdx][cIdx].topLevel)"
                     :value="orGroups[gIdx][cIdx].val"
                     type="date"
-                    class="text-xs bg-darker border border-gray-700 rounded px-2 py-1 text-gray-300 focus:outline-none flex-1 min-w-0"
+                    class="rb-control flex-1 min-w-0"
                     @input="updateOrCondition(gIdx, cIdx, { val: ($event.target as HTMLInputElement).value })"
                   />
                   <select
                     v-else-if="valueOptionsForField(orGroups[gIdx][cIdx].topLevel).length > 0"
                     :value="orGroups[gIdx][cIdx].val"
-                    class="text-xs bg-darker border border-gray-700 rounded px-2 py-1 text-gray-300 focus:outline-none flex-1 min-w-0"
+                    class="rb-control flex-1 min-w-0"
                     @change="updateOrCondition(gIdx, cIdx, { val: ($event.target as HTMLSelectElement).value })"
                   >
                     <option v-for="opt in valueOptionsForField(orGroups[gIdx][cIdx].topLevel)" :key="opt.value" :value="opt.value">{{ opt.text }}</option>
@@ -432,7 +443,7 @@
                     v-else
                     :value="orGroups[gIdx][cIdx].val"
                     type="text"
-                    class="text-xs bg-darker border border-gray-700 rounded px-2 py-1 text-gray-300 focus:outline-none flex-1 min-w-0"
+                    class="rb-control flex-1 min-w-0"
                     @input="updateOrCondition(gIdx, cIdx, { val: ($event.target as HTMLInputElement).value })"
                   />
                 </template>
@@ -631,6 +642,18 @@
         </div>
       </div>
     </div>
+
+    <SearchOverSelector
+      v-if="dropPickerOpen"
+      placement="side"
+      :anchor="dropPickerAnchor"
+      :item-list="dropPickerList"
+      ledger-type="drop"
+      :is-lifetime="false"
+      @close="closeDropPicker"
+      @select="onSelectDrop"
+      @input="(val: string) => dropPickerSearch = val"
+    />
   </div>
 </template>
 
@@ -645,7 +668,11 @@ import {
   getMissionFilterValueOptions,
   getTargetFilterOptions,
   getArtifactFilterValueOptions,
+  getDropFilterOptions,
 } from '../utils/filterOptions'
+import type { FilterOption } from '../utils/filterOptions'
+import { useSharedConfigs } from '../composables/useSharedConfigs'
+import SearchOverSelector from './SearchOverSelector.vue'
 
 const props = defineProps<{
   accountId: string
@@ -685,6 +712,77 @@ const knownAccountCount = ref(0)
 const hoverW = ref(0)
 const hoverH = ref(0)
 const labelColorsMap = ref<Record<string, string>>({})
+
+const { artifactConfigs, maxQuality, loadSharedConfigs } = useSharedConfigs()
+
+const dropOptions = computed<FilterOption[]>(() =>
+  getDropFilterOptions(artifactConfigs.value, maxQuality.value, true),
+)
+
+const dropPickerOpen = ref(false)
+const dropPickerSearch = ref('')
+const dropPickerTarget = ref<{ kind: 'and', index: number } | { kind: 'or', gIdx: number, cIdx: number } | null>(null)
+const dropPickerAnchor = ref<{ left: number, right: number, cy: number } | null>(null)
+
+const dropPickerList = computed<FilterOption[]>(() => {
+  const term = dropPickerSearch.value.toLowerCase()
+  if (!term) return dropOptions.value
+  return dropOptions.value.filter(o => o.text.toLowerCase().includes(term))
+})
+
+function anchorFromEvent(ev: MouseEvent): { left: number, right: number, cy: number } {
+  const r = (ev.currentTarget as HTMLElement).getBoundingClientRect()
+  return { left: r.left, right: r.right, cy: r.top + r.height / 2 }
+}
+
+function openAndDropPicker(index: number, ev: MouseEvent) {
+  dropPickerTarget.value = { kind: 'and', index }
+  dropPickerAnchor.value = anchorFromEvent(ev)
+  dropPickerSearch.value = ''
+  dropPickerOpen.value = true
+}
+
+function openOrDropPicker(gIdx: number, cIdx: number, ev: MouseEvent) {
+  dropPickerTarget.value = { kind: 'or', gIdx, cIdx }
+  dropPickerAnchor.value = anchorFromEvent(ev)
+  dropPickerSearch.value = ''
+  dropPickerOpen.value = true
+}
+
+function closeDropPicker() {
+  dropPickerOpen.value = false
+  dropPickerTarget.value = null
+  dropPickerAnchor.value = null
+  dropPickerSearch.value = ''
+}
+
+function onSelectDrop(drop: FilterOption) {
+  const t = dropPickerTarget.value
+  if (t === null) return
+  if (t.kind === 'and') {
+    updateAndCondition(t.index, { val: String(drop.value) })
+  } else {
+    updateOrCondition(t.gIdx, t.cIdx, { val: String(drop.value) })
+  }
+  closeDropPicker()
+}
+
+function orDropLabel(val: string): string {
+  if (!val) return 'Select drop...'
+  const found = dropOptions.value.find(o => o.value === val)
+  return found ? found.text : 'Select drop...'
+}
+
+// Rarity color for a selected drop, parsed from the composite value
+// (name_level_rarity_quality), matching the main filter.
+function dropColorClass(val: string): string {
+  switch (val.split('_')[2]) {
+    case '1': return 'text-rarity-1'
+    case '2': return 'text-rarity-2'
+    case '3': return 'text-rarity-3'
+    default: return ''
+  }
+}
 
 function cellClass(c: number, r: number): string {
   const confirmed = c <= form.gridW && r <= form.gridH
@@ -908,6 +1006,12 @@ function onSecondaryGroupByChange() {
 }
 
 function getOpsForField(field: string): { value: string, label: string }[] {
+  if (field === 'drops') {
+    return [
+      { value: 'c', label: 'contains' },
+      { value: 'dnc', label: 'does not contain' },
+    ]
+  }
   if (dateFields.has(field)) {
     return [
       { value: '=', label: 'on' },
@@ -973,6 +1077,7 @@ const missionFilterFields = [
   { value: 'returnDT', label: 'Return Date' },
   { value: 'dubcap', label: 'Dub cap' },
   { value: 'buggedcap', label: 'Bugged cap' },
+  { value: 'drops', label: 'Drops' },
 ]
 
 const artifactFilterFields = [
@@ -1002,7 +1107,9 @@ function valueOptionsForField(topLevel: string) {
 }
 
 function onFieldChange(index: number, field: string) {
-  const defaultOp = isBoolField(field) ? 'true' : '='
+  let defaultOp = '='
+  if (isBoolField(field)) defaultOp = 'true'
+  else if (field === 'drops') defaultOp = 'c'
   const opts = valueOptionsForField(field)
   const defaultVal = opts.length > 0 ? String(opts[0].value) : ''
   updateAndCondition(index, { topLevel: field, op: defaultOp, val: defaultVal })
@@ -1147,6 +1254,7 @@ onMounted(async () => {
     globalThis.getPossibleTargets().then(v => { possibleTargets.value = v }),
     globalThis.knownAccounts(),
     globalThis.getFamilyList().then(json => { familyList.value = JSON.parse(json) as FamilyMeta[] }),
+    loadSharedConfigs(),
   ])
   knownAccountCount.value = accounts.length
   nextTick(() => {

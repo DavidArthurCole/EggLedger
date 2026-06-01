@@ -129,18 +129,15 @@ func RetrieveCompleteMission(ctx context.Context, playerId string, missionId str
 	var startTimestamp float64
 	var compressedPayload []byte
 	err := DoDBOperation(ctx, func(ctx context.Context, db *sql.DB) error {
-		return transact(ctx, action, func(tx *sql.Tx) error {
-			row := tx.QueryRowContext(ctx, `SELECT start_timestamp, complete_payload FROM mission
-				WHERE player_id = ? AND mission_id = ?;`, playerId, missionId)
-			err := row.Scan(&startTimestamp, &compressedPayload)
-			switch {
-			case err == sql.ErrNoRows:
-				// No such mission
-			case err != nil:
-				return err
-			}
-			return nil
-		})
+		// Read-only single-row lookup on the fetch hot path: query directly
+		// rather than opening a write-capable transaction.
+		row := db.QueryRowContext(ctx, `SELECT start_timestamp, complete_payload FROM mission
+			WHERE player_id = ? AND mission_id = ?;`, playerId, missionId)
+		err := row.Scan(&startTimestamp, &compressedPayload)
+		if err != nil && err != sql.ErrNoRows {
+			return err
+		}
+		return nil
 	})
 	if err != nil {
 		return nil, err
@@ -156,7 +153,9 @@ func RetrieveCompleteMission(ctx context.Context, playerId string, missionId str
 	if err != nil {
 		return nil, errors.Wrap(err, action)
 	}
-	m.Info.StartTimeDerived = &startTimestamp
+	if m.Info != nil {
+		m.Info.StartTimeDerived = &startTimestamp
+	}
 	return m, nil
 }
 
@@ -203,7 +202,9 @@ func RetrievePlayerCompleteMissions(ctx context.Context, playerId string) ([]*ei
 		if derr != nil {
 			return nil, errors.Wrap(derr, action)
 		}
-		m.Info.StartTimeDerived = &startTimestamps[i]
+		if m.Info != nil {
+			m.Info.StartTimeDerived = &startTimestamps[i]
+		}
 		missions = append(missions, m)
 	}
 	return missions, nil
@@ -238,7 +239,9 @@ func RetrievePlayerCompleteMissionsStream(ctx context.Context, playerId string, 
 				if err != nil {
 					return err
 				}
-				m.Info.StartTimeDerived = &ts
+				if m.Info != nil {
+					m.Info.StartTimeDerived = &ts
+				}
 				if err := cb(m); err != nil {
 					return err
 				}
@@ -282,7 +285,7 @@ func RetrievePlayerCompleteMissionIds(ctx context.Context, playerId string) ([]s
 // RetrievePlayerMissionStats returns the mission count and the maximum
 // return_timestamp (Unix seconds, 0 if no missions exist) for a player.
 // A single query replaces the two separate calls previously used by
-// handleGetExistingData.
+// missionquery.GetExistingData.
 func RetrievePlayerMissionStats(ctx context.Context, playerId string) (count int, maxReturnTS float64, err error) {
 	action := fmt.Sprintf("retrieve mission stats for player %s from database", playerId)
 	err = DoDBOperation(ctx, func(ctx context.Context, db *sql.DB) error {
@@ -599,25 +602,29 @@ func ResolvePendingMissionTypes(ctx context.Context, playerId string, progressFn
 // idempotent - re-runs (e.g. from the backfill goroutine) are safe with no extra checks.
 // For missions with zero drops, inserts a sentinel row (drop_index = -1) to mark the
 // mission as backfill-complete.
+// artifactDropInsertSQL inserts one drop row. artifactDropSentinelSQL inserts the
+// zero-drop sentinel (drop_index = -1, excluded by the report engine).
+const artifactDropInsertSQL = `INSERT OR IGNORE INTO artifact_drops(mission_id, player_id, drop_index, artifact_id, spec_type, level, rarity, quality)
+	 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+const artifactDropSentinelSQL = `INSERT OR IGNORE INTO artifact_drops(mission_id, player_id, drop_index, artifact_id, spec_type, level, rarity, quality)
+	 VALUES (?, ?, -1, 0, '', 0, 0, 0)`
+
 func InsertArtifactDrops(ctx context.Context, playerId, missionId string, drops []ArtifactDropRow) error {
 	action := fmt.Sprintf("insert artifact drops for mission %s player %s", missionId, playerId)
 	return DoDBOperation(ctx, func(ctx context.Context, db *sql.DB) error {
 		return transact(ctx, action, func(tx *sql.Tx) error {
 			if len(drops) == 0 {
-				// Sentinel: marks mission as backfill-complete with zero drops.
-				// drop_index = -1 is excluded by the report engine (d.drop_index >= 0).
-				_, err := tx.ExecContext(ctx,
-					`INSERT OR IGNORE INTO artifact_drops(mission_id, player_id, drop_index, artifact_id, spec_type, level, rarity, quality)
-					 VALUES (?, ?, -1, 0, '', 0, 0, 0)`,
-					missionId, playerId)
+				_, err := tx.ExecContext(ctx, artifactDropSentinelSQL, missionId, playerId)
 				return err
 			}
+			stmt, err := tx.PrepareContext(ctx, artifactDropInsertSQL)
+			if err != nil {
+				return err
+			}
+			defer stmt.Close()
 			for _, d := range drops {
-				_, err := tx.ExecContext(ctx,
-					`INSERT OR IGNORE INTO artifact_drops(mission_id, player_id, drop_index, artifact_id, spec_type, level, rarity, quality)
-					 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-					missionId, playerId, d.DropIndex, d.ArtifactId, d.SpecType, d.Level, d.Rarity, d.Quality)
-				if err != nil {
+				if _, err := stmt.ExecContext(ctx,
+					missionId, playerId, d.DropIndex, d.ArtifactId, d.SpecType, d.Level, d.Rarity, d.Quality); err != nil {
 					return err
 				}
 			}
@@ -642,23 +649,29 @@ func InsertArtifactDropsBatch(ctx context.Context, sets []MissionDropSet) error 
 	action := fmt.Sprintf("batch insert artifact drops (%d missions)", len(sets))
 	return DoDBOperation(ctx, func(ctx context.Context, db *sql.DB) error {
 		return transact(ctx, action, func(tx *sql.Tx) error {
+			// Prepare both statements once for the whole batch (potentially many
+			// thousands of rows) instead of re-parsing the SQL per row.
+			insertStmt, err := tx.PrepareContext(ctx, artifactDropInsertSQL)
+			if err != nil {
+				return err
+			}
+			defer insertStmt.Close()
+			sentinelStmt, err := tx.PrepareContext(ctx, artifactDropSentinelSQL)
+			if err != nil {
+				return err
+			}
+			defer sentinelStmt.Close()
+
 			for _, s := range sets {
 				if len(s.Drops) == 0 {
-					_, err := tx.ExecContext(ctx,
-						`INSERT OR IGNORE INTO artifact_drops(mission_id, player_id, drop_index, artifact_id, spec_type, level, rarity, quality)
-						 VALUES (?, ?, -1, 0, '', 0, 0, 0)`,
-						s.MissionId, s.PlayerId)
-					if err != nil {
+					if _, err := sentinelStmt.ExecContext(ctx, s.MissionId, s.PlayerId); err != nil {
 						return err
 					}
 					continue
 				}
 				for _, d := range s.Drops {
-					_, err := tx.ExecContext(ctx,
-						`INSERT OR IGNORE INTO artifact_drops(mission_id, player_id, drop_index, artifact_id, spec_type, level, rarity, quality)
-						 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-						s.MissionId, s.PlayerId, d.DropIndex, d.ArtifactId, d.SpecType, d.Level, d.Rarity, d.Quality)
-					if err != nil {
+					if _, err := insertStmt.ExecContext(ctx,
+						s.MissionId, s.PlayerId, d.DropIndex, d.ArtifactId, d.SpecType, d.Level, d.Rarity, d.Quality); err != nil {
 						return err
 					}
 				}

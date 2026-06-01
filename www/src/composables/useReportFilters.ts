@@ -52,9 +52,11 @@ export function useReportFilters() {
   }
 
   function toReportFilters(): ReportFilters {
+    const keep = (c: ReportFilterCondition) =>
+      c.topLevel !== '' && c.op !== '' && !(c.topLevel === 'drops' && c.val === '')
     return {
-      and: andConditions.value.filter(c => c.topLevel !== '' && c.op !== ''),
-      or: orGroups.value.map(g => g.filter(c => c.topLevel !== '' && c.op !== '')),
+      and: andConditions.value.filter(keep),
+      or: orGroups.value.map(g => g.filter(keep)),
     }
   }
 

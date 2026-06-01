@@ -23,6 +23,31 @@ export interface GroupedArrays {
   day: GroupedDay[][][]
 }
 
+// Nested year -> month -> day -> missions map.
+type DateMap = Map<number, Map<number, Map<number, DatabaseMission[]>>>
+
+// Top-level helpers keep the year/month/day map-chains out of the computed,
+// so no callback nests deeper than the lint threshold.
+function sortedDaysForYearMonths(uniqueYears: number[], uniqueMonthsArr: number[][], dateMap: DateMap): number[][][] {
+  return uniqueYears.map((y, yi) =>
+    uniqueMonthsArr[yi].map((mo) => [...dateMap.get(y)!.get(mo)!.keys()].sort((a, b) => b - a)),
+  )
+}
+
+function buildDayEnabledArr(uniqueDaysArr: number[][][], collapse: boolean): GroupedDay[][][] {
+  return uniqueDaysArr.map((year, yi) =>
+    year.map((month) => month.map((day) => ({ day, enabled: !collapse || yi === 0 }))),
+  )
+}
+
+function buildMissionMatrix(uniqueYears: number[], uniqueMonthsArr: number[][], uniqueDaysArr: number[][][], dateMap: DateMap): DatabaseMission[][][][] {
+  return uniqueYears.map((y, yi) =>
+    uniqueMonthsArr[yi].map((mo, mi) =>
+      uniqueDaysArr[yi][mi].map((da) => [...dateMap.get(y)!.get(mo)!.get(da)!].reverse()),
+    ),
+  )
+}
+
 export function useMissionListGrouping(
   tabFilteredMissions: Ref<DatabaseMission[] | null>,
   ledgerDate: (timestamp: number) => Date,
@@ -35,7 +60,7 @@ export function useMissionListGrouping(
   // Single O(N) pass: group missions year -> month -> day rather than repeated filter scans.
   // groupedArrays is updated alongside groupedMissions to reset expand-collapse state
   // when filters change. The assignment below is an intentional side effect.
-  // eslint-disable-next-line sonarjs/cognitive-complexity
+   
   const groupedMissions = computed(() => {
     const fm = tabFilteredMissions.value
     if (fm == null || fm.length === 0) return [] as DatabaseMission[][][][]
@@ -57,29 +82,21 @@ export function useMissionListGrouping(
 
     const uniqueYears = [...dateMap.keys()].sort((a, b) => b - a)
     const uniqueMonthsArr = uniqueYears.map((y) => [...dateMap.get(y)!.keys()].sort((a, b) => b - a))
-    const uniqueDaysArr = uniqueYears.map((y, yi) =>
-      uniqueMonthsArr[yi].map((mo) => [...dateMap.get(y)!.get(mo)!.keys()].sort((a, b) => b - a)),
-    )
+    const uniqueDaysArr = sortedDaysForYearMonths(uniqueYears, uniqueMonthsArr, dateMap)
 
     const collapse = collapseOlderSections.value
-    // eslint-disable-next-line vue/no-side-effects-in-computed-properties
+
     groupedArrays.value.year = uniqueYears.map((year, yi) => ({ year, enabled: !collapse || yi === 0 }))
-    // eslint-disable-next-line vue/no-side-effects-in-computed-properties
+
     groupedArrays.value.month = uniqueMonthsArr.map((months, yi) =>
       months.map((month) => ({ month, enabled: !collapse || yi === 0 })),
     )
-    // eslint-disable-next-line vue/no-side-effects-in-computed-properties
-    groupedArrays.value.day = uniqueDaysArr.map((year, yi) =>
-      year.map((month) => month.map((day) => ({ day, enabled: !collapse || yi === 0 }))),
-    )
-    // eslint-disable-next-line vue/no-side-effects-in-computed-properties
+
+    groupedArrays.value.day = buildDayEnabledArr(uniqueDaysArr, collapse)
+
     allVisible.value = !collapse || uniqueYears.length <= 1
 
-    return uniqueYears.map((y, yi) =>
-      uniqueMonthsArr[yi].map((mo, mi) =>
-        uniqueDaysArr[yi][mi].map((da) => [...dateMap.get(y)!.get(mo)!.get(da)!].reverse()),
-      ),
-    )
+    return buildMissionMatrix(uniqueYears, uniqueMonthsArr, uniqueDaysArr, dateMap)
   })
 
   function isDayRowVisible(yearIndex: number, monthIndex: number, dayIndex: number): boolean {

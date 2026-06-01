@@ -1,5 +1,7 @@
 <template>
     <img v-if="targetImageResult !== null"
+         loading="lazy"
+         decoding="async"
          :src="targetImageResult[0]"
          :alt="targetImageResult[1]"
          class="target-ico" />

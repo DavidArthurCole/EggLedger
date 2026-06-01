@@ -1,4 +1,4 @@
-import type { PossibleTarget } from '../types/bridge'
+import type { PossibleTarget, PossibleArtifact } from '../types/bridge'
 
 export interface FilterOption {
   text: string
@@ -6,6 +6,7 @@ export interface FilterOption {
   styleClass?: string
   imagePath?: string
   rarity?: number
+  rarityGif?: string
 }
 
 const SHIP_NAMES = [
@@ -111,4 +112,92 @@ export function getArtifactFilterValueOptions(topLevel: string): FilterOption[] 
     case 'artifact_spec_type': return getArtifactSpecTypeFilterOptions()
     default: return []
   }
+}
+
+function artifactDisplayText(artifact: PossibleArtifact): string {
+  const displayName = artifact.displayName
+  const level = artifact.level
+  let displayText = displayName
+  if (String(level) !== '%') {
+    const isStoneNotFragment =
+      displayName.toLowerCase().includes('stone') &&
+      !displayName.toLowerCase().includes('fragment')
+    displayText += ' (T' + (Number(level) + (isStoneNotFragment ? 2 : 1)) + ')'
+  }
+  return displayText
+}
+
+function dropPath(drop: PossibleArtifact): string {
+  const addendum = drop.protoName.includes('_STONE') ? 1 : 0
+  const fixedName = drop.protoName
+    .replaceAll('_FRAGMENT', '')
+    .replaceAll('ORNATE_GUSSET', 'GUSSET')
+    .replaceAll('VIAL_MARTIAN_DUST', 'VIAL_OF_MARTIAN_DUST')
+  return 'artifacts/' + fixedName + '/' + fixedName + '_' + (drop.level + 1 + addendum) + '.png'
+}
+
+function dropRarityPath(drop: PossibleArtifact): string {
+  switch (drop.rarity) {
+    case 1: return 'images/rare.gif'
+    case 2: return 'images/epic.gif'
+    case 3: return 'images/legendary.gif'
+    default: return ''
+  }
+}
+
+// eslint-disable-next-line sonarjs/cognitive-complexity
+export function getDropFilterOptions(
+  artifactConfigs: PossibleArtifact[],
+  maxQuality: number,
+  advanced: boolean,
+): FilterOption[] {
+  const artifactList = artifactConfigs.filter((a) => a.baseQuality <= maxQuality)
+
+  const result: FilterOption[] = [
+    { text: 'Any Rare', value: '%_%_1_%', rarity: 1, styleClass: 'text-rare', imagePath: 'icon_help.webp' },
+    { text: 'Any Epic', value: '%_%_2_%', rarity: 2, styleClass: 'text-epic', imagePath: 'icon_help.webp' },
+    { text: 'Any Legendary', value: '%_%_3_%', rarity: 3, styleClass: 'text-legendary', imagePath: 'icon_help.webp' },
+  ]
+
+  const byFamily = new Map<number, Map<number, PossibleArtifact[]>>()
+  for (const a of artifactList) {
+    if (!byFamily.has(a.name)) byFamily.set(a.name, new Map())
+    const byTier = byFamily.get(a.name)!
+    if (!byTier.has(a.level)) byTier.set(a.level, [])
+    byTier.get(a.level)!.push(a)
+  }
+
+  for (const [familyId, tierMap] of byFamily) {
+    if (advanced) {
+      const firstArtifact = [...tierMap.values()][0][0]
+      result.push({
+        text: firstArtifact.displayName + ' (Any)',
+        value: familyId + '_%_%_%',
+        rarity: 0,
+        imagePath: dropPath(firstArtifact),
+      })
+    }
+    for (const [tierLevel, rarities] of tierMap) {
+      if (advanced && rarities.some((a) => a.rarity > 0)) {
+        const tierRep = rarities.find((a) => a.rarity === 0) ?? rarities[0]
+        result.push({
+          text: artifactDisplayText(rarities[0]) + ' (Any Rarity)',
+          value: familyId + '_' + tierLevel + '_%_%',
+          rarity: 0,
+          imagePath: dropPath(tierRep),
+        })
+      }
+      for (const a of rarities) {
+        result.push({
+          text: artifactDisplayText(a),
+          value: a.name + '_' + a.level + '_' + a.rarity + '_' + a.baseQuality,
+          rarity: a.rarity,
+          imagePath: dropPath(a),
+          rarityGif: dropRarityPath(a),
+        })
+      }
+    }
+  }
+
+  return result
 }

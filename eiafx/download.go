@@ -47,8 +47,28 @@ func tryDownloadRaw(url, cacheFile string, validate func([]byte) error) {
 		log.Warnf("eiafx: creating cache dir: %v", err)
 		return
 	}
-	if err := os.WriteFile(cacheFile, body, 0644); err != nil {
-		log.Warnf("eiafx: writing cache file: %v", err)
+	// Write to a unique temp file then rename, so an interrupted or concurrent
+	// download can never leave a partially-written (corrupt) cache file.
+	tmp, err := os.CreateTemp(filepath.Dir(cacheFile), filepath.Base(cacheFile)+".*.tmp")
+	if err != nil {
+		log.Warnf("eiafx: creating temp cache file: %v", err)
+		return
+	}
+	tmpName := tmp.Name()
+	if _, err := tmp.Write(body); err != nil {
+		tmp.Close()
+		_ = os.Remove(tmpName)
+		log.Warnf("eiafx: writing temp cache file: %v", err)
+		return
+	}
+	if err := tmp.Close(); err != nil {
+		_ = os.Remove(tmpName)
+		log.Warnf("eiafx: closing temp cache file: %v", err)
+		return
+	}
+	if err := os.Rename(tmpName, cacheFile); err != nil {
+		_ = os.Remove(tmpName)
+		log.Warnf("eiafx: renaming cache file into place: %v", err)
 		return
 	}
 	log.Infof("eiafx: cache refreshed at %s", cacheFile)

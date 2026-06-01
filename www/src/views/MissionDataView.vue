@@ -211,7 +211,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useAppState } from '../composables/useAppState'
 import { useMennoData } from '../composables/useMennoData'
 import { useFetch } from '../composables/useFetch'
@@ -446,24 +446,30 @@ function openMultiMissionOverlay() {
 
 // Fetch mission + view logic
 
+// Monotonic token so that if two loads overlap (e.g. an account switch races a
+// fetch-complete refresh) only the most recent one commits its result.
+let missionLoadToken = 0
 async function loadMissions(id: string) {
+  const myToken = ++missionLoadToken
   clearFilter()
   filterApplyTime.value = ''
   multiViewFreeSelectIds.value = []
   eidMissionsBeingLoaded.value = true
-  allLoadedMissions.value = await globalThis.viewMissionsOfEid(id)
-  filteredMissions.value = allLoadedMissions.value
+  const result = await globalThis.viewMissionsOfEid(id)
+  if (myToken !== missionLoadToken) return // superseded by a newer load
+  allLoadedMissions.value = result
+  filteredMissions.value = result
   loadedEid.value = id
   eidMissionsBeingLoaded.value = false
 }
 
 watch(activeAccountId, (id) => {
-  if (id) void loadMissions(id)
+  if (id) loadMissions(id)
 }, { immediate: true })
 
 watch(appState, (val) => {
   if (val === AppState.Success && activeAccountId.value) {
-    void loadMissions(activeAccountId.value)
+    loadMissions(activeAccountId.value)
   }
 })
 
@@ -605,27 +611,9 @@ async function viewRowOfMissions(missionIds: string[]) {
   rowViewBeingLoaded.value = false
 }
 
-function openUrl(url: string) {
-  globalThis.openURL(url)
-}
-
-function formatShortDate(date: Date): string {
-  const y = date.getFullYear()
-  const m = String(date.getMonth() + 1).padStart(2, '0')
-  const d = String(date.getDate()).padStart(2, '0')
-  return `${y}-${m}-${d}`
-}
-
-function properCaseTarget(target: string): string {
-  return target
-    .toLowerCase()
-    .replaceAll('_', ' ')
-    .split(' ')
-    .map((w, i) => (i > 0 && (w === 'of' || w === 'the') ? w : w.charAt(0).toUpperCase() + w.slice(1)))
-    .join(' ')
-}
-
 // Lifecycle
+
+const clickDetectListeners: { element: Element; handler: (event: Event) => void }[] = []
 
 onMounted(async () => {
   filterWarningRead.value = (await globalThis.filterWarningRead()) ?? false
@@ -654,7 +642,7 @@ onMounted(async () => {
   document.querySelectorAll('.top-click-detect').forEach((topElement) => {
     const innerEl = topElement.querySelector('.inner-click-detect')
     if (!innerEl) return
-    topElement.addEventListener('click', (event) => {
+    const handler = (event: Event) => {
       if (innerEl.classList.contains('hidden')) return
       const divRect = innerEl.getBoundingClientRect()
       const me = event as MouseEvent
@@ -667,7 +655,16 @@ onMounted(async () => {
         const trigger = innerEl.querySelector('.detect-trigger') as HTMLElement | null
         trigger?.click()
       }
-    })
+    }
+    topElement.addEventListener('click', handler)
+    clickDetectListeners.push({ element: topElement, handler })
   })
+})
+
+onUnmounted(() => {
+  for (const { element, handler } of clickDetectListeners) {
+    element.removeEventListener('click', handler)
+  }
+  clickDetectListeners.length = 0
 })
 </script>

@@ -93,10 +93,6 @@
             },
             ledgerType: String,
             lifetimeShowPerShip: Boolean,
-            mennoMissionData: {
-                type: Object as PropType<Record<string, unknown>>,
-                default: null,
-            },
             showExpectedDrops: Boolean,
             useContainers: {
                 type: Boolean,

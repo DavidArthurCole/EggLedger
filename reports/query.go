@@ -13,14 +13,12 @@ func BuildWhereClause(filters ReportFilters, _ string) (string, []interface{}) {
 	var args []interface{}
 
 	addCond := func(c FilterCondition) {
-		clause, arg, hasArg := conditionToSQL(c)
+		clause, cargs := conditionToSQL(c)
 		if clause == "" {
 			return
 		}
 		clauses = append(clauses, clause)
-		if hasArg {
-			args = append(args, arg)
-		}
+		args = append(args, cargs...)
 	}
 
 	for _, c := range filters.And {
@@ -30,14 +28,12 @@ func BuildWhereClause(filters ReportFilters, _ string) (string, []interface{}) {
 	for _, group := range filters.Or {
 		var orParts []string
 		for _, c := range group {
-			clause, arg, hasArg := conditionToSQL(c)
+			clause, cargs := conditionToSQL(c)
 			if clause == "" {
 				continue
 			}
 			orParts = append(orParts, clause)
-			if hasArg {
-				args = append(args, arg)
-			}
+			args = append(args, cargs...)
 		}
 		if len(orParts) > 0 {
 			clauses = append(clauses, "("+strings.Join(orParts, " OR ")+")")
@@ -68,60 +64,80 @@ var artifactFieldToColumn = map[string]string{
 	"artifact_quality":   "d.quality",
 }
 
-func conditionToSQL(c FilterCondition) (clause string, arg interface{}, hasArg bool) {
+func conditionToSQL(c FilterCondition) (clause string, args []interface{}) {
 	switch c.TopLevel {
 	case "dubcap":
 		if c.Op == "true" {
-			return "m.is_dub_cap = 1", nil, false
+			return "m.is_dub_cap = 1", nil
 		}
-		return "m.is_dub_cap = 0", nil, false
+		return "m.is_dub_cap = 0", nil
 	case "buggedcap":
 		if c.Op == "true" {
-			return "m.is_bugged_cap = 1", nil, false
+			return "m.is_bugged_cap = 1", nil
 		}
-		return "m.is_bugged_cap = 0", nil, false
+		return "m.is_bugged_cap = 0", nil
 	case "drops":
-		if c.Op == "c" {
-			return "EXISTS (SELECT 1 FROM artifact_drops WHERE mission_id = m.mission_id AND player_id = m.player_id AND artifact_id = ?)", c.Val, true
+		if c.Op != "c" && c.Op != "dnc" {
+			return "", nil
 		}
+		if c.Val == "" {
+			return "", nil
+		}
+		parts := strings.Split(c.Val, "_")
+		// composite is name_level_rarity_quality; quality (index 3) is ignored.
+		cols := []string{"artifact_id", "level", "rarity"}
+		var preds []string
+		var qargs []interface{}
+		for i, col := range cols {
+			if i >= len(parts) || parts[i] == "%" || parts[i] == "" {
+				continue
+			}
+			preds = append(preds, "AND "+col+" = ?")
+			qargs = append(qargs, parts[i])
+		}
+		inner := "SELECT 1 FROM artifact_drops WHERE mission_id = m.mission_id AND player_id = m.player_id"
+		for _, p := range preds {
+			inner += " " + p
+		}
+		exists := "EXISTS (" + inner + ")"
 		if c.Op == "dnc" {
-			return "NOT EXISTS (SELECT 1 FROM artifact_drops WHERE mission_id = m.mission_id AND player_id = m.player_id AND artifact_id = ?)", c.Val, true
+			exists = "NOT " + exists
 		}
-		return "", nil, false
+		return exists, qargs
 	}
 
 	if c.TopLevel == "launchDT" || c.TopLevel == "returnDT" {
 		col := missionFieldToColumn[c.TopLevel]
 		switch c.Op {
 		case ">", "<", ">=", "<=":
-			return fmt.Sprintf("%s %s strftime('%%s', ?)", col, c.Op), c.Val, true
+			return fmt.Sprintf("%s %s strftime('%%s', ?)", col, c.Op), []interface{}{c.Val}
 		case "=", "d=":
-			return fmt.Sprintf("%s = strftime('%%s', ?)", col), c.Val, true
+			return fmt.Sprintf("%s = strftime('%%s', ?)", col), []interface{}{c.Val}
 		}
-		return "", nil, false
+		return "", nil
 	}
 
 	if col, ok := missionFieldToColumn[c.TopLevel]; ok {
 		switch c.Op {
 		case "=", "!=", ">", "<", ">=", "<=":
-			return fmt.Sprintf("%s %s ?", col, c.Op), c.Val, true
+			return fmt.Sprintf("%s %s ?", col, c.Op), []interface{}{c.Val}
 		}
-		return "", nil, false
+		return "", nil
 	}
 
 	if col, ok := artifactFieldToColumn[c.TopLevel]; ok {
 		switch c.Op {
 		case "=", "!=", ">", "<", ">=", "<=":
-			return fmt.Sprintf("%s %s ?", col, c.Op), c.Val, true
+			return fmt.Sprintf("%s %s ?", col, c.Op), []interface{}{c.Val}
 		case "c":
-			return fmt.Sprintf("%s LIKE ?", col), "%" + c.Val + "%", true
+			return fmt.Sprintf("%s LIKE ?", col), []interface{}{"%" + c.Val + "%"}
 		case "dnc":
-			return fmt.Sprintf("%s NOT LIKE ?", col), "%" + c.Val + "%", true
+			return fmt.Sprintf("%s NOT LIKE ?", col), []interface{}{"%" + c.Val + "%"}
 		}
-		return "", nil, false
+		return "", nil
 	}
 
-	return "", nil, false
+	return "", nil
 }
 
 // GroupByColumn maps a groupBy dimension to its SQL column expression.

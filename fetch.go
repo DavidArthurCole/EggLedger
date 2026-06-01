@@ -16,6 +16,10 @@ import (
 	"golang.org/x/sync/semaphore"
 
 	"github.com/DavidArthurCole/EggLedger/db"
+	"github.com/DavidArthurCole/EggLedger/export"
+	"github.com/DavidArthurCole/EggLedger/missionpacking"
+	"github.com/DavidArthurCole/EggLedger/storage"
+	"github.com/DavidArthurCole/EggLedger/util"
 )
 
 type worker struct {
@@ -115,7 +119,7 @@ func runFetchPipeline(w *worker, playerId string) {
 	backup := fc.GetBackup()
 	nickname := backup.GetUserName()
 	eb := backup.GetEarningsBonus()
-	roleColor, roleString, ebAddendum, eb, precision := RoleFromEB(eb)
+	roleColor, roleString, ebAddendum, eb, precision := util.RoleFromEB(eb)
 	ebString := fmt.Sprintf(fmt.Sprintf("%%.%df", precision), eb) + ebAddendum
 
 	msg := fmt.Sprintf("successfully fetched backup for &7a7a7a<%s>", playerId)
@@ -126,7 +130,7 @@ func runFetchPipeline(w *worker, playerId string) {
 	runProc.SetSegment("Save", "done")
 
 	game := backup.GetGame()
-	seSuffix := AbbreviateFloat(game.GetSoulEggsD())
+	seSuffix := util.AbbreviateFloat(game.GetSoulEggsD())
 	peCount := int(game.GetEggsOfProphecy())
 	totalTE := 0
 	if virtue := backup.GetVirtue(); virtue != nil {
@@ -146,7 +150,7 @@ func runFetchPipeline(w *worker, playerId string) {
 
 	lastBackupTime := backup.GetSettings().GetLastBackupTime()
 	if lastBackupTime != 0 {
-		t := unixToTime(lastBackupTime)
+		t := util.UnixToTime(lastBackupTime)
 		now := time.Now()
 		if t.After(now) {
 			t = now
@@ -156,9 +160,9 @@ func runFetchPipeline(w *worker, playerId string) {
 	} else {
 		perror("backup is from unknown time")
 	}
-	_storage.AddKnownAccount(Account{Id: playerId, Nickname: nickname, EBString: ebString, AccountColor: roleColor, SeString: seSuffix, PeCount: peCount, TeCount: totalTE})
+	_storage.AddKnownAccount(storage.Account{Id: playerId, Nickname: nickname, EBString: ebString, AccountColor: roleColor, SeString: seSuffix, PeCount: peCount, TeCount: totalTE})
 	_storage.Lock()
-	accountsCopy := make([]Account, len(_storage.KnownAccounts))
+	accountsCopy := make([]storage.Account, len(_storage.KnownAccounts))
 	copy(accountsCopy, _storage.KnownAccounts)
 	_storage.Unlock()
 	_updateKnownAccounts(accountsCopy)
@@ -227,7 +231,6 @@ func runFetchPipeline(w *worker, playerId string) {
 	// One-time backfill pass: populate migration-6 filter columns (ship,
 	// duration_type, level, etc.) for any cached missions that predate this
 	// feature. Decodes locally stored payloads - no API calls.
-	_nominalShipCapacitiesOnce.Do(initNominalShipCapacities)
 	pendingFilterCols, pfcErr := db.CountPendingFilterCols(context.Background(), playerId)
 	if pfcErr != nil {
 		log.Error(pfcErr)
@@ -241,7 +244,7 @@ func runFetchPipeline(w *worker, playerId string) {
 		resolved, resErr := db.ResolvePendingFilterCols(
 			context.Background(),
 			playerId,
-			computeMissionFilterCols,
+			missionpacking.ComputeMissionFilterCols,
 			func(done, total int) {
 				_updateMissionProgress(MissionProgress{
 					Total:              total,
@@ -282,15 +285,20 @@ func runFetchPipeline(w *worker, playerId string) {
 			currentMissionMu.Lock()
 			label := currentMission
 			currentMissionMu.Unlock()
+			// total is mutated under failureMu during the retry phase while this
+			// runs from the finishedCh consumer goroutine, so read it under lock.
+			failureMu.Lock()
+			t := total
+			failureMu.Unlock()
 			wc := _storage.GetWorkerCount()
-			remainingBatches := (total - finished + wc - 1) / wc
+			remainingBatches := (t - finished + wc - 1) / wc
 			_updateMissionProgress(MissionProgress{
-				Total:                   total,
+				Total:                   t,
 				Finished:                finished,
 				Failed:                  failedCount,
 				Retried:                 retriedCount,
-				FinishedPercentage:      fmt.Sprintf("%.1f%%", float64(finished)/float64(total)*100),
-				ExpectedFinishTimestamp: timeToUnix(time.Now().Add(time.Duration(remainingBatches) * _requestInterval)),
+				FinishedPercentage:      fmt.Sprintf("%.1f%%", float64(finished)/float64(t)*100),
+				ExpectedFinishTimestamp: util.TimeToUnix(time.Now().Add(time.Duration(remainingBatches) * _requestInterval)),
 				CurrentMission:          label,
 			})
 		}
@@ -325,14 +333,14 @@ func runFetchPipeline(w *worker, playerId string) {
 			}
 			batchEnd := min(i+workerCount, total)
 			currentMissionMu.Lock()
-			currentMission = fmt.Sprintf("%s · %s", missionLabelByID[newMissionIds[i]], unixToTime(newMissionStartTimestamps[i]).Format("2006-01-02"))
+			currentMission = fmt.Sprintf("%s · %s", missionLabelByID[newMissionIds[i]], util.UnixToTime(newMissionStartTimestamps[i]).Format("2006-01-02"))
 			currentMissionMu.Unlock()
 			for j := i; j < batchEnd; j++ {
 				id := newMissionIds[j]
 				ts := newMissionStartTimestamps[j]
 				wg.Add(1)
 				go fetchOneMission(w.ctx, playerId, id, ts,
-					id, fmt.Sprintf("%s · %s", missionLabelByID[id], unixToTime(ts).Format("2006-01-02")),
+					id, fmt.Sprintf("%s · %s", missionLabelByID[id], util.UnixToTime(ts).Format("2006-01-02")),
 					_storage.GetHideTimeoutErrors(), perror,
 					func() {
 						failureMu.Lock()
@@ -356,19 +364,23 @@ func runFetchPipeline(w *worker, playerId string) {
 			perror(fmt.Sprintf("%d of %d missions failed to fetch", errored, total))
 
 			if tryFailedAgain {
-				errored = 0
-				retried = len(failedMissions)
 				pinfo("retrying failed missions")
 
+				// retried and total are read by the finishedCh consumer goroutine
+				// (via reportProgress), so mutate them under failureMu.
+				failureMu.Lock()
+				errored = 0
+				retried = len(failedMissions)
 				// Update the total to include the number of failed missions
 				total += len(failedMissions)
+				failureMu.Unlock()
 
 				for _, fm := range failedMissions {
 					id := fm.missionId
 					ts := fm.startTimestamp
 					wg.Add(1)
 					go fetchOneMission(w.ctx, playerId, id, ts,
-						id+"-retry", fmt.Sprintf("%s · %s (retry)", missionLabelByID[id], unixToTime(ts).Format("2006-01-02")),
+						id+"-retry", fmt.Sprintf("%s · %s (retry)", missionLabelByID[id], util.UnixToTime(ts).Format("2006-01-02")),
 						_storage.GetHideTimeoutErrors(), perror,
 						func() {
 							failureMu.Lock()
@@ -408,9 +420,9 @@ func runFetchPipeline(w *worker, playerId string) {
 		updateState(AppState_FAILED)
 		return
 	}
-	var exportMissions []*mission
+	var exportMissions []*export.Mission
 	for _, m := range completeMissions {
-		exportMissions = append(exportMissions, newMission(m))
+		exportMissions = append(exportMissions, export.NewMission(m))
 	}
 	if checkInterrupt() {
 		return
@@ -425,15 +437,15 @@ func runFetchPipeline(w *worker, playerId string) {
 
 	// Determine the last exported pair of xlsx and csv for future comparison.
 	filenamePattern := regexp.QuoteMeta(playerId) + `\.\d{8}_\d{6}`
-	lastExportedXlsxFile, err := findLastMatchingFile(exportDir, filenamePattern+`\.xlsx`)
+	lastExportedXlsxFile, err := export.FindLastMatchingFile(exportDir, filenamePattern+`\.xlsx`)
 	if err != nil {
 		log.Errorf("error locating last exported .xlsx file: %s", err)
 	}
-	lastExportedCsvFile, err := findLastMatchingFile(exportDir, filenamePattern+`\.csv`)
+	lastExportedCsvFile, err := export.FindLastMatchingFile(exportDir, filenamePattern+`\.csv`)
 	if err != nil {
 		log.Errorf("error locating last exported .csv file: %s", err)
 	}
-	if filenameWithoutExt(lastExportedXlsxFile) != filenameWithoutExt(lastExportedCsvFile) {
+	if export.FilenameWithoutExt(lastExportedXlsxFile) != export.FilenameWithoutExt(lastExportedCsvFile) {
 		// If the xlsx and csv files aren't a pair, just leave them alone.
 		lastExportedXlsxFile = ""
 		lastExportedCsvFile = ""
@@ -444,7 +456,7 @@ func runFetchPipeline(w *worker, playerId string) {
 	xlsxFile := ""
 	if _storage.GetAutoExportXlsx() {
 		xlsxFile = filepath.Join(exportDir, playerId+"."+filenameTimestamp+".xlsx")
-		if err := exportMissionsToXlsx(exportMissions, xlsxFile); err != nil {
+		if err := export.MissionsToXlsx(exportMissions, xlsxFile); err != nil {
 			perror(err)
 			updateState(AppState_FAILED)
 			return
@@ -457,7 +469,7 @@ func runFetchPipeline(w *worker, playerId string) {
 	csvFile := ""
 	if _storage.GetAutoExportCsv() {
 		csvFile = filepath.Join(exportDir, playerId+"."+filenameTimestamp+".csv")
-		if err := exportMissionsToCsv(exportMissions, csvFile); err != nil {
+		if err := export.MissionsToCsv(exportMissions, csvFile); err != nil {
 			perror(err)
 			updateState(AppState_FAILED)
 			return
@@ -470,7 +482,7 @@ func runFetchPipeline(w *worker, playerId string) {
 	// Dedup only applies when both types were written this run.
 	exportsUnchanged := xlsxFile != "" && csvFile != "" &&
 		lastExportedXlsxFile != "" && lastExportedCsvFile != "" && func() bool {
-		xlsxUnchanged, err := cmpZipFiles(xlsxFile, lastExportedXlsxFile)
+		xlsxUnchanged, err := export.CmpZipFiles(xlsxFile, lastExportedXlsxFile)
 		if err != nil {
 			log.Error(err)
 			return false
@@ -478,7 +490,7 @@ func runFetchPipeline(w *worker, playerId string) {
 		if !xlsxUnchanged {
 			return false
 		}
-		csvUnchanged, err := cmpFiles(csvFile, lastExportedCsvFile)
+		csvUnchanged, err := export.CmpFiles(csvFile, lastExportedCsvFile)
 		if err != nil {
 			log.Error(err)
 			return false
@@ -510,7 +522,7 @@ func runFetchPipeline(w *worker, playerId string) {
 	_updateExportedFiles(exportedPaths)
 
 	if keepCount := _storage.GetExportKeepCount(); keepCount > 0 {
-		if _, _, pruneErr := pruneExportsForPlayer(_exportsDir, playerId, keepCount); pruneErr != nil {
+		if _, _, pruneErr := export.PruneForPlayer(_exportsDir, playerId, keepCount); pruneErr != nil {
 			log.Errorf("post-fetch prune for %s: %s", playerId, pruneErr)
 		}
 	}

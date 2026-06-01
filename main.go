@@ -27,13 +27,22 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/DavidArthurCole/EggLedger/api"
+	"github.com/DavidArthurCole/EggLedger/cloudsync"
 	"github.com/DavidArthurCole/EggLedger/db"
 	"github.com/DavidArthurCole/EggLedger/ei"
 	"github.com/DavidArthurCole/EggLedger/eiafx"
+	"github.com/DavidArthurCole/EggLedger/export"
 	"github.com/DavidArthurCole/EggLedger/ledgerdata"
+	"github.com/DavidArthurCole/EggLedger/menno"
+	"github.com/DavidArthurCole/EggLedger/missionpacking"
+	"github.com/DavidArthurCole/EggLedger/missionquery"
 	"github.com/DavidArthurCole/EggLedger/platform"
+	"github.com/DavidArthurCole/EggLedger/processlog"
 	"github.com/DavidArthurCole/EggLedger/reportdb"
 	"github.com/DavidArthurCole/EggLedger/reports"
+	"github.com/DavidArthurCole/EggLedger/storage"
+	"github.com/DavidArthurCole/EggLedger/update"
+	"github.com/DavidArthurCole/EggLedger/util"
 	"github.com/davidarthurcole/lorca"
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
@@ -63,30 +72,32 @@ var (
 	// /private/var/folders/<...>/<...>/T/AppTranslocation/<UUID>/d/internal
 	_appIsTranslocated bool
 
-	_devMode               = os.Getenv("DEV_MODE") != ""
-	_eiAfxConfigMissions   []*ei.ArtifactsConfigurationResponse_MissionParameters
-	_eiAfxConfigArtis      []*ei.ArtifactsConfigurationResponse_ArtifactParameters
-	_nominalShipCapacities = map[ei.MissionInfo_Spaceship]map[ei.MissionInfo_DurationType][]float32{}
-	_latestMennoData       = MennoData{}
-	_possibleTargets       = []PossibleTarget{}
-	_possibleArtifacts     = []PossibleArtifact{}
+	_devMode             = os.Getenv("DEV_MODE") != ""
+	_eiAfxConfigMissions []*ei.ArtifactsConfigurationResponse_MissionParameters
+	_eiAfxConfigArtis    []*ei.ArtifactsConfigurationResponse_ArtifactParameters
+	_possibleTargets     = []PossibleTarget{}
+	_possibleArtifacts   = []PossibleArtifact{}
 
 	_forceMennoRefresh bool
-	_forceUpdateCheck  bool
 	_debugCompression  bool
 	_launchedBrowser   string
 
-	_processRegistry             *ProcessRegistry
-	_updateKnownAccounts         func([]Account)
+	_storage storage.AppStorage
+
+	_processRegistry             *processlog.ProcessRegistry
+	_updateKnownAccounts         func([]storage.Account)
 	_updateState                 func(AppState)
 	_updateMissionProgress       func(MissionProgress)
-	_updateMennoDownloadProgress func(MennoDownloadProgress)
+	_updateMennoDownloadProgress func(menno.MennoDownloadProgress)
 	_updateExportedFiles         func([]string)
 	_emitMessage                 func(string, bool)
 
-	_nominalShipCapacitiesOnce sync.Once
-	_possibleTargetsOnce       sync.Once
-	_possibleArtifactsOnce     sync.Once
+	_onDiscordAuthComplete  func(connected bool, username string)
+	_onCloudSyncComplete    func(success bool, errMsg string)
+	_onCloudRestoreComplete func(success bool, errMsg string)
+
+	_possibleTargetsOnce   sync.Once
+	_possibleArtifactsOnce sync.Once
 )
 
 const (
@@ -120,6 +131,44 @@ func (u UI) pushJSON(fn string, data any) {
 	u.Eval(fmt.Sprintf("window.%s(%s)", fn, encoded))
 }
 
+// updateHost adapts the main process's capabilities to the update.Host interface,
+// supplying the few main-package symbols the update package depends on.
+type updateHost struct{ ui UI }
+
+func (h updateHost) Eval(js string) { h.ui.Eval(js) }
+
+func (h updateHost) Close() { h.ui.Close() }
+
+func (h updateHost) EmitMessage(m string, e bool) { _emitMessage(m, e) }
+
+func (h updateHost) AppVersion() string { return strings.TrimSpace(_appVersion) }
+
+func (h updateHost) IsTranslocated() bool { return _appIsTranslocated }
+
+func (h updateHost) UpdateCheckSnapshot() (time.Time, string, string) {
+	_storage.Lock()
+	defer _storage.Unlock()
+	return _storage.LastUpdateCheckAt, _storage.KnownLatestVersion, _storage.KnownLatestReleaseNotes
+}
+
+func (h updateHost) SetUpdateCheck(tag, notes string) { _storage.SetUpdateCheck(tag, notes) }
+
+type mennoHost struct{}
+
+func (mennoHost) InternalDir() string { return _internalDir }
+
+func (mennoHost) ForceRefresh() bool { return _forceMennoRefresh }
+
+func (mennoHost) AutoRefreshPref() bool { return _storage.AutoRefreshMennoPref }
+
+func (mennoHost) LastRefreshAt() time.Time {
+	_storage.Lock()
+	defer _storage.Unlock()
+	return _storage.LastMennoDataRefreshAt
+}
+
+func (mennoHost) SetLastRefreshAt(t time.Time) { _storage.SetLastMennoDataRefreshAt(t) }
+
 type AppState string
 
 const (
@@ -138,15 +187,6 @@ type ExportedFile struct {
 	Count    int    `json:"count"`
 	DateTime string `json:"datetime"`
 	EID      string `json:"eid"`
-}
-
-type DatabaseAccount struct {
-	Id                  string  `json:"id"`
-	Nickname            string  `json:"nickname"`
-	MissionCount        int     `json:"missionCount"`
-	EBString            string  `json:"ebString"`
-	AccountColor        string  `json:"accountColor"`
-	LastMissionReturnDT float64 `json:"lastMissionReturnDT"`
 }
 
 type PossibleTarget struct {
@@ -211,10 +251,10 @@ func init() {
 	}
 	log.Infof("root dir: %s", _rootDir)
 
-	_dataRootDir = resolveDataRootDir(_rootDir)
-	_internalDir = resolveInternalDir(_rootDir)
-	_exportsDir = resolveExportsDir(_rootDir)
-	_logsDir = resolveLogsDir(_rootDir)
+	_dataRootDir = storage.ResolveDataRootDir(_rootDir)
+	_internalDir = storage.ResolveInternalDir(_rootDir)
+	_exportsDir = storage.ResolveExportsDir(_rootDir)
+	_logsDir = storage.ResolveLogsDir(_rootDir)
 
 	// Make sure the app isn't located in the system/user app directory or
 	// downloads dir.
@@ -289,78 +329,7 @@ func init() {
 	}
 
 	dataInit()
-	storageInit()
-}
-
-func initNominalShipCapacities() {
-	//Loop through ships, for each duration, get the capacity - generate the capacities for each level with capacity + (cap increase * level)
-	for _, mission := range eiafx.Config.MissionParameters {
-		durations := mission.GetDurations()
-		_nominalShipCapacities[mission.GetShip()] = map[ei.MissionInfo_DurationType][]float32{}
-		for _, duration := range durations {
-			_nominalShipCapacities[mission.GetShip()][duration.GetDurationType()] = []float32{}
-			if len(mission.GetLevelMissionRequirements()) == 0 {
-				_nominalShipCapacities[mission.GetShip()][duration.GetDurationType()] = append(_nominalShipCapacities[mission.GetShip()][duration.GetDurationType()], float32(duration.GetCapacity()))
-			} else {
-				for level := 0; level <= len(mission.GetLevelMissionRequirements()); level++ {
-					_nominalShipCapacities[mission.GetShip()][duration.GetDurationType()] = append(_nominalShipCapacities[mission.GetShip()][duration.GetDurationType()], float32(duration.GetCapacity())+(float32(duration.GetLevelCapacityBump())*float32(level)))
-				}
-			}
-		}
-	}
-}
-
-func viewMissionsOfId(ctx context.Context, eid string) ([]DatabaseMission, error) {
-	_nominalShipCapacitiesOnce.Do(initNominalShipCapacities)
-
-	// Fast path: if all missions have been backfilled with migration-6 filter
-	// columns, build the list from DB columns only (no payload decompression).
-	pending, countErr := db.CountPendingFilterCols(ctx, eid)
-	if countErr == nil && pending == 0 {
-		metas, err := db.RetrievePlayerMissionMeta(ctx, eid)
-		if err != nil {
-			log.Error(err)
-			return nil, err
-		}
-		missions := make([]DatabaseMission, 0, len(metas))
-		for _, meta := range metas {
-			missions = append(missions, missionMetaToDBMission(meta))
-		}
-		return missions, nil
-	}
-
-	// Slow path: decompress and decode every payload (used before backfill runs).
-	completeMissions, err := db.RetrievePlayerCompleteMissions(ctx, eid)
-	if err != nil {
-		log.Error(err)
-		return nil, err
-	}
-	missionArr := []DatabaseMission{}
-	for _, completeMission := range completeMissions {
-		missionArr = append(missionArr, compileMissionInformation(completeMission))
-	}
-
-	// Kick off a background backfill so the next View call uses the fast path.
-	// This is the one-time migration for users who view without fetching first.
-	if countErr == nil && pending > 0 {
-		go func() {
-			if _, err := db.ResolvePendingFilterCols(
-				context.Background(), eid, computeMissionFilterCols, nil,
-			); err != nil {
-				log.Errorf("background filter col backfill for %s: %s", eid, err)
-			}
-		}()
-	}
-
-	return missionArr, nil
-}
-
-func properTargetName(name *ei.ArtifactSpec_Name) string {
-	if name == nil {
-		return ""
-	} else {
-		return ei.ArtifactSpec_Name_name[int32(*name)]
-	}
+	_storage.Init(_internalDir)
 }
 
 func initPossibleTargets() {
@@ -506,13 +475,9 @@ func rowToReportDef(r reportdb.ReportRow) (reports.ReportDefinition, error) {
 
 func main() {
 	flag.BoolVar(&_forceMennoRefresh, "force-menno-refresh", false, "treat menno data as stale regardless of last refresh time")
-	flag.BoolVar(&_forceUpdateCheck, "force-update-check", false, "bypass the 12-hour update-check cooldown")
 	flag.BoolVar(&_debugCompression, "debug-compression", false, "log Content-Encoding headers on API responses to check if the server is gzip-compressing")
 	flag.Parse()
-	if _replacePID != 0 && _replacePath != "" {
-		runReplaceMode(_replacePID, _replacePath)
-		return
-	}
+	runTakeoverFlag, takeoverOldPID, takeoverOldPath := update.ResolveReplaceMode()
 	api.DebugCompression = _debugCompression
 
 	if _devMode {
@@ -559,10 +524,9 @@ func main() {
 	}
 	ui := UI{u}
 	defer ui.Close()
-	_ui = ui
-	ui.MustBind("downloadAndInstallUpdate", handleDownloadAndInstallUpdate)
+	ui.MustBind("downloadAndInstallUpdate", update.HandleDownloadAndInstall)
 
-	_updateKnownAccounts = func(accounts []Account) {
+	_updateKnownAccounts = func(accounts []storage.Account) {
 		ui.pushJSON("updateKnownAccounts", accounts)
 	}
 	_updateState = func(state AppState) {
@@ -571,7 +535,7 @@ func main() {
 	_updateMissionProgress = func(progress MissionProgress) {
 		ui.pushJSON("updateMissionProgress", progress)
 	}
-	_updateMennoDownloadProgress = func(progress MennoDownloadProgress) {
+	_updateMennoDownloadProgress = func(progress menno.MennoDownloadProgress) {
 		ui.pushJSON("updateMennoDownloadProgress", progress)
 	}
 	_updateExportedFiles = func(files []string) {
@@ -586,10 +550,13 @@ func main() {
 		ui.Eval(fmt.Sprintf("window.emitMessage(%s, %t)", encoded, isError))
 	}
 
-	updateProcesses := func(snapshots []ProcessSnapshot) {
+	update.SetHost(updateHost{ui: ui})
+	menno.SetHost(mennoHost{})
+
+	updateProcesses := func(snapshots []processlog.ProcessSnapshot) {
 		ui.pushJSON("updateProcesses", snapshots)
 	}
-	_processRegistry = NewProcessRegistry(updateProcesses)
+	_processRegistry = processlog.NewProcessRegistry(updateProcesses)
 
 	_onDiscordAuthComplete = func(connected bool, username string) {
 		encoded, err := json.Marshal(username)
@@ -615,6 +582,12 @@ func main() {
 		}
 		ui.Eval(fmt.Sprintf("window.onCloudRestoreComplete(%t, %s)", success, encoded))
 	}
+
+	cloudsync.SetStorage(&_storage)
+	missionquery.SetStorage(&_storage)
+	cloudsync.SetCallbacks(_onCloudSyncComplete, _onCloudRestoreComplete, _onDiscordAuthComplete, _updateKnownAccounts)
+	cloudsync.SetReportConverters(reportDefToRow, rowToReportDef)
+
 	_processRegistry.Start(context.Background())
 
 	reportDBPath := filepath.Join(_internalDir, "reports.db")
@@ -623,11 +596,10 @@ func main() {
 	}
 	defer reportdb.CloseReportDB()
 	reports.SetMissionDB(db.GetDB())
-	go BackfillArtifactDrops()
+	go db.BackfillArtifactDrops()
 	go func() {
 		lookup := func(ship, durationType, level int32) int32 {
-			_nominalShipCapacitiesOnce.Do(initNominalShipCapacities)
-			if caps, ok := _nominalShipCapacities[ei.MissionInfo_Spaceship(ship)][ei.MissionInfo_DurationType(durationType)]; ok && int(level) < len(caps) {
+			if caps, ok := missionpacking.ShipCapacities(ei.MissionInfo_Spaceship(ship), ei.MissionInfo_DurationType(durationType)); ok && int(level) < len(caps) {
 				return int32(caps[int(level)])
 			}
 			return 0
@@ -731,7 +703,7 @@ func main() {
 		return _appIsTranslocated
 	})
 
-	ui.MustBind("knownAccounts", func() []Account {
+	ui.MustBind("knownAccounts", func() []storage.Account {
 		_storage.Lock()
 		defer _storage.Unlock()
 		return _storage.KnownAccounts
@@ -909,19 +881,19 @@ func main() {
 		}
 	})
 
-	ui.MustBind("getExistingData", handleGetExistingData)
+	ui.MustBind("getExistingData", missionquery.GetExistingData)
 
-	ui.MustBind("getMissionIds", handleGetMissionIds)
+	ui.MustBind("getMissionIds", missionquery.GetMissionIds)
 
-	ui.MustBind("viewMissionsOfEid", handleViewMissionsOfEid)
+	ui.MustBind("viewMissionsOfEid", missionquery.ViewMissionsOfEid)
 
-	ui.MustBind("getDurationConfigs", handleGetDurationConfigs)
+	ui.MustBind("getDurationConfigs", missionquery.GetDurationConfigs)
 
-	ui.MustBind("getShipDrops", handleGetShipDrops)
+	ui.MustBind("getShipDrops", missionquery.GetShipDrops)
 
-	ui.MustBind("getAllPlayerDrops", handleGetAllPlayerDrops)
+	ui.MustBind("getAllPlayerDrops", missionquery.GetAllPlayerDrops)
 
-	ui.MustBind("getMissionInfo", handleGetMissionInfo)
+	ui.MustBind("getMissionInfo", missionquery.GetMissionInfo)
 
 	ui.MustBind("openFile", func(file string) {
 		path := filepath.Join(_rootDir, file)
@@ -968,15 +940,15 @@ func main() {
 		}
 		switch part {
 		case "internal":
-			return wrap(copyDir(_internalDir, filepath.Join(destPath, "internal")))
+			return wrap(storage.CopyDir(_internalDir, filepath.Join(destPath, "internal")))
 		case "exports":
 			if _, statErr := os.Stat(_exportsDir); statErr == nil {
-				return wrap(copyDir(_exportsDir, filepath.Join(destPath, "exports")))
+				return wrap(storage.CopyDir(_exportsDir, filepath.Join(destPath, "exports")))
 			}
 			return nil
 		case "logs":
 			if _, statErr := os.Stat(_logsDir); statErr == nil {
-				return wrap(copyDir(_logsDir, filepath.Join(destPath, "logs")))
+				return wrap(storage.CopyDir(_logsDir, filepath.Join(destPath, "logs")))
 			}
 			return nil
 		default:
@@ -1011,7 +983,7 @@ func main() {
 		_storage.SetExportKeepCount(n)
 	})
 	ui.MustBind("listExportFiles", func() string {
-		groups, err := listExportGroups(_exportsDir)
+		groups, err := export.ListGroups(_exportsDir)
 		if err != nil {
 			log.Errorf("listExportFiles: %s", err)
 			return "[]"
@@ -1021,7 +993,7 @@ func main() {
 		}
 		accounts := _storage.KnownAccounts
 		accountOrder := make(map[string]int, len(accounts))
-		accountMap := make(map[string]Account, len(accounts))
+		accountMap := make(map[string]storage.Account, len(accounts))
 		for i, a := range accounts {
 			accountOrder[a.Id] = i
 			accountMap[a.Id] = a
@@ -1066,7 +1038,7 @@ func main() {
 			Error      string `json:"error"`
 		}
 		keepCount := _storage.GetExportKeepCount()
-		groups, err := listExportGroups(_exportsDir)
+		groups, err := export.ListGroups(_exportsDir)
 		if err != nil {
 			b, _ := json.Marshal(pruneResult{Error: err.Error()})
 			return string(b)
@@ -1074,7 +1046,7 @@ func main() {
 		var totalDeleted int
 		var totalFreed int64
 		for _, g := range groups {
-			deleted, freed, pruneErr := pruneExportsForPlayer(_exportsDir, g.Eid, keepCount)
+			deleted, freed, pruneErr := export.PruneForPlayer(_exportsDir, g.Eid, keepCount)
 			totalDeleted += deleted
 			totalFreed += freed
 			if pruneErr != nil {
@@ -1129,24 +1101,24 @@ func main() {
 			}
 		}
 
-		if err := copyDir(_internalDir, filepath.Join(absDest, "internal")); err != nil {
+		if err := storage.CopyDir(_internalDir, filepath.Join(absDest, "internal")); err != nil {
 			rollback()
 			return wrap(err)
 		}
 		if _, statErr := os.Stat(_exportsDir); statErr == nil {
-			if err := copyDir(_exportsDir, filepath.Join(absDest, "exports")); err != nil {
+			if err := storage.CopyDir(_exportsDir, filepath.Join(absDest, "exports")); err != nil {
 				rollback()
 				return wrap(err)
 			}
 		}
 		if _, statErr := os.Stat(_logsDir); statErr == nil {
-			if err := copyDir(_logsDir, filepath.Join(absDest, "logs")); err != nil {
+			if err := storage.CopyDir(_logsDir, filepath.Join(absDest, "logs")); err != nil {
 				rollback()
 				return wrap(err)
 			}
 		}
 
-		if err := writeBootstrapConfig(absDest); err != nil {
+		if err := storage.WriteBootstrapConfig(absDest); err != nil {
 			rollback()
 			return wrap(err)
 		}
@@ -1163,22 +1135,22 @@ func main() {
 		return nil
 	})
 
-	ui.MustBind("addAccount", func(eid string) (Account, error) {
+	ui.MustBind("addAccount", func(eid string) (storage.Account, error) {
 		action := "addAccount"
 		wrap := func(err error) error { return errors.Wrap(err, action) }
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
 		resp, err := fetchFirstContactWithContext(ctx, eid)
 		if err != nil {
-			return Account{}, wrap(err)
+			return storage.Account{}, wrap(err)
 		}
 		backup := resp.GetBackup()
 		nickname := backup.GetUserName()
 		eb := backup.GetEarningsBonus()
-		roleColor, _, ebAddendum, eb, precision := RoleFromEB(eb)
+		roleColor, _, ebAddendum, eb, precision := util.RoleFromEB(eb)
 		ebString := fmt.Sprintf(fmt.Sprintf("%%.%df", precision), eb) + ebAddendum
 		game := backup.GetGame()
-		seSuffix := AbbreviateFloat(game.GetSoulEggsD())
+		seSuffix := util.AbbreviateFloat(game.GetSoulEggsD())
 		peCount := int(game.GetEggsOfProphecy())
 		totalTE := 0
 		if virtue := backup.GetVirtue(); virtue != nil {
@@ -1186,7 +1158,7 @@ func main() {
 				totalTE += int(v)
 			}
 		}
-		acct := Account{
+		acct := storage.Account{
 			Id:           eid,
 			Nickname:     nickname,
 			EBString:     ebString,
@@ -1226,7 +1198,7 @@ func main() {
 
 	ui.MustBind("checkForUpdates", func() []string {
 		log.Info("checking for updates...")
-		newVersion, newReleaseNotes, err := checkForUpdates()
+		newVersion, newReleaseNotes, err := update.CheckForUpdates()
 		if err != nil {
 			log.Error(err)
 			return []string{"", ""}
@@ -1243,23 +1215,23 @@ func main() {
 		}
 	})
 
-	ui.MustBind("isMennoRefreshNeeded", handleIsMennoRefreshNeeded)
+	ui.MustBind("isMennoRefreshNeeded", menno.IsRefreshNeeded)
 
 	ui.MustBind("updateMennoData", func() {
-		go handleUpdateMennoData(
+		go menno.UpdateData(
 			func(ok bool) { ui.Eval(fmt.Sprintf("window.onMennoRefreshDone(%t)", ok)) },
 			_updateMennoDownloadProgress,
 		)
 	})
 
-	ui.MustBind("secondsSinceLastMennoUpdate", handleSecondsSinceLastMennoUpdate)
+	ui.MustBind("secondsSinceLastMennoUpdate", menno.SecondsSinceLastUpdate)
 
-	ui.MustBind("loadMennoData", handleLoadMennoData)
+	ui.MustBind("loadMennoData", menno.LoadData)
 
-	ui.MustBind("getMennoData", handleGetMennoData)
+	ui.MustBind("getMennoData", menno.GetData)
 
 	ui.MustBind("executeMennoComparison", func(reportId, rawRowLabelsJSON, rawColLabelsJSON string) string {
-		return handleExecuteMennoComparison(reportId, rawRowLabelsJSON, rawColLabelsJSON)
+		return menno.ExecuteComparison(reportId, rawRowLabelsJSON, rawColLabelsJSON)
 	})
 
 	ui.MustBind("createReport", func(defJSON string) string {
@@ -1612,7 +1584,7 @@ func main() {
 	})
 
 	ui.MustBind("getReportBackfillStatus", func() string {
-		out, _ := json.Marshal(GetBackfillStatus())
+		out, _ := json.Marshal(db.GetBackfillStatus())
 		return string(out)
 	})
 
@@ -1625,29 +1597,29 @@ func main() {
 		return string(out)
 	})
 
-	ui.MustBind("checkCloudReachable", handleCheckCloudReachable)
+	ui.MustBind("checkCloudReachable", cloudsync.CheckReachable)
 
 	ui.MustBind("getCloudSyncStatus", func() string {
-		out, _ := json.Marshal(handleGetCloudSyncStatus())
+		out, _ := json.Marshal(cloudsync.GetStatus())
 		return string(out)
 	})
 
 	ui.MustBind("connectDiscord", func() (string, error) {
-		return handleConnectDiscord()
+		return cloudsync.ConnectDiscord()
 	})
 
-	ui.MustBind("disconnectCloud", handleDisconnectCloud)
+	ui.MustBind("disconnectCloud", cloudsync.DisconnectCloud)
 
 	ui.MustBind("syncToCloud", func() {
-		handleSyncToCloud()
+		cloudsync.SyncToCloud()
 	})
 
 	ui.MustBind("restoreFromCloud", func() {
-		handleRestoreFromCloud()
+		cloudsync.RestoreFromCloud()
 	})
 
 	ui.MustBind("deleteRemoteData", func() string {
-		if err := handleDeleteRemoteData(); err != nil {
+		if err := cloudsync.DeleteRemoteData(); err != nil {
 			return err.Error()
 		}
 		return ""
@@ -1660,6 +1632,26 @@ func main() {
 	ui.MustBind("setCloudAutoSync", func(flag bool) {
 		_storage.SetCloudAutoSync(flag)
 	})
+
+	// Surface the result of any in-place update performed by the replace-mode
+	// process on the previous launch.
+	if self, err := os.Executable(); err == nil {
+		if status, ok := update.ReadAndClearStatus(filepath.Dir(self)); ok {
+			go func(s *update.Status) {
+				// Defer slightly so the page has loaded its emitMessage handler.
+				time.Sleep(1500 * time.Millisecond)
+				if s.Success {
+					msg := "Update complete."
+					if s.ToVersion != "" {
+						msg = "Updated to v" + s.ToVersion + "."
+					}
+					_emitMessage(msg, false)
+				} else {
+					_emitMessage("Update failed: "+s.Message, true)
+				}
+			}(status)
+		}
+	}
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -1686,12 +1678,21 @@ func main() {
 	ui.SetBlockBackNavigation(true)
 	ui.SetAppUserModelID("EggLedger.EggLedger")
 
+	if runTakeoverFlag {
+		go update.RunTakeover(takeoverOldPID, takeoverOldPath)
+	}
+
 	// Wait until the interrupt signal arrives or browser window is closed.
 	sigc := make(chan os.Signal, 1)
 	signal.Notify(sigc, os.Interrupt)
 	select {
 	case <-sigc:
 	case <-ui.Done():
+	case <-update.HandoffChan():
+		// New instance is up. Stop serving the www files, count down, then exit.
+		_ = ln.Close()
+		go ui.Eval(`globalThis.beginUpdateCountdown && globalThis.beginUpdateCountdown(5)`)
+		time.Sleep(5 * time.Second)
 	}
 
 	// Make sure to cleanly close the database before exiting

@@ -2,33 +2,58 @@
 
 ## 1. Repo structure
 
+Most logic lives in focused Go packages. `package main` (the repo root) is kept
+small - it owns only the window/HTTP setup, the JS-Go binding registrations, the
+shared `_storage` instance + dependency-injection wiring, and the fetch pipeline.
+
 ### Root-level Go files (`package main`)
 
 | File | Responsibility |
 |---|---|
-| `main.go` | App entry point, Chrome window setup, all JS-Go bindings, fetch/export pipeline orchestration |
-| `data.go` | API + DB cache bridge (`fetchFirstContactWithContext`, `fetchCompleteMissionWithContext`) |
-| `export.go` | CSV and XLSX export logic |
-| `fetch.go` | Fetch pipeline worker, `runFetchPipeline`, rate-limited mission fetching |
-| `missionpacking.go` | `DatabaseMission` struct, `compileMissionInformation()`, capacity analysis helpers |
-| `missionquery.go` | Query handlers for mission data, drop info, and duration configs |
-| `processlog.go` | `ProcessRegistry` and `Process` - structured progress and log tracking for UI |
-| `storage.go` | `AppStorage` struct with mutex-safe getters/setters, persists to `internal/storage.json` |
-| `mennodata.go` | Community drop-rate data: fetch, cache, filter |
-| `version.go` | `checkForUpdates()`, polls GitHub releases API |
-| `utils.go` | Time helpers, `RoleFromEB()` |
+| `main.go` | App entry point, Chrome window setup, all JS-Go binding registrations, the `_storage` global instance, `Set*` dependency-injection wiring, `reportDefToRow`/`rowToReportDef` |
+| `fetch.go` | Fetch pipeline / worker pool, `runFetchPipeline`, the `AppState` machine, rate-limited mission fetching |
+| `data.go` | API + DB cache bridge (`dataInit`, `fetchFirstContactWithContext`, `fetchCompleteMissionWithContext`) |
 
 ### Packages
 
 | Package | Responsibility |
 |---|---|
 | `api/` | HTTP+protobuf client for the Egg Inc API |
-| `db/` | SQLite persistence, migrations, gzip-compressed blob storage |
+| `db/` | SQLite persistence, migrations, gzip-compressed blobs; `backfill.go` (artifact-drop backfill) and `BuildArtifactDropRows` |
 | `ei/` | Protobuf types (`ei.pb.go` - generated) and game logic extension methods |
-| `eiafx/` | Artifact configuration loader (`eiafx-config-min.json` embedded) |
+| `eiafx/` | Artifact configuration loader (`eiafx-config-min.json` embedded); `quality.go` exposes `BaseQualityFor` |
 | `ledgerdata/` | Display data loader (`ledger-display-data-min.json` embedded, background refresh) |
+| `export/` | CSV and XLSX export (`NewMission`, `MissionsToCsv`, `MissionsToXlsx`, export-file management) |
+| `xlsxwriter/` | Minimal streaming single-sheet XLSX writer |
+| `missionpacking/` | `DatabaseMission`, mission compile/meta helpers, and the lazy nominal-capacity table (`ShipCapacities`) |
+| `missionquery/` | Mission/drop/config query binding handlers (storage injected via `SetStorage`) |
+| `processlog/` | `ProcessRegistry` and `Process` - structured progress and log tracking for the UI |
+| `storage/` | `AppStorage`/`Account` types + settings methods + path helpers (the `_storage` instance itself lives in `main`) |
+| `cloudsync/` | Discord OAuth + encrypted cloud blob sync (deps injected via `SetStorage`/`SetCallbacks`) |
+| `menno/` | Community drop-rate data: fetch, cache, filter, comparison (deps injected via `SetHost`) |
+| `update/` | In-place auto-updater: handshake-based replace flow, version check (deps injected via `SetHost`) |
+| `util/` | Generic helpers - time (`UnixToTime`/`TimeToUnix`/`HumanizeTime`), formatting, `RoleFromEB` |
+| `reports/`, `reportdb/` | Report query engine and report persistence |
 | `platform/` | OS-specific file operations (hide directory, open-in-explorer) |
 | `www/` | Embedded frontend (Vue 3 SPA) |
+
+Packages that expose data to the UI take their `main`-owned dependencies through
+a small injected interface or setter (e.g. `update.SetHost`, `cloudsync.SetStorage`,
+`missionquery.SetStorage`), wired once in `main()`. No package imports `main`.
+
+### Documentation (`docs/`)
+
+| Path | Contents |
+|---|---|
+| `docs/reports-module.md` | Reports feature primer |
+| `docs/filter-design.md` | Mission/report filter design (composite drop values, SQL building) |
+| `docs/menno-normalization.md`, `docs/freeze-investigation-2026-04-25.md`, `docs/mobile-porting-guide.md` | Topic notes |
+| `docs/superpowers/specs/` | Approved design specs (`YYYY-MM-DD-<topic>-design.md`) |
+| `docs/superpowers/plans/` | Implementation plans (`YYYY-MM-DD-<topic>.md`) |
+
+The canonical, always-current architecture reference is `CLAUDE.md` (Architecture
+Map + Key Data Flows). Keep both `CLAUDE.md` and this file in sync when moving or
+renaming files, directories, or packages.
 
 ---
 

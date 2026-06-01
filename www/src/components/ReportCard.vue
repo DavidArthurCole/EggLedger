@@ -305,7 +305,7 @@ async function onWeightHover(e: MouseEvent) {
   const tipRect = tooltipRef.value.getBoundingClientRect()
   const padding = 8
   const idealLeft = tipRect.left
-  const clampedLeft = Math.max(padding, Math.min(window.innerWidth - tipRect.width - padding, idealLeft))
+  const clampedLeft = Math.max(padding, Math.min(globalThis.innerWidth - tipRect.width - padding, idealLeft))
   if (clampedLeft !== idealLeft) {
     tooltipX.value = anchorCenterX + (clampedLeft - idealLeft)
     tooltipArrowOffset.value = anchorCenterX - (clampedLeft + tipRect.width / 2)
@@ -471,6 +471,8 @@ const filteredResult = computed(() => {
       weight: props.result.weight,
       rowLabels: [] as string[],
       colLabels: [] as string[],
+      rawRowLabels: [] as string[],
+      rawColLabels: [] as string[],
       matrixValues: [] as number[],
       is2D: false,
     }
@@ -483,6 +485,8 @@ const filteredResult = computed(() => {
     weight: props.result.weight,
     rowLabels: [] as string[],
     colLabels: [] as string[],
+    rawRowLabels: [] as string[],
+    rawColLabels: [] as string[],
     matrixValues: [] as number[],
     is2D: false,
   }

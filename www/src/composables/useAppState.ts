@@ -1,6 +1,7 @@
 import { ref, readonly } from 'vue'
 import type { Account, DatabaseAccount, ProcessSnapshot } from '../types/bridge'
 import { AppState } from '../types/bridge'
+import { useUpdateOverlay } from './useUpdateOverlay'
 
 const appVersion = ref('')
 const appDirectory = ref('')
@@ -58,7 +59,7 @@ export function useAppState() {
     globalThis.updateState = (state) => {
       appState.value = state as AppState
       if (state === AppState.Success) {
-        void globalThis.getExistingData().then((data) => { existingData.value = data })
+        globalThis.getExistingData().then((data) => { existingData.value = data })
       }
     }
     globalThis.updateMissionProgress = () => {}   // overridden in useFetch
@@ -73,6 +74,11 @@ export function useAppState() {
       }
       processLogs.value = pruned
     }
+
+    const updateOverlay = useUpdateOverlay()
+    globalThis.beginUpdate = () => updateOverlay.begin()
+    globalThis.beginUpdateCountdown = (seconds: number) => updateOverlay.beginCountdown(seconds)
+    globalThis.endUpdate = () => updateOverlay.end()
   }
 
   return {

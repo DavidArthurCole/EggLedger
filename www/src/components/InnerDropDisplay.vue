@@ -5,7 +5,7 @@
                 target="_blank" :href="afExplorerName(item, getSpecPathOffset(item))"
                 @mouseenter="(e) => showItemTooltip(item, e)"
                 @mouseleave="hideItemTooltip">
-                <img class="h-full w-full" :alt="item.gameName" :src="specPath(item, getSpecPathOffset(item))"/>
+                <img class="h-full w-full" loading="lazy" decoding="async" :alt="item.gameName" :src="specPath(item, getSpecPathOffset(item))"/>
                 <div v-if="item.count > 1" :class="'ledger-af-count ' + numToDigClass(item.count)">
                     {{ item.count }}
                 </div>
@@ -39,23 +39,23 @@
 
             <hr v-if="ledgerType == 'lifetime' && showExpectedDrops" class="mt-0_5rem mb-0_5rem w-full">
             <span v-if="ledgerType == 'lifetime' && showExpectedDrops">
-                <span v-if="getDropCalcs(hoveredItem.id, hoveredItem.level, hoveredItem.rarity) == null">
+                <span v-if="hoveredDropCalcs == null">
                     <span class="text-red-700">Not enough data to determine drop rate.</span>
                 </span>
                 <span v-else class="text-gray-400">
-                    <span class="text-green-500">{{ getDropCalcs(hoveredItem.id, hoveredItem.level, hoveredItem.rarity)![0].toFixed(2) }}</span> expected drops
+                    <span class="text-green-500">{{ hoveredDropCalcs![0].toFixed(2) }}</span> expected drops
                 </span>
             </span>
 
             <hr v-if="ledgerType == 'mission' && showExpectedDrops" class="mt-0_5rem mb-0_5rem w-full">
             <span v-if="ledgerType == 'mission' && showExpectedDrops">
-                <span v-if="getDropCalcs(hoveredItem.id, hoveredItem.level, hoveredItem.rarity) == null">
+                <span v-if="hoveredDropCalcs == null">
                     <span class="text-red-700">Not enough data to determine drop rate.</span>
                 </span>
                 <span v-else class="text-gray-400">
-                    <span class="text-green-500">{{ getDropCalcs(hoveredItem.id, hoveredItem.level, hoveredItem.rarity)![0].toLocaleString() }}</span>
+                    <span class="text-green-500">{{ hoveredDropCalcs![0].toLocaleString() }}</span>
                     <span> seen out of </span>
-                    <span class="text-green-500">{{ getDropCalcs(hoveredItem.id, hoveredItem.level, hoveredItem.rarity)![1].toLocaleString() }}</span>
+                    <span class="text-green-500">{{ hoveredDropCalcs![1].toLocaleString() }}</span>
                     <span> drops</span> <br>
                     <span>(Average of <span class="text-green-500">{{ getExpectedPerShip(hoveredItem.id, hoveredItem.level, hoveredItem.rarity) }}</span> expected in this ship)</span>
                 </span>
@@ -131,6 +131,13 @@
                     top: this.tooltipY + 'px',
                 }
             },
+            // Compute the hovered item's Menno drop calc once instead of calling
+            // getDropCalcs (a linear .find over configs) up to five times per
+            // tooltip render.
+            hoveredDropCalcs(): [number, number] | null {
+                if (this.hoveredItem == null) return null;
+                return this.getDropCalcs(this.hoveredItem.id, this.hoveredItem.level, this.hoveredItem.rarity);
+            },
         },
         methods: {
             getRepeatClass(): string {
@@ -198,7 +205,10 @@
             },
             getExpectedPerShip(dropId: number, dropLevel: number, dropRarity: number): string | null {
                 const ratios = this.getDropCalcs(dropId, dropLevel, dropRarity);
-                if(ratios == null) return null;
+                // ratios[1] is the community total-drop count (non-zero) in the
+                // 'mission' mode this is called from; guard anyway so a future
+                // caller in a zero-divisor mode yields null rather than Infinity.
+                if(ratios == null || ratios[1] === 0) return null;
                 return ((ratios[0] / ratios[1]) * (this.totalDropsCount ?? 0)).toFixed(3);
             },
             showItemTooltip(item: InnerDropItem, e: MouseEvent) {
