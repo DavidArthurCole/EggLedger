@@ -289,7 +289,11 @@ input[type=number] {
   margin: 0;
 }
 
-.popover-anchored::before {
+/* Two-layer caret: ::before is the border-colored triangle (slightly larger,
+   behind), ::after is the bg-dark fill on top, so the caret matches the panel's
+   border. */
+.popover-anchored::before,
+.popover-anchored::after {
   content: '';
   position: absolute;
   top: var(--caret-top, 50%);
@@ -297,18 +301,32 @@ input[type=number] {
   border: 9px solid transparent;
 }
 
+.popover-anchored::before {
+  border-width: 10px;
+}
+
 .popover-anchored.caret-left::before {
+  left: -11px;
+  border-right-color: #4b5563;
+}
+
+.popover-anchored.caret-left::after {
   left: -9px;
   border-right-color: #393b40;
 }
 
 .popover-anchored.caret-right::before {
+  right: -11px;
+  border-left-color: #4b5563;
+}
+
+.popover-anchored.caret-right::after {
   right: -9px;
   border-left-color: #393b40;
 }
 
 .popup-selector-inner {
-  @apply min-w-30vw bg-dark rounded-lg relative p-1rem pr-0i;
+  @apply min-w-30vw bg-dark border border-gray-600 shadow-2xl rounded-lg relative p-1rem pr-0i;
 
   &:focus-within {
     @apply z-10;
