@@ -776,10 +776,12 @@ function orDropLabel(val: string): string {
 // Rarity color for a selected drop, parsed from the composite value
 // (name_level_rarity_quality), matching the main filter.
 function dropColorClass(val: string): string {
+  // Important modifier: the rb-control base class sets text-gray-200, which would
+  // otherwise win over the rarity color.
   switch (val.split('_')[2]) {
-    case '1': return 'text-rarity-1'
-    case '2': return 'text-rarity-2'
-    case '3': return 'text-rarity-3'
+    case '1': return '!text-rarity-1'
+    case '2': return '!text-rarity-2'
+    case '3': return '!text-rarity-3'
     default: return ''
   }
 }

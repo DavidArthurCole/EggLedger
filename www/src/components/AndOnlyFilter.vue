@@ -5,7 +5,7 @@
       <div class="flex flex-col gap-1.5">
         <div class="flex flex-wrap items-center gap-2.5">
           <select
-            class="rb-control min-w-28"
+            class="rb-control flex-1 min-w-36"
             :value="cond.topLevel"
             @change="onFieldChange(i, ($event.target as HTMLSelectElement).value)"
           >
@@ -205,10 +205,12 @@ function dropLabel(val: string): string {
 // Rarity color for the selected drop, parsed from the composite value
 // (name_level_rarity_quality), matching the main filter's coloring.
 function dropColorClass(val: string): string {
+  // Important modifier: the rb-control base class sets text-gray-200, which would
+  // otherwise win over the rarity color.
   switch (val.split('_')[2]) {
-    case '1': return 'text-rarity-1'
-    case '2': return 'text-rarity-2'
-    case '3': return 'text-rarity-3'
+    case '1': return '!text-rarity-1'
+    case '2': return '!text-rarity-2'
+    case '3': return '!text-rarity-3'
     default: return ''
   }
 }
