@@ -31,15 +31,17 @@ func LoadConfig(internalDir string) error {
 	wrap := func(err error) error { return errors.Wrap(err, "eiafx.LoadConfig") }
 
 	cacheFile := filepath.Join(internalDir, _cacheFilename)
+	repairScheduled := false
 	if data, ok := readIfFresh(cacheFile); ok {
 		var c ei.ArtifactsConfigurationResponse
 		if err := protojson.Unmarshal(data, &c); err == nil {
 			Config = &c
 			return nil
 		}
-		// Corrupted cache - fall through to embedded and schedule repair.
+		// Corrupted cache - fall through to embedded and schedule a single repair.
 		log.Warnf("eiafx: cached file is corrupt, will re-download: %v", cacheFile)
 		go tryDownloadFresh(cacheFile)
+		repairScheduled = true
 	}
 
 	// Use embedded fallback immediately.
@@ -49,8 +51,11 @@ func LoadConfig(internalDir string) error {
 	}
 	Config = &c
 
-	// Background refresh for next cold start.
-	go tryDownloadFresh(cacheFile)
+	// Background refresh for next cold start (skip if a repair download is
+	// already in flight, to avoid two goroutines racing on the cache file).
+	if !repairScheduled {
+		go tryDownloadFresh(cacheFile)
+	}
 
 	return nil
 }

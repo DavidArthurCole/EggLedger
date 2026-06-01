@@ -108,8 +108,9 @@ function toggle(id: string) {
 // Auto-expand running processes only when there are fewer than 3 total.
 // At 3+ the panel becomes a scrolled list and expanding all would be unmanageable.
 watch(
-  () => props.processes,
-  (procs) => {
+  () => props.processes.map((p) => p.id + ":" + p.status).join("|"),
+  () => {
+    const procs = props.processes;
     if (procs.length >= 3) return;
     const running = procs.filter((p) => p.status === "running");
     if (running.length === 0) return;
@@ -117,7 +118,7 @@ watch(
     for (const p of running) next.add(p.id);
     expandedIds.value = next;
   },
-  { deep: true, immediate: true },
+  { immediate: true },
 );
 
 function relativeTime(ms: number): string {

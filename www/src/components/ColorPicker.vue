@@ -226,13 +226,24 @@ function emitCurrentHsl() {
   emit('update:modelValue', hex)
 }
 
+let activeWheelMove: ((me: MouseEvent) => void) | null = null
+let activeWheelUp: (() => void) | null = null
+
+function detachWheelListeners() {
+  if (activeWheelMove) document.removeEventListener('mousemove', activeWheelMove)
+  if (activeWheelUp) document.removeEventListener('mouseup', activeWheelUp)
+  activeWheelMove = null
+  activeWheelUp = null
+}
+
 function onWheelMousedown(e: MouseEvent) {
   pickWheelColor(e)
   const onMove = (me: MouseEvent) => pickWheelColor(me)
   const onUp = () => {
-    document.removeEventListener('mousemove', onMove)
-    document.removeEventListener('mouseup', onUp)
+    detachWheelListeners()
   }
+  activeWheelMove = onMove
+  activeWheelUp = onUp
   document.addEventListener('mousemove', onMove)
   document.addEventListener('mouseup', onUp)
 }
@@ -317,5 +328,6 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   document.removeEventListener('mousedown', onDocumentClick)
+  detachWheelListeners()
 })
 </script>

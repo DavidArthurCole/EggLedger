@@ -92,7 +92,7 @@
         >+ New Group</button>
       </div>
 
-      <ReportGrid v-if="loadedAccountId" :account-id="loadedAccountId" :group-filter="selectedGroupId" :edit-mode="reportEditMode" />
+      <ReportGrid v-if="loadedAccountId" :key="loadedAccountId" :account-id="loadedAccountId" :group-filter="selectedGroupId" :edit-mode="reportEditMode" />
       <div v-else class="h-full flex items-center justify-center">
         <p class="text-xs text-gray-500">Select an account and click Load to view reports.</p>
       </div>
@@ -142,7 +142,7 @@ async function loadAccountReports(id: string) {
 }
 
 watch(activeAccountId, (id) => {
-  if (id) void loadAccountReports(id)
+  if (id) loadAccountReports(id)
 }, { immediate: true })
 
 async function handleCreateGroup() {
@@ -179,21 +179,6 @@ async function handleExportAll() {
   if (!destPath) return
   const path = await globalThis.exportAllReports(loadedAccountId.value, destPath)
   if (path) globalThis.openFileInFolder(path)
-}
-
-async function handleExportGroup() {
-  if (!selectedGroupId.value) return
-  const json = await globalThis.exportGroupReports(selectedGroupId.value)
-  if (!json) return
-  const group = groups.value.find(g => g.id === selectedGroupId.value)
-  const name = group?.name ?? 'group'
-  const blob = new Blob([json], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = name.replaceAll(/[^a-z0-9-_]/gi, '_').toLowerCase() + '-reports.json'
-  a.click()
-  URL.revokeObjectURL(url)
 }
 
 async function handleImportGroup() {

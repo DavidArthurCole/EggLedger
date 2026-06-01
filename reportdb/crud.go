@@ -5,10 +5,21 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
 )
+
+// normalizeFiltersJSON returns valid filters JSON, substituting the empty
+// default when the caller passes a blank string. json.Marshal of an empty
+// json.RawMessage errors, which would otherwise abort the insert/update.
+func normalizeFiltersJSON(s string) string {
+	if strings.TrimSpace(s) == "" {
+		return `{"and":[],"or":[]}`
+	}
+	return s
+}
 
 // ReportRow is the raw DB representation. Filters is stored as JSON.
 type ReportRow struct {
@@ -47,9 +58,19 @@ type ReportRow struct {
 	MinSampleSize        int
 }
 
+// normalizeByOrDefault coalesces an unset normalize_by to the column default
+// 'none' so the NOT NULL constraint (migration 6) is honored even when a caller
+// leaves the field empty.
+func normalizeByOrDefault(v sql.NullString) string {
+	if v.Valid && v.String != "" {
+		return v.String
+	}
+	return "none"
+}
+
 func InsertReport(ctx context.Context, r ReportRow) error {
 	action := fmt.Sprintf("insert report %s", r.Id)
-	filtersJSON, err := json.Marshal(json.RawMessage(r.FiltersJSON))
+	filtersJSON, err := json.Marshal(json.RawMessage(normalizeFiltersJSON(r.FiltersJSON)))
 	if err != nil {
 		return errors.Wrap(err, action)
 	}
@@ -67,7 +88,7 @@ func InsertReport(ctx context.Context, r ReportRow) error {
 			r.TimeBucket, r.CustomBucketN, r.CustomBucketUnit, string(filtersJSON),
 			r.GridX, r.GridY, r.GridW, r.GridH, r.Weight, r.Color, r.Description, r.ChartType,
 			r.SortOrder, now, now, r.ValueFilterOp, r.ValueFilterThreshold, r.GroupId,
-			r.NormalizeBy, r.LabelColors, r.SecondaryGroupBy, r.UnfilledColor, r.FamilyWeight,
+			normalizeByOrDefault(r.NormalizeBy), r.LabelColors, r.SecondaryGroupBy, r.UnfilledColor, r.FamilyWeight,
 			r.MennoEnabled, r.MennoCompareMode, r.MinSampleSize)
 		if err != nil {
 			return errors.Wrap(err, action)
@@ -78,7 +99,7 @@ func InsertReport(ctx context.Context, r ReportRow) error {
 
 func UpdateReport(ctx context.Context, r ReportRow) error {
 	action := fmt.Sprintf("update report %s", r.Id)
-	filtersJSON, err := json.Marshal(json.RawMessage(r.FiltersJSON))
+	filtersJSON, err := json.Marshal(json.RawMessage(normalizeFiltersJSON(r.FiltersJSON)))
 	if err != nil {
 		return errors.Wrap(err, action)
 	}
@@ -98,7 +119,7 @@ func UpdateReport(ctx context.Context, r ReportRow) error {
 			r.GridX, r.GridY, r.GridW, r.GridH, r.Weight, r.Color,
 			r.Description, r.ChartType, r.SortOrder, now,
 			r.ValueFilterOp, r.ValueFilterThreshold, r.GroupId,
-			r.NormalizeBy, r.LabelColors, r.SecondaryGroupBy, r.UnfilledColor, r.FamilyWeight,
+			normalizeByOrDefault(r.NormalizeBy), r.LabelColors, r.SecondaryGroupBy, r.UnfilledColor, r.FamilyWeight,
 			r.MennoEnabled, r.MennoCompareMode, r.MinSampleSize,
 			r.Id)
 		if err != nil {

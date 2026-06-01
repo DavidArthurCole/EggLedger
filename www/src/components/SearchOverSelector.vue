@@ -1,9 +1,17 @@
 <template>
   <div
-    :class="'top-click-detect popup-selector-main overlay-' + (ledgerType ?? '') + (isLifetime ? '-lifetime' : '')"
+    :class="(placement === 'side' ? 'popup-selector-side' : 'popup-selector-main') + ' top-click-detect overlay-' + (ledgerType ?? '') + (isLifetime ? '-lifetime' : '')"
     @click="clickTop"
   >
-    <dialog class="inner-click-detect popup-selector-inner" open @cancel.prevent @keydown.esc="emit('close')">
+    <dialog
+      ref="dialogRef"
+      class="inner-click-detect popup-selector-inner"
+      :class="anchoredClass"
+      :style="anchoredStyle"
+      open
+      @cancel.prevent
+      @keydown.esc="emit('close')"
+    >
       <button class="detect-trigger close-button" @click.prevent="emit('close')">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -30,6 +38,8 @@
         >
           <img
             v-if="item.imagePath"
+            loading="lazy"
+            decoding="async"
             :class="'max-w-7 mr-1rem' + (ledgerType === 'drop' ? ' rounded-full bg-r-' + item.rarity : '')"
             :alt="item.text"
             :src="getImgPath(item)"
@@ -57,7 +67,7 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { advancedDropFilter } from '../composables/useSettings'
 
 interface SelectorItem {
@@ -67,14 +77,25 @@ interface SelectorItem {
   rarity?: number
 }
 
+/** Viewport rect of the trigger field a side popover anchors to. */
+interface Anchor {
+  left: number
+  right: number
+  cy: number
+}
+
 const props = withDefaults(defineProps<{
   itemList?: SelectorItem[]
   ledgerType?: string
   isLifetime?: boolean
+  placement?: 'center' | 'side'
+  anchor?: Anchor | null
 }>(), {
   itemList: () => [],
   ledgerType: '',
   isLifetime: false,
+  placement: 'center',
+  anchor: null,
 })
 
 const emit = defineEmits<{
@@ -85,10 +106,57 @@ const emit = defineEmits<{
 
 const selectedItem = ref<SelectorItem | null>(null)
 
+const dialogRef = ref<HTMLDialogElement | null>(null)
+const dialogStyle = ref<Record<string, string>>({})
+const caretSide = ref<'left' | 'right'>('left')
+
+const isAnchored = computed(() => props.placement === 'side' && props.anchor != null)
+const anchoredClass = computed(() => (isAnchored.value ? `popover-anchored caret-${caretSide.value}` : ''))
+const anchoredStyle = computed(() => (isAnchored.value ? dialogStyle.value : {}))
+
+// Place the popover next to its trigger field with a caret pointing at it.
+// Prefers the right of the field, flips left when there is not enough room, and
+// clamps vertically to the viewport (the caret offset tracks the field center).
+function computePosition() {
+  if (!isAnchored.value || !dialogRef.value || !props.anchor) return
+  const gap = 12
+  const margin = 8
+  const r = dialogRef.value.getBoundingClientRect()
+  const vw = globalThis.innerWidth
+  const vh = globalThis.innerHeight
+  const a = props.anchor
+
+  let left = a.right + gap
+  let side: 'left' | 'right' = 'left'
+  if (left + r.width + margin > vw) {
+    left = a.left - gap - r.width
+    side = 'right'
+  }
+  left = Math.max(margin, Math.min(left, vw - r.width - margin))
+
+  let top = a.cy - r.height / 2
+  top = Math.max(margin, Math.min(top, vh - r.height - margin))
+
+  const caretTop = Math.max(14, Math.min(a.cy - top, r.height - 14))
+
+  caretSide.value = side
+  dialogStyle.value = {
+    left: `${Math.round(left)}px`,
+    top: `${Math.round(top)}px`,
+    '--caret-top': `${Math.round(caretTop)}px`,
+  }
+}
+
 onMounted(() => {
   nextTick(() => {
     document.getElementById(searchInputId())?.focus()
+    computePosition()
   })
+  globalThis.addEventListener('resize', computePosition)
+})
+
+onBeforeUnmount(() => {
+  globalThis.removeEventListener('resize', computePosition)
 })
 
 function searchInputId(): string {

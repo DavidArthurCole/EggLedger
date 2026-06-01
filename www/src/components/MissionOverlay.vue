@@ -158,6 +158,8 @@
             >
               <img
                 v-if="missionData.missionInfo.shipEnumString"
+                loading="lazy"
+                decoding="async"
                 :src="'images/ships/' + missionData.missionInfo.shipEnumString + '.png'"
                 :alt="missionData.missionInfo.shipString"
                 class="w-14 h-14 object-contain mb-1"
@@ -307,23 +309,31 @@ function openUrl(url: string) {
 // Keyboard handling
 
 function handleSingleKeyDown(event: KeyboardEvent) {
-  event.preventDefault()
-  event.stopPropagation()
   if (event.key === 'Escape') {
+    event.preventDefault()
+    event.stopPropagation()
     emit('close')
     return
   }
   const data = props.missionData
   if (!data) return
   if (event.key === 'ArrowLeft' && data.prevMission) {
+    event.preventDefault()
+    event.stopPropagation()
     emit('view', data.prevMission)
   } else if (event.key === 'ArrowRight' && data.nextMission) {
+    event.preventDefault()
+    event.stopPropagation()
     emit('view', data.nextMission)
   }
 }
 
 function handleMultiKeyDown(event: KeyboardEvent) {
-  if (event.key === 'Escape') emit('close')
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    event.stopPropagation()
+    emit('close')
+  }
 }
 
 watch(() => props.open, (val) => {

@@ -3,37 +3,51 @@ export type LogSegment =
   | { type: 'image'; src: string }
   | { type: 'eid-bar' }
 
+// A matched token: the segments it produces and how many input chars it consumed.
+type TokenMatch = { segments: LogSegment[], consumed: number }
+
+// [eid-bar] token
+function matchEidBar(s: string): TokenMatch | null {
+  if (!s.startsWith('[eid-bar]')) return null
+  return { segments: [{ type: 'eid-bar' }], consumed: '[eid-bar]'.length }
+}
+
+// [img:filename] token
+function matchImage(s: string): TokenMatch | null {
+  const m = /^\[img:([^\]]+)\]/.exec(s)
+  if (!m) return null
+  return { segments: [{ type: 'image', src: 'images/' + m[1] }], consumed: m[0].length }
+}
+
+// &rrggbb<text> color token (text may itself embed [eid-bar] separators)
+function matchColor(s: string): TokenMatch | null {
+  const m = /^&([0-9a-fA-F]{6})<([^>]*)>/.exec(s)
+  if (!m) return null
+  const color = '#' + m[1]
+  const segments: LogSegment[] = []
+  const parts = m[2].split('[eid-bar]')
+  for (let i = 0; i < parts.length; i++) {
+    if (parts[i]) segments.push({ type: 'text', text: parts[i], color })
+    if (i < parts.length - 1) segments.push({ type: 'eid-bar' })
+  }
+  return { segments, consumed: m[0].length }
+}
+
+const tokenMatchers = [matchEidBar, matchImage, matchColor]
+
 export function parseLogSegments(message: string): LogSegment[] {
   const segments: LogSegment[] = []
   let remaining = message
 
   while (remaining.length > 0) {
-    // [eid-bar] token
-    if (remaining.startsWith('[eid-bar]')) {
-      segments.push({ type: 'eid-bar' })
-      remaining = remaining.slice('[eid-bar]'.length)
-      continue
+    let matched: TokenMatch | null = null
+    for (const matcher of tokenMatchers) {
+      matched = matcher(remaining)
+      if (matched) break
     }
-
-    // [img:filename] token
-    const imgMatch = /^\[img:([^\]]+)\]/.exec(remaining)
-    if (imgMatch) {
-      segments.push({ type: 'image', src: 'images/' + imgMatch[1] })
-      remaining = remaining.slice(imgMatch[0].length)
-      continue
-    }
-
-    // &rrggbb<text> color token
-    const colorMatch = /^&([0-9a-fA-F]{6})<([^>]*)>/.exec(remaining)
-    if (colorMatch) {
-      const color = '#' + colorMatch[1]
-      const content = colorMatch[2]
-      const parts = content.split('[eid-bar]')
-      for (let i = 0; i < parts.length; i++) {
-        if (parts[i]) segments.push({ type: 'text', text: parts[i], color })
-        if (i < parts.length - 1) segments.push({ type: 'eid-bar' })
-      }
-      remaining = remaining.slice(colorMatch[0].length)
+    if (matched) {
+      segments.push(...matched.segments)
+      remaining = remaining.slice(matched.consumed)
       continue
     }
 

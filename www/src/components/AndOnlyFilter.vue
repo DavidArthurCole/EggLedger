@@ -5,7 +5,7 @@
       <div class="flex flex-col gap-1.5">
         <div class="flex flex-wrap items-center gap-2.5">
           <select
-            class="bg-darker border border-gray-700 rounded px-2.5 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500 min-w-28"
+            class="rb-control min-w-28"
             :value="cond.topLevel"
             @change="onFieldChange(i, ($event.target as HTMLSelectElement).value)"
           >
@@ -15,13 +15,13 @@
 
           <template v-if="cond.topLevel && isBoolField(cond.topLevel)">
             <select
-              class="bg-darker border border-gray-700 rounded px-2.5 py-1.5 text-xs text-gray-300 focus:outline-none w-14 flex-shrink-0 opacity-60 cursor-not-allowed"
+              class="rb-control w-14 flex-shrink-0 opacity-60 cursor-not-allowed"
               disabled
             >
               <option value="">is</option>
             </select>
             <select
-              class="bg-darker border border-gray-700 rounded px-2.5 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500 min-w-0"
+              class="rb-control min-w-0"
               :value="cond.op"
               @change="$emit('update', i, { op: ($event.target as HTMLSelectElement).value })"
             >
@@ -32,7 +32,7 @@
 
           <template v-else-if="cond.topLevel">
             <select
-              class="bg-darker border border-gray-700 rounded px-2.5 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500 min-w-0"
+              class="rb-control min-w-0"
               :value="cond.op"
               @change="$emit('update', i, { op: ($event.target as HTMLSelectElement).value })"
             >
@@ -40,16 +40,25 @@
             </select>
 
             <template v-if="cond.op">
+              <button
+                v-if="cond.topLevel === 'drops'"
+                type="button"
+                class="rb-control hover:border-blue-500 min-w-28 text-left"
+                :class="dropColorClass(cond.val)"
+                @click="$emit('openDropPicker', i, $event)"
+              >
+                {{ dropLabel(cond.val) }}
+              </button>
               <input
-                v-if="isDateField(cond.topLevel)"
+                v-else-if="isDateField(cond.topLevel)"
                 :value="cond.val"
                 type="date"
-                class="bg-darker border border-gray-700 rounded px-2.5 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500 min-w-0 w-32"
+                class="rb-control min-w-0 w-32"
                 @input="$emit('update', i, { val: ($event.target as HTMLInputElement).value })"
               />
               <select
                 v-else-if="valueOptionsFor(cond.topLevel).length > 0"
-                class="bg-darker border border-gray-700 rounded px-2.5 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500 min-w-28"
+                class="rb-control min-w-28"
                 :value="cond.val"
                 @change="$emit('update', i, { val: ($event.target as HTMLSelectElement).value })"
               >
@@ -59,7 +68,7 @@
                 v-else
                 :value="cond.val"
                 type="text"
-                class="bg-darker border border-gray-700 rounded px-2.5 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500 min-w-0 w-32"
+                class="rb-control min-w-0 w-32"
                 placeholder="Value"
                 @input="$emit('update', i, { val: ($event.target as HTMLInputElement).value })"
               />
@@ -88,6 +97,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { ReportFilterCondition, PossibleTarget } from '../types/bridge'
+import type { FilterOption } from '../utils/filterOptions'
 import {
   getMissionFilterValueOptions,
   getTargetFilterOptions,
@@ -103,12 +113,14 @@ const props = defineProps<{
   andConditions: ReportFilterCondition[]
   filterFieldOptions: { mission: FieldOption[], artifact: FieldOption[] }
   possibleTargets: PossibleTarget[]
+  dropOptions: FilterOption[]
 }>()
 
 const emit = defineEmits<{
   remove: [index: number]
   update: [index: number, patch: Partial<ReportFilterCondition>]
   fieldChange: [index: number, field: string]
+  openDropPicker: [index: number, ev: MouseEvent]
 }>()
 
 const boolFields = new Set(['dubcap', 'buggedcap'])
@@ -131,6 +143,12 @@ const fieldPlaceholder = computed(() => {
 })
 
 function operatorsForField(field: string): { value: string, label: string }[] {
+  if (field === 'drops') {
+    return [
+      { value: 'c', label: 'contains' },
+      { value: 'dnc', label: 'does not contain' },
+    ]
+  }
   if (dateFields.has(field)) {
     return [
       { value: '=', label: 'on' },
@@ -176,6 +194,23 @@ function isIncomplete(cond: ReportFilterCondition): boolean {
   if (isDateField(cond.topLevel)) return !cond.val
   if (valueOptionsFor(cond.topLevel).length === 0 && !cond.val) return true
   return false
+}
+
+function dropLabel(val: string): string {
+  if (!val) return 'Select drop...'
+  const found = props.dropOptions.find(o => o.value === val)
+  return found ? found.text : 'Select drop...'
+}
+
+// Rarity color for the selected drop, parsed from the composite value
+// (name_level_rarity_quality), matching the main filter's coloring.
+function dropColorClass(val: string): string {
+  switch (val.split('_')[2]) {
+    case '1': return 'text-rarity-1'
+    case '2': return 'text-rarity-2'
+    case '3': return 'text-rarity-3'
+    default: return ''
+  }
 }
 
 function onFieldChange(index: number, field: string) {

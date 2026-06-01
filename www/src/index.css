@@ -270,6 +270,43 @@ input[type=number] {
   @apply h-full w-full z-40 fixed top-0 left-0 right-0 bottom-0 flex items-center justify-center;
 }
 
+/* Shared form control for the Report Builder so every select/input matches the
+   rest of the app (the filter-row controls used to be smaller: text-xs/py-1). */
+.rb-control {
+  @apply bg-darker border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 focus:outline-none focus:border-blue-500;
+}
+
+/* Side placement: full-screen transparent catcher for click-away. The inner
+   dialog positions itself as a field-anchored popover (.popover-anchored). */
+.popup-selector-side {
+  @apply z-50 fixed inset-0;
+}
+
+/* Anchored popover: positioned via inline left/top, with a caret pointing at
+   the trigger field. Caret color matches the panel background (bg-dark). */
+.popover-anchored {
+  position: fixed;
+  margin: 0;
+}
+
+.popover-anchored::before {
+  content: '';
+  position: absolute;
+  top: var(--caret-top, 50%);
+  transform: translateY(-50%);
+  border: 9px solid transparent;
+}
+
+.popover-anchored.caret-left::before {
+  left: -9px;
+  border-right-color: #393b40;
+}
+
+.popover-anchored.caret-right::before {
+  right: -9px;
+  border-left-color: #393b40;
+}
+
 .popup-selector-inner {
   @apply min-w-30vw bg-dark rounded-lg relative p-1rem pr-0i;
 
@@ -352,6 +389,11 @@ input[type=number] {
 .mission-item-3 {
   flex: 0 0 calc(33.33% - 10px);
   box-sizing: border-box;
+  /* Skip layout/paint for off-screen mission rows (Chromium/lorca). Large
+     accounts can expand thousands of rows; this bounds render cost without
+     changing behavior. contain-intrinsic-size keeps the scrollbar stable. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 24px;
 }
 
 .overlay-mission,
@@ -364,6 +406,11 @@ input[type=number] {
 .overlay-ss,
 .overlay-report {
   background: rgba(0, 0, 0, 0.7);
+}
+
+.popup-selector-side.overlay-drop,
+.popup-selector-side.overlay-drop-lifetime {
+  background: transparent;
 }
 
 .tooltip-custom {

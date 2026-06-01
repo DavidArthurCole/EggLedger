@@ -12,7 +12,7 @@ export function useActiveAccount() {
 
   function setActive(id: string) {
     _activeAccountId.value = id
-    void globalThis.setActiveAccountId(id)
+    globalThis.setActiveAccountId(id)
   }
 
   return {

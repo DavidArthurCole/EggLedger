@@ -184,6 +184,14 @@
           <img :src="'images/loading.gif'" alt="Loading..." class="xl-ico" />
         </div>
       </div>
+      <!-- Loading screen for the initial compile (no data yet). -->
+      <div
+        v-else-if="lifetimeDataBeingLoaded"
+        class="mt-8 flex flex-col items-center justify-center gap-2"
+      >
+        <span class="p-0_5rem text-lg">Lifetime data is being compiled, please wait...</span>
+        <img :src="'images/loading.gif'" alt="Loading..." class="xl-ico" />
+      </div>
     </div>
 
     <!-- No data fallback -->
@@ -202,6 +210,7 @@ import type {
   DatabaseMission,
   MissionDrop,
 } from '../types/bridge'
+import { AppState } from '../types/bridge'
 import FullFilter from '../components/FullFilter.vue'
 import NoDataFallback from '../components/NoDataFallback.vue'
 import SearchOverSelector from '../components/SearchOverSelector.vue'
@@ -210,7 +219,7 @@ import SegmentedProgressBar, { type ProgressSegment } from '../components/Segmen
 
 // Shared state
 
-const { existingData, activeTab } = useAppState()
+const { existingData, activeTab, appState } = useAppState()
 const { mennoDataLoaded, getMennoData, load: loadMennoData } = useMennoData()
 const { activeAccountId } = useActiveAccount()
 const { artifactConfigs, maxQuality, durationConfigs, possibleTargets, loadSharedConfigs } = useSharedConfigs()
@@ -612,9 +621,15 @@ function lifetimeHasExactlyOneConfiguration(firstMatches: number[] | null): bool
   )
 }
 
+// Monotonic token so an overlapping load (account switch racing a fetch-complete
+// refresh) is cancelled at the next checkpoint instead of clobbering the latest
+// load's shared state. A stale call bails after each await rather than committing.
+let lifetimeLoadToken = 0
+
 // eslint-disable-next-line sonarjs/cognitive-complexity
 async function viewLifetimeDataOfEid(filterLoad: boolean) {
   if (!activeAccountId.value) return
+  const myToken = ++lifetimeLoadToken
   lifetimeDataBeingFiltered.value = filterLoad
 
   const start = performance.now()
@@ -633,6 +648,7 @@ async function viewLifetimeDataOfEid(filterLoad: boolean) {
     }
   })()
 
+  if (myToken !== lifetimeLoadToken) return // superseded by a newer load
   if (idsJson == null || idsJson.length === 0) {
     lifetimeState.value = LifetimeLoadState.FailedTooFast
     return
@@ -679,6 +695,7 @@ async function viewLifetimeDataOfEid(filterLoad: boolean) {
     missionCount: ids.length,
     mennoData: { configs: [], totalDropsCount: 0 },
   }
+  if (myToken !== lifetimeLoadToken) return // superseded by a newer load
   lifetimeData.value = newData
   lifetimeState.value = LifetimeLoadState.LoadingMissionData
   lifetimeDataLoadedProgress.value = { percentageDone: '0%', loadedCount: 0, totalCount: ids.length }
@@ -716,7 +733,10 @@ async function viewLifetimeDataOfEid(filterLoad: boolean) {
     lifetimeDataLoadedProgress.value.loadedCount = pos
     // Yield to the browser task queue every 50 iterations so the progress bar
     // actually repaints during the loop rather than only at the end.
-    if (pos % 50 === 0) await new Promise<void>((r) => setTimeout(r, 0))
+    if (pos % 50 === 0) {
+      await new Promise<void>((r) => setTimeout(r, 0))
+      if (myToken !== lifetimeLoadToken) return // superseded - stop the expensive loop
+    }
   }
 
   reSortLifetime()
@@ -729,8 +749,9 @@ async function viewLifetimeDataOfEid(filterLoad: boolean) {
     const targetRaw = Number.parseInt(lifetimeOneTargetInt.value ?? String(firstMatches[3]))
     const targetArg = targetRaw === -1 ? 10000 : targetRaw
     const mennoConfigItems = await getMennoData(shipArg, durationArg, levelArg, targetArg)
-    if (mennoConfigItems) {
-      lifetimeData.value!.mennoData = {
+    if (myToken !== lifetimeLoadToken) return // superseded by a newer load
+    if (mennoConfigItems && lifetimeData.value) {
+      lifetimeData.value.mennoData = {
         configs: mennoConfigItems as unknown as LedgerData['mennoData']['configs'],
         totalDropsCount: mennoConfigItems.reduce(
           (acc: number, cur: { totalDrops: number }) => acc + cur.totalDrops,
@@ -748,10 +769,25 @@ async function viewLifetimeDataOfEid(filterLoad: boolean) {
   lifetimeState.value = LifetimeLoadState.Success
 }
 
-watch(activeAccountId, () => {
+// Auto-load on account change (and on first mount via immediate), mirroring the
+// Mission Data tab so the user never has to click "Load Lifetime Data". The
+// manual button remains as a fallback if the auto-load times out.
+// Reload on account CHANGE. The first/initial load is kicked off from onMounted
+// (after shared configs are loaded), so this watch is intentionally not
+// immediate - otherwise the first auto-load would run before configs are ready.
+watch(activeAccountId, (id) => {
   clearFilter()
   lifetimeData.value = null
   lifetimeState.value = LifetimeLoadState.Idle
+  if (id) viewLifetimeDataOfEid(false)
+})
+
+// Refresh when a fetch completes, so freshly fetched missions show up without a
+// manual reload (again matching Mission Data).
+watch(appState, (val) => {
+  if (val === AppState.Success && activeAccountId.value) {
+    viewLifetimeDataOfEid(false)
+  }
 })
 
 async function onFilterSubmit(event: Event) {
@@ -776,5 +812,10 @@ onMounted(async () => {
   getFilterValueOptions('level')
   getFilterValueOptions('target')
   getFilterValueOptions('drops')
+
+  // Initial auto-load now that shared configs are ready. (The activeAccountId
+  // watch above handles later account changes; if the account is still loading
+  // from storage it will fire that watch once it resolves.)
+  if (activeAccountId.value) viewLifetimeDataOfEid(false)
 })
 </script>

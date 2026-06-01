@@ -51,7 +51,7 @@
         </div>
         <hr class="mt-0_5rem mb-0_5rem w-full" />
       </div>
-      <template v-for="(yearVF, yearIndex) in groupedMissions" :key="yearIndex">
+      <template v-for="(yearVF, yearIndex) in groupedMissions" :key="groupedArrays.year[yearIndex].year">
         <span class="text-lg font-bold mr-0_5rem ledger-underline">{{ groupedArrays.year[yearIndex].year }}</span>
         <button
           class="tb-c text-lg toggle-link"
@@ -63,7 +63,7 @@
         <template v-if="groupedArrays.year[yearIndex].enabled">
           <div
             v-for="(monthVF, monthIndex) in yearVF"
-            :key="monthIndex"
+            :key="groupedArrays.month[yearIndex][monthIndex].month"
           >
             <div class="mt-1rem ml-2rem">
               <span class="text-base font-bold mr-0_5rem ledger-underline">
@@ -79,7 +79,7 @@
               <template v-if="groupedArrays.month[yearIndex][monthIndex].enabled">
                 <div
                   v-for="(dayVF, dayIndex) in monthVF"
-                  :key="dayIndex"
+                  :key="groupedArrays.day[yearIndex][monthIndex][dayIndex].day"
                 >
                   <div class="mt-1rem ml-2rem">
                     <span
@@ -107,8 +107,8 @@
                       <div :class="'mission-grid ' + (multiViewMode === 'row' ? 'mission-items-view' : 'mission-items-full')">
                         <template v-if="isDayRowVisible(yearIndex, monthIndex, dayIndex)">
                           <div
-                            v-for="(mission, missionIndex) in dayVF"
-                            :key="missionIndex"
+                            v-for="mission in dayVF"
+                            :key="mission.missionId"
                             class="text-sm mission-item-3"
                             :data-missionid="mission.missionId"
                           >

@@ -13,6 +13,7 @@ import { advancedDropFilter } from './useSettings'
 import {
   getMissionFilterValueOptions as getSharedMissionFilterOptions,
   getTargetFilterOptions,
+  getDropFilterOptions,
 } from '../utils/filterOptions'
 
 export interface FilterCondition {
@@ -60,37 +61,6 @@ export function useFilters(options: UseFiltersOptions) {
 
   // Filter value option helpers
 
-  function artifactDisplayText(artifact: PossibleArtifact): string {
-    const displayName = artifact.displayName
-    const level = artifact.level
-    let displayText = displayName
-    if (String(level) !== '%') {
-      const isStoneNotFragment =
-        displayName.toLowerCase().includes('stone') &&
-        !displayName.toLowerCase().includes('fragment')
-      displayText += ' (T' + (Number(level) + (isStoneNotFragment ? 2 : 1)) + ')'
-    }
-    return displayText
-  }
-
-  function dropPath(drop: PossibleArtifact): string {
-    const addendum = drop.protoName.includes('_STONE') ? 1 : 0
-    const fixedName = drop.protoName
-      .replaceAll('_FRAGMENT', '')
-      .replaceAll('ORNATE_GUSSET', 'GUSSET')
-      .replaceAll('VIAL_MARTIAN_DUST', 'VIAL_OF_MARTIAN_DUST')
-    return 'artifacts/' + fixedName + '/' + fixedName + '_' + (drop.level + 1 + addendum) + '.png'
-  }
-
-  function dropRarityPath(drop: PossibleArtifact): string {
-    switch (drop.rarity) {
-      case 1: return 'images/rare.gif'
-      case 2: return 'images/epic.gif'
-      case 3: return 'images/legendary.gif'
-      default: return ''
-    }
-  }
-
   function getFilterValueOptions(topLevel: string | null): FilterOption[] {
     if (!topLevel) return []
     const shared = getSharedMissionFilterOptions(topLevel)
@@ -98,59 +68,12 @@ export function useFilters(options: UseFiltersOptions) {
     switch (topLevel) {
       case 'target':
         return getTargetFilterOptions(options.possibleTargets.value)
-      case 'drops': {
-        const artifactList = options.artifactConfigs.value
-          .filter((a) => a.baseQuality <= options.maxQuality.value)
-
-        const result: FilterOption[] = [
-          { text: 'Any Rare', value: '%_%_1_%', rarity: 1, styleClass: 'text-rare', imagePath: 'icon_help.webp' },
-          { text: 'Any Epic', value: '%_%_2_%', rarity: 2, styleClass: 'text-epic', imagePath: 'icon_help.webp' },
-          { text: 'Any Legendary', value: '%_%_3_%', rarity: 3, styleClass: 'text-legendary', imagePath: 'icon_help.webp' },
-        ]
-
-        // Group by family (name) then by tier (level), preserving insertion order
-        const byFamily = new Map<number, Map<number, PossibleArtifact[]>>()
-        for (const a of artifactList) {
-          if (!byFamily.has(a.name)) byFamily.set(a.name, new Map())
-          const byTier = byFamily.get(a.name)!
-          if (!byTier.has(a.level)) byTier.set(a.level, [])
-          byTier.get(a.level)!.push(a)
-        }
-
-        for (const [familyId, tierMap] of byFamily) {
-          if (advancedDropFilter.value) {
-            const firstArtifact = [...tierMap.values()][0][0]
-            result.push({
-              text: firstArtifact.displayName + ' (Any)',
-              value: familyId + '_%_%_%',
-              rarity: 0,
-              imagePath: dropPath(firstArtifact),
-            })
-          }
-          for (const [tierLevel, rarities] of tierMap) {
-            if (advancedDropFilter.value && rarities.some((a) => a.rarity > 0)) {
-              const tierRep = rarities.find((a) => a.rarity === 0) ?? rarities[0]
-              result.push({
-                text: artifactDisplayText(rarities[0]) + ' (Any Rarity)',
-                value: familyId + '_' + tierLevel + '_%_%',
-                rarity: 0,
-                imagePath: dropPath(tierRep),
-              })
-            }
-            for (const a of rarities) {
-              result.push({
-                text: artifactDisplayText(a),
-                value: a.name + '_' + a.level + '_' + a.rarity + '_' + a.baseQuality,
-                rarity: a.rarity,
-                imagePath: dropPath(a),
-                rarityGif: dropRarityPath(a),
-              })
-            }
-          }
-        }
-
-        return result
-      }
+      case 'drops':
+        return getDropFilterOptions(
+          options.artifactConfigs.value,
+          options.maxQuality.value,
+          advancedDropFilter.value,
+        )
       default:
         return []
     }
@@ -677,6 +600,16 @@ export function useFilters(options: UseFiltersOptions) {
   const dropFilterMenuOpen = ref(false)
   const dropSearchTerm = ref('')
 
+  // Base (unfiltered) drop options, rebuilt only when the menu opens or the
+  // advanced-grouping toggle changes - NOT on every keystroke. getFilterValueOptions('drops')
+  // walks the whole artifact config, so search filters this cache instead.
+  let dropBaseList: FilterOption[] = []
+  function filterDropBase(term: string): FilterOption[] {
+    if (!term) return dropBaseList
+    const lower = term.toLowerCase()
+    return dropBaseList.filter((d) => d.text.toLowerCase().includes(lower))
+  }
+
   const targetSelectList = ref<FilterOption[]>([])
   const targetFilterSelectedIndex = ref<number | null>(null)
   const targetFilterSelectedOrIndex = ref<number | null>(null)
@@ -684,16 +617,12 @@ export function useFilters(options: UseFiltersOptions) {
   const targetSearchTerm = ref('')
 
   watch(dropSearchTerm, () => {
-    dropSelectList.value = getFilterValueOptions('drops').filter((d) =>
-      d.text.toLowerCase().includes(dropSearchTerm.value.toLowerCase()),
-    )
+    dropSelectList.value = filterDropBase(dropSearchTerm.value)
   })
   watch(advancedDropFilter, () => {
     if (!dropFilterMenuOpen.value) return
-    const all = getFilterValueOptions('drops')
-    dropSelectList.value = dropSearchTerm.value
-      ? all.filter((d) => d.text.toLowerCase().includes(dropSearchTerm.value.toLowerCase()))
-      : all
+    dropBaseList = getFilterValueOptions('drops')
+    dropSelectList.value = filterDropBase(dropSearchTerm.value)
   })
   watch(targetSearchTerm, () => {
     targetSelectList.value = getFilterValueOptions('target').filter((t) =>
@@ -702,7 +631,8 @@ export function useFilters(options: UseFiltersOptions) {
   })
 
   function openDropFilterMenu(index: number, orIndex: number | null) {
-    dropSelectList.value = getFilterValueOptions('drops')
+    dropBaseList = getFilterValueOptions('drops')
+    dropSelectList.value = dropBaseList
     dropFilterSelectedIndex.value = index
     dropFilterSelectedOrIndex.value = orIndex ?? null
     dropFilterMenuOpen.value = true

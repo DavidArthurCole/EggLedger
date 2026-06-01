@@ -3,13 +3,14 @@ import tseslint from 'typescript-eslint'
 import sonarjs from 'eslint-plugin-sonarjs'
 
 export default [
-  { ignores: ['dist/**', 'node_modules/**'] },
+  { ignores: ['www/dist/**', 'www/node_modules/**', 'dist/**', 'node_modules/**'] },
 
   // TypeScript recommended rules scoped to .ts files only.
   // Must NOT include .vue here - tseslint.configs.recommended sets the parser
   // globally in its first element, which would shadow vue-eslint-parser.
+  // Globs are CWD-relative; lint runs from the repo root, so paths are www/src/*.
   ...tseslint.configs.recommended.map(config =>
-    config.files ? config : { ...config, files: ['src/**/*.ts'] }
+    config.files ? config : { ...config, files: ['www/src/**/*.ts'] }
   ),
 
   // Vue 3 essential rules. Sets up vue-eslint-parser for .vue files.
@@ -18,7 +19,7 @@ export default [
 
   // Wire up typescript-eslint as the <script lang="ts"> sub-parser inside .vue.
   {
-    files: ['src/**/*.vue'],
+    files: ['www/src/**/*.vue'],
     languageOptions: {
       parserOptions: {
         parser: tseslint.parser,
@@ -29,7 +30,7 @@ export default [
 
   // Rules applied to all TypeScript/Vue source files
   {
-    files: ['src/**/*.{ts,vue}'],
+    files: ['www/src/**/*.{ts,vue}'],
     plugins: { sonarjs },
     rules: {
       // Ban window.X member access - use globalThis for lorca bindings.

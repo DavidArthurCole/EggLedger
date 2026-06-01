@@ -39,6 +39,7 @@
     :is-auto-refresh="mennoIsAutoRefresh"
     :progress="mennoProgress"
   />
+  <UpdatingOverlay />
 </template>
 
 <script setup lang="ts">
@@ -52,6 +53,7 @@ import AboutView from './views/AboutView.vue'
 import ReportsView from './views/ReportsView.vue'
 import UpdateModal from './components/modals/UpdateModal.vue'
 import MennoLoadingModal from './components/modals/MennoLoadingModal.vue'
+import UpdatingOverlay from './components/modals/UpdatingOverlay.vue'
 import GlobalAccountHeader from './components/GlobalAccountHeader.vue'
 import { useAppState } from './composables/useAppState'
 import { useMennoData } from './composables/useMennoData'
@@ -77,7 +79,10 @@ const tabList = ['Ledger', 'Mission Data', 'Lifetime Data', 'Reports', 'Settings
 const mounted = ref(false)
 const updateModalDismissed = ref(false)
 const apiStaleBannerDismissed = ref(false)
-const visited = ref(new Set(['Ledger']))
+// Mount Lifetime Data eagerly so it pre-loads in the background on app open
+// (its own watch only triggers a load when an account is selected). The view
+// stays hidden via v-show until the user opens the tab.
+const visited = ref(new Set(['Ledger', 'Lifetime Data']))
 
 watch(activeTab, (tab) => {
   visited.value = new Set([...visited.value, tab])

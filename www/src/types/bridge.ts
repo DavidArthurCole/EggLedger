@@ -467,4 +467,7 @@ declare global {
   var onDiscordAuthComplete: (connected: boolean, username: string) => void
   var onCloudSyncComplete: (success: boolean, errMsg: string) => void
   var onCloudRestoreComplete: (success: boolean, errMsg: string) => void
+  var beginUpdate: () => void
+  var beginUpdateCountdown: (seconds: number) => void
+  var endUpdate: () => void
 }
