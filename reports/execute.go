@@ -4,10 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/DavidArthurCole/EggLedger/eiafx"
+	"github.com/DavidArthurCole/EggLedger/util"
 	"github.com/pkg/errors"
 )
 
@@ -28,14 +28,14 @@ func ExecuteReport(ctx context.Context, def ReportDefinition) (ReportResult, err
 		return ReportResult{}, wrap(errors.New("mission DB not initialized"))
 	}
 
-	whereClause, filterArgs := BuildWhereClause(def.Filters, def.Subject)
+	whereClause, filterArgs := BuildWhereClause(def.Filters)
 	baseWhere := "m.player_id = ?"
 	if whereClause != "" {
 		baseWhere += " AND " + whereClause
 	}
-	args := []interface{}{def.AccountId}
+	args := []any{def.AccountId}
 	args = append(args, filterArgs...)
-	baseArgs := make([]interface{}, len(args))
+	baseArgs := make([]any, len(args))
 	copy(baseArgs, args)
 
 	if def.FamilyWeight != "" {
@@ -56,7 +56,7 @@ func ExecuteReport(ctx context.Context, def ReportDefinition) (ReportResult, err
 	}
 
 	if def.SecondaryGroupBy != "" && def.Mode == "time_series" {
-		return executeTimePivotReport(ctx, def, baseWhere, args, baseArgs)
+		return executeTimePivotReport(ctx, def, baseWhere, args)
 	}
 	if def.SecondaryGroupBy != "" {
 		return executePivotReport(ctx, def, baseWhere, args, baseArgs)
@@ -108,33 +108,8 @@ func ExecuteReport(ctx context.Context, def ReportDefinition) (ReportResult, err
 		if groupCol == "" || strings.HasPrefix(groupCol, "d.") {
 			return ReportResult{Labels: labels, Values: values, Weight: def.Weight}, nil
 		}
-		var denomQuery string
-		if def.NormalizeBy == "airtime" {
-			denomQuery = fmt.Sprintf(
-				`SELECT CAST(%s AS TEXT), SUM(CAST(m.return_timestamp - m.start_timestamp AS REAL) / 3600.0) FROM mission m WHERE %s GROUP BY %s`,
-				groupCol, baseWhere, groupCol,
-			)
-		} else {
-			denomQuery = fmt.Sprintf(
-				`SELECT CAST(%s AS TEXT), COUNT(*) FROM mission m WHERE %s GROUP BY %s`,
-				groupCol, baseWhere, groupCol,
-			)
-		}
-		denomRows, err := _missionDB.QueryContext(ctx, denomQuery, baseArgs...)
+		denomMap, err := denom1D(ctx, groupCol, def.NormalizeBy, baseWhere, baseArgs)
 		if err != nil {
-			return ReportResult{}, wrap(err)
-		}
-		defer denomRows.Close()
-		denomMap := make(map[string]float64)
-		for denomRows.Next() {
-			var key string
-			var denom float64
-			if err := denomRows.Scan(&key, &denom); err != nil {
-				return ReportResult{}, wrap(err)
-			}
-			denomMap[key] = denom
-		}
-		if err := denomRows.Err(); err != nil {
 			return ReportResult{}, wrap(err)
 		}
 
@@ -160,51 +135,7 @@ func ExecuteReport(ctx context.Context, def ReportDefinition) (ReportResult, err
 	}, nil
 }
 
-// apply2DPctNormalization normalizes a row-major matrix in-place.
-// mode must be "row_pct", "col_pct", or "global_pct"; anything else is a no-op.
-func apply2DPctNormalization(vals []float64, nR, nC int, mode string) {
-	if nR == 0 || nC == 0 {
-		return
-	}
-	switch mode {
-	case "row_pct":
-		for r := 0; r < nR; r++ {
-			var rowSum float64
-			for c := 0; c < nC; c++ {
-				rowSum += vals[r*nC+c]
-			}
-			if rowSum > 0 {
-				for c := 0; c < nC; c++ {
-					vals[r*nC+c] = vals[r*nC+c] / rowSum * 100
-				}
-			}
-		}
-	case "col_pct":
-		for c := 0; c < nC; c++ {
-			var colSum float64
-			for r := 0; r < nR; r++ {
-				colSum += vals[r*nC+c]
-			}
-			if colSum > 0 {
-				for r := 0; r < nR; r++ {
-					vals[r*nC+c] = vals[r*nC+c] / colSum * 100
-				}
-			}
-		}
-	case "global_pct":
-		var total float64
-		for _, v := range vals {
-			total += v
-		}
-		if total > 0 {
-			for i := range vals {
-				vals[i] = vals[i] / total * 100
-			}
-		}
-	}
-}
-
-func buildPivotQuery(def ReportDefinition, baseWhere string, args []interface{}) (string, []interface{}, error) {
+func buildPivotQuery(def ReportDefinition, baseWhere string, args []any) (string, []any, error) {
 	if def.TimeBucket != "" && def.Mode == "time_series" {
 		return "", nil, fmt.Errorf("time-series pivot is not supported; clear the time bucket or remove the secondary group-by")
 	}
@@ -216,30 +147,21 @@ func buildPivotQuery(def ReportDefinition, baseWhere string, args []interface{})
 	if col2 == "" {
 		return "", nil, fmt.Errorf("unsupported secondary group-by dimension %q", def.SecondaryGroupBy)
 	}
-	out := make([]interface{}, len(args))
+	out := make([]any, len(args))
 	copy(out, args)
 	needsArtifactJoin := strings.HasPrefix(col1, "d.") || strings.HasPrefix(col2, "d.")
-	var query string
-	if needsArtifactJoin {
-		query = fmt.Sprintf(`
-            SELECT CAST(%s AS TEXT), CAST(%s AS TEXT), COUNT(*) AS count
-            FROM artifact_drops d
-            JOIN mission m ON d.mission_id = m.mission_id AND d.player_id = m.player_id
-            WHERE %s AND d.drop_index >= 0
-            GROUP BY %s, %s
-            ORDER BY %s, %s`, col1, col2, baseWhere, col1, col2, col1, col2)
-	} else {
-		query = fmt.Sprintf(`
-            SELECT CAST(%s AS TEXT), CAST(%s AS TEXT), COUNT(*) AS count
-            FROM mission m
-            WHERE %s
-            GROUP BY %s, %s
-            ORDER BY %s, %s`, col1, col2, baseWhere, col1, col2, col1, col2)
-	}
+	query := queryBuilder{
+		indent:      "            ",
+		selectCols:  fmt.Sprintf("CAST(%s AS TEXT), CAST(%s AS TEXT), COUNT(*) AS count", col1, col2),
+		artifactSrc: needsArtifactJoin,
+		where:       baseWhere,
+		groupBy:     fmt.Sprintf("%s, %s", col1, col2),
+		orderBy:     fmt.Sprintf("%s, %s", col1, col2),
+	}.build()
 	return query, out, nil
 }
 
-func executePivotReport(ctx context.Context, def ReportDefinition, baseWhere string, args []interface{}, baseArgs []interface{}) (ReportResult, error) {
+func executePivotReport(ctx context.Context, def ReportDefinition, baseWhere string, args []any, baseArgs []any) (ReportResult, error) {
 	action := fmt.Sprintf("execute pivot report %s", def.Id)
 	wrap := func(err error) error { return errors.Wrap(err, action) }
 
@@ -254,18 +176,7 @@ func executePivotReport(ctx context.Context, def ReportDefinition, baseWhere str
 	}
 	defer rows.Close()
 
-	rowSet := map[string]struct{}{}
-	colSet := map[string]struct{}{}
-	cells := map[string]map[string]float64{}
-
-	type labelEntry struct {
-		display string
-		rawVal  string
-	}
-
-	var rowEntries []labelEntry
-	var colEntries []labelEntry
-
+	accum := newPivotAccum()
 	for rows.Next() {
 		var rawRow, rawCol string
 		var count int64
@@ -274,85 +185,24 @@ func executePivotReport(ctx context.Context, def ReportDefinition, baseWhere str
 		}
 		rowLabel := FormatLabel(def.GroupBy, rawRow)
 		colLabel := FormatLabel(def.SecondaryGroupBy, rawCol)
-		if _, ok := rowSet[rowLabel]; !ok {
-			rowSet[rowLabel] = struct{}{}
-			rowEntries = append(rowEntries, labelEntry{display: rowLabel, rawVal: rawRow})
-		}
-		if _, ok := colSet[colLabel]; !ok {
-			colSet[colLabel] = struct{}{}
-			colEntries = append(colEntries, labelEntry{display: colLabel, rawVal: rawCol})
-		}
-		if cells[rowLabel] == nil {
-			cells[rowLabel] = map[string]float64{}
-		}
-		cells[rowLabel][colLabel] = float64(count)
+		accum.add(rowLabel, rawRow, colLabel, rawCol, float64(count))
 	}
 	if err := rows.Err(); err != nil {
 		return ReportResult{}, wrap(err)
 	}
 
-	sort.SliceStable(rowEntries, func(i, j int) bool {
-		return LabelSortLess(def.GroupBy, rowEntries[i].rawVal, rowEntries[j].rawVal)
-	})
-	sort.SliceStable(colEntries, func(i, j int) bool {
-		return LabelSortLess(def.SecondaryGroupBy, colEntries[i].rawVal, colEntries[j].rawVal)
-	})
-
-	rowLabels := make([]string, len(rowEntries))
-	colLabels := make([]string, len(colEntries))
-	for i, e := range rowEntries {
-		rowLabels[i] = e.display
-	}
-	for i, e := range colEntries {
-		colLabels[i] = e.display
-	}
-
-	matrixValues := make([]float64, len(rowLabels)*len(colLabels))
-	for r, row := range rowLabels {
-		for c, col := range colLabels {
-			matrixValues[r*len(colLabels)+c] = cells[row][col]
-		}
-	}
+	rowLabels, colLabels, rawRowLabels, rawColLabels, matrixValues :=
+		accum.finalize(true, true, def.GroupBy, def.SecondaryGroupBy)
 
 	pctMode := def.NormalizeBy
 	if pctMode == "row_pct" || pctMode == "col_pct" || pctMode == "global_pct" {
-		apply2DPctNormalization(matrixValues, len(rowLabels), len(colLabels), pctMode)
+		util.Apply2DPctNormalization(matrixValues, len(rowLabels), len(colLabels), pctMode)
 	} else if pctMode != "" && pctMode != "none" {
 		col1 := GroupByColumn(def.GroupBy)
 		col2 := GroupByColumn(def.SecondaryGroupBy)
 		if col1 != "" && !strings.HasPrefix(col1, "d.") && col2 != "" && !strings.HasPrefix(col2, "d.") {
-			var denomQuery string
-			if pctMode == "airtime" {
-				denomQuery = fmt.Sprintf(
-					`SELECT CAST(%s AS TEXT), CAST(%s AS TEXT), SUM(CAST(m.return_timestamp - m.start_timestamp AS REAL) / 3600.0) FROM mission m WHERE %s GROUP BY %s, %s`,
-					col1, col2, baseWhere, col1, col2,
-				)
-			} else {
-				denomQuery = fmt.Sprintf(
-					`SELECT CAST(%s AS TEXT), CAST(%s AS TEXT), COUNT(*) FROM mission m WHERE %s GROUP BY %s, %s`,
-					col1, col2, baseWhere, col1, col2,
-				)
-			}
-			denomRows, err := _missionDB.QueryContext(ctx, denomQuery, baseArgs...)
+			denomMap, err := denom2D(ctx, def, col1, col2, pctMode, baseWhere, baseArgs)
 			if err != nil {
-				return ReportResult{}, wrap(err)
-			}
-			defer denomRows.Close()
-			denomMap := map[string]map[string]float64{}
-			for denomRows.Next() {
-				var rawKey1, rawKey2 string
-				var denom float64
-				if err := denomRows.Scan(&rawKey1, &rawKey2, &denom); err != nil {
-					return ReportResult{}, wrap(err)
-				}
-				k1 := FormatLabel(def.GroupBy, rawKey1)
-				k2 := FormatLabel(def.SecondaryGroupBy, rawKey2)
-				if denomMap[k1] == nil {
-					denomMap[k1] = map[string]float64{}
-				}
-				denomMap[k1][k2] = denom
-			}
-			if err := denomRows.Err(); err != nil {
 				return ReportResult{}, wrap(err)
 			}
 			nC := len(colLabels)
@@ -366,15 +216,6 @@ func executePivotReport(ctx context.Context, def ReportDefinition, baseWhere str
 		}
 	}
 
-	rawRowLabels := make([]string, len(rowEntries))
-	rawColLabels := make([]string, len(colEntries))
-	for i, e := range rowEntries {
-		rawRowLabels[i] = e.rawVal
-	}
-	for i, e := range colEntries {
-		rawColLabels[i] = e.rawVal
-	}
-
 	return ReportResult{
 		RowLabels:    rowLabels,
 		ColLabels:    colLabels,
@@ -386,9 +227,9 @@ func executePivotReport(ctx context.Context, def ReportDefinition, baseWhere str
 	}, nil
 }
 
-func executeTimePivotReport(ctx context.Context, def ReportDefinition, baseWhere string, args []interface{}, baseArgs []interface{}) (ReportResult, error) {
-	// baseArgs is the pre-filter arg snapshot; accepted for caller consistency but not used
-	// since time-series pivots do not support airtime/launches normalization.
+func executeTimePivotReport(ctx context.Context, def ReportDefinition, baseWhere string, args []any) (ReportResult, error) {
+	// Time-series pivots do not support airtime/launches normalization, so no
+	// pre-filter arg snapshot (baseArgs) is needed here.
 	action := fmt.Sprintf("execute time pivot report %s", def.Id)
 	wrap := func(err error) error { return errors.Wrap(err, action) }
 
@@ -403,17 +244,7 @@ func executeTimePivotReport(ctx context.Context, def ReportDefinition, baseWhere
 	}
 	defer rows.Close()
 
-	var bucketLabels []string
-	bucketSet := map[string]struct{}{}
-	groupSet := map[string]struct{}{}
-	cells := map[string]map[string]float64{}
-
-	type grpEntry struct {
-		display string
-		rawVal  string
-	}
-	var grpEntries []grpEntry
-
+	accum := newPivotAccum()
 	for rows.Next() {
 		var rawBucket, rawGrp string
 		var count int64
@@ -421,41 +252,20 @@ func executeTimePivotReport(ctx context.Context, def ReportDefinition, baseWhere
 			return ReportResult{}, wrap(err)
 		}
 		grpLabel := FormatLabel(def.SecondaryGroupBy, rawGrp)
-		if _, ok := bucketSet[rawBucket]; !ok {
-			bucketSet[rawBucket] = struct{}{}
-			bucketLabels = append(bucketLabels, rawBucket)
-		}
-		if _, ok := groupSet[grpLabel]; !ok {
-			groupSet[grpLabel] = struct{}{}
-			grpEntries = append(grpEntries, grpEntry{display: grpLabel, rawVal: rawGrp})
-		}
-		if cells[rawBucket] == nil {
-			cells[rawBucket] = map[string]float64{}
-		}
-		cells[rawBucket][grpLabel] = float64(count)
+		// Bucket rows are not FormatLabel'd: the raw bucket string is the display.
+		accum.add(rawBucket, rawBucket, grpLabel, rawGrp, float64(count))
 	}
 	if err := rows.Err(); err != nil {
 		return ReportResult{}, wrap(err)
 	}
 
-	sort.SliceStable(grpEntries, func(i, j int) bool {
-		return LabelSortLess(def.SecondaryGroupBy, grpEntries[i].rawVal, grpEntries[j].rawVal)
-	})
-	groupLabels := make([]string, len(grpEntries))
-	for i, e := range grpEntries {
-		groupLabels[i] = e.display
-	}
+	// Time pivots leave the bucket (row) axis in query ASC order; only the group
+	// (col) axis is sorted.
+	bucketLabels, groupLabels, _, rawGrpLabels, matrixValues :=
+		accum.finalize(false, true, def.GroupBy, def.SecondaryGroupBy)
 
 	nR := len(bucketLabels)
 	nC := len(groupLabels)
-	matrixValues := make([]float64, nR*nC)
-	for r, bucket := range bucketLabels {
-		for c, grp := range groupLabels {
-			if cells[bucket] != nil {
-				matrixValues[r*nC+c] = cells[bucket][grp]
-			}
-		}
-	}
 
 	if nR > 0 {
 		bucketLabels, matrixValues = fillTimePivotGaps(def.TimeBucket, def.CustomBucketUnit, bucketLabels, nC, matrixValues)
@@ -464,12 +274,7 @@ func executeTimePivotReport(ctx context.Context, def ReportDefinition, baseWhere
 
 	pctMode := def.NormalizeBy
 	if pctMode == "row_pct" || pctMode == "col_pct" || pctMode == "global_pct" {
-		apply2DPctNormalization(matrixValues, nR, nC, pctMode)
-	}
-
-	rawGrpLabels := make([]string, len(grpEntries))
-	for i, e := range grpEntries {
-		rawGrpLabels[i] = e.rawVal
+		util.Apply2DPctNormalization(matrixValues, nR, nC, pctMode)
 	}
 
 	return ReportResult{
@@ -483,64 +288,46 @@ func executeTimePivotReport(ctx context.Context, def ReportDefinition, baseWhere
 	}, nil
 }
 
-func buildAggregateQuery(def ReportDefinition, baseWhere string, baseArgs []interface{}) (string, []interface{}) {
-	args := make([]interface{}, len(baseArgs))
+func buildAggregateQuery(def ReportDefinition, baseWhere string, baseArgs []any) (string, []any) {
+	args := make([]any, len(baseArgs))
 	copy(args, baseArgs)
 
 	groupCol := GroupByColumn(def.GroupBy)
-	var query string
-
-	if def.Subject == "artifacts" {
-		query = fmt.Sprintf(`
-            SELECT CAST(%s AS TEXT), COUNT(*) AS count
-            FROM artifact_drops d
-            JOIN mission m ON d.mission_id = m.mission_id AND d.player_id = m.player_id
-            WHERE %s AND d.drop_index >= 0
-            GROUP BY %s
-            ORDER BY count DESC`, groupCol, baseWhere, groupCol)
-	} else {
-		query = fmt.Sprintf(`
-            SELECT CAST(%s AS TEXT), COUNT(*) AS count
-            FROM mission m
-            WHERE %s
-            GROUP BY %s
-            ORDER BY count DESC`, groupCol, baseWhere, groupCol)
-	}
+	query := queryBuilder{
+		indent:      "            ",
+		selectCols:  fmt.Sprintf("CAST(%s AS TEXT), COUNT(*) AS count", groupCol),
+		artifactSrc: def.Subject == "artifacts",
+		where:       baseWhere,
+		groupBy:     groupCol,
+		orderBy:     "count DESC",
+	}.build()
 	return query, args
 }
 
-func buildTimeSeriesQuery(def ReportDefinition, baseWhere string, baseArgs []interface{}) (string, []interface{}) {
-	args := make([]interface{}, len(baseArgs))
+func buildTimeSeriesQuery(def ReportDefinition, baseWhere string, baseArgs []any) (string, []any) {
+	args := make([]any, len(baseArgs))
 	copy(args, baseArgs)
 
 	format := TimeBucketFormat(def.TimeBucket, def.CustomBucketUnit)
 	bucketExpr := "strftime('" + format + "', datetime(m.start_timestamp, 'unixepoch'))"
 
-	windowWhere := ""
+	var extraWhere []string
 	if def.TimeBucket == "custom" {
 		cond, modifier := CustomWindowCondition(def.CustomBucketN, def.CustomBucketUnit)
 		if cond != "" {
-			windowWhere = " AND " + cond
+			extraWhere = append(extraWhere, cond)
 			args = append(args, modifier)
 		}
 	}
 
-	var query string
-	if def.Subject == "artifacts" {
-		query = fmt.Sprintf(`
-            SELECT %s AS bucket, COUNT(*) AS count
-            FROM artifact_drops d
-            JOIN mission m ON d.mission_id = m.mission_id AND d.player_id = m.player_id
-            WHERE %s AND d.drop_index >= 0%s
-            GROUP BY bucket
-            ORDER BY bucket ASC`, bucketExpr, baseWhere, windowWhere)
-	} else {
-		query = fmt.Sprintf(`
-            SELECT %s AS bucket, COUNT(*) AS count
-            FROM mission m
-            WHERE %s%s
-            GROUP BY bucket
-            ORDER BY bucket ASC`, bucketExpr, baseWhere, windowWhere)
-	}
+	query := queryBuilder{
+		indent:      "            ",
+		selectCols:  fmt.Sprintf("%s AS bucket, COUNT(*) AS count", bucketExpr),
+		artifactSrc: def.Subject == "artifacts",
+		where:       baseWhere,
+		extraWhere:  extraWhere,
+		groupBy:     "bucket",
+		orderBy:     "bucket ASC",
+	}.build()
 	return query, args
 }

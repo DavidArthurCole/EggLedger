@@ -340,7 +340,7 @@ func decryptBlob(hexKey, ciphertext string) ([]byte, error) {
 	return plaintext, nil
 }
 
-func putBlob(ctx context.Context, token, name string, payload interface{}) error {
+func putBlob(ctx context.Context, token, name string, payload any) error {
 	raw, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("putBlob %s: marshal: %w", name, err)
@@ -376,7 +376,7 @@ func putBlob(ctx context.Context, token, name string, payload interface{}) error
 }
 
 // getBlob fetches /blobs/<name> and unmarshals the data field into out.
-func getBlob(ctx context.Context, token, name string, out interface{}) error {
+func getBlob(ctx context.Context, token, name string, out any) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
 		_cloudSyncBaseURL+"/blobs/"+name, nil)
 	if err != nil {

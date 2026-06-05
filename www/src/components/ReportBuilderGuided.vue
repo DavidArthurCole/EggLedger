@@ -121,6 +121,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import type { ReportFilterCondition, PossibleTarget } from '../types/bridge'
+import { MISSION_DIMENSIONS, ARTIFACT_DIMENSIONS, dimensionLabel } from '../utils/reportDimensions'
 
 defineProps<{
   possibleTargets: PossibleTarget[]
@@ -150,21 +151,9 @@ const intentOptions = [
 ]
 
 const groupByOptions = computed(() => {
-  if (intent.value === 'artifacts') {
-    return [
-      { value: 'artifact_name', label: 'Artifact name' },
-      { value: 'rarity', label: 'Rarity' },
-      { value: 'tier', label: 'Tier' },
-      { value: 'spec_type', label: 'Spec type' },
-    ]
-  }
-  return [
-    { value: 'ship_type', label: 'Ship type' },
-    { value: 'duration_type', label: 'Duration type' },
-    { value: 'level', label: 'Level' },
-    { value: 'mission_type', label: 'Mission type' },
-    { value: 'mission_target', label: 'Mission target' },
-  ]
+  // Guided artifacts offers the full artifact dimension set; guided missions offers the full
+  // mission dimension set. Both match the canonical lists exactly, so use them directly.
+  return intent.value === 'artifacts' ? ARTIFACT_DIMENSIONS : MISSION_DIMENSIONS
 })
 
 const quickFilterOptions = computed(() => {
@@ -189,14 +178,10 @@ const displayStep = computed(() => {
 
 function autoName() {
   const intentLabels: Record<string, string> = { missions: 'Mission counts', artifacts: 'Artifact drops', time: 'Activity over time' }
-  const groupByLabels: Record<string, string> = {
-    ship_type: 'ship type', duration_type: 'duration', level: 'level',
-    mission_type: 'mission type', mission_target: 'target',
-    artifact_name: 'artifact', rarity: 'rarity', tier: 'tier', spec_type: 'spec type',
-    time_bucket: '',
-  }
   const base = intentLabels[intent.value] ?? ''
-  const by = groupBy.value && groupBy.value !== 'time_bucket' ? ` by ${groupByLabels[groupBy.value] ?? groupBy.value}` : ''
+  const by = groupBy.value && groupBy.value !== 'time_bucket'
+    ? ` by ${dimensionLabel(groupBy.value).toLowerCase()}`
+    : ''
   reportName.value = base + by
 }
 

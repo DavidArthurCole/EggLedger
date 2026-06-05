@@ -192,19 +192,19 @@ func getUpdateAssetURL(tag string) (string, error) {
 		return "", wrap(errors.Errorf("GET %s: HTTP %d: %s", url, resp.StatusCode, string(body)))
 	}
 
-	var release map[string]interface{}
+	var release map[string]any
 	if err := json.Unmarshal(body, &release); err != nil {
 		return "", wrap(errors.Wrapf(err, "parsing JSON for %s", url))
 	}
 
-	assets, ok := release["assets"].([]interface{})
+	assets, ok := release["assets"].([]any)
 	if !ok {
 		return "", wrap(errors.Errorf("GET %s: assets field missing or not an array", url))
 	}
 
 	want := expectedAssetName()
 	for _, a := range assets {
-		asset, ok := a.(map[string]interface{})
+		asset, ok := a.(map[string]any)
 		if !ok {
 			continue
 		}

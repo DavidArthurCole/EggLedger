@@ -115,7 +115,7 @@ func (u UI) MustLoad(url string) {
 	}
 }
 
-func (u UI) MustBind(name string, f interface{}) {
+func (u UI) MustBind(name string, f any) {
 	err := u.Bind(name, f)
 	if err != nil {
 		log.Fatal("MustBind err: ", err)
@@ -1731,8 +1731,8 @@ func buildAppIconPath() string {
 	if scaleY < 1 {
 		scaleY = 1
 	}
-	for dy := 0; dy < dstH; dy++ {
-		for dx := 0; dx < dstW; dx++ {
+	for dy := range dstH {
+		for dx := range dstW {
 			sx := srcBounds.Min.X + dx*scaleX + scaleX/2
 			sy := srcBounds.Min.Y + dy*scaleY + scaleY/2
 			dst.Set(dx, dy, src.At(sx, sy))

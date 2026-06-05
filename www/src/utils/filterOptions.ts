@@ -114,6 +114,47 @@ export function getArtifactFilterValueOptions(topLevel: string): FilterOption[] 
   }
 }
 
+/**
+ * Returns one option per distinct artifact level present in artifactConfigs. The value is the raw
+ * level int as a string (0-based), matching the d.level SQL column. Options are deduplicated by
+ * level and sorted ascending.
+ */
+export function getArtifactTierFilterOptions(artifactConfigs: PossibleArtifact[]): FilterOption[] {
+  const levels = new Set<number>()
+  for (const a of artifactConfigs) {
+    levels.add(a.level)
+  }
+  return [...levels]
+    .sort((a, b) => a - b)
+    .map(level => ({
+      text: 'Tier ' + (level + 1),
+      value: String(level),
+    }))
+}
+
+/**
+ * Returns one option per artifact family, deduplicated by the name enum int. The value is the
+ * artifact_id enum as a string (matching the d.artifact_id SQL column). text is the display name of
+ * the lowest-level entry for that family, and imagePath is set via dropPath for the modal picker.
+ * Options are sorted alphabetically by text.
+ */
+export function getArtifactNameFilterOptions(artifactConfigs: PossibleArtifact[]): FilterOption[] {
+  const representatives = new Map<number, PossibleArtifact>()
+  for (const a of artifactConfigs) {
+    const existing = representatives.get(a.name)
+    if (!existing || a.level < existing.level) {
+      representatives.set(a.name, a)
+    }
+  }
+  return [...representatives.values()]
+    .map(a => ({
+      text: a.displayName,
+      value: String(a.name),
+      imagePath: dropPath(a),
+    }))
+    .sort((a, b) => a.text.localeCompare(b.text))
+}
+
 function artifactDisplayText(artifact: PossibleArtifact): string {
   const displayName = artifact.displayName
   const level = artifact.level

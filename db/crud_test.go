@@ -479,6 +479,48 @@ func TestResolvePendingFilterCols_ComputeFnSkips(t *testing.T) {
 	}
 }
 
+func TestResolvePendingFilterCols_SkipsCorruptPayload(t *testing.T) {
+	setupTestDB(t)
+	ctx := context.Background()
+
+	good := makeTestPayload(t, makeSimpleResponse())
+	insertRawMission(t, ctx, "EI1234", "good1", 1000000, good)
+	// Not valid gzip -> decompress fails -> mission skipped, not fatal.
+	insertRawMission(t, ctx, "EI1234", "corrupt", 1001000, []byte("not gzip"))
+	insertRawMission(t, ctx, "EI1234", "good2", 1002000, good)
+
+	var calls []int
+	resolved, err := ResolvePendingFilterCols(ctx, "EI1234",
+		func(_ float64, _ *ei.CompleteMissionResponse) (MissionFilterCols, bool) {
+			return MissionFilterCols{Ship: 1, Capacity: 6, Target: -1, ReturnTimestamp: 1}, true
+		},
+		func(done, total int) {
+			if total != 3 {
+				t.Errorf("progress total: got %d, want 3", total)
+			}
+			calls = append(calls, done)
+		})
+	if err != nil {
+		t.Fatalf("ResolvePendingFilterCols: %v", err)
+	}
+	if resolved != 2 {
+		t.Errorf("expected 2 resolved (corrupt skipped), got %d", resolved)
+	}
+	// progressFn fires for every input row, including the skipped corrupt one.
+	if len(calls) != 3 {
+		t.Errorf("expected 3 progress calls, got %d", len(calls))
+	}
+
+	// The corrupt mission stays pending; the two good ones are resolved.
+	count, err := CountPendingFilterCols(ctx, "EI1234")
+	if err != nil {
+		t.Fatalf("CountPendingFilterCols: %v", err)
+	}
+	if count != 1 {
+		t.Errorf("expected 1 still-pending (corrupt) mission, got %d", count)
+	}
+}
+
 // CountPendingMissionTypes
 
 func TestCountPendingMissionTypes_None(t *testing.T) {
@@ -637,6 +679,44 @@ func TestResolvePendingMissionTypes_OnlyAffectsPlayer(t *testing.T) {
 	}
 	if count != 1 {
 		t.Errorf("expected EI9999 mission to remain pending, got %d", count)
+	}
+}
+
+func TestResolvePendingMissionTypes_SkipsCorruptPayload(t *testing.T) {
+	setupTestDB(t)
+	ctx := context.Background()
+
+	good := makeTestPayload(t, makeVirtueResponse())
+	insertPendingTypeMission(t, ctx, "EI1234", "good1", 1000000, good)
+	// Not valid gzip -> decompress fails -> mission skipped, not fatal.
+	insertPendingTypeMission(t, ctx, "EI1234", "corrupt", 1001000, []byte("not gzip"))
+	insertPendingTypeMission(t, ctx, "EI1234", "good2", 1002000, good)
+
+	var calls []int
+	resolved, err := ResolvePendingMissionTypes(ctx, "EI1234", func(decoded, total int) {
+		if total != 3 {
+			t.Errorf("progress total: got %d, want 3", total)
+		}
+		calls = append(calls, decoded)
+	})
+	if err != nil {
+		t.Fatalf("ResolvePendingMissionTypes: %v", err)
+	}
+	if resolved != 2 {
+		t.Errorf("expected 2 resolved (corrupt skipped), got %d", resolved)
+	}
+	// progressFn fires for every input row, including the skipped corrupt one.
+	if len(calls) != 3 {
+		t.Errorf("expected 3 progress calls, got %d", len(calls))
+	}
+
+	// The corrupt mission stays pending; the two good ones are resolved.
+	count, err := CountPendingMissionTypes(ctx, "EI1234")
+	if err != nil {
+		t.Fatalf("CountPendingMissionTypes: %v", err)
+	}
+	if count != 1 {
+		t.Errorf("expected 1 still-pending (corrupt) mission, got %d", count)
 	}
 }
 

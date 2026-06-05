@@ -1,0 +1,40 @@
+version: "2"
+
+# golangci-lint configuration for EggLedger.
+
+run:
+  build-tags:
+    - windows
+
+linters:
+  default: none
+  # errcheck is intentionally NOT enabled: the codebase has many idiomatic
+  # unchecked deferred Close() calls; gating CI on those is a separate cleanup.
+  enable:
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+  exclusions:
+    generated: lax
+    paths:
+      - vendor
+      - node_modules
+      - ei/ei.pb.go
+    rules:
+      # platform_windows.go uses syscall.Syscall, deprecated in favour of
+      # SyscallN. Rewriting the syscall ABI plumbing is out of scope and risky;
+      # silence SA1019 there only.
+      - path: platform/platform_windows.go
+        linters:
+          - staticcheck
+        text: "SA1019"
+
+formatters:
+  enable:
+    - gofmt
+  exclusions:
+    paths:
+      - vendor
+      - node_modules
+      - ei/ei.pb.go

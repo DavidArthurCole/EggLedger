@@ -14,7 +14,7 @@ func TestBuildWhereClause_MissionScope(t *testing.T) {
 			{TopLevel: "duration", Op: "!=", Val: "0"},
 		},
 	}
-	clause, args := reports.BuildWhereClause(filters, "ships")
+	clause, args := reports.BuildWhereClause(filters)
 	if !strings.Contains(clause, "m.ship = ?") {
 		t.Errorf("expected ship condition, got: %s", clause)
 	}
@@ -33,7 +33,7 @@ func TestBuildWhereClause_ArtifactScope(t *testing.T) {
 			{TopLevel: "artifact_spec_type", Op: "=", Val: "Artifact"},
 		},
 	}
-	clause, args := reports.BuildWhereClause(filters, "artifacts")
+	clause, args := reports.BuildWhereClause(filters)
 	if !strings.Contains(clause, "d.rarity >= ?") {
 		t.Errorf("expected rarity condition, got: %s", clause)
 	}
@@ -52,7 +52,7 @@ func TestBuildWhereClause_BooleanOps(t *testing.T) {
 			{TopLevel: "buggedcap", Op: "false"},
 		},
 	}
-	clause, args := reports.BuildWhereClause(filters, "ships")
+	clause, args := reports.BuildWhereClause(filters)
 	if !strings.Contains(clause, "m.is_dub_cap = 1") {
 		t.Errorf("expected is_dub_cap = 1, got: %s", clause)
 	}
@@ -80,13 +80,107 @@ func TestGroupByColumn(t *testing.T) {
 	}
 }
 
+func TestBuildWhereClause_NumericValidation(t *testing.T) {
+	cases := []struct {
+		name      string
+		cond      reports.FilterCondition
+		wantSub   string
+		wantArg   any
+		wantEmpty bool
+	}{
+		{
+			name:    "valid int tier",
+			cond:    reports.FilterCondition{TopLevel: "artifact_tier", Op: "=", Val: "3"},
+			wantSub: "d.level = ?",
+			wantArg: "3",
+		},
+		{
+			name:    "valid int rarity",
+			cond:    reports.FilterCondition{TopLevel: "artifact_rarity", Op: ">=", Val: "2"},
+			wantSub: "d.rarity >= ?",
+			wantArg: "2",
+		},
+		{
+			name:    "valid int level (mission)",
+			cond:    reports.FilterCondition{TopLevel: "level", Op: "=", Val: "5"},
+			wantSub: "m.level = ?",
+			wantArg: "5",
+		},
+		{
+			name:    "valid int ship (mission)",
+			cond:    reports.FilterCondition{TopLevel: "ship", Op: "=", Val: "3"},
+			wantSub: "m.ship = ?",
+			wantArg: "3",
+		},
+		{
+			name:    "valid int name (artifact_id)",
+			cond:    reports.FilterCondition{TopLevel: "artifact_name", Op: "=", Val: "12"},
+			wantSub: "d.artifact_id = ?",
+			wantArg: "12",
+		},
+		{
+			name:    "valid float quality",
+			cond:    reports.FilterCondition{TopLevel: "artifact_quality", Op: ">", Val: "3.5"},
+			wantSub: "d.quality > ?",
+			wantArg: "3.5",
+		},
+		{
+			name:    "spec_type text stays valid",
+			cond:    reports.FilterCondition{TopLevel: "artifact_spec_type", Op: "=", Val: "Artifact"},
+			wantSub: "d.spec_type = ?",
+			wantArg: "Artifact",
+		},
+		{
+			name:      "non-numeric int field tier yields no clause",
+			cond:      reports.FilterCondition{TopLevel: "artifact_tier", Op: "=", Val: "gusset"},
+			wantEmpty: true,
+		},
+		{
+			name:      "non-numeric int field rarity yields no clause",
+			cond:      reports.FilterCondition{TopLevel: "artifact_rarity", Op: "=", Val: "rare"},
+			wantEmpty: true,
+		},
+		{
+			name:      "non-numeric mission ship yields no clause",
+			cond:      reports.FilterCondition{TopLevel: "ship", Op: "=", Val: "henliner"},
+			wantEmpty: true,
+		},
+		{
+			name:      "non-numeric float quality yields no clause",
+			cond:      reports.FilterCondition{TopLevel: "artifact_quality", Op: "=", Val: "abc"},
+			wantEmpty: true,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			filters := reports.ReportFilters{And: []reports.FilterCondition{tc.cond}}
+			clause, args := reports.BuildWhereClause(filters)
+			if tc.wantEmpty {
+				if clause != "" {
+					t.Fatalf("expected empty clause, got %q (args %v)", clause, args)
+				}
+				if len(args) != 0 {
+					t.Fatalf("expected no args, got %v", args)
+				}
+				return
+			}
+			if !strings.Contains(clause, tc.wantSub) {
+				t.Fatalf("expected %q in clause, got %q", tc.wantSub, clause)
+			}
+			if len(args) != 1 || args[0] != tc.wantArg {
+				t.Fatalf("expected arg %v, got %v", tc.wantArg, args)
+			}
+		})
+	}
+}
+
 func TestConditionToSQL_LaunchDTUsesStrftime(t *testing.T) {
 	filters := reports.ReportFilters{
 		And: []reports.FilterCondition{
 			{TopLevel: "launchDT", Op: ">=", Val: "2025-01-01"},
 		},
 	}
-	clause, args := reports.BuildWhereClause(filters, "ships")
+	clause, args := reports.BuildWhereClause(filters)
 	expected := "m.start_timestamp >= strftime('%s', ?)"
 	if !strings.Contains(clause, expected) {
 		t.Errorf("expected %q in clause, got: %s", expected, clause)
@@ -102,7 +196,7 @@ func TestConditionToSQL_ReturnDTLessThan(t *testing.T) {
 			{TopLevel: "returnDT", Op: "<", Val: "2025-06-01"},
 		},
 	}
-	clause, args := reports.BuildWhereClause(filters, "ships")
+	clause, args := reports.BuildWhereClause(filters)
 	expected := "m.return_timestamp < strftime('%s', ?)"
 	if !strings.Contains(clause, expected) {
 		t.Errorf("expected %q in clause, got: %s", expected, clause)
@@ -118,7 +212,7 @@ func TestConditionToSQL_LaunchDTEquals(t *testing.T) {
 			{TopLevel: "launchDT", Op: "=", Val: "2025-05-15"},
 		},
 	}
-	clause, args := reports.BuildWhereClause(filters, "ships")
+	clause, args := reports.BuildWhereClause(filters)
 	expected := "m.start_timestamp = strftime('%s', ?)"
 	if !strings.Contains(clause, expected) {
 		t.Errorf("expected %q in clause, got: %s", expected, clause)
@@ -138,7 +232,7 @@ func TestBuildTimePivotQuery_MissionDimensions(t *testing.T) {
 		Filters:          reports.ReportFilters{},
 	}
 	baseWhere := "m.player_id = ?"
-	args := []interface{}{"EI1234"}
+	args := []any{"EI1234"}
 	query, outArgs, err := reports.BuildTimePivotQuery(def, baseWhere, args)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -170,7 +264,7 @@ func TestBuildTimePivotQuery_ArtifactSecondary_JoinsDrops(t *testing.T) {
 		Filters:          reports.ReportFilters{},
 	}
 	baseWhere := "m.player_id = ?"
-	args := []interface{}{"EI1234"}
+	args := []any{"EI1234"}
 	query, _, err := reports.BuildTimePivotQuery(def, baseWhere, args)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -195,7 +289,7 @@ func TestBuildTimePivotQuery_CustomBucket_AddsWindowCondition(t *testing.T) {
 		Filters:          reports.ReportFilters{},
 	}
 	baseWhere := "m.player_id = ?"
-	args := []interface{}{"EI1234"}
+	args := []any{"EI1234"}
 	query, outArgs, err := reports.BuildTimePivotQuery(def, baseWhere, args)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -258,9 +352,9 @@ func TestBuildWeightedAggregateQuery_IncludesHiddenColumns(t *testing.T) {
 		FamilyWeight: "tachyon-stone",
 	}
 	baseWhere := "m.player_id = ?"
-	baseArgs := []interface{}{"EI1234"}
+	baseArgs := []any{"EI1234"}
 	fwClause := "d.artifact_id IN (?, ?)"
-	fwArgs := []interface{}{1, 2}
+	fwArgs := []any{1, 2}
 	query, args := reports.BuildWeightedAggregateQuery(def, baseWhere, baseArgs, fwClause, fwArgs)
 	if !strings.Contains(query, "d.artifact_id") {
 		t.Errorf("expected d.artifact_id in query, got: %s", query)
@@ -284,7 +378,7 @@ func TestBuildWeightedPivotQuery_IncludesHiddenColumns(t *testing.T) {
 		SecondaryGroupBy: "duration_type",
 		FamilyWeight:     "tachyon-stone",
 	}
-	query, args, err := reports.BuildWeightedPivotQuery(def, "m.player_id = ?", []interface{}{"EI1234"}, "d.artifact_id IN (?)", []interface{}{1})
+	query, args, err := reports.BuildWeightedPivotQuery(def, "m.player_id = ?", []any{"EI1234"}, "d.artifact_id IN (?)", []any{1})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -306,7 +400,7 @@ func TestBuildWeightedTimeSeriesQuery_IncludesHiddenColumns(t *testing.T) {
 		TimeBucket:   "month",
 		FamilyWeight: "tachyon-stone",
 	}
-	query, args := reports.BuildWeightedTimeSeriesQuery(def, "m.player_id = ?", []interface{}{"EI1234"}, "d.artifact_id IN (?)", []interface{}{1})
+	query, args := reports.BuildWeightedTimeSeriesQuery(def, "m.player_id = ?", []any{"EI1234"}, "d.artifact_id IN (?)", []any{1})
 	if !strings.Contains(query, "d.artifact_id") {
 		t.Errorf("expected d.artifact_id in query, got: %s", query)
 	}
@@ -329,7 +423,7 @@ func TestBuildWeightedTimePivotQuery_IncludesHiddenColumns(t *testing.T) {
 		SecondaryGroupBy: "ship_type",
 		FamilyWeight:     "tachyon-stone",
 	}
-	query, args, err := reports.BuildWeightedTimePivotQuery(def, "m.player_id = ?", []interface{}{"EI1234"}, "d.artifact_id IN (?)", []interface{}{1})
+	query, args, err := reports.BuildWeightedTimePivotQuery(def, "m.player_id = ?", []any{"EI1234"}, "d.artifact_id IN (?)", []any{1})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
