@@ -26,6 +26,16 @@ jobs:
           go-version: '1.25'
           cache: false
 
+      # main.go has //go:embed www/dist, which is a gitignored build artifact.
+      # The lint job does not build the frontend, so create a placeholder file
+      # to satisfy the embed pattern. The filename must not start with a dot -
+      # go:embed skips dotfiles, so a .gitkeep would not satisfy the directory
+      # pattern. Content is irrelevant for type-checking.
+      - name: Stub embedded frontend dir
+        run: |
+          mkdir -p www/dist
+          touch www/dist/placeholder
+
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v7
         with:
