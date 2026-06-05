@@ -7,26 +7,26 @@ func TestConditionToSQLDrops(t *testing.T) {
 		name      string
 		cond      FilterCondition
 		wantSub   string // substring expected in clause
-		wantArgs  []interface{}
+		wantArgs  []any
 		wantEmpty bool
 	}{
 		{
 			name:     "specific variant contains",
 			cond:     FilterCondition{TopLevel: "drops", Op: "c", Val: "12_3_2_4.5"},
 			wantSub:  "EXISTS (SELECT 1 FROM artifact_drops WHERE mission_id = m.mission_id AND player_id = m.player_id AND artifact_id = ? AND level = ? AND rarity = ?)",
-			wantArgs: []interface{}{"12", "3", "2"},
+			wantArgs: []any{"12", "3", "2"},
 		},
 		{
 			name:     "any legendary",
 			cond:     FilterCondition{TopLevel: "drops", Op: "c", Val: "%_%_3_%"},
 			wantSub:  "EXISTS (SELECT 1 FROM artifact_drops WHERE mission_id = m.mission_id AND player_id = m.player_id AND rarity = ?)",
-			wantArgs: []interface{}{"3"},
+			wantArgs: []any{"3"},
 		},
 		{
 			name:     "family any, does not contain",
 			cond:     FilterCondition{TopLevel: "drops", Op: "dnc", Val: "12_%_%_%"},
 			wantSub:  "NOT EXISTS (SELECT 1 FROM artifact_drops WHERE mission_id = m.mission_id AND player_id = m.player_id AND artifact_id = ?)",
-			wantArgs: []interface{}{"12"},
+			wantArgs: []any{"12"},
 		},
 		{
 			name:     "all wildcard contains",

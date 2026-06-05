@@ -536,13 +536,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
-import type { Ref } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useSettings } from '../composables/useSettings'
 import { useMennoData } from '../composables/useMennoData'
 import { useDropdownSelector } from '../composables/useDropdownSelector'
+import { useCloudSync } from '../composables/useCloudSync'
+import { useStorageManagement } from '../composables/useStorageManagement'
 import SegmentedProgressBar from '../components/SegmentedProgressBar.vue'
-import type { ProgressSegment } from '../components/SegmentedProgressBar.vue'
 import ExportManagementPanel from '../components/ExportManagementPanel.vue'
 
 const {
@@ -576,100 +576,67 @@ const {
   close: closePrefBrowserDropdown,
 } = useDropdownSelector((pref) => { setPreferredBrowser(pref) })
 
-const storagePath = ref('')
-const storageFolderHidden = ref(true)
-const backupDestPath = ref('')
-const backupInProgress = ref(false)
-const backupSuccess = ref(false)
-const backupError = ref('')
-const moveDestPath = ref('')
-const moveInProgress = ref(false)
-const moveError = ref('')
+const {
+  storagePath,
+  storageFolderHidden,
+  backupDestPath,
+  backupInProgress,
+  backupSuccess,
+  backupError,
+  moveDestPath,
+  moveInProgress,
+  moveError,
+  backupDb,
+  backupExports,
+  backupLogs,
+  backupSegments,
+  openStorageFolder,
+  toggleStorageVisible,
+  onBackupDestChange,
+  chooseBackupDest,
+  chooseMoveDest,
+  runBackup,
+  runMove,
+} = useStorageManagement()
 
-const pendingSegment = (label: string): ProgressSegment => ({ label, status: 'pending', color: 'blue' })
-const activeSegment = (label: string): ProgressSegment => ({ label, status: 'active', color: 'blue', pulsing: true })
-const doneSegment = (label: string): ProgressSegment => ({ label, status: 'done', color: 'blue' })
-const failedSegment = (label: string): ProgressSegment => ({ label, status: 'failed', color: 'blue' })
-
-const backupDb = ref(true)
-const backupExports = ref(true)
-const backupLogs = ref(true)
-
-const backupSegments = ref<ProgressSegment[]>([
-  pendingSegment('Database'),
-  pendingSegment('Exports'),
-  pendingSegment('Logs'),
+const {
+  cloudReachableChecking,
+  cloudReachable,
+  cloudConnected,
+  cloudUsername,
+  cloudAvatarUrl,
+  cloudHasEncryptionKey,
+  cloudLastPushAt,
+  cloudLastPullAt,
+  cloudAuthWaiting,
+  cloudAuthURL,
+  cloudSyncInProgress,
+  cloudSyncError,
+  cloudRestoreInProgress,
+  cloudRestoreError,
+  cloudRestoreSuccess,
+  confirmingDeleteRemote,
+  deleteRemoteInProgress,
+  deleteRemoteError,
+  cloudAutoSync,
+  cloudLastPushString,
+  cloudLastPullString,
+  sessionExpiryString,
+  pushFlashing,
+  pullFlashing,
+  sessionFlashing,
+  recheckReachable,
+  connectDiscord,
+  openAuthURL,
+  disconnectCloud,
+  syncNow,
+  restoreNow,
+  deleteRemoteData,
+  onAutoSyncChange,
+} = useCloudSync([
+  autoRefreshMenno, autoRetry, hideTimeoutErrors, workerCount,
+  screenshotSafety, showMissionProgress, collapseOlderSections,
 ])
-
-function openStorageFolder() {
-  if (storagePath.value) {
-    globalThis.openFileInFolder(storagePath.value)
-  }
-}
-
-async function toggleStorageVisible() {
-  const nowHidden = !storageFolderHidden.value
-  storageFolderHidden.value = nowHidden
-  await globalThis.setStorageFolderVisible(!nowHidden)
-}
-
-function onBackupDestChange() {
-  globalThis.setBackupDestPath(backupDestPath.value)
-}
-
-async function chooseBackupDest() {
-  const path = await globalThis.chooseFolderPath()
-  if (path) {
-    backupDestPath.value = path
-    globalThis.setBackupDestPath(path)
-  }
-}
-
-async function chooseMoveDest() {
-  const path = await globalThis.chooseFolderPath()
-  if (path) moveDestPath.value = path
-}
-
-async function runBackup() {
-  backupSuccess.value = false
-  backupError.value = ''
-  backupInProgress.value = true
-  const dest = backupDestPath.value
-  const allParts: Array<{ part: 'internal' | 'exports' | 'logs'; label: string; enabled: boolean }> = [
-    { part: 'internal', label: 'Database', enabled: backupDb.value },
-    { part: 'exports', label: 'Exports', enabled: backupExports.value },
-    { part: 'logs', label: 'Logs', enabled: backupLogs.value },
-  ]
-  const parts = allParts.filter(p => p.enabled)
-  backupSegments.value = parts.map((p, i) => i === 0 ? activeSegment(p.label) : pendingSegment(p.label))
-  try {
-    for (let i = 0; i < parts.length; i++) {
-      await globalThis.backupStoragePart(dest, parts[i].part)
-      backupSegments.value[i] = doneSegment(parts[i].label)
-      if (i + 1 < parts.length) {
-        backupSegments.value[i + 1] = activeSegment(parts[i + 1].label)
-      }
-    }
-    backupSuccess.value = true
-  } catch (e: unknown) {
-    backupError.value = e instanceof Error ? e.message : String(e)
-    const activeIdx = backupSegments.value.findIndex(s => s.status === 'active')
-    if (activeIdx >= 0) backupSegments.value[activeIdx] = failedSegment(parts[activeIdx].label)
-  } finally {
-    backupInProgress.value = false
-  }
-}
-
-async function runMove() {
-  moveError.value = ''
-  moveInProgress.value = true
-  try {
-    await globalThis.moveStorageTo(moveDestPath.value)
-  } catch (e: unknown) {
-    moveError.value = e instanceof Error ? e.message : String(e)
-    moveInProgress.value = false
-  }
-}
 
 const workerCountWarningRead = ref(false)
 const hideWorkerWarning = ref(false)
@@ -739,205 +706,9 @@ onMounted(async () => {
   await refreshBrowserList()
   await checkRefreshNeeded()
   workerCountWarningRead.value = (await globalThis.workerCountWarningRead()) ?? false
-  storagePath.value = (await globalThis.getStoragePath()) ?? ''
-  backupDestPath.value = (await globalThis.getBackupDestPath()) ?? ''
-  cloudAutoSync.value = (await globalThis.getCloudAutoSync()) ?? false
-  await initCloudSync()
 })
 
 onUnmounted(() => {
   globalThis.removeEventListener('resize', onResize)
-  globalThis.onDiscordAuthComplete = () => {}
-  globalThis.onCloudSyncComplete = () => {}
-  globalThis.onCloudRestoreComplete = () => {}
 })
-
-// Cloud sync state
-const cloudReachableChecking = ref(false)
-const cloudReachable = ref(false)
-const cloudConnected = ref(false)
-const cloudUsername = ref('')
-const cloudAvatarUrl = ref('')
-const cloudHasEncryptionKey = ref(false)
-const cloudLastPushAt = ref(0)
-const cloudLastPullAt = ref(0)
-const cloudAuthWaiting = ref(false)
-const cloudAuthURL = ref('')
-const cloudSyncInProgress = ref(false)
-const cloudSyncError = ref('')
-const cloudRestoreInProgress = ref(false)
-const cloudRestoreError = ref('')
-const cloudRestoreSuccess = ref(false)
-const confirmingDeleteRemote = ref(false)
-const deleteRemoteInProgress = ref(false)
-const deleteRemoteError = ref('')
-const cloudAutoSync = ref(false)
-
-const cloudLastPushString = computed(() => {
-  if (!cloudLastPushAt.value) return ''
-  return new Date(cloudLastPushAt.value * 1000).toLocaleString()
-})
-
-const cloudLastPullString = computed(() => {
-  if (!cloudLastPullAt.value) return ''
-  return new Date(cloudLastPullAt.value * 1000).toLocaleString()
-})
-
-const sessionExpiryString = computed(() => {
-  const lastActivity = Math.max(cloudLastPushAt.value, cloudLastPullAt.value)
-  if (!lastActivity) return ''
-  const expiryMs = (lastActivity + 30 * 24 * 3600) * 1000
-  return new Date(expiryMs).toLocaleString()
-})
-
-const pushFlashing = ref(false)
-const pullFlashing = ref(false)
-const sessionFlashing = ref(false)
-
-function triggerFlash(flashRef: Ref<boolean>) {
-  flashRef.value = true
-  nextTick(() => {
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => { flashRef.value = false })
-    })
-  })
-}
-
-watch(cloudLastPushAt, () => {
-  triggerFlash(pushFlashing)
-  triggerFlash(sessionFlashing)
-})
-watch(cloudLastPullAt, () => {
-  triggerFlash(pullFlashing)
-  triggerFlash(sessionFlashing)
-})
-
-type CloudStatusPayload = { connected: boolean; username: string; avatarUrl: string; lastPushAt: number; lastPullAt: number; hasEncryptionKey: boolean }
-
-function applyCloudStatus(status: CloudStatusPayload) {
-  cloudConnected.value = status.connected
-  cloudUsername.value = status.username ?? ''
-  cloudAvatarUrl.value = status.avatarUrl ?? ''
-  cloudLastPushAt.value = status.lastPushAt ?? 0
-  cloudLastPullAt.value = status.lastPullAt ?? 0
-  cloudHasEncryptionKey.value = status.hasEncryptionKey ?? false
-}
-
-async function initCloudSync() {
-  applyCloudStatus(JSON.parse(await globalThis.getCloudSyncStatus()))
-
-  cloudReachableChecking.value = true
-  cloudReachable.value = await globalThis.checkCloudReachable()
-  cloudReachableChecking.value = false
-  if (!cloudReachable.value) return
-
-  globalThis.onDiscordAuthComplete = (connected: boolean, username: string) => {
-    cloudAuthWaiting.value = false
-    cloudConnected.value = connected
-    cloudUsername.value = username ?? ''
-    if (connected) {
-      cloudSyncError.value = ''
-      cloudRestoreError.value = ''
-      refreshSyncStatus()
-    }
-  }
-  globalThis.onCloudSyncComplete = (success: boolean, errMsg: string) => {
-    cloudSyncInProgress.value = false
-    if (success) {
-      cloudSyncError.value = ''
-      refreshSyncStatus()
-    } else {
-      cloudSyncError.value = errMsg
-    }
-  }
-  globalThis.onCloudRestoreComplete = (success: boolean, errMsg: string) => {
-    cloudRestoreInProgress.value = false
-    if (success) {
-      cloudRestoreSuccess.value = true
-      cloudRestoreError.value = ''
-    } else {
-      cloudRestoreError.value = errMsg
-    }
-  }
-}
-
-async function recheckReachable() {
-  cloudReachableChecking.value = true
-  cloudReachable.value = await globalThis.checkCloudReachable()
-  cloudReachableChecking.value = false
-  if (cloudReachable.value) {
-    await initCloudSync()
-  }
-}
-
-async function refreshSyncStatus() {
-  applyCloudStatus(JSON.parse(await globalThis.getCloudSyncStatus()))
-}
-
-async function connectDiscord() {
-  cloudAuthWaiting.value = true
-  cloudAuthURL.value = ''
-  try {
-    const url = await globalThis.connectDiscord()
-    cloudAuthURL.value = url ?? ''
-  } catch (_e: unknown) {
-    console.error('Error initiating Discord connection:', _e)
-    cloudAuthWaiting.value = false
-  }
-}
-
-function openAuthURL() {
-  if (cloudAuthURL.value) {
-    globalThis.openURL(cloudAuthURL.value)
-  }
-}
-
-async function disconnectCloud() {
-  await globalThis.disconnectCloud()
-  cloudConnected.value = false
-  cloudUsername.value = ''
-  cloudAvatarUrl.value = ''
-  cloudLastPushAt.value = 0
-  cloudLastPullAt.value = 0
-}
-
-function syncNow() {
-  cloudSyncInProgress.value = true
-  cloudSyncError.value = ''
-  globalThis.syncToCloud()
-}
-
-function restoreNow() {
-  cloudRestoreInProgress.value = true
-  cloudRestoreError.value = ''
-  cloudRestoreSuccess.value = false
-  globalThis.restoreFromCloud()
-}
-
-async function deleteRemoteData() {
-  deleteRemoteInProgress.value = true
-  deleteRemoteError.value = ''
-  confirmingDeleteRemote.value = false
-  const errMsg = await globalThis.deleteRemoteData()
-  deleteRemoteInProgress.value = false
-  if (errMsg) {
-    deleteRemoteError.value = errMsg
-  }
-}
-
-async function onAutoSyncChange() {
-  await globalThis.setCloudAutoSync(cloudAutoSync.value)
-}
-
-watch(
-  [
-    autoRefreshMenno, autoRetry, hideTimeoutErrors, workerCount,
-    screenshotSafety, showMissionProgress, collapseOlderSections,
-  ],
-  () => {
-    if (cloudAutoSync.value && cloudConnected.value && !cloudSyncInProgress.value) {
-      syncNow()
-    }
-  },
-)
 </script>

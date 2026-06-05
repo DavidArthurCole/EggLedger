@@ -7,10 +7,21 @@ import (
 	"strings"
 
 	"github.com/DavidArthurCole/EggLedger/eiafx"
+	"github.com/DavidArthurCole/EggLedger/util"
 	"github.com/pkg/errors"
 )
 
-func executeWeightedAggregate(ctx context.Context, def ReportDefinition, baseWhere string, args []interface{}, baseArgs []interface{}, fwClause string, fwArgs []interface{}) (ReportResult, error) {
+// craftingWeight returns the per-tier crafting weight for an artifact (id, level),
+// falling back to 1 when the key is the cycle-sentinel (0) so the row is not dropped.
+func craftingWeight(artifactId, level int64) float64 {
+	w := eiafx.CraftingWeights[[2]int{int(artifactId), int(level)}]
+	if w == 0 {
+		return 1
+	}
+	return w
+}
+
+func executeWeightedAggregate(ctx context.Context, def ReportDefinition, baseWhere string, args []any, baseArgs []any, fwClause string, fwArgs []any) (ReportResult, error) {
 	action := fmt.Sprintf("execute weighted aggregate report %s", def.Id)
 	wrap := func(err error) error { return errors.Wrap(err, action) }
 
@@ -32,12 +43,7 @@ func executeWeightedAggregate(ctx context.Context, def ReportDefinition, baseWhe
 		if err := rows.Scan(&rawLabel, &artifactId, &level, &capWeight); err != nil {
 			return ReportResult{}, wrap(err)
 		}
-		w := eiafx.CraftingWeights[[2]int{int(artifactId), int(level)}]
-		if w == 0 {
-			// Zero means this key was left as the cycle-sentinel in CraftingWeights
-			// (recipe graph had a cycle). Fall back to 1 so the row is not silently dropped.
-			w = 1
-		}
+		w := craftingWeight(artifactId, level)
 		if !seen[rawLabel] {
 			seen[rawLabel] = true
 			rawOrder = append(rawOrder, rawLabel)
@@ -58,33 +64,8 @@ func executeWeightedAggregate(ctx context.Context, def ReportDefinition, baseWhe
 	if def.NormalizeBy != "" && def.NormalizeBy != "none" && def.Mode == "aggregate" {
 		groupCol := GroupByColumn(def.GroupBy)
 		if groupCol != "" && !strings.HasPrefix(groupCol, "d.") {
-			var denomQuery string
-			if def.NormalizeBy == "airtime" {
-				denomQuery = fmt.Sprintf(
-					`SELECT CAST(%s AS TEXT), SUM(CAST(m.return_timestamp - m.start_timestamp AS REAL) / 3600.0) FROM mission m WHERE %s GROUP BY %s`,
-					groupCol, baseWhere, groupCol,
-				)
-			} else {
-				denomQuery = fmt.Sprintf(
-					`SELECT CAST(%s AS TEXT), COUNT(*) FROM mission m WHERE %s GROUP BY %s`,
-					groupCol, baseWhere, groupCol,
-				)
-			}
-			denomRows, err := _missionDB.QueryContext(ctx, denomQuery, baseArgs...)
+			denomMap, err := denom1D(ctx, groupCol, def.NormalizeBy, baseWhere, baseArgs)
 			if err != nil {
-				return ReportResult{}, wrap(err)
-			}
-			defer denomRows.Close()
-			denomMap := map[string]float64{}
-			for denomRows.Next() {
-				var key string
-				var denom float64
-				if err := denomRows.Scan(&key, &denom); err != nil {
-					return ReportResult{}, wrap(err)
-				}
-				denomMap[key] = denom
-			}
-			if err := denomRows.Err(); err != nil {
 				return ReportResult{}, wrap(err)
 			}
 			for i, raw := range rawOrder {
@@ -113,7 +94,7 @@ func executeWeightedAggregate(ctx context.Context, def ReportDefinition, baseWhe
 	}, nil
 }
 
-func executeWeightedPivot(ctx context.Context, def ReportDefinition, baseWhere string, args []interface{}, baseArgs []interface{}, fwClause string, fwArgs []interface{}) (ReportResult, error) {
+func executeWeightedPivot(ctx context.Context, def ReportDefinition, baseWhere string, args []any, baseArgs []any, fwClause string, fwArgs []any) (ReportResult, error) {
 	action := fmt.Sprintf("execute weighted pivot report %s", def.Id)
 	wrap := func(err error) error { return errors.Wrap(err, action) }
 
@@ -128,17 +109,7 @@ func executeWeightedPivot(ctx context.Context, def ReportDefinition, baseWhere s
 	}
 	defer rows.Close()
 
-	type labelEntry struct {
-		display string
-		rawVal  string
-	}
-
-	rowSet := map[string]struct{}{}
-	colSet := map[string]struct{}{}
-	cells := map[string]map[string]float64{}
-	var rowEntries []labelEntry
-	var colEntries []labelEntry
-
+	accum := newPivotAccum()
 	for rows.Next() {
 		var rawRow, rawCol string
 		var artifactId, level int64
@@ -146,53 +117,17 @@ func executeWeightedPivot(ctx context.Context, def ReportDefinition, baseWhere s
 		if err := rows.Scan(&rawRow, &rawCol, &artifactId, &level, &capWeight); err != nil {
 			return ReportResult{}, wrap(err)
 		}
-		w := eiafx.CraftingWeights[[2]int{int(artifactId), int(level)}]
-		if w == 0 {
-			// Zero means this key was left as the cycle-sentinel in CraftingWeights
-			// (recipe graph had a cycle). Fall back to 1 so the row is not silently dropped.
-			w = 1
-		}
+		w := craftingWeight(artifactId, level)
 		rowLabel := FormatLabel(def.GroupBy, rawRow)
 		colLabel := FormatLabel(def.SecondaryGroupBy, rawCol)
-		if _, ok := rowSet[rowLabel]; !ok {
-			rowSet[rowLabel] = struct{}{}
-			rowEntries = append(rowEntries, labelEntry{display: rowLabel, rawVal: rawRow})
-		}
-		if _, ok := colSet[colLabel]; !ok {
-			colSet[colLabel] = struct{}{}
-			colEntries = append(colEntries, labelEntry{display: colLabel, rawVal: rawCol})
-		}
-		if cells[rowLabel] == nil {
-			cells[rowLabel] = map[string]float64{}
-		}
-		cells[rowLabel][colLabel] += capWeight * w
+		accum.add(rowLabel, rawRow, colLabel, rawCol, capWeight*w)
 	}
 	if err := rows.Err(); err != nil {
 		return ReportResult{}, wrap(err)
 	}
 
-	sort.SliceStable(rowEntries, func(i, j int) bool {
-		return LabelSortLess(def.GroupBy, rowEntries[i].rawVal, rowEntries[j].rawVal)
-	})
-	sort.SliceStable(colEntries, func(i, j int) bool {
-		return LabelSortLess(def.SecondaryGroupBy, colEntries[i].rawVal, colEntries[j].rawVal)
-	})
-
-	rowLabels := make([]string, len(rowEntries))
-	colLabels := make([]string, len(colEntries))
-	for i, e := range rowEntries {
-		rowLabels[i] = e.display
-	}
-	for i, e := range colEntries {
-		colLabels[i] = e.display
-	}
-
-	matrixValues := make([]float64, len(rowLabels)*len(colLabels))
-	for r, row := range rowLabels {
-		for c, col := range colLabels {
-			matrixValues[r*len(colLabels)+c] = cells[row][col]
-		}
-	}
+	rowLabels, colLabels, rawRowLabels, rawColLabels, matrixValues :=
+		accum.finalize(true, true, def.GroupBy, def.SecondaryGroupBy)
 
 	// Always compute mission counts for weighted pivots so the frontend can apply
 	// a minimum sample size threshold regardless of normalization mode.
@@ -237,7 +172,7 @@ func executeWeightedPivot(ctx context.Context, def ReportDefinition, baseWhere s
 	pctMode := def.NormalizeBy
 	var rawPerMissionValues []float64
 	if pctMode == "row_pct" || pctMode == "col_pct" || pctMode == "global_pct" {
-		apply2DPctNormalization(matrixValues, len(rowLabels), len(colLabels), pctMode)
+		util.Apply2DPctNormalization(matrixValues, len(rowLabels), len(colLabels), pctMode)
 	} else if pctMode != "" && pctMode != "none" {
 		col1 := GroupByColumn(def.GroupBy)
 		col2 := GroupByColumn(def.SecondaryGroupBy)
@@ -257,38 +192,8 @@ func executeWeightedPivot(ctx context.Context, def ReportDefinition, baseWhere s
 				}
 			}
 
-			var denomQuery string
-			if pctMode == "airtime" {
-				denomQuery = fmt.Sprintf(
-					`SELECT CAST(%s AS TEXT), CAST(%s AS TEXT), SUM(CAST(m.return_timestamp - m.start_timestamp AS REAL) / 3600.0) FROM mission m WHERE %s GROUP BY %s, %s`,
-					col1, col2, baseWhere, col1, col2,
-				)
-			} else {
-				denomQuery = fmt.Sprintf(
-					`SELECT CAST(%s AS TEXT), CAST(%s AS TEXT), COUNT(*) FROM mission m WHERE %s GROUP BY %s, %s`,
-					col1, col2, baseWhere, col1, col2,
-				)
-			}
-			denomRows, err := _missionDB.QueryContext(ctx, denomQuery, baseArgs...)
+			denomMap, err := denom2D(ctx, def, col1, col2, pctMode, baseWhere, baseArgs)
 			if err != nil {
-				return ReportResult{}, wrap(err)
-			}
-			defer denomRows.Close()
-			denomMap := map[string]map[string]float64{}
-			for denomRows.Next() {
-				var rawKey1, rawKey2 string
-				var denom float64
-				if err := denomRows.Scan(&rawKey1, &rawKey2, &denom); err != nil {
-					return ReportResult{}, wrap(err)
-				}
-				k1 := FormatLabel(def.GroupBy, rawKey1)
-				k2 := FormatLabel(def.SecondaryGroupBy, rawKey2)
-				if denomMap[k1] == nil {
-					denomMap[k1] = map[string]float64{}
-				}
-				denomMap[k1][k2] = denom
-			}
-			if err := denomRows.Err(); err != nil {
 				return ReportResult{}, wrap(err)
 			}
 			for r, row := range rowLabels {
@@ -299,15 +204,6 @@ func executeWeightedPivot(ctx context.Context, def ReportDefinition, baseWhere s
 				}
 			}
 		}
-	}
-
-	rawRowLabels := make([]string, len(rowEntries))
-	rawColLabels := make([]string, len(colEntries))
-	for i, e := range rowEntries {
-		rawRowLabels[i] = e.rawVal
-	}
-	for i, e := range colEntries {
-		rawColLabels[i] = e.rawVal
 	}
 
 	return ReportResult{
@@ -323,7 +219,7 @@ func executeWeightedPivot(ctx context.Context, def ReportDefinition, baseWhere s
 	}, nil
 }
 
-func executeWeightedTimeSeries(ctx context.Context, def ReportDefinition, baseWhere string, args []interface{}, fwClause string, fwArgs []interface{}) (ReportResult, error) {
+func executeWeightedTimeSeries(ctx context.Context, def ReportDefinition, baseWhere string, args []any, fwClause string, fwArgs []any) (ReportResult, error) {
 	action := fmt.Sprintf("execute weighted time series report %s", def.Id)
 	wrap := func(err error) error { return errors.Wrap(err, action) }
 
@@ -345,12 +241,7 @@ func executeWeightedTimeSeries(ctx context.Context, def ReportDefinition, baseWh
 		if err := rows.Scan(&rawBucket, &artifactId, &level, &capWeight); err != nil {
 			return ReportResult{}, wrap(err)
 		}
-		w := eiafx.CraftingWeights[[2]int{int(artifactId), int(level)}]
-		if w == 0 {
-			// Zero means this key was left as the cycle-sentinel in CraftingWeights
-			// (recipe graph had a cycle). Fall back to 1 so the row is not silently dropped.
-			w = 1
-		}
+		w := craftingWeight(artifactId, level)
 		if !seen[rawBucket] {
 			seen[rawBucket] = true
 			buckets = append(buckets, rawBucket)
@@ -376,7 +267,7 @@ func executeWeightedTimeSeries(ctx context.Context, def ReportDefinition, baseWh
 	}, nil
 }
 
-func executeWeightedTimePivot(ctx context.Context, def ReportDefinition, baseWhere string, args []interface{}, fwClause string, fwArgs []interface{}) (ReportResult, error) {
+func executeWeightedTimePivot(ctx context.Context, def ReportDefinition, baseWhere string, args []any, fwClause string, fwArgs []any) (ReportResult, error) {
 	action := fmt.Sprintf("execute weighted time pivot report %s", def.Id)
 	wrap := func(err error) error { return errors.Wrap(err, action) }
 
@@ -391,17 +282,7 @@ func executeWeightedTimePivot(ctx context.Context, def ReportDefinition, baseWhe
 	}
 	defer rows.Close()
 
-	type grpEntry struct {
-		display string
-		rawVal  string
-	}
-
-	var bucketLabels []string
-	bucketSet := map[string]struct{}{}
-	groupSet := map[string]struct{}{}
-	cells := map[string]map[string]float64{}
-	var grpEntries []grpEntry
-
+	accum := newPivotAccum()
 	for rows.Next() {
 		var rawBucket, rawGrp string
 		var artifactId, level int64
@@ -409,48 +290,22 @@ func executeWeightedTimePivot(ctx context.Context, def ReportDefinition, baseWhe
 		if err := rows.Scan(&rawBucket, &rawGrp, &artifactId, &level, &capWeight); err != nil {
 			return ReportResult{}, wrap(err)
 		}
-		w := eiafx.CraftingWeights[[2]int{int(artifactId), int(level)}]
-		if w == 0 {
-			// Zero means this key was left as the cycle-sentinel in CraftingWeights
-			// (recipe graph had a cycle). Fall back to 1 so the row is not silently dropped.
-			w = 1
-		}
+		w := craftingWeight(artifactId, level)
 		grpLabel := FormatLabel(def.SecondaryGroupBy, rawGrp)
-		if _, ok := bucketSet[rawBucket]; !ok {
-			bucketSet[rawBucket] = struct{}{}
-			bucketLabels = append(bucketLabels, rawBucket)
-		}
-		if _, ok := groupSet[grpLabel]; !ok {
-			groupSet[grpLabel] = struct{}{}
-			grpEntries = append(grpEntries, grpEntry{display: grpLabel, rawVal: rawGrp})
-		}
-		if cells[rawBucket] == nil {
-			cells[rawBucket] = map[string]float64{}
-		}
-		cells[rawBucket][grpLabel] += capWeight * w
+		// Bucket rows are not FormatLabel'd: the raw bucket string is the display.
+		accum.add(rawBucket, rawBucket, grpLabel, rawGrp, capWeight*w)
 	}
 	if err := rows.Err(); err != nil {
 		return ReportResult{}, wrap(err)
 	}
 
-	sort.SliceStable(grpEntries, func(i, j int) bool {
-		return LabelSortLess(def.SecondaryGroupBy, grpEntries[i].rawVal, grpEntries[j].rawVal)
-	})
-	groupLabels := make([]string, len(grpEntries))
-	for i, e := range grpEntries {
-		groupLabels[i] = e.display
-	}
+	// Time pivots leave the bucket (row) axis in query ASC order; only the group
+	// (col) axis is sorted.
+	bucketLabels, groupLabels, _, rawGrpLabels, matrixValues :=
+		accum.finalize(false, true, def.GroupBy, def.SecondaryGroupBy)
 
 	nR := len(bucketLabels)
 	nC := len(groupLabels)
-	matrixValues := make([]float64, nR*nC)
-	for r, bucket := range bucketLabels {
-		for c, grp := range groupLabels {
-			if cells[bucket] != nil {
-				matrixValues[r*nC+c] = cells[bucket][grp]
-			}
-		}
-	}
 
 	if nR > 0 {
 		bucketLabels, matrixValues = fillTimePivotGaps(def.TimeBucket, def.CustomBucketUnit, bucketLabels, nC, matrixValues)
@@ -459,12 +314,7 @@ func executeWeightedTimePivot(ctx context.Context, def ReportDefinition, baseWhe
 
 	pctMode := def.NormalizeBy
 	if pctMode == "row_pct" || pctMode == "col_pct" || pctMode == "global_pct" {
-		apply2DPctNormalization(matrixValues, nR, nC, pctMode)
-	}
-
-	rawGrpLabels := make([]string, len(grpEntries))
-	for i, e := range grpEntries {
-		rawGrpLabels[i] = e.rawVal
+		util.Apply2DPctNormalization(matrixValues, nR, nC, pctMode)
 	}
 
 	return ReportResult{

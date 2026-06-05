@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"sync"
 
-	_ "modernc.org/sqlite"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	_ "modernc.org/sqlite"
 )
 
 var (

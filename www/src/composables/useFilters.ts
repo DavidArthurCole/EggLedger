@@ -8,13 +8,15 @@
 
 import { ref, watch } from 'vue'
 import type { Ref } from 'vue'
-import type { DatabaseMission, PossibleArtifact, PossibleMission, PossibleTarget } from '../types/bridge'
+import type { PossibleArtifact, PossibleMission, PossibleTarget } from '../types/bridge'
 import { advancedDropFilter } from './useSettings'
 import {
   getMissionFilterValueOptions as getSharedMissionFilterOptions,
   getTargetFilterOptions,
   getDropFilterOptions,
 } from '../utils/filterOptions'
+import { useFilterMatching } from './useFilterMatching'
+import { useFilterOverlays } from './useFilterOverlays'
 
 export interface FilterCondition {
   topLevel: string
@@ -418,322 +420,44 @@ export function useFilters(options: UseFiltersOptions) {
     return new Date(Number.parseInt(parts[0]), Number.parseInt(parts[1]) - 1, Number.parseInt(parts[2]))
   }
 
-  // Mission-against-filter logic
+  // Mission-against-filter logic (extracted to useFilterMatching)
 
-  function commonFilterLogic(
-    value: unknown,
-    filterValue: unknown,
-    operator: string,
-    currentState: boolean,
-  ): boolean {
-    switch (operator) {
-      case 'd=':
-        if ((value as Date).toDateString() !== (filterValue as Date).toDateString()) return false
-        break
-      case '=':
-        if (value != filterValue) return false
-        break
-      case '!=':
-        if (value == filterValue) return false
-        break
-      case '>':
-        if ((value as number) <= (filterValue as number)) return false
-        break
-      case '<':
-        if ((value as number) >= (filterValue as number)) return false
-        break
-      case 'true':
-        if (!value) return false
-        break
-      case 'false':
-        if (value) return false
-        break
-      default:
-        return currentState
-    }
-    return currentState
-  }
-
-  // eslint-disable-next-line sonarjs/cognitive-complexity
-  async function testMissionAgainstFilter(
-    mission: DatabaseMission,
-    filter: FilterCondition,
-  ): Promise<boolean> {
-    let filterPassed = true
-    if (filter.topLevel != null && filter.op != null && filter.val != null) {
-      switch (filter.topLevel) {
-        case 'buggedcap':
-          filterPassed = commonFilterLogic(mission.isBuggedCap, null, filter.val, filterPassed)
-          break
-        case 'dubcap':
-          filterPassed = commonFilterLogic(mission.isDubCap, null, filter.val, filterPassed)
-          break
-        case 'ship':
-          filterPassed = commonFilterLogic(mission.ship, filter.val, filter.op, filterPassed)
-          break
-        case 'farm':
-          filterPassed = commonFilterLogic(mission.missionType, filter.val, filter.op, filterPassed)
-          break
-        case 'duration':
-          filterPassed = commonFilterLogic(mission.durationType, filter.val, filter.op, filterPassed)
-          break
-        case 'level':
-          filterPassed = commonFilterLogic(mission.level, filter.val, filter.op, filterPassed)
-          break
-        case 'target':
-          filterPassed = commonFilterLogic(mission.targetInt, filter.val, filter.op, filterPassed)
-          break
-        case 'type':
-          filterPassed = commonFilterLogic(mission.missionType, filter.val, filter.op, filterPassed)
-          break
-        case 'launchDT':
-          filterPassed = commonFilterLogic(
-            ledgerDate(mission.launchDT),
-            ledgerDateObj(filter.val),
-            filter.op,
-            filterPassed,
-          )
-          break
-        case 'returnDT':
-          filterPassed = commonFilterLogic(
-            ledgerDate(mission.returnDT),
-            ledgerDateObj(filter.val),
-            filter.op,
-            filterPassed,
-          )
-          break
-        case 'drops': {
-          const shipConfig = options.durationConfigs.value[mission.ship]
-          if (!shipConfig) {
-            filterPassed = false
-            break
-          }
-          const durConfig = shipConfig.durations[mission.durationType]
-          if (!durConfig) {
-            filterPassed = false
-            break
-          }
-          const maxQual = durConfig.maxQuality + durConfig.levelQualityBump * mission.level
-          const filterQuality = filter.val.split('_')[3]
-          const qualityBypass = filterQuality === '%'
-          const filterRarity = filter.val.split('_')[2]
-          const rarityBypass = filterRarity === '%'
-          const filterLevel = filter.val.split('_')[1]
-          const levelBypass = filterLevel === '%'
-          const filterName = filter.val.split('_')[0]
-          const nameBypass = filterName === '%'
-          const allDrops = await globalThis.getShipDrops(options.accountId.value ?? '', mission.missionId)
-          if (allDrops == null) {
-            filterPassed = false
-          } else {
-            switch (filter.op) {
-              case 'c': {
-                let foundDrop = false
-                if (
-                  (!qualityBypass && maxQual < Number.parseFloat(filterQuality)) ||
-                  (!qualityBypass && durConfig.minQuality > Number.parseFloat(filterQuality))
-                ) {
-                  filterPassed = false
-                }
-                for (const drop of allDrops) {
-                  if (!nameBypass && Number.parseInt(filterName) !== drop.id) continue
-                  if (!levelBypass && Number.parseInt(filterLevel) !== drop.level) continue
-                  if (!rarityBypass && Number.parseInt(filterRarity) !== drop.rarity) continue
-                  foundDrop = true
-                }
-                if (!foundDrop) filterPassed = false
-                break
-              }
-              case 'dnc': {
-                for (const drop of allDrops) {
-                  if (!nameBypass && Number.parseInt(filterName) !== drop.id) continue
-                  if (!levelBypass && Number.parseInt(filterLevel) !== drop.level) continue
-                  if (!rarityBypass && Number.parseInt(filterRarity) !== drop.rarity) continue
-                  filterPassed = false
-                }
-                break
-              }
-            }
-          }
-          break
-        }
-      }
-      return filterPassed
-    }
-    return false
-  }
-
-  // eslint-disable-next-line sonarjs/cognitive-complexity
-  async function missionMatchesFilter(
-    mission: DatabaseMission,
-    filters: FilterCondition[],
-    orFilters: FilterCondition[][],
-  ): Promise<boolean> {
-    let allFiltersPassed = true
-    let index = 0
-    for (const filter of filters) {
-      let filterPassed = true
-      if (filter.topLevel != null && filter.op != null && (filter.val != null || filter.topLevel === 'target')) {
-        filterPassed = await testMissionAgainstFilter(mission, filter)
-        if (!filterPassed) {
-          if (orFilters[index] != null) {
-            for (const orFilter of orFilters[index]) {
-              if (orFilter.topLevel != null && orFilter.op != null && (orFilter.val != null || orFilter.topLevel === 'target')) {
-                filterPassed = await testMissionAgainstFilter(mission, orFilter)
-                if (filterPassed) break
-              }
-            }
-          }
-          if (!filterPassed) allFiltersPassed = false
-        }
-      }
-      index++
-    }
-    return allFiltersPassed
-  }
-
-  // Drop/target filter overlay state
-
-  const dropSelectList = ref<FilterOption[]>([])
-  const dropFilterSelectedIndex = ref<number | null>(null)
-  const dropFilterSelectedOrIndex = ref<number | null>(null)
-  const dropFilterMenuOpen = ref(false)
-  const dropSearchTerm = ref('')
-
-  // Base (unfiltered) drop options, rebuilt only when the menu opens or the
-  // advanced-grouping toggle changes - NOT on every keystroke. getFilterValueOptions('drops')
-  // walks the whole artifact config, so search filters this cache instead.
-  let dropBaseList: FilterOption[] = []
-  function filterDropBase(term: string): FilterOption[] {
-    if (!term) return dropBaseList
-    const lower = term.toLowerCase()
-    return dropBaseList.filter((d) => d.text.toLowerCase().includes(lower))
-  }
-
-  const targetSelectList = ref<FilterOption[]>([])
-  const targetFilterSelectedIndex = ref<number | null>(null)
-  const targetFilterSelectedOrIndex = ref<number | null>(null)
-  const targetFilterMenuOpen = ref(false)
-  const targetSearchTerm = ref('')
-
-  watch(dropSearchTerm, () => {
-    dropSelectList.value = filterDropBase(dropSearchTerm.value)
-  })
-  watch(advancedDropFilter, () => {
-    if (!dropFilterMenuOpen.value) return
-    dropBaseList = getFilterValueOptions('drops')
-    dropSelectList.value = filterDropBase(dropSearchTerm.value)
-  })
-  watch(targetSearchTerm, () => {
-    targetSelectList.value = getFilterValueOptions('target').filter((t) =>
-      t.text.toLowerCase().includes(targetSearchTerm.value.toLowerCase()),
-    )
+  const { missionMatchesFilter } = useFilterMatching({
+    durationConfigs: options.durationConfigs,
+    accountId: options.accountId,
+    ledgerDate,
+    ledgerDateObj,
   })
 
-  function openDropFilterMenu(index: number, orIndex: number | null) {
-    dropBaseList = getFilterValueOptions('drops')
-    dropSelectList.value = dropBaseList
-    dropFilterSelectedIndex.value = index
-    dropFilterSelectedOrIndex.value = orIndex ?? null
-    dropFilterMenuOpen.value = true
-    const el = document.querySelector('.overlay-drop' + idSuffixToken) as HTMLElement | null
-    if (el) {
-      el.style.display = 'flex'
-      el.classList.remove('hidden')
-    }
-    const input = document.getElementById('drop-search' + idSuffixToken) as HTMLInputElement | null
-    input?.focus()
-  }
+  // Drop/target filter overlay state (extracted to useFilterOverlays)
 
-  function closeDropFilterMenu() {
-    dropSearchTerm.value = ''
-    dropFilterSelectedIndex.value = null
-    dropFilterSelectedOrIndex.value = null
-    dropFilterMenuOpen.value = false
-    const el = document.querySelector('.overlay-drop' + idSuffixToken) as HTMLElement | null
-    if (el) {
-      el.style.display = 'none'
-      el.classList.add('hidden')
-    }
-  }
-
-  function selectDropFilter(drop: FilterOption) {
-    const newValue = drop.value.toString().split('.')[0]
-    if (dropFilterSelectedIndex.value != null) {
-      if (dropFilterSelectedOrIndex.value == null) {
-        filterValues.value[dropFilterSelectedIndex.value] = newValue
-        dFilterValues.value[dropFilterSelectedIndex.value] = drop.text
-        handleFilterChange(`filter-value-${dropFilterSelectedIndex.value}${idSuffixToken}`)
-        const el = document.getElementById(
-          `filter-value-${dropFilterSelectedIndex.value}${idSuffixToken}`,
-        ) as HTMLInputElement | null
-        if (el) el.size = drop.text.length
-      } else {
-        orFilterValues.value[dropFilterSelectedIndex.value][dropFilterSelectedOrIndex.value] = newValue
-        dOrFilterValues.value[dropFilterSelectedIndex.value][dropFilterSelectedOrIndex.value] = drop.text
-        handleOrFilterChange(
-          `filter-value-${dropFilterSelectedIndex.value}-${dropFilterSelectedOrIndex.value}${idSuffixToken}`,
-        )
-        const el = document.getElementById(
-          `filter-value-${dropFilterSelectedIndex.value}-${dropFilterSelectedOrIndex.value}${idSuffixToken}`,
-        ) as HTMLInputElement | null
-        if (el) el.size = drop.text.length
-      }
-    }
-    closeDropFilterMenu()
-  }
-
-  function openTargetFilterMenu(index: number, orIndex: number | null) {
-    targetSelectList.value = getFilterValueOptions('target')
-    targetFilterSelectedIndex.value = index
-    targetFilterSelectedOrIndex.value = orIndex ?? null
-    targetFilterMenuOpen.value = true
-    const el = document.querySelector('.overlay-target' + idSuffixToken) as HTMLElement | null
-    if (el) {
-      el.style.display = 'flex'
-      el.classList.remove('hidden')
-    }
-    const input = document.getElementById('target-search' + idSuffixToken) as HTMLInputElement | null
-    input?.focus()
-  }
-
-  function closeTargetFilterMenu() {
-    targetSearchTerm.value = ''
-    targetFilterSelectedIndex.value = null
-    targetFilterSelectedOrIndex.value = null
-    targetFilterMenuOpen.value = false
-    const el = document.querySelector('.overlay-target' + idSuffixToken) as HTMLElement | null
-    if (el) {
-      el.style.display = 'none'
-      el.classList.add('hidden')
-    }
-  }
-
-  function selectTargetFilter(target: FilterOption) {
-    const newValue = target.value.toString().split('.')[0]
-    if (targetFilterSelectedIndex.value != null) {
-      if (targetFilterSelectedOrIndex.value == null) {
-        filterValues.value[targetFilterSelectedIndex.value] = newValue
-        dFilterValues.value[targetFilterSelectedIndex.value] = target.text
-        handleFilterChange(`filter-value-${targetFilterSelectedIndex.value}${idSuffixToken}`)
-        const el = document.getElementById(
-          `filter-value-${targetFilterSelectedIndex.value}${idSuffixToken}`,
-        ) as HTMLInputElement | null
-        if (el) el.size = target.text.length
-      } else {
-        orFilterValues.value[targetFilterSelectedIndex.value][targetFilterSelectedOrIndex.value] = newValue
-        dOrFilterValues.value[targetFilterSelectedIndex.value][targetFilterSelectedOrIndex.value] = target.text
-        handleOrFilterChange(
-          `filter-value-${targetFilterSelectedIndex.value}-${targetFilterSelectedOrIndex.value}${idSuffixToken}`,
-        )
-        const el = document.getElementById(
-          `filter-value-${targetFilterSelectedIndex.value}-${targetFilterSelectedOrIndex.value}${idSuffixToken}`,
-        ) as HTMLInputElement | null
-        if (el) el.size = target.text.length
-      }
-    }
-    closeTargetFilterMenu()
-  }
+  const {
+    dropSelectList,
+    dropFilterSelectedIndex,
+    dropFilterSelectedOrIndex,
+    dropFilterMenuOpen,
+    dropSearchTerm,
+    targetSelectList,
+    targetFilterSelectedIndex,
+    targetFilterSelectedOrIndex,
+    targetFilterMenuOpen,
+    targetSearchTerm,
+    openDropFilterMenu,
+    closeDropFilterMenu,
+    selectDropFilter,
+    openTargetFilterMenu,
+    closeTargetFilterMenu,
+    selectTargetFilter,
+  } = useFilterOverlays({
+    idSuffixToken,
+    filterValues,
+    dFilterValues,
+    orFilterValues,
+    dOrFilterValues,
+    handleFilterChange,
+    handleOrFilterChange,
+    getFilterValueOptions,
+  })
 
   return {
     // Filter state

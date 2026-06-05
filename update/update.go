@@ -110,7 +110,7 @@ func acquireUpdateLock(lockPath string) (func(), bool) {
 // Windows file locks (antivirus, indexer) after a process exits.
 func renameWithRetry(src, dst string, attempts int, delay time.Duration) error {
 	var err error
-	for i := 0; i < attempts; i++ {
+	for range attempts {
 		err = os.Rename(src, dst)
 		if err == nil {
 			return nil
@@ -125,7 +125,7 @@ func renameWithRetry(src, dst string, attempts int, delay time.Duration) error {
 func pingOldReady(addr, token string) {
 	url := "http://" + addr + "/ready?token=" + token
 	client := &http.Client{Timeout: 2 * time.Second}
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		resp, err := client.Post(url, "text/plain", nil)
 		if err == nil {
 			_ = resp.Body.Close()

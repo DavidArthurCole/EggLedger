@@ -18,6 +18,7 @@
   },
   "scripts": {
     "build": "node scripts/build-vite.js",
+    "build:all": "node scripts/build-all.js",
     "build:force": "node scripts/build-vite.js --force",
     "build:css": "node scripts/build-css.js",
     "dev": "vite build --watch --config www/vite.config.ts",

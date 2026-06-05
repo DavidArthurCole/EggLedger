@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import type { ReportFilterCondition, ReportFilters } from '../types/bridge'
+import { getReportField, defaultOpForField } from '../utils/filterFields'
 
 export function useReportFilters() {
   const andConditions = ref<ReportFilterCondition[]>([])
@@ -51,6 +52,47 @@ export function useReportFilters() {
     )
   }
 
+  function fieldDefaults(newField: string): Partial<ReportFilterCondition> {
+    const def = getReportField(newField)
+    return {
+      topLevel: newField,
+      op: def ? defaultOpForField(def) : '',
+      val: '',
+    }
+  }
+
+  /**
+   * Replaces an AND condition's field, resetting op to the field's default and clearing val so a
+   * stale value from a different field type can never survive.
+   */
+  function setField(index: number, newField: string) {
+    updateAndCondition(index, fieldDefaults(newField))
+  }
+
+  /**
+   * Replaces an OR condition's field, resetting op to the field's default and clearing val so a
+   * stale value from a different field type can never survive.
+   */
+  function setOrField(groupIndex: number, condIndex: number, newField: string) {
+    updateOrCondition(groupIndex, condIndex, fieldDefaults(newField))
+  }
+
+  /**
+   * Removes any AND or OR condition whose field scope is not in validScopes. Conditions with an
+   * empty field are kept. OR groups left empty after pruning are dropped.
+   */
+  function pruneConditions(validScopes: Set<'mission' | 'artifact'>) {
+    const inScope = (c: ReportFilterCondition) => {
+      if (c.topLevel === '') return true
+      const def = getReportField(c.topLevel)
+      return def ? validScopes.has(def.scope) : true
+    }
+    andConditions.value = andConditions.value.filter(inScope)
+    orGroups.value = orGroups.value
+      .map(g => g.filter(inScope))
+      .filter(g => g.length > 0)
+  }
+
   function toReportFilters(): ReportFilters {
     const keep = (c: ReportFilterCondition) =>
       c.topLevel !== '' && c.op !== '' && !(c.topLevel === 'drops' && c.val === '')
@@ -81,6 +123,9 @@ export function useReportFilters() {
     addToOrGroup,
     removeFromOrGroup,
     updateOrCondition,
+    setField,
+    setOrField,
+    pruneConditions,
     toReportFilters,
     fromReportFilters,
     clearFilters,

@@ -9,6 +9,38 @@ permissions:
   contents: write
 
 jobs:
+  lint:
+    name: Lint (Go)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          show-progress: false
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: false
+
+      # main.go has //go:embed www/dist, which is a gitignored build artifact.
+      # The lint job does not build the frontend, so create a placeholder file
+      # to satisfy the embed pattern. The filename must not start with a dot -
+      # go:embed skips dotfiles, so a .gitkeep would not satisfy the directory
+      # pattern. Content is irrelevant for type-checking.
+      - name: Stub embedded frontend dir
+        run: |
+          mkdir -p www/dist
+          touch www/dist/placeholder
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v7
+        with:
+          version: v2.12.2
+
   build:
     name: Build (${{ matrix.target }})
     runs-on: ${{ matrix.os }}

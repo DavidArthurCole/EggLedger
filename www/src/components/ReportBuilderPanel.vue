@@ -349,11 +349,12 @@
             :and-conditions="andConditions"
             :filter-field-options="filterFieldOptions"
             :possible-targets="possibleTargets"
-            :drop-options="dropOptions"
+            :artifact-configs="artifactConfigs"
+            :max-quality="maxQuality"
             @remove="removeAndCondition"
             @update="updateAndCondition"
             @field-change="onFieldChange"
-            @open-drop-picker="openAndDropPicker"
+            @open-picker="openAndPicker"
           />
 
           <!-- OR Groups -->
@@ -379,7 +380,7 @@
                 <select
                   :value="orGroups[gIdx][cIdx].topLevel"
                   class="rb-control flex-1"
-                  @change="updateOrCondition(gIdx, cIdx, { topLevel: ($event.target as HTMLSelectElement).value, op: '', val: '' })"
+                  @change="onOrFieldChange(gIdx, cIdx, ($event.target as HTMLSelectElement).value)"
                 >
                   <option value="">Field...</option>
                   <optgroup label="Mission">
@@ -416,36 +417,44 @@
                     <option v-for="op in getOpsForField(orGroups[gIdx][cIdx].topLevel)" :key="op.value" :value="op.value">{{ op.label }}</option>
                   </select>
                   <button
-                    v-if="orGroups[gIdx][cIdx].topLevel === 'drops'"
+                    v-if="valueKindForField(orGroups[gIdx][cIdx].topLevel) === 'modal'"
                     type="button"
                     class="rb-control hover:border-blue-500 flex-1 min-w-0 text-left"
-                    :class="dropColorClass(orGroups[gIdx][cIdx].val)"
-                    @click="openOrDropPicker(gIdx, cIdx, $event)"
+                    :class="modalColorClass(orGroups[gIdx][cIdx].topLevel, orGroups[gIdx][cIdx].val)"
+                    @click="openOrPicker(orGroups[gIdx][cIdx].topLevel, gIdx, cIdx, $event)"
                   >
-                    {{ orDropLabel(orGroups[gIdx][cIdx].val) }}
+                    {{ modalLabel(orGroups[gIdx][cIdx].topLevel, orGroups[gIdx][cIdx].val) }}
                   </button>
                   <input
-                    v-else-if="isDateField(orGroups[gIdx][cIdx].topLevel)"
+                    v-else-if="valueKindForField(orGroups[gIdx][cIdx].topLevel) === 'date'"
                     :value="orGroups[gIdx][cIdx].val"
                     type="date"
                     class="rb-control flex-1 min-w-0"
                     @input="updateOrCondition(gIdx, cIdx, { val: ($event.target as HTMLInputElement).value })"
                   />
+                  <input
+                    v-else-if="valueKindForField(orGroups[gIdx][cIdx].topLevel) === 'number'"
+                    :value="orGroups[gIdx][cIdx].val"
+                    type="number"
+                    step="any"
+                    class="rb-control flex-1 min-w-0"
+                    @input="updateOrCondition(gIdx, cIdx, { val: ($event.target as HTMLInputElement).value })"
+                  />
                   <select
-                    v-else-if="valueOptionsForField(orGroups[gIdx][cIdx].topLevel).length > 0"
+                    v-else-if="valueKindForField(orGroups[gIdx][cIdx].topLevel) === 'select'"
                     :value="orGroups[gIdx][cIdx].val"
                     class="rb-control flex-1 min-w-0"
                     @change="updateOrCondition(gIdx, cIdx, { val: ($event.target as HTMLSelectElement).value })"
                   >
                     <option v-for="opt in valueOptionsForField(orGroups[gIdx][cIdx].topLevel)" :key="opt.value" :value="opt.value">{{ opt.text }}</option>
                   </select>
-                  <input
+                  <select
                     v-else
-                    :value="orGroups[gIdx][cIdx].val"
-                    type="text"
-                    class="rb-control flex-1 min-w-0"
-                    @input="updateOrCondition(gIdx, cIdx, { val: ($event.target as HTMLInputElement).value })"
-                  />
+                    class="rb-control flex-1 min-w-0 opacity-60 cursor-not-allowed"
+                    disabled
+                  >
+                    <option value="">unsupported</option>
+                  </select>
                 </template>
                 <button type="button" class="text-gray-500 hover:text-red-400 text-xs px-1" @click="removeFromOrGroup(gIdx, cIdx)">x</button>
               </div>
@@ -546,71 +555,15 @@
         </div>
 
         <!-- Grid size + live preview side by side -->
-        <div class="flex flex-row gap-4 items-start">
-          <!-- Grid size picker -->
-          <div class="flex flex-col gap-2">
-            <span class="text-xs text-gray-400 flex items-center gap-1">
-              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"/></svg>
-              Grid size
-              <span class="text-gray-500 ml-1">{{ form.gridW }}x{{ form.gridH }}</span>
-            </span>
-            <!-- 8x4 visual picker -->
-            <div class="flex flex-col gap-0.5 self-start" @mouseleave="clearHover()">
-              <div v-for="r in 4" :key="r" class="flex gap-0.5">
-                <div
-                  v-for="c in 8"
-                  :key="c"
-                  class="w-3.5 h-3.5 rounded-sm border cursor-pointer transition-colors"
-                  :class="cellClass(c, r)"
-                  @mouseenter="setHover(c, r)"
-                  @click="selectCell(c, r)"
-                />
-              </div>
-            </div>
-          </div>
-
-          <!-- Live preview -->
-          <div class="flex flex-col gap-1">
-            <span class="text-xs text-gray-400">Preview</span>
-            <div
-              class="bg-darker rounded-lg border border-gray-700 p-3 overflow-hidden flex flex-col"
-              :style="{ width: (form.gridW * 110) + 'px', height: (form.gridH * 110) + 'px' }"
-            >
-              <div class="text-xs font-medium text-gray-300 mb-2 truncate flex-shrink-0">{{ form.name || 'Untitled report' }}</div>
-              <div class="flex-1 min-h-0">
-                <template v-if="form.displayMode === 'bar'">
-                  <div class="flex flex-col justify-center gap-1 h-full">
-                    <div v-for="w in [80, 55, 40, 25]" :key="w" class="flex items-center gap-1">
-                      <div class="w-8 h-1.5 bg-gray-700 rounded-sm flex-shrink-0" />
-                      <div class="h-1.5 rounded-sm" :style="{ width: w + '%', backgroundColor: form.color + '88' }" />
-                    </div>
-                  </div>
-                </template>
-                <template v-else-if="form.displayMode === 'line'">
-                  <div class="flex items-end gap-0.5 h-full">
-                    <div v-for="(h, i) in [30, 55, 45, 70, 50, 80, 60]" :key="i" class="flex-1 rounded-sm" :style="{ height: h + '%', backgroundColor: form.color + '88' }" />
-                  </div>
-                </template>
-                <template v-else-if="form.displayMode === 'pie'">
-                  <svg viewBox="0 0 100 100" class="w-full h-full">
-                    <path d="M 50 50 L 50 10 A 40 40 0 0 1 73.5 82.4 Z" :fill="form.color + 'ee'" />
-                    <path d="M 50 50 L 73.5 82.4 A 40 40 0 0 1 10 50 Z" :fill="form.color + '99'" />
-                    <path d="M 50 50 L 10 50 A 40 40 0 0 1 50 10 Z" :fill="form.color + '55'" />
-                  </svg>
-                </template>
-                <template v-else>
-                  <div class="flex flex-col justify-center gap-0.5 h-full">
-                    <div v-for="i in 4" :key="i" class="flex gap-2 py-0.5 border-b border-gray-700/50 last:border-0">
-                      <div class="flex-1 h-1.5 bg-gray-700 rounded-sm" />
-                      <div class="w-8 h-1.5 bg-gray-600 rounded-sm" />
-                    </div>
-                  </div>
-                </template>
-              </div>
-            </div>
-            <p class="text-xs text-gray-500 text-center">{{ form.gridW }}x{{ form.gridH }} - {{ modeLabel }} - {{ subjectLabel }}</p>
-          </div>
-        </div>
+        <ReportGridSizePicker
+          v-model:grid-w="form.gridW"
+          v-model:grid-h="form.gridH"
+          :display-mode="form.displayMode"
+          :color="form.color"
+          :name="form.name"
+          :mode-label="modeLabel"
+          :subject-label="subjectLabel"
+        />
 
         </template>
       </div>
@@ -644,32 +597,32 @@
     </div>
 
     <SearchOverSelector
-      v-if="dropPickerOpen"
+      v-if="pickerOpen"
       placement="side"
-      :anchor="dropPickerAnchor"
-      :item-list="dropPickerList"
+      :anchor="pickerAnchor"
+      :item-list="pickerList"
       ledger-type="drop"
       :is-lifetime="false"
-      @close="closeDropPicker"
-      @select="onSelectDrop"
-      @input="(val: string) => dropPickerSearch = val"
+      @close="closePicker"
+      @select="onSelectPicked"
+      @input="(val: string) => pickerSearch = val"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { reactive, computed, watch, ref, onMounted, nextTick } from 'vue'
+import { computed, watch, ref, onMounted, nextTick } from 'vue'
 import type { ReportDefinition, ReportFilterCondition, PossibleTarget, FamilyMeta } from '../types/bridge'
 import { useReportFilters } from '../composables/useReportFilters'
+import { useReportForm } from '../composables/useReportForm'
+import { useSliceColors } from '../composables/useSliceColors'
 import AndOnlyFilter from './AndOnlyFilter.vue'
 import ReportBuilderGuided from './ReportBuilderGuided.vue'
+import ReportGridSizePicker from './ReportGridSizePicker.vue'
 import ColorPicker from './ColorPicker.vue'
-import {
-  getMissionFilterValueOptions,
-  getTargetFilterOptions,
-  getArtifactFilterValueOptions,
-  getDropFilterOptions,
-} from '../utils/filterOptions'
+import { getReportField } from '../utils/filterFields'
+import type { FilterFieldCtx } from '../utils/filterFields'
+import { MISSION_DIMENSIONS, ARTIFACT_DIMENSIONS, ARTIFACT_DIMENSION_KEYS } from '../utils/reportDimensions'
 import type { FilterOption } from '../utils/filterOptions'
 import { useSharedConfigs } from '../composables/useSharedConfigs'
 import SearchOverSelector from './SearchOverSelector.vue'
@@ -697,6 +650,9 @@ const {
   addToOrGroup,
   removeFromOrGroup,
   updateOrCondition,
+  setField,
+  setOrField,
+  pruneConditions,
   toReportFilters,
   fromReportFilters,
   clearFilters,
@@ -709,25 +665,30 @@ const closeWarning = ref(false)
 const builderMode = ref<'basic' | 'advanced'>('basic')
 const shareWithAll = ref(false)
 const knownAccountCount = ref(0)
-const hoverW = ref(0)
-const hoverH = ref(0)
-const labelColorsMap = ref<Record<string, string>>({})
 
 const { artifactConfigs, maxQuality, loadSharedConfigs } = useSharedConfigs()
 
-const dropOptions = computed<FilterOption[]>(() =>
-  getDropFilterOptions(artifactConfigs.value, maxQuality.value, true),
-)
+const fieldCtx = computed<FilterFieldCtx>(() => ({
+  possibleTargets: possibleTargets.value,
+  artifactConfigs: artifactConfigs.value,
+  maxQuality: maxQuality.value,
+}))
 
-const dropPickerOpen = ref(false)
-const dropPickerSearch = ref('')
-const dropPickerTarget = ref<{ kind: 'and', index: number } | { kind: 'or', gIdx: number, cIdx: number } | null>(null)
-const dropPickerAnchor = ref<{ left: number, right: number, cy: number } | null>(null)
+const pickerOpen = ref(false)
+const pickerField = ref('')
+const pickerSearch = ref('')
+const pickerTarget = ref<{ kind: 'and', index: number } | { kind: 'or', gIdx: number, cIdx: number } | null>(null)
+const pickerAnchor = ref<{ left: number, right: number, cy: number } | null>(null)
 
-const dropPickerList = computed<FilterOption[]>(() => {
-  const term = dropPickerSearch.value.toLowerCase()
-  if (!term) return dropOptions.value
-  return dropOptions.value.filter(o => o.text.toLowerCase().includes(term))
+function pickerOptionsFor(field: string): FilterOption[] {
+  return getReportField(field)?.optionsSource?.(fieldCtx.value) ?? []
+}
+
+const pickerList = computed<FilterOption[]>(() => {
+  const all = pickerOptionsFor(pickerField.value)
+  const term = pickerSearch.value.toLowerCase()
+  if (!term) return all
+  return all.filter(o => o.text.toLowerCase().includes(term))
 })
 
 function anchorFromEvent(ev: MouseEvent): { left: number, right: number, cy: number } {
@@ -735,49 +696,59 @@ function anchorFromEvent(ev: MouseEvent): { left: number, right: number, cy: num
   return { left: r.left, right: r.right, cy: r.top + r.height / 2 }
 }
 
-function openAndDropPicker(index: number, ev: MouseEvent) {
-  dropPickerTarget.value = { kind: 'and', index }
-  dropPickerAnchor.value = anchorFromEvent(ev)
-  dropPickerSearch.value = ''
-  dropPickerOpen.value = true
+function openAndPicker(field: string, index: number, ev: MouseEvent) {
+  pickerField.value = field
+  pickerTarget.value = { kind: 'and', index }
+  pickerAnchor.value = anchorFromEvent(ev)
+  pickerSearch.value = ''
+  pickerOpen.value = true
 }
 
-function openOrDropPicker(gIdx: number, cIdx: number, ev: MouseEvent) {
-  dropPickerTarget.value = { kind: 'or', gIdx, cIdx }
-  dropPickerAnchor.value = anchorFromEvent(ev)
-  dropPickerSearch.value = ''
-  dropPickerOpen.value = true
+function openOrPicker(field: string, gIdx: number, cIdx: number, ev: MouseEvent) {
+  pickerField.value = field
+  pickerTarget.value = { kind: 'or', gIdx, cIdx }
+  pickerAnchor.value = anchorFromEvent(ev)
+  pickerSearch.value = ''
+  pickerOpen.value = true
 }
 
-function closeDropPicker() {
-  dropPickerOpen.value = false
-  dropPickerTarget.value = null
-  dropPickerAnchor.value = null
-  dropPickerSearch.value = ''
+function closePicker() {
+  pickerOpen.value = false
+  pickerField.value = ''
+  pickerTarget.value = null
+  pickerAnchor.value = null
+  pickerSearch.value = ''
 }
 
-function onSelectDrop(drop: FilterOption) {
-  const t = dropPickerTarget.value
+function onSelectPicked(item: FilterOption) {
+  const t = pickerTarget.value
   if (t === null) return
   if (t.kind === 'and') {
-    updateAndCondition(t.index, { val: String(drop.value) })
+    updateAndCondition(t.index, { val: String(item.value) })
   } else {
-    updateOrCondition(t.gIdx, t.cIdx, { val: String(drop.value) })
+    updateOrCondition(t.gIdx, t.cIdx, { val: String(item.value) })
   }
-  closeDropPicker()
+  closePicker()
 }
 
-function orDropLabel(val: string): string {
-  if (!val) return 'Select drop...'
-  const found = dropOptions.value.find(o => o.value === val)
-  return found ? found.text : 'Select drop...'
+function valueKindForField(field: string): string {
+  return getReportField(field)?.valueKind ?? ''
 }
 
-// Rarity color for a selected drop, parsed from the composite value
-// (name_level_rarity_quality), matching the main filter.
-function dropColorClass(val: string): string {
-  // Important modifier: the rb-control base class sets text-gray-200, which would
-  // otherwise win over the rarity color.
+function modalLabel(field: string, val: string): string {
+  const placeholder = field === 'drops' ? 'Select drop...' : 'Select...'
+  if (!val) return placeholder
+  const found = pickerOptionsFor(field).find(o => o.value === val)
+  return found ? found.text : placeholder
+}
+
+/**
+ * Rarity color for a selected drop value, parsed from the composite value
+ * (name_level_rarity_quality), matching the main filter. Only the drops field carries rarity in its
+ * value, so other modal fields get no color override.
+ */
+function modalColorClass(field: string, val: string): string {
+  if (field !== 'drops') return ''
   switch (val.split('_')[2]) {
     case '1': return '!text-rarity-1'
     case '2': return '!text-rarity-2'
@@ -786,117 +757,7 @@ function dropColorClass(val: string): string {
   }
 }
 
-function cellClass(c: number, r: number): string {
-  const confirmed = c <= form.gridW && r <= form.gridH
-  if (hoverW.value > 0) {
-    const hovered = c <= hoverW.value && r <= hoverH.value
-    if (confirmed && hovered) return 'bg-indigo-600 border-indigo-500'
-    if (hovered) return 'bg-indigo-600/75 border-indigo-500/50'
-    if (confirmed) return 'bg-indigo-800/60 border-indigo-700/50'
-    return 'bg-gray-800 border-gray-600 hover:border-gray-400'
-  }
-  return confirmed ? 'bg-indigo-600 border-indigo-500' : 'bg-gray-800 border-gray-600 hover:border-gray-400'
-}
-
-function clearHover() {
-  hoverW.value = 0
-  hoverH.value = 0
-}
-
-function setHover(c: number, r: number) {
-  hoverW.value = c
-  hoverH.value = r
-}
-
-function selectCell(c: number, r: number) {
-  form.gridW = c
-  form.gridH = r
-}
-
-function parseLabelColors(raw: string): Record<string, string> {
-  if (!raw) return {}
-  try {
-    return JSON.parse(raw) as Record<string, string>
-  } catch {
-    return {}
-  }
-}
-
-function makeBlankForm() {
-  return {
-    name: '',
-    description: '',
-    subject: 'ships',
-    mode: 'aggregate',
-    displayMode: 'bar',
-    groupBy: 'ship_type',
-    secondaryGroupBy: '',
-    timeBucket: 'month',
-    customBucketN: 3,
-    customBucketUnit: 'month',
-    gridW: 2,
-    gridH: 2,
-    color: '#6366f1',
-    unfilledColor: '#1f2937',
-    valueFilterOp: '',
-    valueFilterThreshold: 0,
-    normalizeBy: 'none',
-    chartType: '',
-    familyWeight: '',
-    mennoEnabled: false,
-    mennoCompareMode: 'side_by_side',
-    minSampleSize: 0,
-  }
-}
-
-const form = reactive(makeBlankForm())
-
-watch(
-  () => props.editingDef,
-  (def) => {
-    builderMode.value = def ? 'advanced' : 'basic'
-    isDirty.value = false
-    closeWarning.value = false
-    if (def) {
-      form.name = def.name
-      form.description = def.description || ''
-      form.subject = def.subject === 'missions' ? 'ships' : def.subject
-      form.mode = def.mode
-      form.displayMode = def.displayMode
-      form.groupBy = def.groupBy
-      form.timeBucket = def.timeBucket || 'month'
-      form.customBucketN = def.customBucketN || 3
-      form.customBucketUnit = def.customBucketUnit || 'month'
-      form.gridW = def.gridW || 2
-      form.gridH = def.gridH || 2
-      form.color = def.color || '#6366f1'
-      form.unfilledColor = def.unfilledColor || '#1f2937'
-      form.valueFilterOp = def.valueFilterOp || ''
-      form.valueFilterThreshold = def.valueFilterThreshold || 0
-      form.normalizeBy = def.normalizeBy || 'none'
-      form.secondaryGroupBy = def.secondaryGroupBy || ''
-      form.chartType = def.chartType || ''
-      form.familyWeight = def.familyWeight || ''
-      form.mennoEnabled = def.mennoEnabled ?? false
-      form.mennoCompareMode = def.mennoCompareMode || 'side_by_side'
-      form.minSampleSize = def.minSampleSize ?? 0
-      labelColorsMap.value = parseLabelColors(def.labelColors)
-      fromReportFilters(def.filters)
-    } else {
-      Object.assign(form, makeBlankForm())
-      labelColorsMap.value = {}
-      clearFilters()
-      shareWithAll.value = false
-    }
-    nextTick(() => { isDirty.value = false })
-  },
-  { immediate: true },
-)
-
-watch(form, () => { isDirty.value = true }, { deep: true })
-watch(andConditions, () => { isDirty.value = true }, { deep: true })
-watch(orGroups, () => { isDirty.value = true }, { deep: true })
-watch(labelColorsMap, () => { isDirty.value = true }, { deep: true })
+const baseColor = computed(() => form.color)
 
 const chartLabels = computed(() => {
   if (form.displayMode !== 'pie' && form.displayMode !== 'bar') return []
@@ -905,54 +766,31 @@ const chartLabels = computed(() => {
   return Object.keys(labelColorsMap.value)
 })
 
-function hexToHsl(hex: string): [number, number, number] {
-  const rv = Number.parseInt(hex.slice(1, 3), 16) / 255
-  const gv = Number.parseInt(hex.slice(3, 5), 16) / 255
-  const bv = Number.parseInt(hex.slice(5, 7), 16) / 255
-  const max = Math.max(rv, gv, bv)
-  const min = Math.min(rv, gv, bv)
-  const l = (max + min) / 2
-  const d = max - min
-  const s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1))
-  let h = 0
-  if (d !== 0) {
-    switch (max) {
-      case rv: h = ((gv - bv) / d + 6) % 6; break
-      case gv: h = (bv - rv) / d + 2; break
-      default: h = (rv - gv) / d + 4
-    }
-    h *= 60
-  }
-  return [h, s, l]
-}
+const {
+  labelColorsMap,
+  parseLabelColors,
+  getLabelColor,
+  setLabelColor,
+} = useSliceColors(baseColor, chartLabels)
 
-function hslToHex(h: number, s: number, l: number): string {
-  const a = s * Math.min(l, 1 - l)
-  const f = (n: number) => {
-    const k = (n + h / 30) % 12
-    const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1)
-    return Math.round(255 * color).toString(16).padStart(2, '0')
-  }
-  return `#${f(0)}${f(8)}${f(4)}`
-}
+const { form, hydrate } = useReportForm({
+  editingDef: computed(() => props.editingDef),
+  builderMode,
+  isDirty,
+  closeWarning,
+  shareWithAll,
+  labelColorsMap,
+  parseLabelColors,
+  fromReportFilters,
+  clearFilters,
+})
 
-function autoSliceColors(baseColor: string, count: number): string[] {
-  const [h, s, l] = hexToHsl(baseColor)
-  return Array.from({ length: count }, (_, i) =>
-    hslToHex(((h + (i * 360) / count) % 360), s, l),
-  )
-}
+hydrate(props.editingDef)
 
-function setLabelColor(label: string, color: string) {
-  labelColorsMap.value = { ...labelColorsMap.value, [label]: color }
-}
-
-function getLabelColor(label: string): string {
-  if (labelColorsMap.value[label]) return labelColorsMap.value[label]
-  const idx = chartLabels.value.indexOf(label)
-  const colors = autoSliceColors(form.color, chartLabels.value.length)
-  return idx >= 0 ? (colors[idx] ?? form.color) : form.color
-}
+watch(form, () => { isDirty.value = true }, { deep: true })
+watch(andConditions, () => { isDirty.value = true }, { deep: true })
+watch(orGroups, () => { isDirty.value = true }, { deep: true })
+watch(labelColorsMap, () => { isDirty.value = true }, { deep: true })
 
 const subjectLabel = computed(() => {
   const map: Record<string, string> = { ships: 'Ships', artifacts: 'Artifacts' }
@@ -963,28 +801,14 @@ const modeLabel = computed(() =>
   form.mode === 'time_series' ? 'Time series' : 'Aggregate',
 )
 
-const shipMissionAggregateOptions = [
-  { value: 'ship_type', label: 'Ship Type' },
-  { value: 'duration_type', label: 'Duration Type' },
-  { value: 'level', label: 'Level' },
-  { value: 'mission_type', label: 'Mission Type' },
-  { value: 'mission_target', label: 'Mission Target' },
-]
-
-const artifactAggregateOptions = [
-  { value: 'artifact_name', label: 'Artifact Name' },
-  { value: 'rarity', label: 'Rarity' },
-  { value: 'tier', label: 'Tier' },
-  { value: 'spec_type', label: 'Spec Type' },
-]
+const shipMissionAggregateOptions = MISSION_DIMENSIONS
+const artifactAggregateOptions = ARTIFACT_DIMENSIONS
 
 const timeSeriesOption = [{ value: 'time_bucket', label: 'Time Bucket' }]
 
-const artifactDimensions = new Set(['artifact_name', 'rarity', 'tier', 'spec_type'])
-
 const inferredSubjectLabel = computed(() => {
   if (!form.secondaryGroupBy) return ''
-  const eitherArtifact = artifactDimensions.has(form.groupBy) || artifactDimensions.has(form.secondaryGroupBy) || !!form.familyWeight
+  const eitherArtifact = ARTIFACT_DIMENSION_KEYS.has(form.groupBy) || ARTIFACT_DIMENSION_KEYS.has(form.secondaryGroupBy) || !!form.familyWeight
   return eitherArtifact ? 'Artifact drops' : 'Missions'
 })
 
@@ -996,11 +820,12 @@ function onSecondaryGroupByChange() {
       form.displayMode = 'heatmap'
     }
     if (!form.familyWeight) {
-      if (artifactDimensions.has(form.groupBy) || artifactDimensions.has(form.secondaryGroupBy)) {
+      if (ARTIFACT_DIMENSION_KEYS.has(form.groupBy) || ARTIFACT_DIMENSION_KEYS.has(form.secondaryGroupBy)) {
         form.subject = 'artifacts'
       } else {
         form.subject = 'ships'
       }
+      pruneConditions(scopesForSubject(form.subject))
     }
   } else {
     form.displayMode = form.mode === 'time_series' ? 'line' : 'bar'
@@ -1008,41 +833,7 @@ function onSecondaryGroupByChange() {
 }
 
 function getOpsForField(field: string): { value: string, label: string }[] {
-  if (field === 'drops') {
-    return [
-      { value: 'c', label: 'contains' },
-      { value: 'dnc', label: 'does not contain' },
-    ]
-  }
-  if (dateFields.has(field)) {
-    return [
-      { value: '=', label: 'on' },
-      { value: '<', label: 'before' },
-      { value: '>', label: 'after' },
-      { value: '<=', label: 'on or before' },
-      { value: '>=', label: 'on or after' },
-    ]
-  }
-  if (field === 'target' || field === 'type' || field === 'farm') {
-    return [
-      { value: '=', label: 'is' },
-      { value: '!=', label: 'is not' },
-    ]
-  }
-  if (field === 'artifact_name' || field === 'artifact_spec_type') {
-    return [
-      { value: '=', label: 'is' },
-      { value: '!=', label: 'is not' },
-    ]
-  }
-  return [
-    { value: '=', label: 'is' },
-    { value: '!=', label: 'is not' },
-    { value: '>', label: 'greater than' },
-    { value: '<', label: 'less than' },
-    { value: '>=', label: 'at least' },
-    { value: '<=', label: 'at most' },
-  ]
+  return getReportField(field)?.ops ?? []
 }
 
 const groupByOptions = computed(() => {
@@ -1053,7 +844,7 @@ const groupByOptions = computed(() => {
 
 const canNormalizePivotPerLaunch = computed(() => {
   if (!form.secondaryGroupBy) return false
-  return !artifactDimensions.has(form.groupBy) && !artifactDimensions.has(form.secondaryGroupBy)
+  return !ARTIFACT_DIMENSION_KEYS.has(form.groupBy) && !ARTIFACT_DIMENSION_KEYS.has(form.secondaryGroupBy)
 })
 
 const mennoComparableGroupBys = new Set([
@@ -1095,26 +886,31 @@ const filterFieldOptions = computed(() => ({
   artifact: form.subject === 'artifacts' ? artifactFilterFields : [],
 }))
 
-const boolFields = new Set(['dubcap', 'buggedcap'])
-const dateFields = new Set(['launchDT', 'returnDT'])
-
-function isBoolField(field: string) { return boolFields.has(field) }
-function isDateField(field: string) { return dateFields.has(field) }
+function isBoolField(field: string) { return getReportField(field)?.valueKind === 'bool' }
 
 function valueOptionsForField(topLevel: string) {
-  if (topLevel === 'target') return getTargetFilterOptions(possibleTargets.value)
-  const missionOpts = getMissionFilterValueOptions(topLevel)
-  if (missionOpts.length > 0) return missionOpts
-  return getArtifactFilterValueOptions(topLevel)
+  return getReportField(topLevel)?.optionsSource?.(fieldCtx.value) ?? []
+}
+
+/**
+ * Applies a default first option to a freshly set condition when the field is a finite select, so
+ * the value control renders an immediately valid choice. Modal, number, and date fields keep an
+ * empty value and are populated by their own controls.
+ */
+function applySelectDefault(apply: (val: string) => void, field: string) {
+  if (getReportField(field)?.valueKind !== 'select') return
+  const opts = valueOptionsForField(field)
+  if (opts.length > 0) apply(String(opts[0].value))
 }
 
 function onFieldChange(index: number, field: string) {
-  let defaultOp = '='
-  if (isBoolField(field)) defaultOp = 'true'
-  else if (field === 'drops') defaultOp = 'c'
-  const opts = valueOptionsForField(field)
-  const defaultVal = opts.length > 0 ? String(opts[0].value) : ''
-  updateAndCondition(index, { topLevel: field, op: defaultOp, val: defaultVal })
+  setField(index, field)
+  applySelectDefault(val => updateAndCondition(index, { val }), field)
+}
+
+function onOrFieldChange(gIdx: number, cIdx: number, field: string) {
+  setOrField(gIdx, cIdx, field)
+  applySelectDefault(val => updateOrCondition(gIdx, cIdx, { val }), field)
 }
 
 function resetAggregateDisplayAndNormalize() {
@@ -1122,7 +918,7 @@ function resetAggregateDisplayAndNormalize() {
     if (!['heatmap', 'grouped_bar'].includes(form.displayMode)) {
       form.displayMode = 'heatmap'
     }
-    const perCellOk = !artifactDimensions.has(form.groupBy) && !artifactDimensions.has(form.secondaryGroupBy)
+    const perCellOk = !ARTIFACT_DIMENSION_KEYS.has(form.groupBy) && !ARTIFACT_DIMENSION_KEYS.has(form.secondaryGroupBy)
     if (['launches', 'airtime'].includes(form.normalizeBy) && !perCellOk) {
       form.normalizeBy = 'none'
     }
@@ -1149,8 +945,14 @@ function onSubjectOrModeChange() {
   }
 }
 
+function scopesForSubject(subject: string): Set<'mission' | 'artifact'> {
+  return subject === 'artifacts'
+    ? new Set<'mission' | 'artifact'>(['mission', 'artifact'])
+    : new Set<'mission' | 'artifact'>(['mission'])
+}
+
 function onSubjectChange() {
-  clearFilters()
+  pruneConditions(scopesForSubject(form.subject))
   if (form.subject !== 'artifacts') form.familyWeight = ''
   onSubjectOrModeChange()
 }

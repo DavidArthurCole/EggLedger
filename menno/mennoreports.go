@@ -13,6 +13,7 @@ import (
 	"github.com/DavidArthurCole/EggLedger/eiafx"
 	"github.com/DavidArthurCole/EggLedger/reportdb"
 	"github.com/DavidArthurCole/EggLedger/reports"
+	"github.com/DavidArthurCole/EggLedger/util"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
@@ -346,7 +347,7 @@ func ExecuteComparison(reportId, rawRowLabelsJSON, rawColLabelsJSON string) stri
 	}
 
 	if isPct {
-		applyMenno2DPctNormalization(matrixValues, nR, nC, pctMode)
+		util.Apply2DPctNormalization(matrixValues, nR, nC, pctMode)
 	}
 
 	rowLabels := make([]string, nR)
@@ -376,46 +377,4 @@ func ExecuteComparison(reportId, rawRowLabelsJSON, rawColLabelsJSON string) stri
 		return ""
 	}
 	return string(out)
-}
-
-func applyMenno2DPctNormalization(vals []float64, nR, nC int, mode string) {
-	if nR == 0 || nC == 0 {
-		return
-	}
-	switch mode {
-	case "row_pct":
-		for r := 0; r < nR; r++ {
-			var rowSum float64
-			for c := 0; c < nC; c++ {
-				rowSum += vals[r*nC+c]
-			}
-			if rowSum > 0 {
-				for c := 0; c < nC; c++ {
-					vals[r*nC+c] = vals[r*nC+c] / rowSum * 100
-				}
-			}
-		}
-	case "col_pct":
-		for c := 0; c < nC; c++ {
-			var colSum float64
-			for r := 0; r < nR; r++ {
-				colSum += vals[r*nC+c]
-			}
-			if colSum > 0 {
-				for r := 0; r < nR; r++ {
-					vals[r*nC+c] = vals[r*nC+c] / colSum * 100
-				}
-			}
-		}
-	case "global_pct":
-		var total float64
-		for _, v := range vals {
-			total += v
-		}
-		if total > 0 {
-			for i := range vals {
-				vals[i] = vals[i] / total * 100
-			}
-		}
-	}
 }

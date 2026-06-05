@@ -181,7 +181,7 @@ func MissionsToCsv(missions []*Mission, path string) error {
 				fmt.Sprint(m.Capacity),
 				GetNamedTarget(&m.TargetArtifact),
 			)
-			for i := 0; i < mac; i++ {
+			for i := range mac {
 				if i < len(m.ArtifactNames) {
 					row = append(row, m.ArtifactNames[i])
 				} else {
@@ -233,7 +233,7 @@ func MissionsToXlsx(missions []*Mission, path string) error {
 	for i, col := range exportColumnDefs {
 		colWidths[i] = col.width
 	}
-	for i := 0; i < mac; i++ {
+	for i := range mac {
 		colWidths[len(exportColumnDefs)+i] = artifactColWidth
 	}
 
@@ -278,7 +278,7 @@ func MissionsToXlsx(missions []*Mission, path string) error {
 			xlsxwriter.NumberCell(float64(m.Capacity)),
 			xlsxwriter.StringCell(GetNamedTarget(&m.TargetArtifact)),
 		}
-		for i := 0; i < mac; i++ {
+		for i := range mac {
 			if i < len(m.ArtifactNames) {
 				row = append(row, xlsxwriter.StringCell(m.ArtifactNames[i]))
 			} else {

@@ -41,37 +41,45 @@
 
             <template v-if="cond.op">
               <button
-                v-if="cond.topLevel === 'drops'"
+                v-if="valueKindFor(cond.topLevel) === 'modal'"
                 type="button"
                 class="rb-control hover:border-blue-500 min-w-28 text-left"
-                :class="dropColorClass(cond.val)"
-                @click="$emit('openDropPicker', i, $event)"
+                :class="modalColorClass(cond.topLevel, cond.val)"
+                @click="$emit('openPicker', cond.topLevel, i, $event)"
               >
-                {{ dropLabel(cond.val) }}
+                {{ modalLabel(cond.topLevel, cond.val) }}
               </button>
               <input
-                v-else-if="isDateField(cond.topLevel)"
+                v-else-if="valueKindFor(cond.topLevel) === 'date'"
                 :value="cond.val"
                 type="date"
                 class="rb-control min-w-0 w-32"
                 @input="$emit('update', i, { val: ($event.target as HTMLInputElement).value })"
               />
+              <input
+                v-else-if="valueKindFor(cond.topLevel) === 'number'"
+                :value="cond.val"
+                type="number"
+                step="any"
+                class="rb-control min-w-0 w-32"
+                placeholder="Value"
+                @input="$emit('update', i, { val: ($event.target as HTMLInputElement).value })"
+              />
               <select
-                v-else-if="valueOptionsFor(cond.topLevel).length > 0"
+                v-else-if="valueKindFor(cond.topLevel) === 'select'"
                 class="rb-control min-w-28"
                 :value="cond.val"
                 @change="$emit('update', i, { val: ($event.target as HTMLSelectElement).value })"
               >
                 <option v-for="opt in valueOptionsFor(cond.topLevel)" :key="opt.value" :value="opt.value">{{ opt.text }}</option>
               </select>
-              <input
+              <select
                 v-else
-                :value="cond.val"
-                type="text"
-                class="rb-control min-w-0 w-32"
-                placeholder="Value"
-                @input="$emit('update', i, { val: ($event.target as HTMLInputElement).value })"
-              />
+                class="rb-control min-w-28 opacity-60 cursor-not-allowed"
+                disabled
+              >
+                <option value="">unsupported</option>
+              </select>
             </template>
           </template>
 
@@ -96,13 +104,9 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { ReportFilterCondition, PossibleTarget } from '../types/bridge'
-import type { FilterOption } from '../utils/filterOptions'
-import {
-  getMissionFilterValueOptions,
-  getTargetFilterOptions,
-  getArtifactFilterValueOptions,
-} from '../utils/filterOptions'
+import type { ReportFilterCondition, PossibleTarget, PossibleArtifact } from '../types/bridge'
+import { getReportField } from '../utils/filterFields'
+import type { FilterFieldCtx } from '../utils/filterFields'
 
 interface FieldOption {
   value: string
@@ -113,21 +117,24 @@ const props = defineProps<{
   andConditions: ReportFilterCondition[]
   filterFieldOptions: { mission: FieldOption[], artifact: FieldOption[] }
   possibleTargets: PossibleTarget[]
-  dropOptions: FilterOption[]
+  artifactConfigs: PossibleArtifact[]
+  maxQuality: number
 }>()
 
 const emit = defineEmits<{
   remove: [index: number]
   update: [index: number, patch: Partial<ReportFilterCondition>]
   fieldChange: [index: number, field: string]
-  openDropPicker: [index: number, ev: MouseEvent]
+  openPicker: [field: string, index: number, ev: MouseEvent]
 }>()
 
-const boolFields = new Set(['dubcap', 'buggedcap'])
-const dateFields = new Set(['launchDT', 'returnDT'])
+const fieldCtx = computed<FilterFieldCtx>(() => ({
+  possibleTargets: props.possibleTargets,
+  artifactConfigs: props.artifactConfigs,
+  maxQuality: props.maxQuality,
+}))
 
-function isBoolField(field: string) { return boolFields.has(field) }
-function isDateField(field: string) { return dateFields.has(field) }
+function isBoolField(field: string) { return getReportField(field)?.valueKind === 'bool' }
 
 const allFieldOptions = computed(() => [
   ...props.filterFieldOptions.mission,
@@ -143,70 +150,38 @@ const fieldPlaceholder = computed(() => {
 })
 
 function operatorsForField(field: string): { value: string, label: string }[] {
-  if (field === 'drops') {
-    return [
-      { value: 'c', label: 'contains' },
-      { value: 'dnc', label: 'does not contain' },
-    ]
-  }
-  if (dateFields.has(field)) {
-    return [
-      { value: '=', label: 'on' },
-      { value: '<', label: 'before' },
-      { value: '>', label: 'after' },
-      { value: '<=', label: 'on or before' },
-      { value: '>=', label: 'on or after' },
-    ]
-  }
-  if (field === 'target' || field === 'type' || field === 'farm') {
-    return [
-      { value: '=', label: 'is' },
-      { value: '!=', label: 'is not' },
-    ]
-  }
-  if (field === 'artifact_name' || field === 'artifact_spec_type') {
-    return [
-      { value: '=', label: 'is' },
-      { value: '!=', label: 'is not' },
-    ]
-  }
-  return [
-    { value: '=', label: 'is' },
-    { value: '!=', label: 'is not' },
-    { value: '>', label: 'greater than' },
-    { value: '<', label: 'less than' },
-    { value: '>=', label: 'at least' },
-    { value: '<=', label: 'at most' },
-  ]
+  return getReportField(field)?.ops ?? []
+}
+
+function valueKindFor(field: string): string {
+  return getReportField(field)?.valueKind ?? ''
 }
 
 function valueOptionsFor(topLevel: string) {
-  if (topLevel === 'target') return getTargetFilterOptions(props.possibleTargets)
-  const missionOpts = getMissionFilterValueOptions(topLevel)
-  if (missionOpts.length > 0) return missionOpts
-  return getArtifactFilterValueOptions(topLevel)
+  return getReportField(topLevel)?.optionsSource?.(fieldCtx.value) ?? []
 }
 
 function isIncomplete(cond: ReportFilterCondition): boolean {
   if (!cond.topLevel) return false
   if (isBoolField(cond.topLevel)) return !cond.op
   if (!cond.op) return true
-  if (isDateField(cond.topLevel)) return !cond.val
-  if (valueOptionsFor(cond.topLevel).length === 0 && !cond.val) return true
-  return false
+  return !cond.val
 }
 
-function dropLabel(val: string): string {
-  if (!val) return 'Select drop...'
-  const found = props.dropOptions.find(o => o.value === val)
-  return found ? found.text : 'Select drop...'
+function modalLabel(field: string, val: string): string {
+  const placeholder = field === 'drops' ? 'Select drop...' : 'Select...'
+  if (!val) return placeholder
+  const found = valueOptionsFor(field).find(o => o.value === val)
+  return found ? found.text : placeholder
 }
 
-// Rarity color for the selected drop, parsed from the composite value
-// (name_level_rarity_quality), matching the main filter's coloring.
-function dropColorClass(val: string): string {
-  // Important modifier: the rb-control base class sets text-gray-200, which would
-  // otherwise win over the rarity color.
+/**
+ * Rarity color for a selected drop value, parsed from the composite value
+ * (name_level_rarity_quality), matching the main filter's coloring. Only the drops field carries
+ * rarity in its value, so other modal fields get no color override.
+ */
+function modalColorClass(field: string, val: string): string {
+  if (field !== 'drops') return ''
   switch (val.split('_')[2]) {
     case '1': return '!text-rarity-1'
     case '2': return '!text-rarity-2'

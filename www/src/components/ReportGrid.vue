@@ -111,6 +111,13 @@ import { useReports } from '../composables/useReports'
 import { useReportGroups } from '../composables/useReportGroups'
 import { useAppState } from '../composables/useAppState'
 import { downloadReportJson, readImportFile } from '../utils/reportIO'
+import type { EmptyZone } from '../utils/reportGridLayout'
+import {
+  GRID_COLS,
+  GRID_GAP,
+  computeEmptyZones as computeEmptyZonesFor,
+  findInsertIndexForZone as findInsertIndexForZoneIn,
+} from '../utils/reportGridLayout'
 import ReportCard from './ReportCard.vue'
 import ReportBuilderPanel from './ReportBuilderPanel.vue'
 
@@ -135,12 +142,6 @@ const resultCycles = ref<Record<string, number>>({})
 const draggingIndex = ref<number | null>(null)
 const dragOverIndex = ref<number | null>(null)
 
-interface EmptyZone {
-  colStart: number
-  colEnd: number
-  rowStart: number
-  insertAfter: number
-}
 const emptyDropZones = ref<EmptyZone[]>([])
 const dropZoneOverIdx = ref<number | null>(null)
 const importError = ref<string | null>(null)
@@ -292,131 +293,9 @@ async function handleSetGroup(reportId: string, groupId: string) {
   }
 }
 
-interface GridCardPos { col: number; row: number; w: number; h: number; idx: number }
-
-const GRID_COLS = 8
-const GRID_GAP = 12
-
-function clampDims(gridW: number, gridH: number): { w: number; h: number } {
-  return { w: Math.min(Math.max(gridW, 1), GRID_COLS), h: Math.min(Math.max(gridH, 1), 8) }
-}
-
-function markOccupied(occupied: Set<string>, col: number, row: number, w: number, h: number) {
-  for (let rr = row; rr < row + h; rr++)
-    for (let cc = col; cc < col + w; cc++) occupied.add(`${cc},${rr}`)
-}
-
-function cellsFit(occupied: Set<string>, c: number, r: number, w: number, h: number): boolean {
-  for (let rr = r; rr < r + h; rr++)
-    for (let cc = c; cc < c + w; cc++)
-      if (occupied.has(`${cc},${rr}`)) return false
-  return true
-}
-
-// Replicates CSS grid auto-placement (row direction, no dense).
-function findPlacement(occupied: Set<string>, w: number, h: number, col: number, row: number): { col: number; row: number } {
-  let c = col
-  let r = row
-  while (true) {
-    if (c + w - 1 > GRID_COLS) { c = 1; r++ }
-    if (cellsFit(occupied, c, r, w, h)) return { col: c, row: r }
-    c++
-  }
-}
-
-function simulatePlacement(defs: ReportDefinition[]): { col: number; row: number; occupied: Set<string> } {
-  const occupied = new Set<string>()
-  let col = 1
-  let row = 1
-  for (const def of defs) {
-    const { w, h } = clampDims(def.gridW, def.gridH)
-    const pos = findPlacement(occupied, w, h, col, row)
-    col = pos.col
-    row = pos.row
-    markOccupied(occupied, col, row, w, h)
-    col += w
-  }
-  return { col, row, occupied }
-}
-
-function buildOccupancyFromLayout(): { cardPositions: GridCardPos[]; occupied: Set<string> } {
-  const cardPositions: GridCardPos[] = []
-  const occupied = new Set<string>()
-  let col = 1
-  let row = 1
-  for (let idx = 0; idx < displayedReports.value.length; idx++) {
-    const def = displayedReports.value[idx]
-    const { w, h } = clampDims(def.gridW, def.gridH)
-    const pos = findPlacement(occupied, w, h, col, row)
-    col = pos.col
-    row = pos.row
-    cardPositions.push({ col, row, w, h, idx })
-    markOccupied(occupied, col, row, w, h)
-    col += w
-  }
-  return { cardPositions, occupied }
-}
-
-function zoneInsertAfter(cardPositions: GridCardPos[], targetRow: number, runStart: number): number {
-  const zoneFirst = (targetRow - 1) * GRID_COLS + runStart
-  let best = -1
-  for (const cp of cardPositions) {
-    if ((cp.row - 1) * GRID_COLS + cp.col < zoneFirst) best = Math.max(best, cp.idx)
-  }
-  return best
-}
-
-function findInsertIndexForZone(zone: EmptyZone, fromIdx: number): number {
-  const defs = displayedReports.value
-  const draggedDef = defs[fromIdx]
-  if (!draggedDef) return fromIdx
-
-  const withoutDragged = defs.filter((_, i) => i !== fromIdx)
-  const { w: dw, h: dh } = clampDims(draggedDef.gridW, draggedDef.gridH)
-
-  for (let insertPos = 0; insertPos <= withoutDragged.length; insertPos++) {
-    const { col, row, occupied } = simulatePlacement(withoutDragged.slice(0, insertPos))
-    const pos = findPlacement(occupied, dw, dh, col, row)
-    if (pos.col === zone.colStart && pos.row === zone.rowStart) return insertPos
-  }
-
-  // Fallback: use zone.insertAfter
-  let insertAt = zone.insertAfter
-  if (fromIdx <= insertAt) insertAt--
-  return Math.max(insertAt + 1, 0)
-}
-
-function rowEmptyZones(
-  r: number,
-  occupied: Set<string>,
-  cardPositions: GridCardPos[],
-): EmptyZone[] {
-  const zones: EmptyZone[] = []
-  let runStart: number | null = null
-  for (let c = 1; c <= GRID_COLS + 1; c++) {
-    const isEmpty = c <= GRID_COLS && !occupied.has(`${c},${r}`)
-    if (isEmpty && runStart === null) { runStart = c; continue }
-    if (!isEmpty && runStart !== null) {
-      zones.push({
-        colStart: runStart,
-        colEnd: c,
-        rowStart: r,
-        insertAfter: zoneInsertAfter(cardPositions, r, runStart),
-      })
-      runStart = null
-    }
-  }
-  return zones
-}
-
 function computeEmptyZones() {
   if (draggingIndex.value === null) { emptyDropZones.value = []; return }
-  const { cardPositions, occupied } = buildOccupancyFromLayout()
-  if (cardPositions.length === 0) { emptyDropZones.value = []; return }
-  const maxRow = Math.max(...cardPositions.map(p => p.row + p.h - 1))
-  const zones: EmptyZone[] = []
-  for (let r = 1; r <= maxRow; r++) zones.push(...rowEmptyZones(r, occupied, cardPositions))
-  emptyDropZones.value = zones
+  emptyDropZones.value = computeEmptyZonesFor(displayedReports.value)
 }
 
 let _dragleaveTimer: ReturnType<typeof setTimeout> | null = null
@@ -458,7 +337,7 @@ async function onDropToZone(zone: EmptyZone) {
   dropZoneOverIdx.value = null
   emptyDropZones.value = []
   if (from === null) return
-  const insertPos = findInsertIndexForZone(zone, from)
+  const insertPos = findInsertIndexForZoneIn(displayedReports.value, zone, from)
   const ids = reports.value.map(r => r.id)
   const [moved] = ids.splice(from, 1)
   ids.splice(insertPos, 0, moved)

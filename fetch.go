@@ -72,13 +72,13 @@ func runFetchPipeline(w *worker, playerId string) {
 	)
 	runProc.InitSegments([]string{"Save", "Missions", "Export"})
 	origUpdateState := _updateState
-	pinfo := func(args ...interface{}) {
+	pinfo := func(args ...any) {
 		msg := fmt.Sprint(args...)
 		log.Info(args...)
 		_emitMessage(msg, false)
 		runProc.Log(msg, false)
 	}
-	perror := func(args ...interface{}) {
+	perror := func(args ...any) {
 		msg := fmt.Sprint(args...)
 		log.Error(args...)
 		_emitMessage(msg, true)
@@ -278,7 +278,10 @@ func runFetchPipeline(w *worker, playerId string) {
 		updateState(AppState_FETCHING_MISSIONS)
 		runProc.SetSegment("Missions", "active")
 
-		workerCount := _storage.GetWorkerCount()
+		// workerCount is re-read from storage at the top of each batch (see the
+		// MissionsLoop below) so a live worker-count change takes effect mid-fetch;
+		// declare it here without an unused initial fetch.
+		var workerCount int
 		var failureMu sync.Mutex
 
 		reportProgress := func(finished, failedCount, retriedCount int) {
@@ -542,7 +545,7 @@ func fetchOneMission(
 	startTimestamp float64,
 	procID, procLabel string,
 	hideTimeouts bool,
-	perror func(...interface{}),
+	perror func(...any),
 	onError func(),
 	wg *sync.WaitGroup,
 	finishedCh chan<- struct{},
