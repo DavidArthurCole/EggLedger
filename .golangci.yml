@@ -2,10 +2,6 @@ version: "2"
 
 # golangci-lint configuration for EggLedger.
 
-run:
-  build-tags:
-    - windows
-
 linters:
   default: none
   # errcheck is intentionally NOT enabled: the codebase has many idiomatic
