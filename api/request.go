@@ -29,9 +29,9 @@ import (
 var DebugCompression bool
 
 const (
-	AppVersion    = "1.35.5"
-	AppBuild      = "111334"
-	ClientVersion = 71
+	AppVersion    = "1.35.7"
+	AppBuild      = "111343"
+	ClientVersion = 72
 	Platform      = ei.Platform_IOS
 )
 
