@@ -43,11 +43,13 @@ message Backup {
     optional string user_id = 1;
     optional string ei_user_id = 18;
     optional string game_services_id = 16;
+    optional string game_services_id_scoped = 31;
     optional string push_user_id = 26;
     optional string device_id = 17;
     optional string user_name = 2;
     optional double approx_time = 3;
     optional uint32 version = 21 [default = 0];
+    optional string build = 32;
     optional bool force_offer_backup = 20;
     optional bool force_backup = 22;
     
@@ -83,6 +85,8 @@ message Backup {
         optional bool user_cloud_enabled = 15 [default = true];
         optional bool user_analytics_enabled = 22 [default = true];
         optional bool user_personalized_ads_enabled = 23 [default = true];
+        optional AgeComplianceStatus age_compliance_status = 31 [default = AGE_COMPLIANCE_NOT_APPLICABLE];
+        optional double age_signal_fetched_time = 34;
     }
     
     optional Tutorial tutorial = 5;
@@ -330,6 +334,7 @@ message EggIncFirstContactRequest {
     optional string ei_user_id = 4;
     optional string user_id = 1;
     optional string game_services_id = 7;
+    optional string game_services_id_scoped = 9;
     optional string device_id = 5;
     optional string username = 6;
     optional uint32 client_version = 2;
@@ -657,6 +662,8 @@ message ContractPlayerInfo {
         optional double total_cxp = 4;
         optional double cxp_last_reward_given = 5;
     }
+    
+    optional string aggregation_notes = 16;
 }
 
 message ContractEvaluation {
@@ -808,6 +815,19 @@ message ContractsResponse {
     optional ContractSeasonInfo current_season = 7;
 }
 
+message ContractsInfoRequest {
+    optional BasicRequestInfo rinfo = 1;
+    repeated string contract_identifiers = 2;
+    optional uint32 client_version = 3;
+}
+
+message ContractsInfoResponse {
+    repeated Contract contracts = 1;
+    repeated CustomEgg custom_eggs = 2;
+    repeated string not_found = 3;
+    optional double server_time = 4;
+}
+
 message ContractCoopStatusRequest {
     optional BasicRequestInfo rinfo = 5;
     optional string contract_identifier = 1;
@@ -949,6 +969,7 @@ message ContractCoopStatusResponse {
 
 message LocalContract {
     optional Contract contract = 1;
+    optional string contract_identifier = 24;
     optional string coop_identifier = 2;
     optional bool accepted = 7;
     optional double time_accepted = 3;
@@ -983,6 +1004,16 @@ message MyContracts {
     optional double last_grade_progress_shown = 7;
     optional bool show_advanced_evaluations = 8;
     repeated CustomEgg custom_egg_info = 9;
+}
+
+message ContractsCache {
+    repeated CachedContractSpec specs = 1;
+    repeated CustomEgg custom_eggs = 2;
+}
+
+message CachedContractSpec {
+    optional Contract contract = 1;
+    optional double cached_at = 2;
 }
 
 message QueryCoopRequest {
@@ -1521,12 +1552,19 @@ message ConfigRequest {
     optional bool pro_permit = 6;
     optional bool ultra = 7;
     optional string tips_checksum = 8;
+    optional AgeComplianceStatus age_compliance_status = 9;
+}
+
+message AdminControls {
+    optional bool shell_debug = 1;
+    optional bool showcase_viewer = 2;
 }
 
 message ConfigResponse {
     optional LiveConfig live_config = 1;
     optional MailDB mail_bag = 2;
     optional DLCCatalog dlc_catalog = 3;
+    optional AdminControls admin = 4;
 }
 
 message AdAttributionRawData {
@@ -2005,6 +2043,7 @@ message SaveBackupResponse {
 message CleanAccountRequest {
     optional string ei_user_id_to_keep = 1;
     optional string game_services_id = 2;
+    optional string game_services_id_scoped = 3;
 }
 
 message ReturnEDTPayload {
@@ -2546,6 +2585,7 @@ message SyncPathOfVirtueRequest {
     optional BasicRequestInfo rinfo = 1;
     optional uint32 reset_index = 2;
     optional double sim_time = 3;
+    optional bool rebaseline = 4;
 }
 
 message SyncPathOfVirtueResponse {
@@ -2658,6 +2698,14 @@ enum UserType {
     ARTIFACTS_ACTIVE = 13;
     PRESTIGE_READY = 14;
     PIGGY_HESITANT = 16;
+}
+
+enum AgeComplianceStatus {
+    AGE_COMPLIANCE_NOT_APPLICABLE = 0;
+    AGE_COMPLIANCE_UNKNOWN = 1;
+    AGE_COMPLIANCE_ADULT = 2;
+    AGE_COMPLIANCE_MINOR = 3;
+    AGE_COMPLIANCE_RESTRICTED = 4;
 }
 
 enum LeaderboardScope {
