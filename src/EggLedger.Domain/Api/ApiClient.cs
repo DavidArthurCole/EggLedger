@@ -163,7 +163,7 @@ public sealed partial class ApiClient
             catch (Exception ex)
             {
                 throw InterpretUnmarshalError(
-                    $"unmarshaling {apiUrl} response: {ex.Message}", ex);
+                    $"unmarshaling {apiUrl} response: {ChainText(ex)}", ex);
             }
         }
 
@@ -175,7 +175,7 @@ public sealed partial class ApiClient
         catch (Exception ex)
         {
             throw InterpretUnmarshalError(
-                $"unmarshaling {apiUrl} response as AuthenticatedMessage: {ex.Message}", ex);
+                $"unmarshaling {apiUrl} response as AuthenticatedMessage: {ChainText(ex)}", ex);
         }
 
         byte[] msgBytes = authMsg.Message ?? Array.Empty<byte>();
@@ -199,7 +199,7 @@ public sealed partial class ApiClient
         catch (Exception ex)
         {
             throw InterpretUnmarshalError(
-                $"unmarshaling AuthenticatedMessage payload in {apiUrl} response: {ex.Message}", ex);
+                $"unmarshaling AuthenticatedMessage payload in {apiUrl} response: {ChainText(ex)}", ex);
         }
     }
 
@@ -216,6 +216,22 @@ public sealed partial class ApiClient
         using var output = new MemoryStream();
         zlib.CopyTo(output);
         return output.ToArray();
+    }
+
+    /// <summary>
+    /// Flattens an exception chain into "Outer -> Inner -> ..." text. WASM strips
+    /// exception-message resource strings, so a reflection-path failure surfaces as
+    /// the opaque key "Arg_TargetInvocationException" with the real cause one or
+    /// more InnerExceptions down; this makes that cause visible in the UI error.
+    /// </summary>
+    private static string ChainText(Exception ex)
+    {
+        var parts = new List<string>();
+        for (Exception? e = ex; e is not null; e = e.InnerException)
+        {
+            parts.Add($"{e.GetType().Name}: {e.Message}");
+        }
+        return string.Join(" -> ", parts);
     }
 
     private static ApiRequestException InterpretUnmarshalError(string message, Exception inner)
