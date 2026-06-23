@@ -48,8 +48,12 @@ public static class WebServiceRegistration
         // Shared, read-only mission filter configuration for the Mission Data tab.
         services.AddScoped<EggLedger.Web.Missions.MissionConfigProvider>();
 
-        // Egg Inc API client over the same-origin HttpClient, and the fetch pipeline.
-        services.AddScoped(sp => new ApiClient(sp.GetRequiredService<HttpClient>()));
+        // Egg Inc API client. The browser cannot call the auxbrain host directly
+        // (CORS blocks it), so the WASM build points at a SAME-ORIGIN path that the
+        // host (nginx / the desktop) reverse-proxies to the real API. Endpoints are
+        // appended to this prefix, so "/egg-api" + "/ei/bot_first_contact" resolves
+        // against the HttpClient BaseAddress (the serving origin) -> proxied upstream.
+        services.AddScoped(sp => new ApiClient(sp.GetRequiredService<HttpClient>(), apiPrefix: "/egg-api"));
         services.AddScoped<FetchService>();
         services.AddScoped<AddAccountService>();
 
