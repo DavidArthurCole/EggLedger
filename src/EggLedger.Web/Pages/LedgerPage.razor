@@ -13,99 +13,99 @@
 
 <PageTitle>EggLedger - Ledger</PageTitle>
 
-<section class="ledger">
-    <div class="ledger-top">
-        <div class="active-summary">
+<section class="view-layout overflow-hidden">
+    <div class="flex flex-col items-center gap-2 py-2">
+        <div class="text-xs text-gray-400 bg-darker border border-gray-700 rounded-lg px-4 py-2 text-center min-h-4">
             @if (_activeInfo is not null)
             {
-                <span class="sum-nick" style="color: #@_activeInfo.AccountColor">@_activeInfo.Nickname</span>
-                <span class="sum-eb">@_activeInfo.EBString</span>
+                <span class="font-medium" style="color: #@_activeInfo.AccountColor">@_activeInfo.Nickname</span>
+                <span class="text-gray-500 ml-1.5">@_activeInfo.EBString</span>
                 @if (_activeInfo.SeString != "")
                 {
-                    <span class="sum-sep">&middot;</span>
-                    <span class="sum-se">@_activeInfo.SeString SE</span>
-                    <span class="sum-sep">&middot;</span>
-                    <span class="sum-pe">@_activeInfo.PeCount PE</span>
+                    <span class="text-gray-400 ml-1.5">&middot;</span>
+                    <span class="ml-1.5" style="color:#a855f7">@_activeInfo.SeString SE</span>
+                    <span class="text-gray-400 ml-1.5">&middot;</span>
+                    <span class="ml-1.5" style="color:#eab308">@_activeInfo.PeCount PE</span>
                     @if (_activeInfo.TeCount > 0)
                     {
-                        <span class="sum-sep">&middot;</span>
-                        <span class="sum-te">@_activeInfo.TeCount TE</span>
+                        <span class="text-gray-400 ml-1.5">&middot;</span>
+                        <span class="ml-1.5" style="color:#c831ff">@_activeInfo.TeCount TE</span>
                     }
                 }
             }
             else
             {
-                <span class="sum-empty">Select an account below or add one to get started</span>
+                <span class="text-gray-500 italic">Select an account below or add one to get started</span>
             }
         </div>
 
-        <div class="ledger-buttons">
+        <div class="flex gap-2">
             @if (_idle)
             {
                 <button type="button" class="fetch-button" disabled="@(Active.ActiveAccountId is null)" @onclick="StartFetch">Fetch</button>
             }
             else
             {
-                <button type="button" class="stop-button" @onclick="StopFetch">Stop</button>
+                <button type="button" class="fetch-button" @onclick="StopFetch">Stop</button>
             }
-            <button type="button" class="add-button" @onclick="OpenAddDialog">+ Add Account</button>
+            <button type="button" class="fetch-button w-auto" @onclick="OpenAddDialog">+ Add Account</button>
         </div>
     </div>
 
     @if (_progress is not null && !_idle || _terminalState is not null)
     {
-        <div class="progress-box">
+        <div class="min-h-14 px-2 py-1 text-xs text-gray-500 bg-darkest rounded-md tabular-nums">
             @switch (_displayState)
             {
                 case AppState.FetchingSave:
-                    <div class="prog-stage">Fetching save...</div>
+                    <div class="text-yellow-400">Fetching save...</div>
                     break;
                 case AppState.FetchingMissions:
-                    <div class="prog-stage">
+                    <div class="text-yellow-400">
                         Fetching missions...
                         @if (_progress?.MissionId is { Length: > 0 } mid)
                         {
-                            <span class="prog-current">@mid</span>
+                            <span class="text-gray-400 italic">@mid</span>
                         }
                     </div>
-                    <div class="prog-counts">
-                        <span class="prog-done">@(_progress?.Finished ?? 0)</span>
-                        <span class="prog-total"> / @(_progress?.Total ?? 0) (@PercentText%)</span>
+                    <div>
+                        <span class="text-green-400">@(_progress?.Finished ?? 0)</span>
+                        <span class="text-gray-400"> / @(_progress?.Total ?? 0) (@PercentText%)</span>
                     </div>
                     @if ((_progress?.Failed ?? 0) > 0 || (_progress?.Retried ?? 0) > 0)
                     {
-                        <div class="prog-counts">
+                        <div>
                             @if ((_progress?.Failed ?? 0) > 0)
                             {
-                                <span class="prog-failed">@_progress?.Failed failed</span>
+                                <span class="text-red-500">@_progress?.Failed failed</span>
                             }
                             @if ((_progress?.Retried ?? 0) > 0)
                             {
-                                <span class="prog-retry"> @_progress?.Retried to retry</span>
+                                <span class="text-orange-400"> @_progress?.Retried to retry</span>
                             }
                         </div>
                     }
-                    <div class="prog-bar">
-                        <div class="prog-bar-fill" style="width: @PercentText%"></div>
+                    <div class="h-3 mt-1 rounded-sm overflow-hidden bg-dark">
+                        <div class="h-full bg-green-500 transition-all duration-300 rounded-sm" style="width: @PercentText%"></div>
                     </div>
                     break;
                 case AppState.ExportingData:
-                    <div class="prog-stage">Finishing up...</div>
+                    <div class="text-yellow-400">Finishing up...</div>
                     break;
                 case AppState.Success:
-                    <div class="prog-success">Fetch complete.</div>
+                    <div class="text-green-400">Fetch complete.</div>
                     break;
                 case AppState.Failed:
-                    <div class="prog-failed">Data fetching failed. Please try again.</div>
+                    <div class="text-red-500">Data fetching failed. Please try again.</div>
                     break;
                 case AppState.Interrupted:
-                    <div class="prog-stage">Interrupted.</div>
+                    <div class="text-yellow-400">Interrupted.</div>
                     break;
             }
         </div>
     }
 
-    <div class="selector-row">
+    <div class="flex">
         <DatabaseAccountSelector Accounts="_existing" ActiveId="Active.ActiveAccountId" OnSelect="SelectAccount" />
     </div>
 

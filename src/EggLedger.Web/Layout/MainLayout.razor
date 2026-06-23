@@ -3,18 +3,18 @@
 @using EggLedger.Web.State
 @inject AppStateService AppStateSvc
 
-<div class="app-shell">
+<div class="h-full flex flex-col space-y-3 pb-3 bg-darker">
     <TabBar Tabs="_tabs">
         <Right>
             <GlobalAccountHeader />
         </Right>
     </TabBar>
 
-    <main class="app-body">
+    <main class="flex-1 min-h-0 overflow-auto">
         @Body
     </main>
 
-    <footer class="app-footer">
+    <footer class="flex-shrink-0 text-center text-sm text-gray-500">
         <a class="url-link" href="https://github.com/DavidArthurCole/EggLedger" target="_blank" rel="noopener">EggLedger</a>
         @if (!string.IsNullOrEmpty(AppStateSvc.AppVersion))
         {

@@ -8,34 +8,42 @@
 
 <PageTitle>EggLedger - Settings</PageTitle>
 
-<section class="settings">
-    <h1>Settings</h1>
-
+<div class="view-layout overflow-y-scroll">
     @if (!_loaded)
     {
-        <p class="settings-loading">Loading settings...</p>
+        <p class="text-gray-500 italic mt-0_5rem">Loading settings...</p>
     }
     else
     {
-        @if (Platform.IsDesktop)
-        {
-            @* Desktop-only: window/browser sizing and storage management need real
-               OS access. Hidden in the browser build; a desktop host renders these. *@
-            <section class="settings-desktop">
-                <h2 class="settings-desktop-heading">Window &amp; Browser</h2>
-                <p class="settings-desktop-note">Available in the desktop app.</p>
-            </section>
-            <section class="settings-desktop">
-                <h2 class="settings-desktop-heading">Storage</h2>
-                <p class="settings-desktop-note">Available in the desktop app.</p>
-            </section>
-        }
+        <div class="flex-1 min-h-0 px-3 py-2 overflow-auto shadow-sm block text-sm font-mono text-gray-400 bg-darkest rounded-md">
+            @if (Platform.IsDesktop)
+            {
+                @* Desktop-only: window/browser sizing and storage management need real
+                   OS access. Hidden in the browser build; a desktop host renders these. *@
+                <div class="px-2 py-2 text-sm text-gray-400 bg-darker rounded-md tabular-nums overflow-auto">
+                    <span class="mr-0_5rem font-bold text-lg text-gray-400 ledger-underline">Window &amp; Browser</span>
+                    <span class="text-gray-500 text-xs italic ml-1">(effective on restart)</span><br />
+                    <p class="mt-0_5rem text-gray-500 italic">Available in the desktop app.</p>
+                </div>
 
-        <OptionsPanel Model="_model" OnSetting="OnSettingAsync" />
+                <hr class="mt-1rem mb-1rem w-full" />
 
-        <CloudSyncPanel @ref="_cloudPanel" />
+                <div class="px-2 py-2 text-sm text-gray-400 bg-darker rounded-md tabular-nums overflow-auto">
+                    <span class="mr-0_5rem font-bold text-lg text-gray-400 ledger-underline">Storage</span><br />
+                    <p class="mt-0_5rem text-gray-500 italic">Available in the desktop app.</p>
+                </div>
+
+                <hr class="mt-1rem mb-1rem w-full" />
+            }
+
+            <OptionsPanel Model="_model" OnSetting="OnSettingAsync" />
+
+            <hr class="mt-1rem mb-1rem w-full" />
+
+            <CloudSyncPanel @ref="_cloudPanel" />
+        </div>
     }
-</section>
+</div>
 
 @code {
     private bool _loaded;

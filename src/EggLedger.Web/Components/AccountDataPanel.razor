@@ -14,38 +14,38 @@
     per-account STORED DATA instead: mission count, when last fetched, an
     export-to-download action, and deleting an account.
 *@
-<div class="data-panel">
+<div class="mt-4">
     <span class="section-heading">Stored Account Data</span>
     @if (Accounts.Count == 0)
     {
-        <p class="empty-note">No accounts with stored missions yet. Add an account above and fetch.</p>
+        <p class="mt-2 text-xs text-gray-500 italic">No accounts with stored missions yet. Add an account above and fetch.</p>
     }
     else
     {
-        <ul class="data-list">
+        <ul class="mt-2 space-y-2">
             @foreach (var acct in Sorted)
             {
-                <li class="data-row">
-                    <div class="data-id-line">
-                        <span class="data-nick" style="color: #@acct.AccountColor">@acct.Nickname</span>
-                        <span class="data-eb">@acct.EBString</span>
-                        <span class="data-id">@acct.Id</span>
+                <li class="p-2 border border-gray-700 rounded-md bg-darkest">
+                    <div class="flex items-baseline gap-2 flex-wrap">
+                        <span class="font-bold" style="color: #@acct.AccountColor">@acct.Nickname</span>
+                        <span class="text-gray-500 text-sm">@acct.EBString</span>
+                        <span class="font-mono text-xs text-gray-600">@acct.Id</span>
                     </div>
-                    <div class="data-stats">
+                    <div class="flex items-center gap-1 mt-1 text-xs text-gray-500">
                         <span>@acct.MissionCount missions</span>
                         @{ var since = LedgerFormatting.FormatTimeSince(acct.LastMissionReturnDT, NowUnix); }
                         @if (since != "")
                         {
-                            <span class="data-sep">&middot;</span>
+                            <span class="text-gray-600">&middot;</span>
                             <span>fetched @since</span>
                         }
                     </div>
-                    <div class="data-actions">
-                        <button type="button" class="btn-export" disabled="@_busy"
+                    <div class="flex gap-2 mt-2 flex-wrap">
+                        <button type="button" class="text-xs px-2 py-1 rounded border border-gray-700 bg-darker text-gray-300 hover:bg-darkerthandark disabled:opacity-50 disabled:cursor-default" disabled="@_busy"
                             @onclick="() => ExportCsv(acct.Id, acct.Nickname)">Export CSV</button>
-                        <button type="button" class="btn-export" disabled="@_busy"
+                        <button type="button" class="text-xs px-2 py-1 rounded border border-gray-700 bg-darker text-gray-300 hover:bg-darkerthandark disabled:opacity-50 disabled:cursor-default" disabled="@_busy"
                             @onclick="() => ExportXlsx(acct.Id, acct.Nickname)">Export XLSX</button>
-                        <button type="button" class="btn-delete" disabled="@_busy"
+                        <button type="button" class="text-xs px-2 py-1 rounded border border-red-900 bg-darker text-red-300 hover:bg-red-950 disabled:opacity-50 disabled:cursor-default" disabled="@_busy"
                             @onclick="() => Delete(acct.Id)" title="Removes the account from the list. Stored missions stay cached.">Forget account</button>
                     </div>
                 </li>
@@ -54,7 +54,7 @@
     }
     @if (_error != "")
     {
-        <p class="panel-error">@_error</p>
+        <p class="mt-2 text-xs text-red-500">@_error</p>
     }
 </div>
 

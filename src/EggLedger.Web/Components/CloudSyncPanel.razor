@@ -19,114 +19,134 @@
     blobs through the tested CloudSyncBlobs helper.
 *@
 
-<section class="cs-panel">
-    <h2 class="cs-heading">Settings Sync</h2>
-    <span class="cs-sub">(optional - requires Discord)</span>
+<div class="px-2 py-2 text-sm text-gray-400 bg-darker rounded-md tabular-nums overflow-auto">
+    <span class="mr-0_5rem font-bold text-lg text-gray-400 ledger-underline">Settings Sync</span>
+    <span class="text-gray-500 text-xs italic ml-1">(optional - requires Discord)</span><br />
 
     @if (_reachableChecking)
     {
-        <p class="cs-muted">Checking connection to ledgersync.davidarthurcole.me...</p>
+        <div class="mt-0_5rem text-gray-500 italic text-xs">Checking connection to ledgersync.davidarthurcole.me...</div>
     }
     else if (!_reachable)
     {
-        <div class="cs-warn">
-            <p class="cs-warn-title">Could not reach ledgersync.davidarthurcole.me</p>
-            <p>Settings sync is unavailable right now. Try disabling any active VPN, then retry.</p>
+        <div class="mt-0_5rem">
+            <div class="border border-yellow-700 rounded-md px-3 py-2 text-yellow-400 text-xs space-y-1">
+                <p class="font-semibold">Could not reach ledgersync.davidarthurcole.me</p>
+                <p>Settings sync is unavailable right now. Try disabling any active VPN, then click Retry below.</p>
+            </div>
+            <button type="button" class="apply-filter-button mt-0_5rem" @onclick="RecheckReachableAsync">Retry</button>
         </div>
-        <button type="button" class="cs-btn" @onclick="RecheckReachableAsync">Retry</button>
     }
     else
     {
-        @if (_connected)
-        {
-            <div class="cs-status">
-                @if (!string.IsNullOrEmpty(_avatarUrl))
-                {
-                    <img class="cs-avatar" src="@_avatarUrl" alt="Discord avatar" />
-                }
-                <div>
-                    <span class="cs-connected">Connected</span>
-                    @if (!string.IsNullOrEmpty(_username))
+        <div class="mt-0_5rem">
+            @if (_connected)
+            {
+                <div class="flex items-center gap-2">
+                    @if (!string.IsNullOrEmpty(_avatarUrl))
                     {
-                        <span class="cs-muted">as <span class="cs-name">@_username</span></span>
+                        <img class="w-7 h-7 rounded-full border border-gray-600" src="@_avatarUrl" alt="Discord avatar" />
                     }
+                    <div>
+                        <span class="text-green-400 font-semibold">Connected</span>
+                        @if (!string.IsNullOrEmpty(_username))
+                        {
+                            <span class="text-gray-400 ml-1">as <span class="text-gray-300">@_username</span></span>
+                        }
+                    </div>
                 </div>
-            </div>
-            <div class="cs-times">
-                <div>Last push: <span class="@(_lastPushAt > 0 ? "cs-time" : "cs-never")">@PushString</span></div>
-                <div>Last pull: <span class="@(_lastPullAt > 0 ? "cs-time" : "cs-never")">@PullString</span></div>
-            </div>
-        }
-        else
-        {
-            <span class="cs-muted cs-italic">Not connected</span>
-        }
+                <div class="mt-0_25rem text-xs text-gray-500 space-y-0.5">
+                    <div>Last push: <span class="@(_lastPushAt > 0 ? "text-gray-400" : "text-gray-600 italic")">@PushString</span></div>
+                    <div>Last pull: <span class="@(_lastPullAt > 0 ? "text-gray-400" : "text-gray-600 italic")">@PullString</span></div>
+                </div>
+            }
+            else
+            {
+                <span class="text-gray-500 italic">Not connected</span>
+            }
+        </div>
 
         @if (_authWaiting)
         {
-            <div class="cs-info">
-                <p class="cs-info-title">Waiting for Discord authorization...</p>
-                <p>Your browser should have opened the authorization page. Approve it there, then return here.</p>
+            <div class="mt-0_5rem border border-blue-700 rounded-md px-3 py-2 text-blue-300 text-xs max-w-[50%]">
+                <p class="font-semibold">Waiting for Discord authorization...</p>
+                <p class="text-blue-300/70 mt-0.5">Your browser should have opened the authorization page. Approve it there, then return here.</p>
             </div>
         }
 
-        <div class="cs-actions">
+        <div class="mt-0_5rem flex flex-col gap-2">
             @if (!_connected)
             {
-                <button type="button" class="cs-btn cs-discord" disabled="@_authWaiting" @onclick="ConnectAsync">
+                <button type="button" class="apply-filter-button !text-white self-start"
+                        style="background-color: #5865F2; border-color: #4752C4;"
+                        disabled="@_authWaiting" @onclick="ConnectAsync">
                     @(_authWaiting ? "Waiting for auth..." : "Connect with Discord")
                 </button>
             }
             else
             {
-                <div class="cs-row">
-                    <button type="button" class="cs-btn cs-primary" disabled="@_syncInProgress" @onclick="SyncNowAsync">
+                <div class="flex flex-row flex-wrap gap-2">
+                    <button type="button"
+                            class="apply-filter-button !mt-0 !mr-0 !ml-0 !bg-blue-700 !text-white hover:!bg-blue-600 !border-blue-500"
+                            disabled="@_syncInProgress" @onclick="SyncNowAsync">
                         @(_syncInProgress ? "Syncing..." : "Sync now")
                     </button>
-                    <button type="button" class="cs-btn cs-neutral" disabled="@_restoreInProgress" @onclick="RestoreNowAsync">
+                    <button type="button"
+                            class="apply-filter-button !mt-0 !mr-0 !ml-0 !bg-gray-700 !text-gray-200 hover:!bg-gray-600 !border-gray-500"
+                            disabled="@_restoreInProgress" @onclick="RestoreNowAsync">
                         @(_restoreInProgress ? "Restoring..." : "Restore from cloud")
                     </button>
                 </div>
-                <div class="cs-row">
+                <div class="flex flex-row flex-wrap gap-2">
                     @if (_confirmingDelete)
                     {
-                        <span class="cs-confirm">Delete all remote data?</span>
-                        <button type="button" class="cs-btn cs-neutral" @onclick="() => _confirmingDelete = false">Cancel</button>
-                        <button type="button" class="cs-btn cs-danger" disabled="@_deleteInProgress" @onclick="DeleteRemoteAsync">
+                        <span class="text-xs text-red-400 self-center">Delete all remote data?</span>
+                        <button type="button"
+                                class="apply-filter-button !mt-0 !mr-0 !ml-0 !text-gray-300 !bg-gray-700 hover:!bg-gray-600 !border-gray-500"
+                                @onclick="() => _confirmingDelete = false">Cancel</button>
+                        <button type="button"
+                                class="apply-filter-button !mt-0 !mr-0 !ml-0 !bg-red-900 !text-red-200 hover:!bg-red-800 !border-red-700"
+                                disabled="@_deleteInProgress" @onclick="DeleteRemoteAsync">
                             @(_deleteInProgress ? "Deleting..." : "Yes, delete")
                         </button>
                     }
                     else
                     {
-                        <button type="button" class="cs-btn cs-danger" @onclick="DisconnectAsync">Disconnect</button>
-                        <button type="button" class="cs-btn cs-danger-soft" @onclick="() => _confirmingDelete = true">Delete Remote Data</button>
+                        <button type="button"
+                                class="apply-filter-button !mt-0 !mr-0 !ml-0 !bg-red-900 !text-red-200 hover:!bg-red-800 !border-red-700"
+                                @onclick="DisconnectAsync">Disconnect</button>
+                        <button type="button"
+                                class="apply-filter-button !mt-0 !mr-0 !ml-0 !bg-red-900/60 !text-red-300 hover:!bg-red-900 !border-red-800"
+                                @onclick="() => _confirmingDelete = true">Delete Remote Data</button>
                     }
                 </div>
-                <label class="cs-autosync">
-                    <input type="checkbox" checked="@_autoSync" @onchange="OnAutoSyncChangeAsync" />
-                    Auto-sync settings on change
-                </label>
+                <div class="flex items-center gap-2">
+                    <input id="cloudAutoSyncCheckbox" type="checkbox" class="ext-opt-check" checked="@_autoSync" @onchange="OnAutoSyncChangeAsync" />
+                    <label for="cloudAutoSyncCheckbox" class="ext-opt-label">Auto-sync settings on change</label>
+                </div>
             }
         </div>
 
-        @if (!string.IsNullOrEmpty(_syncError))
-        {
-            <p class="cs-error">Sync failed: @_syncError</p>
-        }
-        @if (!string.IsNullOrEmpty(_restoreError))
-        {
-            <p class="cs-error">Restore failed: @_restoreError</p>
-        }
-        @if (!string.IsNullOrEmpty(_deleteError))
-        {
-            <p class="cs-error">Delete failed: @_deleteError</p>
-        }
-        @if (_restoreSuccess)
-        {
-            <p class="cs-success">Restore complete. Reload the app to apply synced settings.</p>
-        }
+        <div class="mt-0_5rem space-y-1">
+            @if (!string.IsNullOrEmpty(_syncError))
+            {
+                <div class="text-red-400 text-xs">Sync failed: @_syncError</div>
+            }
+            @if (!string.IsNullOrEmpty(_restoreError))
+            {
+                <div class="text-red-400 text-xs">Restore failed: @_restoreError</div>
+            }
+            @if (!string.IsNullOrEmpty(_deleteError))
+            {
+                <div class="text-red-400 text-xs">Delete failed: @_deleteError</div>
+            }
+            @if (_restoreSuccess)
+            {
+                <div class="text-green-400 text-xs">Restore complete. Reload the app to apply synced settings.</div>
+            }
+        </div>
     }
-</section>
+</div>
 
 @code {
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(2);

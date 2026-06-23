@@ -4,12 +4,12 @@
 @inject AddAccountService AddAccount
 @inject IJSRuntime Js
 
-<dialog @ref="_dialog" class="add-account-dialog">
-    <div class="dialog-body">
-        <h2 class="dialog-title">Add Account</h2>
+<dialog @ref="_dialog" class="add-account-dialog p-0 border border-gray-600 rounded-lg bg-darker text-gray-300 shadow-2xl">
+    <div class="p-4 min-w-80">
+        <h2 class="mb-3 text-sm font-bold text-gray-300">Add Account</h2>
         <form @onsubmit="Submit" @onsubmit:preventDefault>
             <input
-                class="eid-input"
+                class="w-full box-border px-2 py-1 text-sm rounded bg-darkest border border-gray-600 text-gray-300 mb-1 focus:outline-none focus:border-blue-500"
                 type="text"
                 placeholder="Enter player ID (e.g. EI1234567890123456)"
                 @bind="_eid"
@@ -17,19 +17,19 @@
                 disabled="@_loading" />
             @if (_problem != "" && _eid.Trim() != "")
             {
-                <p class="msg-warn">@_problem</p>
+                <p class="mb-1 text-xs text-yellow-500">@_problem</p>
             }
             @if (_error != "")
             {
-                <p class="msg-error">@_error</p>
+                <p class="mb-2 text-xs text-red-500">@_error</p>
             }
             @if (_loading)
             {
-                <p class="msg-dim">Fetching account data...</p>
+                <p class="mb-2 text-xs text-gray-400">Fetching account data...</p>
             }
-            <div class="dialog-actions">
-                <button type="button" class="btn-cancel" disabled="@_loading" @onclick="Close">Cancel</button>
-                <button type="submit" class="btn-add" disabled="@(_loading || !IsValid)">Add</button>
+            <div class="flex gap-2 justify-end mt-1">
+                <button type="button" class="text-xs px-3 py-1 rounded border border-gray-600 bg-transparent text-gray-400 hover:text-gray-300 disabled:opacity-50 disabled:cursor-default" disabled="@_loading" @onclick="Close">Cancel</button>
+                <button type="submit" class="text-xs px-3 py-1 rounded border-none bg-privacy_blue text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-default" disabled="@(_loading || !IsValid)">Add</button>
             </div>
         </form>
     </div>

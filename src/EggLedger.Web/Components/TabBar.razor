@@ -1,21 +1,25 @@
 @using Microsoft.AspNetCore.Components.Routing
+@implements IDisposable
+@inject NavigationManager Nav
 
-<nav class="tab-bar" aria-label="Main">
-    <div class="tab-row">
+<div class="h-11 flex-shrink-0 bg-dark">
+    <div class="h-full flex items-end w-full mx-auto px-4 gap-x-1.5 bg-dark border-b border-gray-300">
         @foreach (var tab in Tabs)
         {
-            <NavLink class="tab" ActiveClass="tab-active" href="@tab.Href" Match="@MatchFor(tab.Href)">
+            <a href="@tab.Href"
+               class="@TabClass(tab.Href)"
+               @onclick:preventDefault="false">
                 @tab.Label
-            </NavLink>
+            </a>
         }
         @if (Right is not null)
         {
-            <div class="tab-right">
+            <div class="ml-auto">
                 @Right
             </div>
         }
     </div>
-</nav>
+</div>
 
 @code {
     /// <summary>One navigable tab: display label plus its route href.</summary>
@@ -27,8 +31,32 @@
     [Parameter]
     public RenderFragment? Right { get; set; }
 
-    // The Ledger tab ("/") must match exactly so it does not stay highlighted on
+    private const string TabBase =
+        "relative -bottom-px px-3 pt-1.5 pb-1 text-sm font-medium text-gray-400 " +
+        "border border-darker_tab rounded-t-md whitespace-nowrap no-underline";
+
+    protected override void OnInitialized() =>
+        Nav.LocationChanged += OnLocationChanged;
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) =>
+        InvokeAsync(StateHasChanged);
+
+    // The Ledger tab ("/") matches exactly so it does not stay highlighted on
     // every other route; the rest match by prefix.
-    private static NavLinkMatch MatchFor(string href) =>
-        href == "/" ? NavLinkMatch.All : NavLinkMatch.Prefix;
+    private bool IsActive(string href)
+    {
+        var path = "/" + Nav.ToBaseRelativePath(Nav.Uri).Split('?', '#')[0].TrimEnd('/');
+        if (href == "/")
+        {
+            return path == "/";
+        }
+        return path == href || path.StartsWith(href + "/", StringComparison.Ordinal);
+    }
+
+    private string TabClass(string href) =>
+        IsActive(href)
+            ? $"{TabBase} bg-dark_tab border-b-transparent"
+            : $"{TabBase} bg-darker_tab hover:bg-dark_tab_hover cursor-pointer";
+
+    public void Dispose() => Nav.LocationChanged -= OnLocationChanged;
 }

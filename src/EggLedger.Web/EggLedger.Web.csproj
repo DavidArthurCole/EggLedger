@@ -12,4 +12,43 @@
     <ProjectReference Include="..\EggLedger.Domain\EggLedger.Domain.csproj" />
   </ItemGroup>
 
+  <!-- Compile Tailwind utilities into wwwroot/tailwind.css at build time using the standalone CLI
+       (no Node), mirroring EggIncognito. On first build the CLI binary is fetched to tools/tailwind/.
+       Skip with -p:BuildTailwindCss=false (avoids the network fetch when a sheet already exists).
+       The compiled file is gitignored + shipped as a static web asset, so both the WASM host and the
+       Photino desktop host serve it at _content/EggLedger.Web/tailwind.css with one build. It runs
+       BEFORE static web assets are gathered so the freshly compiled sheet is always included.
+       The fetch is RID-aware so Linux/macOS CI gets the right binary, not the Windows .exe. -->
+  <PropertyGroup>
+    <TailwindDir>$(MSBuildProjectDirectory)/../../tools/tailwind</TailwindDir>
+    <TailwindVersion>v3.4.17</TailwindVersion>
+    <TailwindIsWindows>$([MSBuild]::IsOSPlatform('Windows'))</TailwindIsWindows>
+    <TailwindIsMac>$([MSBuild]::IsOSPlatform('OSX'))</TailwindIsMac>
+    <TailwindIsArm64 Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)' == 'Arm64'">true</TailwindIsArm64>
+    <TailwindOs Condition="'$(TailwindIsWindows)' == 'true'">windows</TailwindOs>
+    <TailwindOs Condition="'$(TailwindIsMac)' == 'true'">macos</TailwindOs>
+    <TailwindOs Condition="'$(TailwindOs)' == ''">linux</TailwindOs>
+    <TailwindArch Condition="'$(TailwindIsArm64)' == 'true'">arm64</TailwindArch>
+    <TailwindArch Condition="'$(TailwindArch)' == ''">x64</TailwindArch>
+    <TailwindExeSuffix Condition="'$(TailwindIsWindows)' == 'true'">.exe</TailwindExeSuffix>
+    <TailwindAsset>tailwindcss-$(TailwindOs)-$(TailwindArch)$(TailwindExeSuffix)</TailwindAsset>
+    <TailwindExe>$(TailwindDir)/tailwindcss$(TailwindExeSuffix)</TailwindExe>
+    <TailwindUrl>https://github.com/tailwindlabs/tailwindcss/releases/download/$(TailwindVersion)/$(TailwindAsset)</TailwindUrl>
+  </PropertyGroup>
+  <Target Name="FetchTailwindCli"
+          Condition="'$(BuildTailwindCss)' != 'false' AND !Exists('$(TailwindExe)')">
+    <MakeDir Directories="$(TailwindDir)" />
+    <Message Importance="high" Text="Fetching standalone Tailwind CLI $(TailwindVersion) ($(TailwindAsset))..." />
+    <Exec Condition="'$(TailwindIsWindows)' == 'true'"
+          Command="powershell -NoProfile -ExecutionPolicy Bypass -Command &quot;Invoke-WebRequest -Uri '$(TailwindUrl)' -OutFile '$(TailwindExe)'&quot;" />
+    <Exec Condition="'$(TailwindIsWindows)' != 'true'"
+          Command="curl -fsSL '$(TailwindUrl)' -o '$(TailwindExe)' &amp;&amp; chmod +x '$(TailwindExe)'" />
+  </Target>
+  <Target Name="BuildTailwind"
+          BeforeTargets="GenerateComputedBuildStaticWebAssets;Build"
+          DependsOnTargets="FetchTailwindCli"
+          Condition="'$(BuildTailwindCss)' != 'false'">
+    <Exec Command="&quot;$(TailwindExe)&quot; -c &quot;$(MSBuildProjectDirectory)/tailwind.config.js&quot; -i &quot;$(MSBuildProjectDirectory)/Styles/app.tailwind.css&quot; -o &quot;$(MSBuildProjectDirectory)/wwwroot/tailwind.css&quot; --minify" />
+  </Target>
+
 </Project>

@@ -4,44 +4,47 @@
 @inject ActiveAccount Active
 @inject AppStateService AppStateSvc
 
-<div class="account-header">
-    <button type="button" class="account-button" @onclick="Toggle">
+<div class="relative">
+    <button type="button"
+            class="relative -bottom-px flex items-center gap-1.5 px-4 pt-2 pb-1.5 text-sm font-medium text-gray-400 border border-darker_tab rounded-t-md bg-darker_tab hover:bg-dark_tab_hover transition-colors whitespace-nowrap"
+            @onclick="Toggle">
         @if (_active is not null)
         {
-            <span class="account-nick" style="color: #@_active.AccountColor">@_active.Nickname</span>
-            <span class="account-eb">@_active.EBString</span>
+            <span class="font-medium" style="color: #@_active.AccountColor">@_active.Nickname</span>
+            <span class="text-gray-500 text-xs">@_active.EBString</span>
         }
         else
         {
-            <span class="account-none">No account - click to add</span>
+            <span class="text-gray-500 italic text-xs">No account - click to add</span>
         }
-        <span class="account-caret">&#9660;</span>
+        <span class="text-gray-600 ml-1 text-xs">&#9660;</span>
     </button>
 
     @if (_open)
     {
-        <ul class="account-menu">
+        <ul class="absolute right-0 top-full z-50 mt-1 min-w-80 rounded-md border border-gray-600 bg-darkest shadow-xl text-xs">
             @foreach (var acct in Accounts)
             {
-                <li class="account-item" @onclick="() => Select(acct.Id)">
-                    <span class="account-check">
+                <li class="flex items-start gap-2 px-3 py-2.5 cursor-pointer hover:bg-darker transition-colors border-b border-gray-800 last:border-b-0"
+                    @onclick="() => Select(acct.Id)">
+                    <span class="text-gray-500 w-3 flex-shrink-0 mt-0.5">
                         @if (acct.Id == Active.ActiveAccountId)
                         {
                             <text>&#10003;</text>
                         }
                     </span>
-                    <span class="account-detail">
-                        <span class="account-id">@acct.Id</span>
-                        <span class="account-line">
-                            <span class="account-nick" style="color: #@acct.AccountColor">@acct.Nickname</span>
-                            <span class="account-eb">@acct.EBString</span>
+                    <span class="flex-1 min-w-0 flex flex-col gap-0.5">
+                        <span class="text-gray-400">@acct.Id</span>
+                        <span class="flex items-center gap-1.5">
+                            <span class="font-medium" style="color: #@acct.AccountColor">@acct.Nickname</span>
+                            <span class="text-gray-500">@acct.EBString</span>
                         </span>
                     </span>
                 </li>
             }
             @if (Accounts.Count == 0)
             {
-                <li class="account-empty">No known accounts yet</li>
+                <li class="px-3 py-2.5 text-gray-500 italic">No known accounts yet</li>
             }
         </ul>
     }
