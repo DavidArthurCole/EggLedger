@@ -2,6 +2,9 @@
 
   <PropertyGroup>
     <Description>EggLedger shared domain: ei protobuf types, eiafx config, mission packing/query, export, reports math. Pure, host-agnostic. Validated vs the Go reference via golden fixtures.</Description>
+    <IsPackable>true</IsPackable>
+    <PackageId>EggLedger.Domain</PackageId>
+    <Version>0.1.0-local.1</Version>
   </PropertyGroup>
 
   <ItemGroup>
