@@ -12,33 +12,45 @@
 
 <PageTitle>EggLedger - Lifetime Data</PageTitle>
 
-<section class="lifetime">
+<section class="view-layout overflow-hidden">
     @if (Active.ActiveAccountId is null)
     {
-        <p class="lt-empty">Select an account on the Ledger tab to view its lifetime data.</p>
+        <p class="text-gray-400 italic">Select an account on the Ledger tab to view its lifetime data.</p>
     }
     else if (_loading)
     {
-        <div class="lt-loading">
-            <span>Lifetime data is being compiled, please wait...</span>
+        <div class="mt-8 flex flex-col items-center justify-center gap-2">
+            <span class="p-0_5rem text-lg">Lifetime data is being compiled, please wait...</span>
         </div>
     }
     else if (_data is null || _data.MissionCount == 0)
     {
-        <p class="lt-empty">No mission data for this account yet. Fetch on the Ledger tab first.</p>
+        <p class="text-gray-400 italic">No mission data for this account yet. Fetch on the Ledger tab first.</p>
     }
     else
     {
-        <div class="lt-options">
-            <span class="lt-opt-heading">Sort Method</span>
-            <label class="lt-opt"><input type="radio" name="lt-sort" checked="@(_sortMethod == LifetimeSortMethod.Default)" @onchange="@(() => SetSortAsync(LifetimeSortMethod.Default))" /> Default</label>
-            <label class="lt-opt"><input type="radio" name="lt-sort" checked="@(_sortMethod == LifetimeSortMethod.Iv)" @onchange="@(() => SetSortAsync(LifetimeSortMethod.Iv))" /> Inventory Visualizer</label>
-            <label class="lt-opt"><input type="radio" name="lt-sort" checked="@(_sortMethod == LifetimeSortMethod.Count)" @onchange="@(() => SetSortAsync(LifetimeSortMethod.Count))" /> Total Count</label>
-            <label class="lt-opt"><input type="radio" name="lt-sort" checked="@(_sortMethod == LifetimeSortMethod.Random)" @onchange="@(() => SetSortAsync(LifetimeSortMethod.Random))" /> Random</label>
+        <div class="min-h-7 max-h-50 px-2 py-2 text-sm text-gray-400 bg-darkest rounded-md tabular-nums overflow-auto mt-0_75rem">
+            <span class="section-heading">Sort Method</span><br />
+            <span class="opt-span">
+                <label for="lifetimeSortDefault" class="ext-opt-label">Default</label>
+                <input id="lifetimeSortDefault" type="radio" name="lt-sort" class="ext-opt-check" checked="@(_sortMethod == LifetimeSortMethod.Default)" @onchange="@(() => SetSortAsync(LifetimeSortMethod.Default))" />
+            </span>
+            <span class="opt-span">
+                <label for="lifetimeSortIV" class="ext-opt-label">Inventory Visualizer</label>
+                <input id="lifetimeSortIV" type="radio" name="lt-sort" class="ext-opt-check" checked="@(_sortMethod == LifetimeSortMethod.Iv)" @onchange="@(() => SetSortAsync(LifetimeSortMethod.Iv))" />
+            </span>
+            <span class="opt-span">
+                <label for="lifetimeSortTotalCount" class="ext-opt-label">Total Count</label>
+                <input id="lifetimeSortTotalCount" type="radio" name="lt-sort" class="ext-opt-check" checked="@(_sortMethod == LifetimeSortMethod.Count)" @onchange="@(() => SetSortAsync(LifetimeSortMethod.Count))" />
+            </span>
+            <span class="opt-span">
+                <label for="lifetimeSortRandom" class="ext-opt-label">Random</label>
+                <input id="lifetimeSortRandom" type="radio" name="lt-sort" class="ext-opt-check" checked="@(_sortMethod == LifetimeSortMethod.Random)" @onchange="@(() => SetSortAsync(LifetimeSortMethod.Random))" />
+            </span>
         </div>
 
-        <div class="lt-data">
-            <span class="lt-summary">Data compiled from @_data.MissionCount Missions</span>
+        <div class="flex-1 min-h-0 px-2 py-1 overflow-auto shadow-sm block text-xs font-mono text-gray-300 bg-darkest rounded-md text-center">
+            <span class="ledger-underline text-base text-gray-400">Data compiled from @_data.MissionCount Missions</span>
             <DropDisplayContainer Artifacts="_data.Artifacts"
                                   Stones="_data.Stones"
                                   Ingredients="_data.Ingredients"

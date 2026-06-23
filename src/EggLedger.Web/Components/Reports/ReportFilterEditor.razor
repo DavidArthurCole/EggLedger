@@ -7,24 +7,24 @@
     are free text; the option pickers (select/modal) are simplified to text input.
 *@
 
-<div class="filter-editor">
-    <div class="filter-head">
-        <span class="filter-title">Filters (all must match)</span>
-        <button type="button" class="filter-add" @onclick="Add">+ Add filter</button>
+<div class="flex flex-col gap-2">
+    <div class="flex items-center justify-between">
+        <span class="text-xs text-gray-400">Filters (AND)</span>
+        <button type="button" class="text-xs text-indigo-400 hover:text-indigo-300" @onclick="Add">+ Add condition</button>
     </div>
     @for (int i = 0; i < Conditions.Count; i++)
     {
         int idx = i;
         var cond = Conditions[idx];
-        <div class="filter-row">
-            <select class="filter-field" value="@cond.TopLevel" @onchange="e => SetField(idx, e.Value?.ToString() ?? string.Empty)">
+        <div class="flex flex-wrap items-center gap-2.5">
+            <select class="rb-control flex-1" value="@cond.TopLevel" @onchange="e => SetField(idx, e.Value?.ToString() ?? string.Empty)">
                 <option value="">Field...</option>
                 @foreach (var f in ReportFilterFields.All)
                 {
                     <option value="@f.Key">@f.Label</option>
                 }
             </select>
-            <select class="filter-op" value="@cond.Op" @onchange="e => SetOp(idx, e.Value?.ToString() ?? string.Empty)" disabled="@(FieldFor(cond) is null)">
+            <select class="rb-control w-14 @(FieldFor(cond) is null ? "opacity-60 cursor-not-allowed" : "")" value="@cond.Op" @onchange="e => SetOp(idx, e.Value?.ToString() ?? string.Empty)" disabled="@(FieldFor(cond) is null)">
                 @if (FieldFor(cond) is { } field)
                 {
                     @foreach (var op in field.Ops)
@@ -33,9 +33,9 @@
                     }
                 }
             </select>
-            <input class="filter-val" type="text" value="@cond.Val" placeholder="value"
+            <input class="rb-control flex-1 min-w-0" type="text" value="@cond.Val" placeholder="value"
                    @onchange="e => SetVal(idx, e.Value?.ToString() ?? string.Empty)" />
-            <button type="button" class="filter-remove" title="Remove" @onclick="() => Remove(idx)">&#215;</button>
+            <button type="button" class="text-gray-500 hover:text-red-400 text-xs px-1" title="Remove" @onclick="() => Remove(idx)">&#215;</button>
         </div>
     }
 </div>

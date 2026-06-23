@@ -8,31 +8,33 @@
 
 @if (Grouping is null || Grouping.Missions.Count == 0)
 {
-    <div class="mrt-empty">No missions to display.</div>
+    <div class="filter-form text-lg">
+        <span class="mt-0_5rem ml-1rem">No missions to display.</span>
+    </div>
 }
 else
 {
-    <div class="mrt-list">
-        <div class="mrt-header">
-            <span class="mrt-title">
-                Missions
-                <button type="button" class="mrt-toggle" @onclick="ToggleAll">
-                    @(AllExpanded ? "Collapse All" : "Expand All")
-                </button>
-            </span>
-            <hr class="mrt-hr" />
+    <div id="missionListDiv" class="mt-0_5rem px-2 py-1 shadow-sm block text-xs font-mono text-gray-500 bg-darkest rounded-md">
+        <div class="sticky top-0 z-10 bg-darkest -mx-2 px-2 pt-1 pb-1">
+            <div class="flex items-baseline gap-2 flex-wrap">
+                <span class="text-xl">
+                    Missions
+                    <button type="button" class="text-xl toggle-link" @onclick="ToggleAll">
+                        @(AllExpanded ? "Collapse All" : "Expand All")
+                    </button>
+                </span>
+            </div>
+            <hr class="mt-0_5rem mb-0_5rem w-full" />
         </div>
 
         @for (int yi = 0; yi < Grouping.Missions.Count; yi++)
         {
             int yearIndex = yi;
             var year = Grouping.Arrays.Year[yearIndex];
-            <div class="mrt-year-head">
-                <span class="mrt-year">@year.Year</span>
-                <button type="button" class="mrt-toggle" @onclick="@(() => ToggleYear(yearIndex))">
-                    @(year.Enabled ? "Collapse" : "Expand")
-                </button>
-            </div>
+            <span class="text-lg font-bold mr-0_5rem ledger-underline">@year.Year</span>
+            <button type="button" class="tb-c text-lg toggle-link" @onclick="@(() => ToggleYear(yearIndex))">
+                @(year.Enabled ? "Collapse" : "Expand")
+            </button>
 
             @if (year.Enabled)
             {
@@ -40,67 +42,76 @@ else
                 {
                     int monthIndex = mi;
                     var month = Grouping.Arrays.Month[yearIndex][monthIndex];
-                    <div class="mrt-month">
-                        <div class="mrt-month-head">
-                            <span class="mrt-month-label">
+                    <div>
+                        <div class="mt-1rem ml-2rem">
+                            <span class="text-base font-bold mr-0_5rem ledger-underline">
                                 @year.Year-@month.Month.ToString("00", CultureInfo.InvariantCulture)
                             </span>
-                            <button type="button" class="mrt-toggle" @onclick="@(() => ToggleMonth(yearIndex, monthIndex))">
+                            <button type="button" class="tb-c text-base toggle-link" @onclick="@(() => ToggleMonth(yearIndex, monthIndex))">
                                 @(month.Enabled ? "Collapse" : "Expand")
                             </button>
-                        </div>
 
-                        @if (month.Enabled)
-                        {
-                            @for (int di = 0; di < Grouping.Missions[yearIndex][monthIndex].Count; di++)
+                            @if (month.Enabled)
                             {
-                                int dayIndex = di;
-                                var day = Grouping.Arrays.Day[yearIndex][monthIndex][dayIndex];
-                                <div class="mrt-day">
-                                    @if (ViewByDate)
-                                    {
-                                        <div class="mrt-day-head">
-                                            <span class="mrt-day-label">
-                                                @year.Year-@month.Month.ToString("00", CultureInfo.InvariantCulture)-@day.Day.ToString("00", CultureInfo.InvariantCulture)
-                                            </span>
-                                            <button type="button" class="mrt-toggle"
-                                                    @onclick="@(() => ToggleDay(yearIndex, monthIndex, dayIndex))">
-                                                @(day.Enabled ? "Collapse" : "Expand")
-                                            </button>
-                                        </div>
-                                    }
-
-                                    @if (DayVisible(yearIndex, monthIndex, dayIndex))
-                                    {
-                                        <div class="mrt-day-grid">
-                                            @foreach (var mission in Grouping.Missions[yearIndex][monthIndex][dayIndex])
+                                @for (int di = 0; di < Grouping.Missions[yearIndex][monthIndex].Count; di++)
+                                {
+                                    int dayIndex = di;
+                                    var day = Grouping.Arrays.Day[yearIndex][monthIndex][dayIndex];
+                                    <div>
+                                        <div class="mt-1rem ml-2rem">
+                                            @if (ViewByDate)
                                             {
-                                                var m = mission;
-                                                <button type="button" class="mrt-row" @onclick="@(() => OnView(m.MissiondId))">
-                                                    @if (!ViewByDate)
-                                                    {
-                                                        <span class="@RowColor(m, false)">@DateLabel(year.Year, month.Month, day.Day)</span>
-                                                    }
-                                                    @if (ViewMissionTimes)
-                                                    {
-                                                        <span class="@RowColor(m, true)"> @TimeLabel(m)</span>
-                                                    }
-                                                    <span class="mrt-ship">
-                                                        <span class="@DurationClass(m)">@m.ShipString</span>
-                                                        @if (m.Level > 0)
-                                                        {
-                                                            <span> (@m.Level<span class="text-goldenstar">&#9733;</span>)</span>
-                                                        }
-                                                        <TargetDisplay Target="m.Target" />
-                                                    </span>
+                                                <span class="text-sm font-bold mr-0_5rem ledger-underline">
+                                                    @year.Year-@month.Month.ToString("00", CultureInfo.InvariantCulture)-@day.Day.ToString("00", CultureInfo.InvariantCulture)
+                                                </span>
+                                                <button type="button" class="tb-c text-sm mr-0_5rem toggle-link"
+                                                        @onclick="@(() => ToggleDay(yearIndex, monthIndex, dayIndex))">
+                                                    @(day.Enabled ? "Collapse" : "Expand")
                                                 </button>
                                             }
+
+                                            <div class="mt-1rem mission-grid">
+                                                <div class="mission-grid mission-items-full">
+                                                    @if (DayVisible(yearIndex, monthIndex, dayIndex))
+                                                    {
+                                                        @foreach (var mission in Grouping.Missions[yearIndex][monthIndex][dayIndex])
+                                                        {
+                                                            var m = mission;
+                                                            <div class="text-sm mission-item-3" data-missionid="@m.MissiondId">
+                                                                <button type="button" class="text-sm mr-5 font-bold btn btn-outline-dark bg-transparent" @onclick="@(() => OnView(m.MissiondId))">
+                                                                    @if (!ViewByDate)
+                                                                    {
+                                                                        <span class="@RowColor(m, false)">@DateLabel(year.Year, month.Month, day.Day)</span>
+                                                                    }
+                                                                    @if (ViewMissionTimes)
+                                                                    {
+                                                                        <span class="@RowColor(m, true)"> @TimeLabel(m)</span>
+                                                                    }
+                                                                    <span class="text-gray-400 ml-0_5rem">
+                                                                        <span class="@DurationClass(m)">@m.ShipString</span>
+                                                                        @if (m.Level > 0)
+                                                                        {
+                                                                            <span> (@m.Level<span class="text-goldenstar">&#9733;</span>)</span>
+                                                                        }
+                                                                        <TargetDisplay Target="m.Target" />
+                                                                    </span>
+                                                                </button>
+                                                            </div>
+                                                        }
+                                                    }
+                                                </div>
+                                            </div>
                                         </div>
-                                    }
-                                </div>
+                                    </div>
+                                }
                             }
-                        }
+                        </div>
                     </div>
+                }
+                <br />
+                @if (yearIndex != Grouping.Missions.Count - 1)
+                {
+                    <hr class="pt-3rem pb-3rem invisible mt-1" />
                 }
             }
         }
@@ -227,17 +238,17 @@ else
     {
         if (MissionBeingViewed == m.MissiondId)
         {
-            return altMode ? "text-selectedmission-darker" : "text-selectedmission";
+            return altMode ? "text-selectedmissiondarker" : "text-selectedmission";
         }
         if (RecolorBc && m.IsBuggedCap)
         {
-            return altMode ? "text-buggedcap-darker" : "text-buggedcap";
+            return altMode ? "text-buggedcapdarker" : "text-buggedcap";
         }
         if (RecolorDc && m.IsDubCap)
         {
-            return altMode ? "text-dubcap-darker" : "text-dubcap";
+            return altMode ? "text-dubcapdarker" : "text-dubcap";
         }
-        return altMode ? "mrt-faint" : "mrt-muted";
+        return altMode ? "text-gray-500" : "text-gray-400";
     }
 
     private static string DurationClass(DatabaseMission m) =>

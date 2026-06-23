@@ -15,13 +15,13 @@
     reserves the bare <text> tag for its own text-transition control block.
 *@
 
-<div class="line-chart">
+<div class="h-full w-full">
     @if (Points().Count >= 2)
     {
         var pts = Points();
         var max = MaxVal();
         var ticks = ChartGeometry.YTicks(max, H, Result.IsFloat);
-        <svg viewBox="0 0 @Fmt(W) @Fmt(H)" preserveAspectRatio="xMidYMid meet" class="line-svg">
+        <svg viewBox="0 0 @Fmt(W) @Fmt(H)" preserveAspectRatio="xMidYMid meet" class="w-full h-full overflow-visible">
             <defs>
                 <linearGradient id="@_gradId" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stop-color="@Color" stop-opacity="0.3" />
@@ -55,7 +55,7 @@
 
             @foreach (var p in pts)
             {
-                <circle cx="@Fmt(p.X)" cy="@Fmt(p.Y)" r="2.5" fill="@Color" class="line-dot">
+                <circle cx="@Fmt(p.X)" cy="@Fmt(p.Y)" r="2.5" fill="@Color" style="cursor: pointer;">
                     <title>@p.Label: @FormatValue(p.Value)@UnitSuffix</title>
                 </circle>
             }
@@ -63,7 +63,9 @@
     }
     else
     {
-        <div class="chart-empty">Not enough data for a line chart</div>
+        <div class="h-full flex items-center justify-center">
+            <span class="text-xs text-gray-600 italic">Not enough data for a line chart</span>
+        </div>
     }
 </div>
 
@@ -98,7 +100,7 @@
         string x = Fmt(ChartGeometry.PadLeft - 4);
         string y = Fmt(tick.Y);
         return new MarkupString(
-            $"<text x=\"{x}\" y=\"{y}\" text-anchor=\"end\" dominant-baseline=\"middle\" class=\"axis-text\">{Esc(tick.Label)}</text>");
+            $"<text x=\"{x}\" y=\"{y}\" text-anchor=\"end\" dominant-baseline=\"middle\" style=\"font-size: 10px; fill: #6b7280;\">{Esc(tick.Label)}</text>");
     }
 
     private MarkupString XLabelText(ChartPoint p)
@@ -107,7 +109,7 @@
         string ty = Fmt(H - ChartGeometry.PadBottom + 4);
         string label = Esc(ChartGeometry.FormatXLabel(p.Label));
         return new MarkupString(
-            $"<text transform=\"translate({tx}, {ty}) rotate(-45)\" text-anchor=\"end\" class=\"axis-text\">{label}</text>");
+            $"<text transform=\"translate({tx}, {ty}) rotate(-45)\" text-anchor=\"end\" style=\"font-size: 10px; fill: #6b7280;\">{label}</text>");
     }
 
     private string FormatValue(double v) =>

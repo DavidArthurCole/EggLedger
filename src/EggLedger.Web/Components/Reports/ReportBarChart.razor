@@ -8,21 +8,22 @@
     base color. Tooltip is rendered statically via the native title attribute.
 *@
 
-<div class="bar-chart">
+<div class="w-full h-full grid gap-x-2 gap-y-1 overflow-y-auto pr-3"
+     style="grid-template-columns: max-content 1fr max-content; align-content: start;">
     @foreach (var pair in SortedPairs())
     {
-        <span class="bar-label" title="@pair.Label">@pair.Label</span>
-        <div class="bar-track">
-            <div class="bar-fill"
-                 style="width: @BarWidth(pair.Value)%; background-color: @BarColor(pair.Label);"
+        <span class="text-gray-400 text-xs text-right self-center leading-tight" style="max-width: 9rem;" title="@pair.Label">@pair.Label</span>
+        <div class="bg-gray-800 rounded-sm h-4 min-w-0 self-center">
+            <div class="h-4 rounded-sm"
+                 style="width: @BarWidth(pair.Value)%; background-color: @BarColor(pair.Label); cursor: pointer;"
                  title="@BarTitle(pair.Label, pair.Value)">
             </div>
         </div>
-        <span class="bar-value">@FormatValue(pair.Value)</span>
+        <span class="text-gray-300 font-mono text-xs text-right self-center">@FormatValue(pair.Value)</span>
     }
     @if (!string.IsNullOrEmpty(UnitLabel))
     {
-        <div class="bar-unit">@UnitLabel</div>
+        <div class="col-span-3 text-xs text-gray-600 text-right mt-0.5">@UnitLabel</div>
     }
 </div>
 

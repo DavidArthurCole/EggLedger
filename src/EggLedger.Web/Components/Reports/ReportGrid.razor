@@ -9,15 +9,15 @@
     is deferred (static positioning from grid_x/y/w/h via the layout helper).
 *@
 
-<div class="report-grid">
+<div class="flex-1 min-h-0 overflow-y-auto py-2 px-3 flex flex-col gap-3">
     @if (_defs.Count == 0)
     {
-        <div class="grid-empty">No reports yet. Click "New Report" to create one.</div>
+        <div class="text-xs text-gray-500 text-center mt-8">No reports yet. Click "New Report" to create one.</div>
     }
     else
     {
         var (positions, _) = ReportGridLayout.BuildOccupancyFromLayout(_defs);
-        <div class="grid-canvas">
+        <div class="grid gap-3 relative" style="grid-template-columns: repeat(8, 1fr); grid-auto-rows: 9rem;">
             @for (int i = 0; i < _defs.Count; i++)
             {
                 var def = _defs[i];

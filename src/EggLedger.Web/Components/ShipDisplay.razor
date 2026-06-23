@@ -6,48 +6,42 @@
    details card + capacity badge, then the drop displays. Hover tooltips and the
    menno expected-drops detail are deferred. *@
 
-<div class="ship-display">
-    <div class="ship-cards">
-        @if (Mission.IsBuggedCap || Mission.IsDubCap)
-        {
-            <div class="cap-badge @(Mission.IsBuggedCap ? "cap-badge-bugged" : "cap-badge-dub")">
-                <img class="cap-icon"
-                     alt="@(Mission.IsBuggedCap ? "Skull" : "Artifact Crate")"
-                     src="@(Mission.IsBuggedCap ? "images/skull.png" : "images/icon_afx_chest_2.png")" />
-                <span class="cap-text">
-                    @(Mission.IsBuggedCap
-                        ? "0.6x Capacity"
-                        : Data.CapacityModifier.ToString("0.##", CultureInfo.InvariantCulture) + "x Capacity")
-                </span>
-            </div>
-        }
-        else
-        {
-            <div class="cap-badge cap-badge-hidden"></div>
-        }
+<div class="text-gray-300 text-center">
+    <div class="flex flex-row gap-2 mb-3 mx-auto items-center" style="width: fit-content;">
+        <div class="@(Mission.IsBuggedCap ? "bugged-cap-span" : (Mission.IsDubCap ? "double-cap-span" : "")) flex items-center py-1 px-1.5 self-center"
+             style="visibility: @(Mission.IsBuggedCap || Mission.IsDubCap ? "visible" : "hidden");">
+            <img class="w-5 mr-0_5rem"
+                 alt="@(Mission.IsBuggedCap ? "Skull Emoji" : "Artifact Crate")"
+                 src="@(Mission.IsBuggedCap ? "images/skull.png" : "images/icon_afx_chest_2.png")" />
+            <span class="text-xs font-bold whitespace-nowrap">
+                @(Mission.IsBuggedCap
+                    ? "0.6x Capacity"
+                    : Data.CapacityModifier.ToString("0.##", CultureInfo.InvariantCulture) + "x Capacity")
+            </span>
+        </div>
 
-        <div class="ship-card ship-identity">
+        <div class="rounded-md px-4 py-2 flex flex-col items-center justify-center" style="background: rgba(120, 128, 138, 0.12);">
             @if (!string.IsNullOrEmpty(Mission.ShipEnumString))
             {
-                <img class="ship-icon" src="@($"images/ships/{Mission.ShipEnumString}.png")" alt="@Mission.ShipString" />
+                <img class="w-12 h-12 object-contain mb-2" src="@($"images/ships/{Mission.ShipEnumString}.png")" alt="@Mission.ShipString" />
             }
             <span class="@DurationClass">@Mission.ShipString</span>
             @if (Mission.Level > 0)
             {
-                <span class="ship-stars">@(new string('★', Mission.Level))</span>
+                <span class="text-star text-goldenstar">@(new string('★', Mission.Level))</span>
             }
         </div>
 
-        <div class="ship-card ship-details">
+        <div class="rounded-md px-4 py-2 flex flex-col justify-center text-left text-sm" style="background: rgba(120, 128, 138, 0.12);">
             <div>Launched: @Format(Data.LaunchDT)</div>
             <div>Returned: @Format(Data.ReturnDT)</div>
             <div>Duration: @Data.DurationStr</div>
             <div>Capacity: @Mission.Capacity</div>
             @if (HasTarget)
             {
-                <div class="ship-target-row">
+                <div class="flex items-center gap-1 mt-1">
                     <span>Sensor Target:</span>
-                    <span class="ship-target-pill">@ProperCase(Mission.Target.Replace("_", " ", StringComparison.Ordinal))</span>
+                    <div class="text-xs rounded-full w-max px-1.5 py-0.5 text-gray-400 bg-darkerer font-semibold">@ProperCase(Mission.Target.Replace("_", " ", StringComparison.Ordinal))</div>
                 </div>
             }
         </div>

@@ -14,24 +14,24 @@
 
 <PageTitle>EggLedger - Mission Data</PageTitle>
 
-<section class="mission-data">
+<section class="flex-1 flex flex-col w-full mx-auto px-4 overflow-hidden bg-darker">
     @if (Active.ActiveAccountId is null)
     {
-        <p class="md-empty">Select an account on the Ledger tab to view its missions.</p>
+        <p class="text-gray-500 italic">Select an account on the Ledger tab to view its missions.</p>
     }
     else if (_loading)
     {
-        <p class="md-empty">Loading mission data...</p>
+        <p class="text-gray-500 italic">Loading mission data...</p>
     }
     else if (_allMissions is null || _allMissions.Count == 0)
     {
-        <p class="md-empty">No mission data for this account yet. Fetch on the Ledger tab first.</p>
+        <p class="text-gray-500 italic">No mission data for this account yet. Fetch on the Ledger tab first.</p>
     }
     else
     {
-        <div class="md-filter">
-            <span class="md-filter-label">Filter</span>
-            <button type="button" class="md-toggle" @onclick="@(() => _hideFilter = !_hideFilter)">
+        <div class="filter-panel">
+            <span class="mr-0_5rem h-20 font-bold text-gray-400">Filter</span>
+            <button type="button" class="text-base toggle-link" @onclick="@(() => _hideFilter = !_hideFilter)">
                 @(_hideFilter ? "Show" : "Hide")
             </button>
             @if (!_hideFilter)
@@ -43,23 +43,23 @@
             }
         </div>
 
-        <div class="md-options">
-            <label class="md-opt"><input type="checkbox" checked="@_opts.ViewByDate" @onchange="@(e => SetOpt(MissionViewOptions.KeyViewByDate, b => _opts.ViewByDate = b, e))" /> View by date</label>
-            <label class="md-opt"><input type="checkbox" checked="@_opts.ViewMissionTimes" @onchange="@(e => SetOpt(MissionViewOptions.KeyViewTimes, b => _opts.ViewMissionTimes = b, e))" /> Show times</label>
-            <label class="md-opt"><input type="checkbox" checked="@_opts.RecolorDc" @onchange="@(e => SetOpt(MissionViewOptions.KeyRecolorDc, b => _opts.RecolorDc = b, e))" /> Recolor double-cap</label>
-            <label class="md-opt"><input type="checkbox" checked="@_opts.RecolorBc" @onchange="@(e => SetOpt(MissionViewOptions.KeyRecolorBc, b => _opts.RecolorBc = b, e))" /> Recolor bugged-cap</label>
+        <div class="min-h-7 max-h-50 px-2 py-2 text-sm text-gray-400 bg-darkest rounded-md tabular-nums overflow-auto mt-0_75rem">
+            <label class="inline-block mr-5"><input type="checkbox" class="ext-opt-check mr-0_5rem" checked="@_opts.ViewByDate" @onchange="@(e => SetOpt(MissionViewOptions.KeyViewByDate, b => _opts.ViewByDate = b, e))" /> View by date</label>
+            <label class="inline-block mr-5"><input type="checkbox" class="ext-opt-check mr-0_5rem" checked="@_opts.ViewMissionTimes" @onchange="@(e => SetOpt(MissionViewOptions.KeyViewTimes, b => _opts.ViewMissionTimes = b, e))" /> Show times</label>
+            <label class="inline-block mr-5"><input type="checkbox" class="ext-opt-check mr-0_5rem" checked="@_opts.RecolorDc" @onchange="@(e => SetOpt(MissionViewOptions.KeyRecolorDc, b => _opts.RecolorDc = b, e))" /> Recolor double-cap</label>
+            <label class="inline-block mr-5"><input type="checkbox" class="ext-opt-check mr-0_5rem" checked="@_opts.RecolorBc" @onchange="@(e => SetOpt(MissionViewOptions.KeyRecolorBc, b => _opts.RecolorBc = b, e))" /> Recolor bugged-cap</label>
         </div>
 
         @if (_hasBothTypes)
         {
-            <div class="md-tabs">
-                <button type="button" class="md-tab @(_opts.MissionTypeTab is null ? "md-tab-active" : "")" @onclick="@(() => SelectTab(null))">All <span class="md-tab-count">(@(_filtered?.Count ?? 0))</span></button>
-                <button type="button" class="md-tab @(_opts.MissionTypeTab == 0 ? "md-tab-active" : "")" @onclick="@(() => SelectTab(0))">Home <span class="md-tab-count">(@CountOfType(0))</span></button>
-                <button type="button" class="md-tab @(_opts.MissionTypeTab == 1 ? "md-tab-active" : "")" @onclick="@(() => SelectTab(1))">Virtue <span class="md-tab-count">(@CountOfType(1))</span></button>
+            <div class="flex gap-1 mt-0_75rem text-sm">
+                <button type="button" class="px-3 py-1 rounded-md border font-medium transition-colors @(_opts.MissionTypeTab is null ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover")" @onclick="@(() => SelectTab(null))">All <span class="text-gray-500 ml-1">(@(_filtered?.Count ?? 0))</span></button>
+                <button type="button" class="px-3 py-1 rounded-md border font-medium transition-colors @(_opts.MissionTypeTab == 0 ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover")" @onclick="@(() => SelectTab(0))">Home <span class="text-gray-500 ml-1">(@CountOfType(0))</span></button>
+                <button type="button" class="px-3 py-1 rounded-md border font-medium transition-colors @(_opts.MissionTypeTab == 1 ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover")" @onclick="@(() => SelectTab(1))">Virtue <span class="text-gray-500 ml-1">(@CountOfType(1))</span></button>
             </div>
         }
 
-        <div class="md-tree">
+        <div class="flex-1 min-h-0 px-2 overflow-auto shadow-sm bg-darkest rounded-md mt-0_75rem">
             <MissionResultsTable Grouping="_grouping"
                                  ViewByDate="_opts.ViewByDate"
                                  ViewMissionTimes="_opts.ViewMissionTimes"

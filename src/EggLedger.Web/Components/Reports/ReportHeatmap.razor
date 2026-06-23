@@ -11,14 +11,14 @@
     the Menno dual_value mode (C3.6).
 *@
 
-<div class="heatmap">
-    <table class="heatmap-table">
+<div class="h-full w-full overflow-auto pr-1">
+    <table class="text-xs w-full h-full border-collapse table-fixed">
         <thead>
             <tr>
-                <th class="heatmap-corner"></th>
+                <th class="px-1 py-0.5 text-left font-normal w-20 text-gray-600"></th>
                 @foreach (var col in Result.ColLabels)
                 {
-                    <th class="heatmap-col-head" title="@col">@col</th>
+                    <th class="px-1 py-0.5 text-center font-normal text-gray-400 whitespace-nowrap" title="@col">@col</th>
                 }
             </tr>
         </thead>
@@ -26,17 +26,17 @@
             @for (int r = 0; r < Result.RowLabels.Count; r++)
             {
                 <tr>
-                    <td class="heatmap-row-head" title="@Result.RowLabels[r]">@Result.RowLabels[r]</td>
+                    <td class="px-1 py-0.5 text-right pr-2 truncate text-gray-400" title="@Result.RowLabels[r]">@Result.RowLabels[r]</td>
                     @for (int c = 0; c < Result.ColLabels.Count; c++)
                     {
                         var cell = Cell(r, c);
-                        <td class="heatmap-cell"
-                            style="background-color: @cell.Style.BackgroundColor; color: @cell.Style.Color;"
+                        <td class="text-center px-1 py-0.5 transition-[filter] hover:brightness-[1.4]"
+                            style="background-color: @cell.Style.BackgroundColor; color: @cell.Style.Color; cursor: pointer;"
                             title="@Result.ColLabels[c] @Result.RowLabels[r]: @cell.Display">
-                            <div class="heatmap-cell-value">@cell.Display</div>
+                            <div class="leading-none">@cell.Display</div>
                             @if (SecondaryValues is not null)
                             {
-                                <div class="heatmap-cell-secondary">@cell.Secondary</div>
+                                <div class="leading-none opacity-70" style="font-size: 0.65rem;">@cell.Secondary</div>
                             }
                         </td>
                     }

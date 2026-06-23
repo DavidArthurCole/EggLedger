@@ -9,48 +9,56 @@
 
 <PageTitle>EggLedger - Reports</PageTitle>
 
-<section class="reports">
+<section class="view-layout overflow-hidden">
     @if (Active.ActiveAccountId is null)
     {
-        <p class="reports-empty">Select an account on the Ledger tab to view its reports.</p>
+        <div class="flex-1 flex items-center justify-center">
+            <p class="text-xs text-gray-500">Select an account on the Ledger tab to view its reports.</p>
+        </div>
     }
     else
     {
-        <div class="reports-tabs">
-            <button type="button" class="group-tab @(_selectedGroup is null ? "active" : "")"
-                    @onclick="() => SelectGroup(null)">All</button>
-            @foreach (var g in _groups)
-            {
-                <button type="button" class="group-tab @(_selectedGroup == g.Id ? "active" : "")"
-                        @onclick="() => SelectGroup(g.Id)">
-                    @g.Name
-                    @if (_editMode)
+        <div class="flex-1 min-h-0 bg-darkest rounded-md overflow-hidden flex flex-col">
+            <div class="flex items-center gap-1.5 px-2 pt-1.5 pb-0 flex-shrink-0 flex-wrap">
+                <button type="button"
+                        class="text-sm px-4 py-1.5 rounded-full transition-colors @(_selectedGroup is null ? "bg-indigo-700 text-white" : "text-gray-400 hover:text-gray-200")"
+                        @onclick="() => SelectGroup(null)">All</button>
+                @foreach (var g in _groups)
+                {
+                    <div class="relative flex items-center">
+                        <button type="button"
+                                class="text-sm px-4 py-1.5 rounded-full transition-colors @(_selectedGroup == g.Id ? "bg-indigo-700 text-white" : "text-gray-400 hover:text-gray-200")"
+                                @onclick="() => SelectGroup(g.Id)">@g.Name</button>
+                        @if (_editMode)
+                        {
+                            <button type="button" class="text-gray-600 hover:text-red-400 text-sm" title="Delete group"
+                                    @onclick:stopPropagation @onclick="() => DeleteGroupAsync(g.Id)">&#215;</button>
+                        }
+                    </div>
+                }
+
+                <div class="ml-auto flex items-center gap-1.5">
+                    @if (_showNewGroup)
                     {
-                        <span class="group-del" title="Delete group" @onclick:stopPropagation
-                              @onclick="() => DeleteGroupAsync(g.Id)">&#215;</span>
+                        <input class="text-sm px-2 py-1 rounded bg-darker border border-gray-600 text-gray-200 focus:outline-none focus:border-blue-500 w-32"
+                               type="text" placeholder="Group name" @bind="_newGroupName"
+                               @bind:event="oninput" @onkeydown="GroupKeyDown" />
+                        <button type="button" class="text-sm px-3 py-1.5 rounded border border-gray-700 text-gray-500 hover:text-gray-300" @onclick="CreateGroupAsync">Add</button>
                     }
-                </button>
-            }
-
-            <div class="reports-actions">
-                @if (_showNewGroup)
-                {
-                    <input class="group-input" type="text" placeholder="Group name" @bind="_newGroupName"
-                           @bind:event="oninput" @onkeydown="GroupKeyDown" />
-                    <button type="button" class="btn-ghost" @onclick="CreateGroupAsync">Add</button>
-                }
-                else
-                {
-                    <button type="button" class="btn-ghost" @onclick="() => _showNewGroup = true">+ Group</button>
-                }
-                <button type="button" class="btn-ghost @(_editMode ? "active" : "")"
-                        @onclick="() => _editMode = !_editMode">@(_editMode ? "Done" : "Edit")</button>
-                <button type="button" class="btn-new" @onclick="OpenCreate">+ New Report</button>
+                    else
+                    {
+                        <button type="button" class="text-sm px-3 py-1.5 rounded border border-gray-700 text-gray-500 hover:text-gray-300" @onclick="() => _showNewGroup = true">+ Group</button>
+                    }
+                    <button type="button"
+                            class="text-sm px-3 py-1.5 rounded border @(_editMode ? "border-indigo-500 text-indigo-400" : "border-gray-700 text-gray-600 hover:text-gray-400")"
+                            @onclick="() => _editMode = !_editMode">@(_editMode ? "Done" : "Edit")</button>
+                    <button type="button" class="text-sm px-3 py-1.5 rounded border border-gray-700 text-gray-500 hover:text-gray-300" @onclick="OpenCreate">+ New Report</button>
+                </div>
             </div>
-        </div>
 
-        <ReportGrid @ref="_grid" AccountId="@Active.ActiveAccountId" GroupFilter="@_selectedGroup"
-                    EditMode="_editMode" OnEdit="OpenEdit" />
+            <ReportGrid @ref="_grid" AccountId="@Active.ActiveAccountId" GroupFilter="@_selectedGroup"
+                        EditMode="_editMode" OnEdit="OpenEdit" />
+        </div>
     }
 </section>
 

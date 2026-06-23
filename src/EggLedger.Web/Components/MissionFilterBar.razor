@@ -5,94 +5,102 @@
    FullFilter.vue / FilterSelect.vue. The OR-sibling UI and the Modal value
    pickers (Target / Drops) are deferred; Modal rows render a disabled note. *@
 
-<div class="mfb">
+<div class="max-h-60 overflow-y-auto">
     @for (int i = 0; i < _rows.Count; i++)
     {
         int index = i;
         var row = _rows[index];
         var def = FilterFields.GetReportField(row.TopLevel);
-        <div class="mfb-row">
-            <select class="mfb-select" value="@row.TopLevel"
-                    @onchange="@(e => OnFieldChanged(index, e.Value?.ToString()))">
-                @foreach (var f in _fields)
-                {
-                    <option value="@f.Key">@f.Label</option>
-                }
-            </select>
-
-            @if (def is not null)
+        <div class="relative flex-grow max-h-6/10">
+            @if (index != 0)
             {
-                @if (def.ValueKind != FilterValueKind.Bool)
-                {
-                    <select class="mfb-select" value="@row.Op"
-                            @onchange="@(e => OnOpChanged(index, e.Value?.ToString()))">
-                        @foreach (var op in FilterFields.MissionBarOpsFor(def))
-                        {
-                            <option value="@op.Value">@op.Label</option>
-                        }
-                    </select>
-                }
-                else
-                {
-                    <span class="mfb-note">is</span>
-                }
+                <div class="text-gray-400 mt-0_5rem">-- AND --</div>
+            }
+            <div class="filter-container focus-within:z-10">
+                <select class="filter-select border-gray-300 text-gray-400" value="@row.TopLevel"
+                        @onchange="@(e => OnFieldChanged(index, e.Value?.ToString()))">
+                    @foreach (var f in _fields)
+                    {
+                        <option value="@f.Key" class="filter-select-option">@f.Label</option>
+                    }
+                </select>
 
-                @switch (def.ValueKind)
+                @if (def is not null)
                 {
-                    case FilterValueKind.Select:
-                        <select class="mfb-select" value="@row.Val"
-                                @onchange="@(e => OnValChanged(index, e.Value?.ToString()))">
-                            @foreach (var opt in OptionsFor(def))
+                    @if (def.ValueKind != FilterValueKind.Bool)
+                    {
+                        <select class="filter-select border-gray-300 text-gray-400" value="@row.Op"
+                                @onchange="@(e => OnOpChanged(index, e.Value?.ToString()))">
+                            @foreach (var op in FilterFields.MissionBarOpsFor(def))
                             {
-                                <option value="@opt.Value" class="@opt.StyleClass">@opt.Text</option>
+                                <option value="@op.Value" class="filter-select-option">@op.Label</option>
                             }
                         </select>
-                        break;
+                    }
+                    else
+                    {
+                        <span class="text-gray-400 mt-0_5rem mr-1rem">is</span>
+                    }
 
-                    case FilterValueKind.Bool:
-                        <select class="mfb-select" value="@row.Val"
-                                @onchange="@(e => OnValChanged(index, e.Value?.ToString()))">
-                            @foreach (var opt in FilterOptions.GetBoolFilterOptions())
-                            {
-                                <option value="@opt.Value">@opt.Text</option>
-                            }
-                        </select>
-                        break;
+                    @switch (def.ValueKind)
+                    {
+                        case FilterValueKind.Select:
+                            <select class="filter-select border-gray-300 text-gray-400" value="@row.Val"
+                                    @onchange="@(e => OnValChanged(index, e.Value?.ToString()))">
+                                @foreach (var opt in OptionsFor(def))
+                                {
+                                    <option value="@opt.Value" class="filter-select-option @opt.StyleClass">@opt.Text</option>
+                                }
+                            </select>
+                            break;
 
-                    case FilterValueKind.Date:
-                        <input type="date" class="mfb-input" value="@row.Val"
-                               @onchange="@(e => OnValChanged(index, e.Value?.ToString()))" />
-                        break;
+                        case FilterValueKind.Bool:
+                            <select class="filter-select border-gray-300 text-gray-400" value="@row.Val"
+                                    @onchange="@(e => OnValChanged(index, e.Value?.ToString()))">
+                                @foreach (var opt in FilterOptions.GetBoolFilterOptions())
+                                {
+                                    <option value="@opt.Value" class="filter-select-option">@opt.Text</option>
+                                }
+                            </select>
+                            break;
 
-                    case FilterValueKind.Number:
-                        <input type="number" class="mfb-input" value="@row.Val"
-                               @onchange="@(e => OnValChanged(index, e.Value?.ToString()))" />
-                        break;
+                        case FilterValueKind.Date:
+                            <input type="date" class="filter-select border-gray-300 text-gray-400" value="@row.Val"
+                                   @onchange="@(e => OnValChanged(index, e.Value?.ToString()))" />
+                            break;
 
-                    case FilterValueKind.Modal:
-                        <span class="mfb-note">@def.Label picker not yet available</span>
-                        break;
+                        case FilterValueKind.Number:
+                            <input type="number" class="filter-select border-gray-300 text-gray-400" value="@row.Val"
+                                   @onchange="@(e => OnValChanged(index, e.Value?.ToString()))" />
+                            break;
+
+                        case FilterValueKind.Modal:
+                            <span class="text-gray-400 mt-0_5rem mr-1rem">@def.Label picker not yet available</span>
+                            break;
+                    }
                 }
-            }
 
-            @if (_rows.Count > 1)
-            {
-                <button type="button" class="mfb-remove" @onclick="@(() => RemoveRow(index))" aria-label="Remove">&times;</button>
-            }
+                @if (_rows.Count > 1)
+                {
+                    <button type="button" title="Remove filter condition"
+                            class="mr-1rem flex items-center justify-center text-red-700 text-lg max-w-6 max-h-6 min-w-6 min-h-6 border border-red-700 rounded-md bg-transparent mt-0_5rem filter-button"
+                            @onclick="@(() => RemoveRow(index))" aria-label="Remove">&times;</button>
+                }
+            </div>
         </div>
     }
 
-    <div class="mfb-actions">
-        <button type="button" class="mfb-apply" disabled="@Applying" @onclick="ApplyAsync">Apply Filter</button>
-        @if (Applying)
-        {
-            <span class="mfb-applying">Applying filter...</span>
-        }
-        else if (LastResultText is { Length: > 0 })
-        {
-            <span class="mfb-result">@LastResultText</span>
-        }
-    </div>
+    <hr class="mt-1rem w-full" />
+
+    <button type="button" class="apply-filter-button" disabled="@Applying" @onclick="ApplyAsync">Apply Filter</button>
+    @if (Applying)
+    {
+        <span class="text-green-700 mt-0_5rem"><i>Applying filter, please wait...</i></span>
+    }
+    else if (LastResultText is { Length: > 0 })
+    {
+        <span class="text-gray-500 mt-0_5rem"><i>@LastResultText</i></span>
+    }
 </div>
 
 @code {

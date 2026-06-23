@@ -8,36 +8,34 @@
    <dialog> via dialog.js. Shows ShipDisplay + prev/next nav + close. Multi mode
    is deferred. *@
 
-<dialog @ref="_dialog" class="mission-overlay" @oncancel="OnCancel" @oncancel:preventDefault="false">
-    <div class="overlay-panel">
-        <button class="overlay-close" type="button" @onclick="CloseAsync" aria-label="Close">
-            <svg class="overlay-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-        </button>
+<dialog @ref="_dialog" class="mission-overlay w-60vw max-h-95vh bg-dark rounded-lg relative flex flex-col" @oncancel="OnCancel" @oncancel:preventDefault="false">
+    <button class="absolute top-2 right-2 z-10 rounded-md text-gray-400 hover:text-gray-200 focus:outline-none" type="button" @onclick="CloseAsync" aria-label="Close">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+    </button>
 
-        <button class="overlay-nav overlay-nav-left" type="button" title="Previous mission"
-                disabled="@(_data?.PrevMission is null)"
-                @onclick="@(() => NavigateAsync(_data?.PrevMission))">
-            <svg class="overlay-nav-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-            </svg>
-        </button>
-        <button class="overlay-nav overlay-nav-right" type="button" title="Next mission"
-                disabled="@(_data?.NextMission is null)"
-                @onclick="@(() => NavigateAsync(_data?.NextMission))">
-            <svg class="overlay-nav-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-            </svg>
-        </button>
+    <button class="disabled:cursor-not-allowed absolute left-2 top-1/2 -translate-y-1/2 z-10 rounded-md text-gray-400 focus:outline-none disabled:text-gray-600 hover:text-gray-200" type="button" title="Previous mission"
+            disabled="@(_data?.PrevMission is null)"
+            @onclick="@(() => NavigateAsync(_data?.PrevMission))">
+        <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
+    </button>
+    <button class="disabled:cursor-not-allowed absolute right-2 top-1/2 -translate-y-1/2 z-10 rounded-md text-gray-400 focus:outline-none disabled:text-gray-600 hover:text-gray-200" type="button" title="Next mission"
+            disabled="@(_data?.NextMission is null)"
+            @onclick="@(() => NavigateAsync(_data?.NextMission))">
+        <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+        </svg>
+    </button>
 
-        <div class="overlay-scroll">
-            <div class="overlay-inner">
-                @if (_data is not null)
-                {
-                    <ShipDisplay Data="_data" />
-                }
-            </div>
+    <div class="overflow-auto flex-1 min-h-0 pt-8 px-10 pb-2">
+        <div class="bg-darkerer rounded-lg py-2">
+            @if (_data is not null)
+            {
+                <ShipDisplay Data="_data" />
+            }
         </div>
     </div>
 </dialog>

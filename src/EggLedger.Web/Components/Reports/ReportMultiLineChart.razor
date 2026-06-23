@@ -11,15 +11,15 @@
     reserves the bare <text> tag).
 *@
 
-<div class="multiline-chart">
-    <div class="multiline-plot">
+<div class="h-full w-full flex flex-col gap-1">
+    <div class="flex-1 min-h-0">
         @if (SeriesCount >= 1 && BucketCount >= 2)
         {
             var max = GlobalMax();
             var ticks = BuildTicks(max);
             var seriesPoints = AllSeriesPoints();
             var colors = SeriesColors();
-            <svg viewBox="0 0 @Fmt(W) @Fmt(H)" preserveAspectRatio="xMidYMid meet" class="multiline-svg">
+            <svg viewBox="0 0 @Fmt(W) @Fmt(H)" preserveAspectRatio="xMidYMid meet" class="w-full h-full overflow-visible">
                 @if (max > 0)
                 {
                     @foreach (var tick in ticks)
@@ -45,23 +45,27 @@
         }
         else if (BucketCount < 2)
         {
-            <div class="chart-empty">Not enough data for a line chart</div>
+            <div class="h-full flex items-center justify-center">
+                <span class="text-xs text-gray-600 italic">Not enough data for a line chart</span>
+            </div>
         }
         else
         {
-            <div class="chart-empty">No series data</div>
+            <div class="h-full flex items-center justify-center">
+                <span class="text-xs text-gray-600 italic">No series data</span>
+            </div>
         }
     </div>
 
-    <div class="multiline-legend">
+    <div class="flex flex-wrap gap-x-3 gap-y-0.5 px-1 flex-shrink-0">
         @{
             var legendColors = SeriesColors();
         }
         @for (int c = 0; c < Result.ColLabels.Count; c++)
         {
-            <div class="legend-item" title="@Result.ColLabels[c]">
-                <span class="legend-swatch" style="background-color: @legendColors[c];"></span>
-                <span class="legend-label">@Result.ColLabels[c]</span>
+            <div class="flex items-center gap-1" title="@Result.ColLabels[c]">
+                <div class="w-2 h-2 rounded-sm shrink-0" style="background-color: @legendColors[c];"></div>
+                <span class="text-xs text-gray-400 truncate max-w-28">@Result.ColLabels[c]</span>
             </div>
         }
     </div>
@@ -167,7 +171,7 @@
         string y = Fmt(tick.Y);
         string label = Esc(tick.Label);
         return new MarkupString(
-            $"<text x=\"{x}\" y=\"{y}\" text-anchor=\"end\" dominant-baseline=\"middle\" class=\"axis-text\">{label}</text>");
+            $"<text x=\"{x}\" y=\"{y}\" text-anchor=\"end\" dominant-baseline=\"middle\" style=\"font-size: 10px; fill: #6b7280;\">{label}</text>");
     }
 
     private MarkupString XLabelText(ChartPoint p)
@@ -176,7 +180,7 @@
         string ty = Fmt(H - ChartGeometry.PadBottom + 4);
         string label = Esc(ChartGeometry.FormatXLabel(p.Label));
         return new MarkupString(
-            $"<text transform=\"translate({tx}, {ty}) rotate(-45)\" text-anchor=\"end\" class=\"axis-text\">{label}</text>");
+            $"<text transform=\"translate({tx}, {ty}) rotate(-45)\" text-anchor=\"end\" style=\"font-size: 10px; fill: #6b7280;\">{label}</text>");
     }
 
     private static string PolyPoints(List<ChartPoint> pts) =>

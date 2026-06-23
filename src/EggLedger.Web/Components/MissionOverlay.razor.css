@@ -1,91 +1,10 @@
+/* Native <dialog> reset + backdrop; not expressible as utility classes. Sizing
+   and colors live on the element via Tailwind classes (Vue parity). */
 .mission-overlay {
-    width: 60vw;
-    max-width: 60vw;
-    max-height: 95vh;
     padding: 0;
     border: none;
-    border-radius: 0.5rem;
-    background-color: var(--color-dark);
-    color: var(--color-text);
 }
 
 .mission-overlay::backdrop {
-    background-color: rgba(0, 0, 0, 0.6);
-}
-
-.overlay-panel {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    max-height: 95vh;
-}
-
-.overlay-close {
-    position: absolute;
-    top: 0.5rem;
-    right: 0.5rem;
-    z-index: 10;
-    border: none;
-    background: transparent;
-    color: var(--color-text-muted);
-    cursor: pointer;
-    border-radius: 0.375rem;
-    padding: 0.25rem;
-}
-
-.overlay-close:hover {
-    color: var(--color-text);
-}
-
-.overlay-svg {
-    width: 1.25rem;
-    height: 1.25rem;
-}
-
-.overlay-nav {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    z-index: 10;
-    border: none;
-    background: transparent;
-    color: var(--color-text-muted);
-    cursor: pointer;
-    border-radius: 0.375rem;
-    padding: 0.25rem;
-}
-
-.overlay-nav:hover:not(:disabled) {
-    color: var(--color-text);
-}
-
-.overlay-nav:disabled {
-    color: var(--color-text-faint);
-    cursor: not-allowed;
-}
-
-.overlay-nav-left {
-    left: 0.5rem;
-}
-
-.overlay-nav-right {
-    right: 0.5rem;
-}
-
-.overlay-nav-svg {
-    width: 2rem;
-    height: 2rem;
-}
-
-.overlay-scroll {
-    overflow: auto;
-    flex: 1;
-    min-height: 0;
-    padding: 2rem 2.5rem 0.5rem;
-}
-
-.overlay-inner {
-    background-color: var(--color-darkerer);
-    border-radius: 0.5rem;
-    padding: var(--space-2) 0;
+    background-color: rgba(0, 0, 0, 0.7);
 }

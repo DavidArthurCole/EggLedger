@@ -9,7 +9,7 @@
     Legend drag-reorder is deferred (static column order); bars + colors faithful.
 *@
 
-<div class="grouped-bar">
+<div class="h-full flex flex-col gap-1 overflow-auto">
     @{
         var cols = DisplayCols();
         var colors = ColColors(cols);
@@ -18,36 +18,36 @@
     @for (int rIdx = 0; rIdx < Result.RowLabels.Count; rIdx++)
     {
         var row = Result.RowLabels[rIdx];
-        <div class="gb-row">
-            <span class="gb-row-label" title="@row">@row</span>
-            <div class="gb-bars">
+        <div class="flex items-center gap-1 min-w-0 flex-1">
+            <span class="text-xs text-gray-400 w-24 shrink-0 text-right truncate" title="@row">@row</span>
+            <div class="flex-1 flex flex-col gap-0.5">
                 @for (int cIdx = 0; cIdx < cols.Count; cIdx++)
                 {
                     var raw = CellRawValue(rIdx, cIdx, cols);
                     if (raw > 0)
                     {
-                        <div class="gb-bar-row">
-                            <div class="gb-bar"
-                                 style="width: @BarWidth(raw, max)%; background-color: @colors[cIdx];"
+                        <div class="flex items-center gap-1">
+                            <div class="h-3 rounded-sm transition-all"
+                                 style="width: @BarWidth(raw, max)%; background-color: @colors[cIdx]; min-width: 2px; cursor: pointer;"
                                  title="@cols[cIdx] @row: @CellLabel(raw)">
                             </div>
-                            <span class="gb-cell-label">@CellLabel(raw)</span>
+                            <span class="text-xs text-gray-500 shrink-0">@CellLabel(raw)</span>
                         </div>
                     }
                 }
             </div>
         </div>
     }
-    <div class="gb-legend">
+    <div class="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 px-1">
         @{
             var legendCols = DisplayCols();
             var legendColors = ColColors(legendCols);
         }
         @for (int c = 0; c < legendCols.Count; c++)
         {
-            <div class="legend-item" title="@legendCols[c]">
-                <span class="legend-swatch" style="background-color: @legendColors[c];"></span>
-                <span class="legend-label">@legendCols[c]</span>
+            <div class="flex items-center gap-1 select-none" title="@legendCols[c]">
+                <div class="w-2 h-2 rounded-sm shrink-0" style="background-color: @legendColors[c];"></div>
+                <span class="text-xs text-gray-400 truncate max-w-28">@legendCols[c]</span>
             </div>
         }
     </div>
