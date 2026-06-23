@@ -36,6 +36,7 @@ public static class WebServiceRegistration
         services.AddScoped<IndexedDbReportStore>();
         services.AddScoped<IndexedDbMissionStore>(sp => new IndexedDbMissionStore(
             sp.GetRequiredService<IIndexedDb>(),
+            sp.GetRequiredService<IApiPayloadDecoder>(),
             accounts: sp.GetRequiredService<IndexedDbAccountStore>()));
         services.AddScoped<IMissionStore>(sp => sp.GetRequiredService<IndexedDbMissionStore>());
         services.AddScoped<IndexedDbMissionDb>();
@@ -54,6 +55,12 @@ public static class WebServiceRegistration
         // appended to this prefix, so "/egg-api" + "/ei/bot_first_contact" resolves
         // against the HttpClient BaseAddress (the serving origin) -> proxied upstream.
         services.AddScoped(sp => new ApiClient(sp.GetRequiredService<HttpClient>(), apiPrefix: "/egg-api"));
+
+        // Decode seam: default to in-process protobuf-net decode. The WASM host
+        // overrides this with a server-delegating decoder (protobuf-net cannot emit
+        // in the browser). Desktop keeps the local path.
+        services.AddScoped<IApiPayloadDecoder>(sp => new LocalApiPayloadDecoder(sp.GetRequiredService<ApiClient>()));
+
         services.AddScoped<FetchService>();
         services.AddScoped<AddAccountService>();
 

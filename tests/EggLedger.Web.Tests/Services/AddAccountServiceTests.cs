@@ -16,7 +16,7 @@ public sealed class AddAccountServiceTests
         var http = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
         var api = new ApiClient(http);
         accounts = new IndexedDbAccountStore(new IndexedDbSettings(db));
-        return new AddAccountService(api, accounts);
+        return new AddAccountService(api, accounts, new LocalApiPayloadDecoder(api));
     }
 
     private static string ToApiBody<T>(T msg)

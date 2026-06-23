@@ -1,5 +1,6 @@
 using System.IO.Compression;
 using Ei;
+using EggLedger.Domain.Api;
 using EggLedger.Web.Data;
 using ProtoBuf;
 
@@ -10,7 +11,8 @@ public sealed class IndexedDbMissionStoreTests
     private static (IndexedDbMissionStore Store, FakeIndexedDb Db) Make()
     {
         var db = new FakeIndexedDb();
-        return (new IndexedDbMissionStore(db), db);
+        var decoder = new LocalApiPayloadDecoder(new ApiClient());
+        return (new IndexedDbMissionStore(db, decoder), db);
     }
 
     private static MissionRow MissionMeta(string playerId, string missionId, double start, int ship = 0) => new()

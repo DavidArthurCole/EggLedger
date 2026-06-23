@@ -29,8 +29,8 @@ public sealed class FetchServiceTests
         {
             settings.SetSettingAsync("retry_failed_missions", "true").GetAwaiter().GetResult();
         }
-        var store = new IndexedDbMissionStore(db);
-        return new FetchService(api, store, settings);
+        var store = new IndexedDbMissionStore(db, new LocalApiPayloadDecoder(new ApiClient()));
+        return new FetchService(api, store, settings, new LocalApiPayloadDecoder(api));
     }
 
     // base64(protobuf) is the wire form ApiClient POSTs/reads. The handler returns
@@ -187,7 +187,7 @@ public sealed class FetchServiceTests
         var final = await service.FetchPlayerDataAsync(Eid, null, CancellationToken.None);
 
         Assert.Equal(AppState.Success, final);
-        var store = new IndexedDbMissionStore(db);
+        var store = new IndexedDbMissionStore(db, new LocalApiPayloadDecoder(new ApiClient()));
         var got = await store.GetCompleteMissionAsync(Eid, "m1");
         Assert.NotNull(got);
         Assert.True(got!.Success);
@@ -258,7 +258,7 @@ public sealed class FetchServiceTests
 
         Assert.Equal(AppState.Success, final);
         Assert.Equal(25, handler.CompleteMissionRequests.Count);
-        var store = new IndexedDbMissionStore(db);
+        var store = new IndexedDbMissionStore(db, new LocalApiPayloadDecoder(new ApiClient()));
         var stored = await store.GetCompleteMissionIdsAsync(Eid);
         Assert.Equal(25, stored!.Count);
     }

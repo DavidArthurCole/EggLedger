@@ -19,11 +19,13 @@ public sealed class AddAccountService
 
     private readonly ApiClient _api;
     private readonly IndexedDbAccountStore _accounts;
+    private readonly IApiPayloadDecoder _decoder;
 
-    public AddAccountService(ApiClient api, IndexedDbAccountStore accounts)
+    public AddAccountService(ApiClient api, IndexedDbAccountStore accounts, IApiPayloadDecoder decoder)
     {
         _api = api;
         _accounts = accounts;
+        _decoder = decoder;
     }
 
     /// <summary>
@@ -37,7 +39,7 @@ public sealed class AddAccountService
         cts.CancelAfter(FirstContactTimeout);
 
         byte[] payload = await _api.RequestFirstContactRawPayloadAsync(eid, cts.Token).ConfigureAwait(false);
-        var fc = _api.DecodeFirstContactPayload(payload);
+        var fc = await _decoder.DecodeFirstContactAsync(payload, cts.Token).ConfigureAwait(false);
         var invalid = fc.Validate();
         if (invalid is not null)
         {

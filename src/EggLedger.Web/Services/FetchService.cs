@@ -25,13 +25,15 @@ public sealed class FetchService
     private readonly ApiClient _api;
     private readonly IndexedDbMissionStore _store;
     private readonly IndexedDbSettings _settings;
+    private readonly IApiPayloadDecoder _decoder;
     private readonly MissionPacker _packer;
 
-    public FetchService(ApiClient api, IndexedDbMissionStore store, IndexedDbSettings settings, MissionPacker? packer = null)
+    public FetchService(ApiClient api, IndexedDbMissionStore store, IndexedDbSettings settings, IApiPayloadDecoder decoder, MissionPacker? packer = null)
     {
         _api = api;
         _store = store;
         _settings = settings;
+        _decoder = decoder;
         _packer = packer ?? new MissionPacker(EiafxMissionConfigSource.Instance);
     }
 
@@ -179,7 +181,7 @@ public sealed class FetchService
     private async Task<EggIncFirstContactResponse> FetchFirstContactAsync(string playerId, CancellationToken cancellationToken)
     {
         byte[] payload = await _api.RequestFirstContactRawPayloadAsync(playerId, cancellationToken).ConfigureAwait(false);
-        var fc = _api.DecodeFirstContactPayload(payload);
+        var fc = await _decoder.DecodeFirstContactAsync(payload, cancellationToken).ConfigureAwait(false);
         var invalid = fc.Validate();
         if (invalid is not null)
         {
@@ -319,7 +321,7 @@ public sealed class FetchService
         CompleteMissionResponse resp;
         try
         {
-            resp = _api.DecodeCompleteMissionPayload(payload);
+            resp = await _decoder.DecodeCompleteMissionAsync(payload, cancellationToken).ConfigureAwait(false);
         }
         catch
         {

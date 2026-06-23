@@ -215,7 +215,7 @@ public sealed class SqliteIndexedDbTests : IDisposable
     {
         // Through the real IndexedDbMissionStore.InsertBackupAsync over migrated
         // SQLite: the timestamp+payload survive and the 12h min-gap dedup works.
-        var store = new IndexedDbMissionStore(_db);
+        var store = new IndexedDbMissionStore(_db, new EggLedger.Domain.Api.LocalApiPayloadDecoder(new EggLedger.Domain.Api.ApiClient()));
         var raw = new byte[] { 42, 7, 0, 255 };
         var gap = TimeSpan.FromHours(12);
         double t0 = 1_700_000_000d;

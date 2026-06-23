@@ -22,34 +22,30 @@ public sealed class IndexedDbMissionStore : IMissionStore
     private const string ArtifactDropsStore = "artifact_drops";
     private const string PlayerIdIndex = "player_id";
 
-    // Matches the Go decode endpoint label; only affects error text.
-    private const string CompleteMissionUrl =
-        ApiClient.DefaultApiPrefix + "/ei_afx/complete_mission";
-
     private readonly IIndexedDb _db;
     private readonly MissionPacker _packer;
-    private readonly ApiClient _api;
+    private readonly IApiPayloadDecoder _decoder;
     private readonly IndexedDbAccountStore? _accounts;
 
     /// <param name="db">IndexedDB wrapper.</param>
+    /// <param name="decoder">
+    /// Payload decoder. The desktop host uses the in-process protobuf-net path;
+    /// the WASM host delegates to the sync server (the browser cannot emit).
+    /// </param>
     /// <param name="packer">
     /// Mission compiler. When null, one is built from the canonical eiafx config
     /// via <see cref="EiafxMissionConfigSource.Instance"/>.
-    /// </param>
-    /// <param name="api">
-    /// Payload decoder. When null, a default <see cref="ApiClient"/> is used;
-    /// only its decode logic is exercised, never the network.
     /// </param>
     /// <param name="accounts">
     /// Known-account store. When null, <see cref="GetKnownAccountsAsync"/> returns
     /// an empty list (the mission/backup schema carries no account rows). Supplied
     /// in the app so GetExistingData joins the persisted accounts with stats.
     /// </param>
-    public IndexedDbMissionStore(IIndexedDb db, MissionPacker? packer = null, ApiClient? api = null, IndexedDbAccountStore? accounts = null)
+    public IndexedDbMissionStore(IIndexedDb db, IApiPayloadDecoder decoder, MissionPacker? packer = null, IndexedDbAccountStore? accounts = null)
     {
         _db = db;
+        _decoder = decoder;
         _packer = packer ?? new MissionPacker(EiafxMissionConfigSource.Instance);
-        _api = api ?? new ApiClient();
         _accounts = accounts;
     }
 
@@ -103,7 +99,7 @@ public sealed class IndexedDbMissionStore : IMissionStore
             // Only a decode failure is a store error; let consumer-callback bugs surface.
             try
             {
-                cm = Decode(row);
+                cm = await DecodeAsync(row).ConfigureAwait(false);
             }
             catch
             {
@@ -128,7 +124,7 @@ public sealed class IndexedDbMissionStore : IMissionStore
         }
         try
         {
-            return Decode(row);
+            return await DecodeAsync(row).ConfigureAwait(false);
         }
         catch
         {
@@ -175,7 +171,7 @@ public sealed class IndexedDbMissionStore : IMissionStore
         {
             foreach (var row in rows.OrderBy(r => r.StartTimestamp))
             {
-                result.Add(Decode(row));
+                result.Add(await DecodeAsync(row).ConfigureAwait(false));
             }
         }
         catch
@@ -309,10 +305,10 @@ public sealed class IndexedDbMissionStore : IMissionStore
     /// a CompleteMissionResponse (Go DecodeCompleteMissionPayload), then restores
     /// StartTimeDerived from the row's start_timestamp like the Go DB reads do.
     /// </summary>
-    private CompleteMissionResponse Decode(MissionRow row)
+    private async Task<CompleteMissionResponse> DecodeAsync(MissionRow row)
     {
         byte[] raw = Gunzip(row.CompletePayload);
-        var resp = _api.DecodeApiResponse<CompleteMissionResponse>(CompleteMissionUrl, raw, authenticated: true);
+        var resp = await _decoder.DecodeCompleteMissionAsync(raw).ConfigureAwait(false);
         if (resp.Info is not null)
         {
             resp.Info.StartTimeDerived = row.StartTimestamp;
