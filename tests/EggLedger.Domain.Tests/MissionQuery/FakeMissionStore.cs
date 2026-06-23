@@ -1,0 +1,75 @@
+using Ei;
+using EggLedger.Domain.MissionQuery;
+
+namespace EggLedger.Domain.Tests.MissionQuery;
+
+/// <summary>
+/// In-memory IMissionStore double. Holds known data; records the backfill kick.
+/// Null-typed fields simulate Go store errors.
+/// </summary>
+internal sealed class FakeMissionStore : IMissionStore
+{
+    public IReadOnlyList<string>? CompleteMissionIds { get; set; }
+    public List<KnownAccount> KnownAccounts { get; } = new();
+    public Dictionary<string, PlayerMissionStats?> Stats { get; } = new();
+    public Dictionary<string, List<CompleteMissionResponse>> Streamable { get; } = new();
+    public bool StreamSucceeds { get; set; } = true;
+    public Dictionary<(string, string), CompleteMissionResponse?> CompleteMissions { get; } = new();
+    public Dictionary<string, int?> PendingFilterCols { get; } = new();
+    public Dictionary<string, IReadOnlyList<IMissionRow>?> MissionMeta { get; } = new();
+    public Dictionary<string, IReadOnlyList<CompleteMissionResponse>?> PlayerCompleteMissions { get; } = new();
+    public List<string> BackfillsQueued { get; } = new();
+
+    public Task<IReadOnlyList<string>?> GetCompleteMissionIdsAsync(string playerId) =>
+        Task.FromResult(CompleteMissionIds);
+
+    public Task<IReadOnlyList<KnownAccount>> GetKnownAccountsAsync() =>
+        Task.FromResult<IReadOnlyList<KnownAccount>>(KnownAccounts);
+
+    public Task<PlayerMissionStats?> GetPlayerMissionStatsAsync(string playerId) =>
+        Task.FromResult(Stats.TryGetValue(playerId, out var s) ? s : null);
+
+    public Task<bool> StreamPlayerCompleteMissionsAsync(string playerId, Action<CompleteMissionResponse> onMission)
+    {
+        if (!StreamSucceeds)
+        {
+            return Task.FromResult(false);
+        }
+        if (Streamable.TryGetValue(playerId, out var list))
+        {
+            foreach (var cm in list)
+            {
+                onMission(cm);
+            }
+        }
+        return Task.FromResult(true);
+    }
+
+    public Task<CompleteMissionResponse?> GetCompleteMissionAsync(string playerId, string missionId) =>
+        Task.FromResult(CompleteMissions.TryGetValue((playerId, missionId), out var cm) ? cm : null);
+
+    public Task<int?> CountPendingFilterColsAsync(string eid) =>
+        Task.FromResult<int?>(PendingFilterCols.TryGetValue(eid, out var p) ? p : 0);
+
+    public Task<IReadOnlyList<IMissionRow>?> GetPlayerMissionMetaAsync(string eid) =>
+        Task.FromResult(MissionMeta.TryGetValue(eid, out var m) ? m : null);
+
+    public Task<IReadOnlyList<CompleteMissionResponse>?> GetPlayerCompleteMissionsAsync(string eid) =>
+        Task.FromResult(PlayerCompleteMissions.TryGetValue(eid, out var m) ? m : null);
+
+    public IMissionRow CompileMissionInformation(CompleteMissionResponse mission) =>
+        new FakeMissionRow(mission.Info?.Identifier ?? "");
+
+    public void QueueFilterColBackfill(string eid) => BackfillsQueued.Add(eid);
+}
+
+internal sealed record FakeMissionRow(string Id) : IMissionRow;
+
+/// <summary>Quality stub: fixed value per (name,level,rarity) tuple, else 0.</summary>
+internal sealed class FakeQuality : IArtifactQuality
+{
+    public Dictionary<(ArtifactSpec.Name, ArtifactSpec.Level, ArtifactSpec.Rarity), double> Map { get; } = new();
+
+    public double BaseQualityFor(ArtifactSpec spec) =>
+        Map.TryGetValue((spec.name, spec.level, spec.rarity), out var q) ? q : 0;
+}

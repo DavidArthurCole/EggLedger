@@ -1,0 +1,103 @@
+@using System.Globalization
+@using EggLedger.Domain.Reports
+@using EggLedger.Domain.Reports.Charts
+
+@*
+    Heatmap table over a 2D result. Port of ReportHeatmap.vue: a row/col grid of
+    cells colored by intensity, with the golden-tested HeatmapGeometry helper
+    owning cell color, text color, threshold suppression, and display formatting.
+    Axis drag-reorder is deferred (static order); cell coloring + values are
+    faithful. The optional secondary-value sub-line and color-value override drive
+    the Menno dual_value mode (C3.6).
+*@
+
+<div class="heatmap">
+    <table class="heatmap-table">
+        <thead>
+            <tr>
+                <th class="heatmap-corner"></th>
+                @foreach (var col in Result.ColLabels)
+                {
+                    <th class="heatmap-col-head" title="@col">@col</th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @for (int r = 0; r < Result.RowLabels.Count; r++)
+            {
+                <tr>
+                    <td class="heatmap-row-head" title="@Result.RowLabels[r]">@Result.RowLabels[r]</td>
+                    @for (int c = 0; c < Result.ColLabels.Count; c++)
+                    {
+                        var cell = Cell(r, c);
+                        <td class="heatmap-cell"
+                            style="background-color: @cell.Style.BackgroundColor; color: @cell.Style.Color;"
+                            title="@Result.ColLabels[c] @Result.RowLabels[r]: @cell.Display">
+                            <div class="heatmap-cell-value">@cell.Display</div>
+                            @if (SecondaryValues is not null)
+                            {
+                                <div class="heatmap-cell-secondary">@cell.Secondary</div>
+                            }
+                        </td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public ReportResult Result { get; set; } = new();
+
+    [Parameter, EditorRequired]
+    public string Color { get; set; } = "#6366f1";
+
+    [Parameter]
+    public string? NormalizeBy { get; set; }
+
+    [Parameter]
+    public string? UnfilledColor { get; set; }
+
+    [Parameter]
+    public int MinSampleSize { get; set; }
+
+    /// <summary>
+    /// Optional secondary per-cell values rendered as a dimmer sub-line under the
+    /// primary value. Drives the Menno dual_value mode (the community number under
+    /// the user number). Null hides the sub-line.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<double>? SecondaryValues { get; set; }
+
+    /// <summary>
+    /// Optional per-cell color-intensity override (ratio semantics: 1.0 = community
+    /// average, 2.0 = full intensity). Display values are unaffected; only the cell
+    /// background uses these. Drives the Menno dual_value coloring.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<double>? ColorValues { get; set; }
+
+    private double GlobalMax() => Result.MatrixValues.DefaultIfEmpty(0).Max();
+
+    private (HeatmapCellStyle Style, string Display, string Secondary) Cell(int r, int c)
+    {
+        int nCols = Result.ColLabels.Count;
+        int flat = r * nCols + c;
+        double v = flat < Result.MatrixValues.Count ? Result.MatrixValues[flat] : 0;
+        int? missionCount = Result.MissionCountMatrix is { } mc && flat < mc.Count ? (int)mc[flat] : null;
+        bool below = HeatmapGeometry.IsBelowThreshold(missionCount, MinSampleSize);
+        double? colorValue = ColorValues is { } cv && flat < cv.Count ? cv[flat] : null;
+
+        var style = HeatmapGeometry.CellStyle(
+            v, GlobalMax(), Color, UnfilledColor ?? "#1f2937", NormalizeBy, colorValue, below);
+        var display = HeatmapGeometry.DisplayValue(v, NormalizeBy, below);
+        string secondary = "";
+        if (SecondaryValues is { } sv)
+        {
+            double s = flat < sv.Count ? sv[flat] : 0;
+            secondary = HeatmapGeometry.SecondaryDisplayValue(s, NormalizeBy, below);
+        }
+        return (style, display, secondary);
+    }
+}

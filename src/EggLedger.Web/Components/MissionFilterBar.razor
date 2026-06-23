@@ -1,0 +1,232 @@
+@using System.Globalization
+@using EggLedger.Web.Missions
+
+@* Select-based AND-only filter UI. Port of the mission-scoped slice of
+   FullFilter.vue / FilterSelect.vue. The OR-sibling UI and the Modal value
+   pickers (Target / Drops) are deferred; Modal rows render a disabled note. *@
+
+<div class="mfb">
+    @for (int i = 0; i < _rows.Count; i++)
+    {
+        int index = i;
+        var row = _rows[index];
+        var def = FilterFields.GetReportField(row.TopLevel);
+        <div class="mfb-row">
+            <select class="mfb-select" value="@row.TopLevel"
+                    @onchange="@(e => OnFieldChanged(index, e.Value?.ToString()))">
+                @foreach (var f in _fields)
+                {
+                    <option value="@f.Key">@f.Label</option>
+                }
+            </select>
+
+            @if (def is not null)
+            {
+                @if (def.ValueKind != FilterValueKind.Bool)
+                {
+                    <select class="mfb-select" value="@row.Op"
+                            @onchange="@(e => OnOpChanged(index, e.Value?.ToString()))">
+                        @foreach (var op in FilterFields.MissionBarOpsFor(def))
+                        {
+                            <option value="@op.Value">@op.Label</option>
+                        }
+                    </select>
+                }
+                else
+                {
+                    <span class="mfb-note">is</span>
+                }
+
+                @switch (def.ValueKind)
+                {
+                    case FilterValueKind.Select:
+                        <select class="mfb-select" value="@row.Val"
+                                @onchange="@(e => OnValChanged(index, e.Value?.ToString()))">
+                            @foreach (var opt in OptionsFor(def))
+                            {
+                                <option value="@opt.Value" class="@opt.StyleClass">@opt.Text</option>
+                            }
+                        </select>
+                        break;
+
+                    case FilterValueKind.Bool:
+                        <select class="mfb-select" value="@row.Val"
+                                @onchange="@(e => OnValChanged(index, e.Value?.ToString()))">
+                            @foreach (var opt in FilterOptions.GetBoolFilterOptions())
+                            {
+                                <option value="@opt.Value">@opt.Text</option>
+                            }
+                        </select>
+                        break;
+
+                    case FilterValueKind.Date:
+                        <input type="date" class="mfb-input" value="@row.Val"
+                               @onchange="@(e => OnValChanged(index, e.Value?.ToString()))" />
+                        break;
+
+                    case FilterValueKind.Number:
+                        <input type="number" class="mfb-input" value="@row.Val"
+                               @onchange="@(e => OnValChanged(index, e.Value?.ToString()))" />
+                        break;
+
+                    case FilterValueKind.Modal:
+                        <span class="mfb-note">@def.Label picker not yet available</span>
+                        break;
+                }
+            }
+
+            @if (_rows.Count > 1)
+            {
+                <button type="button" class="mfb-remove" @onclick="@(() => RemoveRow(index))" aria-label="Remove">&times;</button>
+            }
+        </div>
+    }
+
+    <div class="mfb-actions">
+        <button type="button" class="mfb-apply" disabled="@Applying" @onclick="ApplyAsync">Apply Filter</button>
+        @if (Applying)
+        {
+            <span class="mfb-applying">Applying filter...</span>
+        }
+        else if (LastResultText is { Length: > 0 })
+        {
+            <span class="mfb-result">@LastResultText</span>
+        }
+    </div>
+</div>
+
+@code {
+    /// <summary>Field context for option sources (targets / artifacts / max quality).</summary>
+    [Parameter]
+    public FilterFieldCtx FieldCtx { get; set; } = new();
+
+    [Parameter]
+    public bool Applying { get; set; }
+
+    [Parameter]
+    public string LastResultText { get; set; } = "";
+
+    /// <summary>
+    /// Raised with the AND conditions and a parallel (all-empty) OR list when the
+    /// user applies. OR siblings are deferred.
+    /// </summary>
+    [Parameter]
+    public EventCallback<(IReadOnlyList<FilterCondition> Filters, IReadOnlyList<IReadOnlyList<FilterCondition>?> OrFilters)> OnApply { get; set; }
+
+    private readonly List<FilterCondition> _rows = new();
+    private List<FilterFieldDef> _fields = new();
+    private readonly Dictionary<string, List<FilterOption>> _optionCache = new();
+
+    protected override void OnInitialized()
+    {
+        _fields = FilterFields.ReportMissionFields();
+        if (_rows.Count == 0)
+        {
+            _rows.Add(NewRow(_fields[0]));
+        }
+    }
+
+    private FilterCondition NewRow(FilterFieldDef def)
+    {
+        // Bool fields: the matcher reads filter.Val as the operator ("true"/"false")
+        // and Op is unused, so default Op to "=" (Vue parity) and Val to "true".
+        if (def.ValueKind == FilterValueKind.Bool)
+        {
+            return new FilterCondition(def.Key, "=", "true");
+        }
+        var op = FilterFields.DefaultOpForField(def);
+        return new FilterCondition(def.Key, op, DefaultValueFor(def));
+    }
+
+    private string DefaultValueFor(FilterFieldDef def)
+    {
+        if (def.ValueKind == FilterValueKind.Select)
+        {
+            var opts = OptionsFor(def);
+            return opts.Count > 0 ? opts[0].Value : "";
+        }
+        return "";
+    }
+
+    private List<FilterOption> OptionsFor(FilterFieldDef def)
+    {
+        if (def.OptionsSource is null)
+        {
+            return new List<FilterOption>();
+        }
+        if (!_optionCache.TryGetValue(def.Key, out var opts))
+        {
+            opts = def.OptionsSource(FieldCtx);
+            _optionCache[def.Key] = opts;
+        }
+        return opts;
+    }
+
+    private void OnFieldChanged(int index, string? key)
+    {
+        var def = FilterFields.GetReportField(key ?? "") ?? _fields[0];
+        _rows[index] = NewRow(def);
+        EnsureTrailingRow();
+    }
+
+    private void OnOpChanged(int index, string? op)
+    {
+        _rows[index].Op = op ?? "";
+    }
+
+    private void OnValChanged(int index, string? val)
+    {
+        _rows[index].Val = val ?? "";
+        EnsureTrailingRow();
+    }
+
+    // Add a fresh row once the last row has a value, mirroring the Vue auto-grow.
+    private void EnsureTrailingRow()
+    {
+        var last = _rows[^1];
+        var lastDef = FilterFields.GetReportField(last.TopLevel);
+        bool lastFilled = lastDef is not null &&
+            (lastDef.ValueKind == FilterValueKind.Bool || last.Val.Length > 0);
+        if (lastFilled)
+        {
+            _rows.Add(NewRow(_fields[0]));
+        }
+    }
+
+    private void RemoveRow(int index)
+    {
+        _rows.RemoveAt(index);
+        if (_rows.Count == 0)
+        {
+            _rows.Add(NewRow(_fields[0]));
+        }
+    }
+
+    private async Task ApplyAsync()
+    {
+        // Skip Modal rows (their value picker is deferred) and the trailing
+        // empty grow-row; everything else is a real AND condition.
+        var filters = new List<FilterCondition>();
+        foreach (var row in _rows)
+        {
+            var def = FilterFields.GetReportField(row.TopLevel);
+            if (def is null || def.ValueKind == FilterValueKind.Modal)
+            {
+                continue;
+            }
+            if (def.ValueKind != FilterValueKind.Bool && row.Val.Length == 0)
+            {
+                continue;
+            }
+            filters.Add(new FilterCondition(row.TopLevel, row.Op, row.Val));
+        }
+
+        var orFilters = new List<IReadOnlyList<FilterCondition>?>(filters.Count);
+        for (int i = 0; i < filters.Count; i++)
+        {
+            orFilters.Add(null);
+        }
+
+        await OnApply.InvokeAsync((filters, orFilters));
+    }
+}

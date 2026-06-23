@@ -1,0 +1,23 @@
+.report-grid {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: var(--space-2);
+}
+
+.grid-canvas {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    grid-auto-rows: 9rem;
+    gap: 12px;
+    align-content: start;
+}
+
+.grid-empty {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    color: var(--color-text-dim);
+}

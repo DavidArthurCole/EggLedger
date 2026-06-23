@@ -1,0 +1,138 @@
+@using System.Globalization
+@using EggLedger.Domain.Reports
+@using EggLedger.Domain.Reports.Charts
+
+@*
+    Grouped horizontal bars over a 2D result. Port of ReportGroupedBar.vue: each
+    row label heads a stack of colored per-column bars, with a "Other" rollup once
+    columns exceed MaxCols. Hue-spread series colors via ChartGeometry.SeriesColors.
+    Legend drag-reorder is deferred (static column order); bars + colors faithful.
+*@
+
+<div class="grouped-bar">
+    @{
+        var cols = DisplayCols();
+        var colors = ColColors(cols);
+        var max = GlobalMax();
+    }
+    @for (int rIdx = 0; rIdx < Result.RowLabels.Count; rIdx++)
+    {
+        var row = Result.RowLabels[rIdx];
+        <div class="gb-row">
+            <span class="gb-row-label" title="@row">@row</span>
+            <div class="gb-bars">
+                @for (int cIdx = 0; cIdx < cols.Count; cIdx++)
+                {
+                    var raw = CellRawValue(rIdx, cIdx, cols);
+                    if (raw > 0)
+                    {
+                        <div class="gb-bar-row">
+                            <div class="gb-bar"
+                                 style="width: @BarWidth(raw, max)%; background-color: @colors[cIdx];"
+                                 title="@cols[cIdx] @row: @CellLabel(raw)">
+                            </div>
+                            <span class="gb-cell-label">@CellLabel(raw)</span>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    }
+    <div class="gb-legend">
+        @{
+            var legendCols = DisplayCols();
+            var legendColors = ColColors(legendCols);
+        }
+        @for (int c = 0; c < legendCols.Count; c++)
+        {
+            <div class="legend-item" title="@legendCols[c]">
+                <span class="legend-swatch" style="background-color: @legendColors[c];"></span>
+                <span class="legend-label">@legendCols[c]</span>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private const int MaxCols = 11;
+
+    [Parameter, EditorRequired]
+    public ReportResult Result { get; set; } = new();
+
+    [Parameter, EditorRequired]
+    public string Color { get; set; } = "#6366f1";
+
+    [Parameter]
+    public string? NormalizeBy { get; set; }
+
+    private bool IsPct => NormalizeBy is "row_pct" or "col_pct" or "global_pct";
+    private int RawColCount => Result.ColLabels.Count;
+    private bool HasOtherGroup => RawColCount > MaxCols + 1;
+
+    private List<string> DisplayCols()
+    {
+        var raw = Result.ColLabels.ToList();
+        if (raw.Count <= MaxCols + 1)
+        {
+            return raw;
+        }
+        var kept = raw.Take(MaxCols).ToList();
+        kept.Add("Other");
+        return kept;
+    }
+
+    private double GlobalMax() => Result.MatrixValues.DefaultIfEmpty(0).Max();
+
+    private double CellRawValue(int rIdx, int cDisplayIdx, List<string> cols)
+    {
+        int nCols = RawColCount;
+        if (HasOtherGroup && cDisplayIdx >= MaxCols)
+        {
+            double sum = 0;
+            for (int c = MaxCols; c < nCols; c++)
+            {
+                int flat = rIdx * nCols + c;
+                sum += flat < Result.MatrixValues.Count ? Result.MatrixValues[flat] : 0;
+            }
+            return sum;
+        }
+        int idx = rIdx * nCols + cDisplayIdx;
+        return idx < Result.MatrixValues.Count ? Result.MatrixValues[idx] : 0;
+    }
+
+    private double BarWidth(double v, double max)
+    {
+        if (IsPct)
+        {
+            return v;
+        }
+        return max == 0 ? 0 : v / max * 100;
+    }
+
+    private string CellLabel(double v)
+    {
+        if (IsPct)
+        {
+            return v.ToString("0.0", CultureInfo.InvariantCulture) + "%";
+        }
+        return v % 1 == 0
+            ? ((long)v).ToString(CultureInfo.InvariantCulture)
+            : v.ToString("0.00", CultureInfo.InvariantCulture);
+    }
+
+    private List<string> ColColors(List<string> cols)
+    {
+        if (RawColCount == 0)
+        {
+            return new List<string>();
+        }
+        return ChartGeometry.SeriesColors(
+            cols,
+            Color,
+            EmptyOverrides,
+            RawColCount,
+            ("Other", "#6b7280"));
+    }
+
+    private static readonly Dictionary<string, string> EmptyOverrides = new();
+}

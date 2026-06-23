@@ -1,0 +1,221 @@
+@using EggLedger.Domain.Reports
+@using EggLedger.Web.Data
+@using EggLedger.Web.Services
+@inject IReportRunner MissionDb
+@inject MennoService Menno
+
+@*
+    A single report card: colored header (name + weight badge), the dispatched
+    chart, and edit/delete controls in edit mode. Runs the report against the
+    engine on first render. Port of ReportCard.vue (core path).
+
+    When the report has Menno enabled and produced a 2D heatmap result, it also runs
+    MennoService.ExecuteComparison and renders the community comparison per
+    mennoCompareMode (side_by_side / ratio / dual_value). Closes the C3.3 deferral.
+*@
+
+<div class="report-card" style="grid-column: @Pos.Col / span @Pos.W; grid-row: @Pos.Row / span @Pos.H;">
+    <div class="card-header" style="border-left-color: @ColorOr;">
+        <span class="card-name" title="@Def.Name">@DisplayName</span>
+        <span class="card-weight weight-@WeightClass">@Def.Weight</span>
+        @if (EditMode)
+        {
+            <button type="button" class="card-btn" title="Edit" @onclick="() => OnEdit.InvokeAsync(Def)">&#9998;</button>
+            <button type="button" class="card-btn card-btn-danger" title="Delete" @onclick="() => OnDelete.InvokeAsync(Def.Id)">&#215;</button>
+        }
+    </div>
+    <div class="card-body">
+        @if (_error is not null)
+        {
+            <div class="card-error">@_error</div>
+        }
+        else if (_result is null)
+        {
+            <div class="card-loading">Running...</div>
+        }
+        else if (ShowMennoComparison)
+        {
+            @switch (Def.MennoCompareMode)
+            {
+                case MennoComparison.SideBySide:
+                    <div class="menno-split">
+                        <div class="menno-panel">
+                            <span class="menno-panel-label">Yours</span>
+                            <div class="menno-panel-chart">
+                                <ReportHeatmap Result="_result" Color="ColorOr" NormalizeBy="NormalizeOr"
+                                               UnfilledColor="@Def.UnfilledColor" MinSampleSize="Def.MinSampleSize" />
+                            </div>
+                        </div>
+                        <div class="menno-panel">
+                            <span class="menno-panel-label">Community</span>
+                            <div class="menno-panel-chart">
+                                <ReportHeatmap Result="MennoAirtime" Color="ColorOr" NormalizeBy="NormalizeOr"
+                                               UnfilledColor="@Def.UnfilledColor" />
+                            </div>
+                        </div>
+                    </div>
+                    break;
+                case MennoComparison.Ratio:
+                    <ReportHeatmap Result="RatioResult" Color="ColorOr" NormalizeBy="ratio"
+                                   UnfilledColor="@Def.UnfilledColor"
+                                   MinSampleSize="Def.MinSampleSize" />
+                    break;
+                case MennoComparison.DualValue:
+                    <ReportHeatmap Result="UserPerMission" Color="ColorOr" NormalizeBy="NormalizeOr"
+                                   UnfilledColor="@Def.UnfilledColor"
+                                   SecondaryValues="_mennoResult!.MatrixValues"
+                                   ColorValues="RatioColorValues"
+                                   MinSampleSize="Def.MinSampleSize" />
+                    break;
+                default:
+                    <ReportChart Def="Def" Result="_result" />
+                    break;
+            }
+        }
+        else
+        {
+            <ReportChart Def="Def" Result="_result" />
+        }
+    </div>
+</div>
+
+<MennoLoadingModal @ref="_mennoModal" />
+
+@code {
+    [Parameter, EditorRequired]
+    public ReportDefinition Def { get; set; } = new();
+
+    [Parameter, EditorRequired]
+    public GridCardPos Pos { get; set; }
+
+    [Parameter, EditorRequired]
+    public string AccountId { get; set; } = "";
+
+    [Parameter]
+    public bool EditMode { get; set; }
+
+    [Parameter]
+    public EventCallback<ReportDefinition> OnEdit { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnDelete { get; set; }
+
+    private ReportResult? _result;
+    private ReportResult? _mennoResult;
+    private string? _error;
+    private string _ranKey = "";
+    private MennoLoadingModal? _mennoModal;
+
+    private string ColorOr => string.IsNullOrEmpty(Def.Color) ? "#6366f1" : Def.Color;
+    private string NormalizeOr => string.IsNullOrEmpty(Def.NormalizeBy) ? "none" : Def.NormalizeBy;
+    private string DisplayName => string.IsNullOrEmpty(Def.Name) ? "Untitled report" : Def.Name;
+
+    private bool ShowMennoComparison =>
+        MennoComparison.ShouldRender(Def, _result, _mennoResult);
+
+    private ReportResult MennoAirtime =>
+        MennoComparison.MennoAirtimeResult(Def, _mennoResult!);
+
+    private ReportResult UserPerMission =>
+        MennoComparison.UserPerMissionResult(_result!);
+
+    private ReportResult RatioResult =>
+        MennoComparison.RatioResult(_result!, _mennoResult!);
+
+    private IReadOnlyList<double> RatioColorValues =>
+        MennoComparison.RatioColorValues(_result!, _mennoResult!);
+
+    private string WeightClass => Def.Weight switch
+    {
+        "HEAVY" => "heavy",
+        "MEDIUM" => "medium",
+        _ => "low",
+    };
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Re-run when the definition meaningfully changes (id + updated_at).
+        string key = Def.Id + ":" + Def.UpdatedAt;
+        if (key == _ranKey)
+        {
+            return;
+        }
+        _ranKey = key;
+        await RunAsync();
+    }
+
+    private async Task RunAsync()
+    {
+        _result = null;
+        _mennoResult = null;
+        _error = null;
+        try
+        {
+            _result = await MissionDb.RunReportAsync(Def, AccountId);
+        }
+        catch (Exception ex)
+        {
+            _error = "Failed to run: " + ex.Message;
+            StateHasChanged();
+            return;
+        }
+        StateHasChanged();
+        await RunMennoComparisonAsync();
+    }
+
+    /// <summary>
+    /// Runs the Menno community comparison when the report is Menno-enabled and the
+    /// user result is a 2D heatmap with raw labels. Ensures the community data is
+    /// downloaded (showing the loading modal), then calls ExecuteComparison. A null
+    /// comparison (ineligible dimensions or insufficient match) leaves the card on
+    /// the plain user chart. Per-cell min-sample gating is handled inside the
+    /// heatmap via MinSampleSize.
+    /// </summary>
+    private async Task RunMennoComparisonAsync()
+    {
+        if (_result is null
+            || !Def.MennoEnabled
+            || !_result.Is2D
+            || _result.RawRowLabels.Count == 0
+            || _result.RawColLabels.Count == 0)
+        {
+            return;
+        }
+
+        try
+        {
+            if (!Menno.HasData && _mennoModal is not null)
+            {
+                await _mennoModal.OpenAsync();
+                try
+                {
+                    await Menno.EnsureLoadedAsync();
+                }
+                finally
+                {
+                    await _mennoModal.CloseAsync();
+                }
+            }
+            else if (!Menno.HasData)
+            {
+                await Menno.EnsureLoadedAsync();
+            }
+
+            var items = Menno.CachedItems;
+            if (items is null)
+            {
+                return;
+            }
+
+            _mennoResult = MennoService.ExecuteComparison(
+                Def, items, _result.RawRowLabels, _result.RawColLabels);
+            StateHasChanged();
+        }
+        catch
+        {
+            // A failed Menno download or comparison leaves the plain user chart;
+            // the community overlay is supplementary, not load-bearing.
+            _mennoResult = null;
+        }
+    }
+}

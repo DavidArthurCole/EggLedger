@@ -1,0 +1,82 @@
+@using EggLedger.Domain.Reports
+@using EggLedger.Domain.Reports.Charts
+
+@*
+    Horizontal bar chart. Port of ReportBarChart.vue: a 3-column grid of
+    label / track / value rows, sortable by chart_type (bar_desc / bar_asc).
+    Uses CSS-width bars (no SVG); colors come from per-label overrides or the
+    base color. Tooltip is rendered statically via the native title attribute.
+*@
+
+<div class="bar-chart">
+    @foreach (var pair in SortedPairs())
+    {
+        <span class="bar-label" title="@pair.Label">@pair.Label</span>
+        <div class="bar-track">
+            <div class="bar-fill"
+                 style="width: @BarWidth(pair.Value)%; background-color: @BarColor(pair.Label);"
+                 title="@BarTitle(pair.Label, pair.Value)">
+            </div>
+        </div>
+        <span class="bar-value">@FormatValue(pair.Value)</span>
+    }
+    @if (!string.IsNullOrEmpty(UnitLabel))
+    {
+        <div class="bar-unit">@UnitLabel</div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public ReportResult Result { get; set; } = new();
+
+    [Parameter, EditorRequired]
+    public string Color { get; set; } = "#6366f1";
+
+    [Parameter]
+    public string? UnitLabel { get; set; }
+
+    [Parameter]
+    public string? LabelColors { get; set; }
+
+    /// <summary>chart_type: "bar", "bar_desc", or "bar_asc".</summary>
+    [Parameter]
+    public string? ChartType { get; set; }
+
+    private string UnitSuffix => string.IsNullOrEmpty(UnitLabel) ? "" : " " + UnitLabel;
+
+    private IReadOnlyDictionary<string, string> ParsedColors =>
+        SliceColors.ParseLabelColors(LabelColors);
+
+    private List<double> DisplayValues() =>
+        Result.IsFloat ? Result.FloatValues : Result.Values.Select(v => (double)v).ToList();
+
+    private double MaxVal() => Math.Max(DisplayValues().DefaultIfEmpty(0).Max(), 1);
+
+    private List<(string Label, double Value)> SortedPairs()
+    {
+        var values = DisplayValues();
+        var pairs = Result.Labels
+            .Select((label, i) => (Label: label, Value: i < values.Count ? values[i] : 0))
+            .ToList();
+        return ChartType switch
+        {
+            "bar_desc" => pairs.OrderByDescending(p => p.Value).ToList(),
+            "bar_asc" => pairs.OrderBy(p => p.Value).ToList(),
+            _ => pairs,
+        };
+    }
+
+    private int BarWidth(double val) => (int)Math.Round(val / MaxVal() * 100);
+
+    private string BarColor(string label) =>
+        ParsedColors.TryGetValue(label, out var c) && !string.IsNullOrEmpty(c) ? c : Color;
+
+    private string BarTitle(string label, double value) =>
+        $"{label}: {FormatValue(value)}{UnitSuffix}";
+
+    private string FormatValue(double val) =>
+        Result.IsFloat
+            ? val.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)
+            : ((long)val).ToString(System.Globalization.CultureInfo.InvariantCulture);
+}

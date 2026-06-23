@@ -1,0 +1,38 @@
+@inherits LayoutComponentBase
+@using EggLedger.Web.Components
+@using EggLedger.Web.State
+@inject AppStateService AppStateSvc
+
+<div class="app-shell">
+    <TabBar Tabs="_tabs">
+        <Right>
+            <GlobalAccountHeader />
+        </Right>
+    </TabBar>
+
+    <main class="app-body">
+        @Body
+    </main>
+
+    <footer class="app-footer">
+        <a class="url-link" href="https://github.com/DavidArthurCole/EggLedger" target="_blank" rel="noopener">EggLedger</a>
+        @if (!string.IsNullOrEmpty(AppStateSvc.AppVersion))
+        {
+            <span> v@(AppStateSvc.AppVersion) </span>
+        }
+        <span>by @@<a class="url-link" href="https://github.com/fanaticscripter" target="_blank" rel="noopener">mk2</a>
+        &amp; @@<a class="url-link" href="https://github.com/DavidArthurCole" target="_blank" rel="noopener">DavidArthurCole</a></span>
+    </footer>
+</div>
+
+@code {
+    private static readonly IReadOnlyList<TabBar.TabItem> _tabs =
+    [
+        new("Ledger", "/"),
+        new("Mission Data", "/missions"),
+        new("Lifetime Data", "/lifetime"),
+        new("Reports", "/reports"),
+        new("Settings", "/settings"),
+        new("About", "/about"),
+    ];
+}

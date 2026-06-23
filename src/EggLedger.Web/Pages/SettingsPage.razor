@@ -1,0 +1,74 @@
+@page "/settings"
+@using EggLedger.Web.Components
+@using EggLedger.Web.Data
+@using EggLedger.Web.Platform
+@using EggLedger.Web.Settings
+@inject IndexedDbSettings Settings
+@inject IPlatformCapabilities Platform
+
+<PageTitle>EggLedger - Settings</PageTitle>
+
+<section class="settings">
+    <h1>Settings</h1>
+
+    @if (!_loaded)
+    {
+        <p class="settings-loading">Loading settings...</p>
+    }
+    else
+    {
+        @if (Platform.IsDesktop)
+        {
+            @* Desktop-only: window/browser sizing and storage management need real
+               OS access. Hidden in the browser build; a desktop host renders these. *@
+            <section class="settings-desktop">
+                <h2 class="settings-desktop-heading">Window &amp; Browser</h2>
+                <p class="settings-desktop-note">Available in the desktop app.</p>
+            </section>
+            <section class="settings-desktop">
+                <h2 class="settings-desktop-heading">Storage</h2>
+                <p class="settings-desktop-note">Available in the desktop app.</p>
+            </section>
+        }
+
+        <OptionsPanel Model="_model" OnSetting="OnSettingAsync" />
+
+        <CloudSyncPanel @ref="_cloudPanel" />
+    }
+</section>
+
+@code {
+    private bool _loaded;
+    private readonly SettingsModel _model = new();
+    private CloudSyncPanel? _cloudPanel;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var all = await Settings.GetAllSettingsAsync();
+        _model.LoadFrom(all);
+        _loaded = true;
+    }
+
+    private async Task OnSettingAsync((string Key, string Value) change)
+    {
+        await Settings.SetSettingAsync(change.Key, change.Value);
+        // Auto-sync mirrors the Vue useCloudSync watch: a change to a cloud-syncable
+        // setting triggers a push when auto-sync is on and a session is connected.
+        // Machine-local keys (auto-export, worker-warning) do not.
+        if (_cloudPanel is not null && IsCloudSyncableKey(change.Key))
+        {
+            await _cloudPanel.AutoSyncIfEnabledAsync();
+        }
+        StateHasChanged();
+    }
+
+    private static bool IsCloudSyncableKey(string key) => key is
+        SettingsModel.KeyAutoRefreshMenno or
+        SettingsModel.KeyRetryFailedMissions or
+        SettingsModel.KeyHideTimeoutErrors or
+        SettingsModel.KeyWorkerCount or
+        SettingsModel.KeyScreenshotSafety or
+        SettingsModel.KeyShowMissionProgress or
+        SettingsModel.KeyCollapseOlderSections or
+        SettingsModel.KeyAdvancedDropFilter;
+}

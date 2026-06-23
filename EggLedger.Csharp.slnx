@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/EggLedger.Domain/EggLedger.Domain.csproj" />
+    <Project Path="src/EggLedger.Web/EggLedger.Web.csproj" />
+    <Project Path="src/EggLedger.Web.Wasm/EggLedger.Web.Wasm.csproj" />
+    <Project Path="src/EggLedger.Desktop/EggLedger.Desktop.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/EggLedger.Domain.Tests/EggLedger.Domain.Tests.csproj" />
+    <Project Path="tests/EggLedger.Web.Tests/EggLedger.Web.Tests.csproj" />
+    <Project Path="tests/EggLedger.Desktop.Tests/EggLedger.Desktop.Tests.csproj" />
+  </Folder>
+</Solution>

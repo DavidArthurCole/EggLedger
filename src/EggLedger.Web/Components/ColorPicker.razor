@@ -1,0 +1,146 @@
+@using EggLedger.Web.Settings
+
+@*
+    Color picker. Port of www/src/components/ColorPicker.vue: a swatch button that
+    opens a popover with preset swatches, saturation/lightness sliders, and a hex
+    input. All color math (hex<->HSL, normalize, presets) is the tested pure
+    ColorPickerMath helper, which itself reuses SliceColors for the conversions.
+    Two-way bound through Value/ValueChanged (the canonical #rrggbb string).
+*@
+
+<div class="color-picker">
+    <button type="button"
+            class="cp-swatch"
+            style="background-color: @CurrentHex"
+            aria-label="@($"Color picker, current color {CurrentHex}")"
+            @onclick="Toggle">
+    </button>
+
+    @if (_open)
+    {
+        <div class="cp-popover">
+            <div class="cp-presets">
+                @foreach (var swatch in ColorPickerMath.PresetColors)
+                {
+                    var s = swatch;
+                    <button type="button"
+                            class="cp-preset @(string.Equals(s, CurrentHex, StringComparison.OrdinalIgnoreCase) ? "cp-preset-active" : "")"
+                            style="background-color: @s"
+                            aria-label="@s"
+                            @onclick="() => SelectAsync(s)">
+                    </button>
+                }
+            </div>
+
+            <label class="cp-slider">
+                <span class="cp-slider-key">S</span>
+                <input type="range" min="0" max="100" value="@_hsl.S" @oninput="OnSaturationInput" />
+                <span class="cp-slider-val">@_hsl.S%</span>
+            </label>
+            <label class="cp-slider">
+                <span class="cp-slider-key">L</span>
+                <input type="range" min="10" max="90" value="@_hsl.L" @oninput="OnLightnessInput" />
+                <span class="cp-slider-val">@_hsl.L%</span>
+            </label>
+
+            <div class="cp-hex">
+                <span class="cp-hex-key">Hex</span>
+                <input type="text"
+                       maxlength="7"
+                       placeholder="#6366f1"
+                       value="@_hexInput"
+                       @oninput="OnHexInput"
+                       @onchange="CommitHexInput" />
+                <div class="cp-hex-preview" style="background-color: @(ColorPickerMath.IsValidHex(_hexInput) ? _hexInput : CurrentHex)"></div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>The bound color, a canonical #rrggbb string.</summary>
+    [Parameter]
+    public string Value { get; set; } = ColorPickerMath.Fallback;
+
+    [Parameter]
+    public EventCallback<string> ValueChanged { get; set; }
+
+    private bool _open;
+    private ColorPickerMath.HslInt _hsl;
+    private string _hexInput = ColorPickerMath.Fallback;
+    private string _lastSynced = "";
+
+    private string CurrentHex => ColorPickerMath.NormalizeToHex(Value);
+
+    protected override void OnParametersSet()
+    {
+        // Re-derive the editor state when the bound value changes from outside.
+        if (CurrentHex != _lastSynced)
+        {
+            SyncFromHex(CurrentHex);
+            _lastSynced = CurrentHex;
+        }
+    }
+
+    private void Toggle() => _open = !_open;
+
+    private void SyncFromHex(string hex)
+    {
+        _hsl = ColorPickerMath.HexToHslInt(hex);
+        _hexInput = hex;
+    }
+
+    private async Task EmitAsync(string hex)
+    {
+        _lastSynced = hex;
+        await ValueChanged.InvokeAsync(hex);
+    }
+
+    private async Task EmitCurrentHslAsync()
+    {
+        var hex = ColorPickerMath.HslToHex(_hsl.H, _hsl.S, _hsl.L);
+        _hexInput = hex;
+        await EmitAsync(hex);
+    }
+
+    private async Task OnSaturationInput(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var s))
+        {
+            _hsl = _hsl with { S = s };
+            await EmitCurrentHslAsync();
+        }
+    }
+
+    private async Task OnLightnessInput(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var l))
+        {
+            _hsl = _hsl with { L = l };
+            await EmitCurrentHslAsync();
+        }
+    }
+
+    private void OnHexInput(ChangeEventArgs e) => _hexInput = e.Value?.ToString() ?? "";
+
+    private async Task CommitHexInput()
+    {
+        if (ColorPickerMath.IsValidHex(_hexInput))
+        {
+            var lower = _hexInput.ToLowerInvariant();
+            SyncFromHex(lower);
+            await EmitAsync(lower);
+        }
+        else
+        {
+            _hexInput = CurrentHex;
+        }
+    }
+
+    private async Task SelectAsync(string color)
+    {
+        SyncFromHex(color);
+        await EmitAsync(color);
+        _open = false;
+    }
+}

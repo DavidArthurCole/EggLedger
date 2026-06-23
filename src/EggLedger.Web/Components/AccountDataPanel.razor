@@ -1,0 +1,149 @@
+@using EggLedger.Domain.Export
+@using EggLedger.Domain.MissionQuery
+@using EggLedger.Web.Data
+@using EggLedger.Web.Services
+@using EggLedger.Web.State
+@inject IMissionStore Store
+@inject IndexedDbAccountStore AccountStore
+@inject IDownloadService Downloads
+
+@*
+    Browser adaptation of the desktop ExportManagementPanel. The desktop panel
+    lists on-disk CSV/XLSX export file groups and prunes old files. The browser
+    has no export files (exports are one-shot downloads), so this manages the
+    per-account STORED DATA instead: mission count, when last fetched, an
+    export-to-download action, and deleting an account.
+*@
+<div class="data-panel">
+    <span class="section-heading">Stored Account Data</span>
+    @if (Accounts.Count == 0)
+    {
+        <p class="empty-note">No accounts with stored missions yet. Add an account above and fetch.</p>
+    }
+    else
+    {
+        <ul class="data-list">
+            @foreach (var acct in Sorted)
+            {
+                <li class="data-row">
+                    <div class="data-id-line">
+                        <span class="data-nick" style="color: #@acct.AccountColor">@acct.Nickname</span>
+                        <span class="data-eb">@acct.EBString</span>
+                        <span class="data-id">@acct.Id</span>
+                    </div>
+                    <div class="data-stats">
+                        <span>@acct.MissionCount missions</span>
+                        @{ var since = LedgerFormatting.FormatTimeSince(acct.LastMissionReturnDT, NowUnix); }
+                        @if (since != "")
+                        {
+                            <span class="data-sep">&middot;</span>
+                            <span>fetched @since</span>
+                        }
+                    </div>
+                    <div class="data-actions">
+                        <button type="button" class="btn-export" disabled="@_busy"
+                            @onclick="() => ExportCsv(acct.Id, acct.Nickname)">Export CSV</button>
+                        <button type="button" class="btn-export" disabled="@_busy"
+                            @onclick="() => ExportXlsx(acct.Id, acct.Nickname)">Export XLSX</button>
+                        <button type="button" class="btn-delete" disabled="@_busy"
+                            @onclick="() => Delete(acct.Id)" title="Removes the account from the list. Stored missions stay cached.">Forget account</button>
+                    </div>
+                </li>
+            }
+        </ul>
+    }
+    @if (_error != "")
+    {
+        <p class="panel-error">@_error</p>
+    }
+</div>
+
+@code {
+    private bool _busy;
+    private string _error = "";
+
+    /// <summary>Accounts with stored data (joined with mission stats).</summary>
+    [Parameter]
+    public IReadOnlyList<DatabaseAccount> Accounts { get; set; } = [];
+
+    /// <summary>Raised after a delete so the parent can reload the lists.</summary>
+    [Parameter]
+    public EventCallback Changed { get; set; }
+
+    private static double NowUnix => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+    private IReadOnlyList<DatabaseAccount> Sorted =>
+        LedgerFormatting.SortByMissionCountDescending(Accounts);
+
+    private async Task ExportCsv(string id, string nickname)
+    {
+        await ExportAsync(id, nickname, csv: true);
+    }
+
+    private async Task ExportXlsx(string id, string nickname)
+    {
+        await ExportAsync(id, nickname, csv: false);
+    }
+
+    private async Task ExportAsync(string id, string nickname, bool csv)
+    {
+        _busy = true;
+        _error = "";
+        try
+        {
+            var responses = await Store.GetPlayerCompleteMissionsAsync(id);
+            if (responses is null || responses.Count == 0)
+            {
+                _error = "No missions to export for this account.";
+                return;
+            }
+            var missions = responses.Select(Mission.FromResponse).ToList();
+            string baseName = $"{Sanitize(nickname)}_{id}";
+            if (csv)
+            {
+                await Downloads.DownloadCsvAsync(missions, baseName + ".csv");
+            }
+            else
+            {
+                await Downloads.DownloadXlsxAsync(missions, baseName + ".xlsx");
+            }
+        }
+        catch (Exception e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task Delete(string id)
+    {
+        _busy = true;
+        _error = "";
+        try
+        {
+            await AccountStore.RemoveKnownAccountAsync(id);
+            await Changed.InvokeAsync();
+        }
+        catch (Exception e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private static string Sanitize(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return "account";
+        }
+        var chars = name.Select(c => char.IsLetterOrDigit(c) ? c : '_').ToArray();
+        return new string(chars);
+    }
+}

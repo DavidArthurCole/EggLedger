@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <Description>EggLedger shared Blazor UI (Razor class library): all 6 tabs, components, services, and the platform capability seam. Referenced by the browser WASM entrypoint (EggLedger.Web.Wasm) and the Photino desktop host (EggLedger.Desktop). Host-agnostic over HttpClient / JSInterop.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\EggLedger.Domain\EggLedger.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

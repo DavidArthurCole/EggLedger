@@ -1,0 +1,87 @@
+@using EggLedger.Web.Missions
+
+@* Port of www/src/components/DropDisplay.vue + the icon-grid core of
+   InnerDropDisplay.vue (tooltips deferred). One spec-type section: a colored
+   label "Label (totalCount)" then the grouped drop icons with counts. *@
+
+@if (Items is { Count: > 0 })
+{
+    <div class="@LabelClass">
+        @LabelText (@TotalCount)
+    </div>
+    <div class="drop-grid">
+        @foreach (var item in Items)
+        {
+            <div class="drop-rep">
+                <span class="drop-link @RarityBgClass(item)">
+                    <img class="drop-img" loading="lazy" decoding="async" alt="@item.Name" src="@SpecPath(item)" />
+                    @if (item.Count > 1)
+                    {
+                        <span class="drop-count">@item.Count</span>
+                    }
+                </span>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    /// <summary>Spec type group: "artifact", "stone", "ingredient", or "stone_fragment".</summary>
+    [Parameter]
+    public string Type { get; set; } = "";
+
+    [Parameter]
+    public IReadOnlyList<DropLike>? Items { get; set; }
+
+    private int TotalCount
+    {
+        get
+        {
+            int sum = 0;
+            if (Items is not null)
+            {
+                foreach (var i in Items)
+                {
+                    sum += i.Count;
+                }
+            }
+            return sum;
+        }
+    }
+
+    // Port of getLabelDisplayValue.
+    private string LabelText => Type switch
+    {
+        "artifact" => "Artifacts",
+        "stone" => "Eggfinity Stones",
+        "ingredient" => "Ingredients",
+        "stone_fragment" => "Stone Fragments",
+        _ => "Unknown",
+    };
+
+    // Port of getLabelClassList color mapping.
+    private string LabelClass => "drop-label " + Type switch
+    {
+        "artifact" => "drop-label-artifact",
+        "stone" => "drop-label-stone",
+        "ingredient" or "stone_fragment" => "drop-label-muted",
+        _ => "drop-label-unknown",
+    };
+
+    // Port of getSpecPathOffset: Stone -> +2, else +1.
+    private static int SpecPathOffset(DropLike item) => item.SpecType == "Stone" ? 2 : 1;
+
+    // Port of getAClass: artifacts carry their rarity background, others bg-r-0.
+    private static string RarityBgClass(DropLike item) =>
+        item.SpecType == "Artifact" ? "drop-bg-r-" + item.Rarity : "drop-bg-r-0";
+
+    // Port of specPath.
+    private static string SpecPath(DropLike item)
+    {
+        var fixedName = item.Name
+            .Replace("_FRAGMENT", "", StringComparison.Ordinal)
+            .Replace("ORNATE_GUSSET", "GUSSET", StringComparison.Ordinal)
+            .Replace("VIAL_MARTIAN_DUST", "VIAL_OF_MARTIAN_DUST", StringComparison.Ordinal);
+        return $"images/artifacts/{fixedName}/{fixedName}_{item.Level + SpecPathOffset(item)}.png";
+    }
+}

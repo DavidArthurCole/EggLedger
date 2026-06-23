@@ -1,0 +1,131 @@
+@using EggLedger.Domain.MissionPacking
+@using EggLedger.Domain.MissionQuery
+@using EggLedger.Web.Missions
+@inject MissionQueryHandlers Queries
+@inject IJSRuntime Js
+
+@* Port of www/src/components/MissionOverlay.vue (single mode only). Native
+   <dialog> via dialog.js. Shows ShipDisplay + prev/next nav + close. Multi mode
+   is deferred. *@
+
+<dialog @ref="_dialog" class="mission-overlay" @oncancel="OnCancel" @oncancel:preventDefault="false">
+    <div class="overlay-panel">
+        <button class="overlay-close" type="button" @onclick="CloseAsync" aria-label="Close">
+            <svg class="overlay-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </button>
+
+        <button class="overlay-nav overlay-nav-left" type="button" title="Previous mission"
+                disabled="@(_data?.PrevMission is null)"
+                @onclick="@(() => NavigateAsync(_data?.PrevMission))">
+            <svg class="overlay-nav-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+        </button>
+        <button class="overlay-nav overlay-nav-right" type="button" title="Next mission"
+                disabled="@(_data?.NextMission is null)"
+                @onclick="@(() => NavigateAsync(_data?.NextMission))">
+            <svg class="overlay-nav-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+        </button>
+
+        <div class="overlay-scroll">
+            <div class="overlay-inner">
+                @if (_data is not null)
+                {
+                    <ShipDisplay Data="_data" />
+                }
+            </div>
+        </div>
+    </div>
+</dialog>
+
+@code {
+    /// <summary>Active account id, used to fetch drops for the viewed mission.</summary>
+    [Parameter]
+    public string? AccountId { get; set; }
+
+    /// <summary>
+    /// The currently filtered + tab-filtered missions, in display order. Drives
+    /// prev/next navigation.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<DatabaseMission> FilteredMissions { get; set; } = Array.Empty<DatabaseMission>();
+
+    /// <summary>Active drop sort method for the overlay.</summary>
+    [Parameter]
+    public MissionSortMethod SortMethod { get; set; } = MissionSortMethod.Default;
+
+    private ElementReference _dialog;
+    private IJSObjectReference? _module;
+    private ViewMissionData? _data;
+
+    private async ValueTask<IJSObjectReference> ModuleAsync() =>
+        _module ??= await Js.InvokeAsync<IJSObjectReference>("import", "./_content/EggLedger.Web/js/dialog.js");
+
+    /// <summary>Opens the overlay for a mission id, building its detail data.</summary>
+    public async Task OpenAsync(string missionId)
+    {
+        await LoadAsync(missionId);
+        var module = await ModuleAsync();
+        await module.InvokeVoidAsync("showModal", _dialog);
+    }
+
+    private async Task LoadAsync(string missionId)
+    {
+        var mission = FindMission(missionId);
+        if (mission is null)
+        {
+            _data = null;
+            StateHasChanged();
+            return;
+        }
+
+        var drops = AccountId is null
+            ? null
+            : await Queries.GetShipDropsAsync(AccountId, missionId);
+
+        var data = MissionDetailBuilder.BuildBase(
+            mission,
+            drops ?? new List<MissionDrop>(),
+            FilteredMissions,
+            extendedInfo: true);
+        MissionDetailBuilder.ApplySortMethod(data, SortMethod);
+        _data = data;
+        StateHasChanged();
+    }
+
+    private DatabaseMission? FindMission(string missionId)
+    {
+        foreach (var m in FilteredMissions)
+        {
+            if (m.MissiondId == missionId)
+            {
+                return m;
+            }
+        }
+        return null;
+    }
+
+    private async Task NavigateAsync(string? missionId)
+    {
+        if (missionId is not null)
+        {
+            await LoadAsync(missionId);
+        }
+    }
+
+    private async Task CloseAsync()
+    {
+        var module = await ModuleAsync();
+        await module.InvokeVoidAsync("close", _dialog);
+    }
+
+    private void OnCancel()
+    {
+        // Esc / backdrop close: native <dialog> handles the close itself.
+        _data = null;
+    }
+}

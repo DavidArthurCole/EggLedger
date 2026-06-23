@@ -1,0 +1,64 @@
+@using EggLedger.Domain.Reports
+
+@*
+    Dispatches a report definition + result to the matching chart component by
+    displayMode. Port of the chart-selection logic in ReportCard.vue (the non-
+    Menno branches; Menno comparison rendering is deferred to C3.6). Empty results
+    show a placeholder.
+*@
+
+@if (IsEmpty)
+{
+    <div class="chart-empty">No data for this report.</div>
+}
+else
+{
+    switch (Def.DisplayMode)
+    {
+        case "heatmap":
+            <ReportHeatmap Result="Result" Color="ColorOr" NormalizeBy="NormalizeOr"
+                           UnfilledColor="@Def.UnfilledColor" MinSampleSize="Def.MinSampleSize" />
+            break;
+        case "grouped_bar":
+            <ReportGroupedBar Result="Result" Color="ColorOr" NormalizeBy="NormalizeOr" />
+            break;
+        case "multi_line":
+            <ReportMultiLineChart Result="Result" Color="ColorOr"
+                                  LabelColors="@Def.LabelColors" NormalizeBy="NormalizeOr" />
+            break;
+        case "pie":
+            <ReportPieChart Result="Result" Color="ColorOr" LabelColors="@Def.LabelColors" />
+            break;
+        case "line":
+            <ReportLineChart Result="Result" Color="ColorOr"
+                             UnitLabel="@NormalizeLabel" ChartType="@Def.ChartType" />
+            break;
+        default:
+            <ReportBarChart Result="Result" Color="ColorOr" UnitLabel="@NormalizeLabel"
+                            LabelColors="@Def.LabelColors" ChartType="@Def.ChartType" />
+            break;
+    }
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public ReportDefinition Def { get; set; } = new();
+
+    [Parameter, EditorRequired]
+    public ReportResult Result { get; set; } = new();
+
+    private bool IsEmpty =>
+        Result.Labels.Count == 0
+        && Result.RowLabels.Count == 0
+        && Result.MatrixValues.Count == 0;
+
+    private string ColorOr => string.IsNullOrEmpty(Def.Color) ? "#6366f1" : Def.Color;
+    private string NormalizeOr => string.IsNullOrEmpty(Def.NormalizeBy) ? "none" : Def.NormalizeBy;
+
+    private string? NormalizeLabel => Def.NormalizeBy switch
+    {
+        "row_pct" or "col_pct" or "global_pct" => "%",
+        "per_mission" => "per mission",
+        _ => null,
+    };
+}

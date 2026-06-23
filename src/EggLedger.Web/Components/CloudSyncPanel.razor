@@ -1,0 +1,493 @@
+@using EggLedger.Domain.MissionQuery
+@using EggLedger.Web.Data
+@using EggLedger.Web.Services
+@using EggLedger.Web.Settings
+@implements IAsyncDisposable
+@inject CloudSyncService Cloud
+@inject CloudSessionStore SessionStore
+@inject IndexedDbSettings Settings
+@inject IndexedDbAccountStore Accounts
+@inject IndexedDbReportStore Reports
+
+@*
+    Cloud-sync panel. Port of www/src/views/SettingsView.vue Settings Sync section
+    + useCloudSync.ts: connect (Discord redirect + poll loop), connected status,
+    sync up / restore down, disconnect, delete remote data, auto-sync toggle. Owns
+    the 2s/5min poll loop around CloudSyncService.PollOnceAsync with cancellation
+    so navigating away cannot leak it. Drives CloudSyncService; persists the
+    session through CloudSessionStore; packs/unpacks the accounts/settings/reports
+    blobs through the tested CloudSyncBlobs helper.
+*@
+
+<section class="cs-panel">
+    <h2 class="cs-heading">Settings Sync</h2>
+    <span class="cs-sub">(optional - requires Discord)</span>
+
+    @if (_reachableChecking)
+    {
+        <p class="cs-muted">Checking connection to ledgersync.davidarthurcole.me...</p>
+    }
+    else if (!_reachable)
+    {
+        <div class="cs-warn">
+            <p class="cs-warn-title">Could not reach ledgersync.davidarthurcole.me</p>
+            <p>Settings sync is unavailable right now. Try disabling any active VPN, then retry.</p>
+        </div>
+        <button type="button" class="cs-btn" @onclick="RecheckReachableAsync">Retry</button>
+    }
+    else
+    {
+        @if (_connected)
+        {
+            <div class="cs-status">
+                @if (!string.IsNullOrEmpty(_avatarUrl))
+                {
+                    <img class="cs-avatar" src="@_avatarUrl" alt="Discord avatar" />
+                }
+                <div>
+                    <span class="cs-connected">Connected</span>
+                    @if (!string.IsNullOrEmpty(_username))
+                    {
+                        <span class="cs-muted">as <span class="cs-name">@_username</span></span>
+                    }
+                </div>
+            </div>
+            <div class="cs-times">
+                <div>Last push: <span class="@(_lastPushAt > 0 ? "cs-time" : "cs-never")">@PushString</span></div>
+                <div>Last pull: <span class="@(_lastPullAt > 0 ? "cs-time" : "cs-never")">@PullString</span></div>
+            </div>
+        }
+        else
+        {
+            <span class="cs-muted cs-italic">Not connected</span>
+        }
+
+        @if (_authWaiting)
+        {
+            <div class="cs-info">
+                <p class="cs-info-title">Waiting for Discord authorization...</p>
+                <p>Your browser should have opened the authorization page. Approve it there, then return here.</p>
+            </div>
+        }
+
+        <div class="cs-actions">
+            @if (!_connected)
+            {
+                <button type="button" class="cs-btn cs-discord" disabled="@_authWaiting" @onclick="ConnectAsync">
+                    @(_authWaiting ? "Waiting for auth..." : "Connect with Discord")
+                </button>
+            }
+            else
+            {
+                <div class="cs-row">
+                    <button type="button" class="cs-btn cs-primary" disabled="@_syncInProgress" @onclick="SyncNowAsync">
+                        @(_syncInProgress ? "Syncing..." : "Sync now")
+                    </button>
+                    <button type="button" class="cs-btn cs-neutral" disabled="@_restoreInProgress" @onclick="RestoreNowAsync">
+                        @(_restoreInProgress ? "Restoring..." : "Restore from cloud")
+                    </button>
+                </div>
+                <div class="cs-row">
+                    @if (_confirmingDelete)
+                    {
+                        <span class="cs-confirm">Delete all remote data?</span>
+                        <button type="button" class="cs-btn cs-neutral" @onclick="() => _confirmingDelete = false">Cancel</button>
+                        <button type="button" class="cs-btn cs-danger" disabled="@_deleteInProgress" @onclick="DeleteRemoteAsync">
+                            @(_deleteInProgress ? "Deleting..." : "Yes, delete")
+                        </button>
+                    }
+                    else
+                    {
+                        <button type="button" class="cs-btn cs-danger" @onclick="DisconnectAsync">Disconnect</button>
+                        <button type="button" class="cs-btn cs-danger-soft" @onclick="() => _confirmingDelete = true">Delete Remote Data</button>
+                    }
+                </div>
+                <label class="cs-autosync">
+                    <input type="checkbox" checked="@_autoSync" @onchange="OnAutoSyncChangeAsync" />
+                    Auto-sync settings on change
+                </label>
+            }
+        </div>
+
+        @if (!string.IsNullOrEmpty(_syncError))
+        {
+            <p class="cs-error">Sync failed: @_syncError</p>
+        }
+        @if (!string.IsNullOrEmpty(_restoreError))
+        {
+            <p class="cs-error">Restore failed: @_restoreError</p>
+        }
+        @if (!string.IsNullOrEmpty(_deleteError))
+        {
+            <p class="cs-error">Delete failed: @_deleteError</p>
+        }
+        @if (_restoreSuccess)
+        {
+            <p class="cs-success">Restore complete. Reload the app to apply synced settings.</p>
+        }
+    }
+</section>
+
+@code {
+    private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan PollTimeout = TimeSpan.FromMinutes(5);
+
+    private bool _reachableChecking = true;
+    private bool _reachable;
+    private bool _connected;
+    private string _username = "";
+    private string _avatarUrl = "";
+    private long _lastPushAt;
+    private long _lastPullAt;
+    private bool _authWaiting;
+    private bool _syncInProgress;
+    private string _syncError = "";
+    private bool _restoreInProgress;
+    private string _restoreError = "";
+    private bool _restoreSuccess;
+    private bool _confirmingDelete;
+    private bool _deleteInProgress;
+    private string _deleteError = "";
+    private bool _autoSync;
+
+    private CloudSession? _session;
+    private CancellationTokenSource? _pollCts;
+    private bool _disposed;
+
+    private string PushString => _lastPushAt > 0
+        ? DateTimeOffset.FromUnixTimeSeconds(_lastPushAt).LocalDateTime.ToString("g")
+        : "Never";
+
+    private string PullString => _lastPullAt > 0
+        ? DateTimeOffset.FromUnixTimeSeconds(_lastPullAt).LocalDateTime.ToString("g")
+        : "Never";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _session = await SessionStore.GetSessionAsync();
+        _connected = _session is not null && !string.IsNullOrEmpty(_session.Token);
+        if (_session is not null)
+        {
+            _username = _session.Username;
+            _avatarUrl = _session.AvatarUrl;
+        }
+        _lastPushAt = await SessionStore.GetLastPushAtAsync();
+        _lastPullAt = await SessionStore.GetLastPullAtAsync();
+        _autoSync = await SessionStore.GetAutoSyncAsync();
+
+        _reachableChecking = true;
+        _reachable = await CheckReachableAsync();
+        _reachableChecking = false;
+
+        // Resume a redirect-interrupted auth: if BeginAuthAsync navigated the tab to
+        // Discord and the OAuth callback returned us here, a pending state was saved
+        // before the redirect. Pick the poll loop back up so the session lands.
+        if (_reachable && !_connected)
+        {
+            var pending = await SessionStore.GetPendingAuthStateAsync();
+            if (!string.IsNullOrEmpty(pending))
+            {
+                _authWaiting = true;
+                _ = PollUntilDoneAsync(pending);
+            }
+        }
+    }
+
+    private async Task<bool> CheckReachableAsync()
+    {
+        try
+        {
+            return await Cloud.CheckReachableAsync();
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private async Task RecheckReachableAsync()
+    {
+        _reachableChecking = true;
+        StateHasChanged();
+        _reachable = await CheckReachableAsync();
+        _reachableChecking = false;
+    }
+
+    private async Task ConnectAsync()
+    {
+        _authWaiting = true;
+        _syncError = "";
+        _restoreError = "";
+        try
+        {
+            var state = await Cloud.BeginAuthAsync();
+            // BeginAuthAsync force-navigates the tab to Discord. Persist the poll
+            // state first so the reloaded SPA resumes polling on return (see
+            // OnInitializedAsync). If navigation is intercepted and we stay on the
+            // page, the loop below runs immediately; either way it is cancel-safe.
+            await SessionStore.SetPendingAuthStateAsync(state);
+            await PollUntilDoneAsync(state);
+        }
+        catch
+        {
+            _authWaiting = false;
+        }
+    }
+
+    private async Task PollUntilDoneAsync(string state)
+    {
+        _pollCts?.Cancel();
+        _pollCts?.Dispose();
+        _pollCts = new CancellationTokenSource(PollTimeout);
+        var ct = _pollCts.Token;
+        try
+        {
+            using var timer = new PeriodicTimer(PollInterval);
+            while (await timer.WaitForNextTickAsync(ct))
+            {
+                PollResult result;
+                try
+                {
+                    result = await Cloud.PollOnceAsync(state, ct);
+                }
+                catch (CloudSyncException)
+                {
+                    continue;
+                }
+                if (!result.Pending && result.Session is not null)
+                {
+                    await OnAuthCompleteAsync(result.Session);
+                    return;
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Timed out or navigated away: stop waiting, drop the spinner. Clear the
+            // pending state only on a real timeout (the CTS fired), not on a
+            // dispose-driven cancel where we may still resume after a reload.
+            if (_pollCts is not null && _pollCts.IsCancellationRequested && !_disposed)
+            {
+                await SessionStore.ClearPendingAuthStateAsync();
+            }
+        }
+        finally
+        {
+            _authWaiting = false;
+            if (!_disposed)
+            {
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+    }
+
+    private async Task OnAuthCompleteAsync(CloudSession session)
+    {
+        _session = session;
+        _connected = true;
+        _username = session.Username;
+        _avatarUrl = session.AvatarUrl;
+        _authWaiting = false;
+        _syncError = "";
+        _restoreError = "";
+        await SessionStore.SaveSessionAsync(session);
+        await SessionStore.ClearPendingAuthStateAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task DisconnectAsync()
+    {
+        if (_session is not null)
+        {
+            try { await Cloud.DisconnectAsync(_session.Token); }
+            catch { /* server logout is best-effort, match Go */ }
+        }
+        await SessionStore.ClearSessionAsync();
+        _session = null;
+        _connected = false;
+        _username = "";
+        _avatarUrl = "";
+    }
+
+    private async Task SyncNowAsync()
+    {
+        if (_session is null)
+        {
+            return;
+        }
+        _syncInProgress = true;
+        _syncError = "";
+        StateHasChanged();
+        try
+        {
+            var all = await Settings.GetAllSettingsAsync();
+            var accounts = await Accounts.GetKnownAccountsAsync();
+            await Cloud.PutBlobAsync(_session, CloudSyncBlobs.AccountsBlob, accounts);
+            await Cloud.PutBlobAsync(_session, CloudSyncBlobs.SettingsBlob, CloudSyncBlobs.PackSettings(all));
+            await Cloud.PutBlobAsync(_session, CloudSyncBlobs.ReportsBlob, await BuildReportsBlobAsync(accounts));
+
+            _lastPushAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            await SessionStore.SetLastPushAtAsync(_lastPushAt);
+        }
+        catch (Exception ex)
+        {
+            _syncError = ex.Message;
+        }
+        finally
+        {
+            _syncInProgress = false;
+        }
+    }
+
+    private async Task<CloudReportsBlob> BuildReportsBlobAsync(IReadOnlyList<AccountInfo> accounts)
+    {
+        var reports = new List<ReportRow>();
+        var groups = new List<ReportGroupRow>();
+        foreach (var acct in accounts)
+        {
+            reports.AddRange(await Reports.RetrieveAccountReportsAsync(acct.Id));
+            groups.AddRange(await Reports.RetrieveAccountGroupsAsync(acct.Id));
+        }
+        return CloudReportsBlob.Pack(reports, groups);
+    }
+
+    private async Task RestoreNowAsync()
+    {
+        if (_session is null)
+        {
+            return;
+        }
+        _restoreInProgress = true;
+        _restoreError = "";
+        _restoreSuccess = false;
+        StateHasChanged();
+        try
+        {
+            // Accounts first (reports reference account ids).
+            var remoteAccounts = await Cloud.GetBlobAsync<List<AccountInfo>>(_session, CloudSyncBlobs.AccountsBlob);
+            foreach (var acct in remoteAccounts)
+            {
+                await Accounts.AddKnownAccountAsync(acct);
+            }
+
+            try
+            {
+                var remoteSettings = await Cloud.GetBlobAsync<CloudSyncableSettings>(_session, CloudSyncBlobs.SettingsBlob);
+                await Settings.SetSettingsAsync(CloudSyncBlobs.UnpackSettings(remoteSettings));
+            }
+            catch (CloudSyncException)
+            {
+                // Nothing synced yet for settings; skip (match Go warn-and-continue).
+            }
+
+            try
+            {
+                var remoteReports = await Cloud.GetBlobAsync<CloudReportsBlob>(_session, CloudSyncBlobs.ReportsBlob);
+                await ImportReportsAsync(remoteReports);
+            }
+            catch (CloudSyncException)
+            {
+                // Nothing synced yet for reports; skip.
+            }
+
+            _lastPullAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            await SessionStore.SetLastPullAtAsync(_lastPullAt);
+            _restoreSuccess = true;
+        }
+        catch (Exception ex)
+        {
+            _restoreError = ex.Message;
+        }
+        finally
+        {
+            _restoreInProgress = false;
+        }
+    }
+
+    private async Task ImportReportsAsync(CloudReportsBlob remote)
+    {
+        var existingGroupIds = new HashSet<string>(StringComparer.Ordinal);
+        var existingReportIds = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var g in remote.Groups)
+        {
+            var local = await Reports.RetrieveReportGroupAsync(g.Id);
+            if (local is not null)
+            {
+                existingGroupIds.Add(g.Id);
+            }
+        }
+        foreach (var r in remote.Reports)
+        {
+            var local = await Reports.RetrieveReportAsync(r.Id);
+            if (local is not null)
+            {
+                existingReportIds.Add(r.Id);
+            }
+        }
+
+        var (groups, reports) = CloudSyncBlobs.SelectReportsToImport(remote, existingGroupIds, existingReportIds);
+        foreach (var g in groups)
+        {
+            await Reports.InsertReportGroupAsync(g);
+        }
+        foreach (var r in reports)
+        {
+            await Reports.InsertReportAsync(r);
+        }
+    }
+
+    private async Task DeleteRemoteAsync()
+    {
+        if (_session is null)
+        {
+            return;
+        }
+        _deleteInProgress = true;
+        _deleteError = "";
+        _confirmingDelete = false;
+        StateHasChanged();
+        try
+        {
+            await Cloud.PutBlobAsync(_session, CloudSyncBlobs.AccountsBlob, Array.Empty<AccountInfo>());
+            await Cloud.PutBlobAsync(_session, CloudSyncBlobs.SettingsBlob, new CloudSyncableSettings());
+            await Cloud.PutBlobAsync(_session, CloudSyncBlobs.ReportsBlob, new CloudReportsBlob());
+        }
+        catch (Exception ex)
+        {
+            _deleteError = ex.Message;
+        }
+        finally
+        {
+            _deleteInProgress = false;
+        }
+    }
+
+    private async Task OnAutoSyncChangeAsync(ChangeEventArgs e)
+    {
+        _autoSync = e.Value is bool b ? b : bool.TryParse(e.Value?.ToString(), out var p) && p;
+        await SessionStore.SetAutoSyncAsync(_autoSync);
+    }
+
+    /// <summary>
+    /// Pushes to the cloud when auto-sync is on and a session is connected.
+    /// Called by the Settings page after a cloud-syncable setting changes, mirroring
+    /// the Vue useCloudSync auto-sync watch. No-op otherwise.
+    /// </summary>
+    public async Task AutoSyncIfEnabledAsync()
+    {
+        if (!_autoSync || !_connected || _session is null || _syncInProgress)
+        {
+            return;
+        }
+        await SyncNowAsync();
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        _disposed = true;
+        _pollCts?.Cancel();
+        _pollCts?.Dispose();
+        _pollCts = null;
+        return ValueTask.CompletedTask;
+    }
+}

@@ -1,0 +1,80 @@
+@using EggLedger.Domain.Reports
+@using EggLedger.Web.Data
+@inject IndexedDbReportStore Store
+
+@*
+    Dashboard grid of report cards. Loads the account's reports (optionally
+    filtered to a group), positions each via the golden-tested ReportGridLayout
+    packing, and renders a ReportCard per definition. Drag-and-drop reorder/resize
+    is deferred (static positioning from grid_x/y/w/h via the layout helper).
+*@
+
+<div class="report-grid">
+    @if (_defs.Count == 0)
+    {
+        <div class="grid-empty">No reports yet. Click "New Report" to create one.</div>
+    }
+    else
+    {
+        var (positions, _) = ReportGridLayout.BuildOccupancyFromLayout(_defs);
+        <div class="grid-canvas">
+            @for (int i = 0; i < _defs.Count; i++)
+            {
+                var def = _defs[i];
+                var pos = positions[i];
+                <ReportCard @key="def.Id" Def="def" Pos="pos" AccountId="@AccountId"
+                            EditMode="EditMode" OnEdit="OnEdit" OnDelete="HandleDeleteAsync" />
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public string AccountId { get; set; } = "";
+
+    /// <summary>Group id filter, or null for all reports.</summary>
+    [Parameter]
+    public string? GroupFilter { get; set; }
+
+    [Parameter]
+    public bool EditMode { get; set; }
+
+    [Parameter]
+    public EventCallback<ReportDefinition> OnEdit { get; set; }
+
+    private List<ReportDefinition> _defs = new();
+    private string _loadedKey = "";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        string key = AccountId + "|" + (GroupFilter ?? "");
+        if (key == _loadedKey)
+        {
+            return;
+        }
+        _loadedKey = key;
+        await ReloadAsync();
+    }
+
+    public async Task ReloadAsync()
+    {
+        if (string.IsNullOrEmpty(AccountId))
+        {
+            _defs = new List<ReportDefinition>();
+            return;
+        }
+        var rows = await Store.RetrieveAccountReportsAsync(AccountId);
+        var filtered = GroupFilter is null
+            ? rows
+            : rows.Where(r => r.GroupId == GroupFilter).ToList();
+        _defs = filtered.Select(ReportMapping.ToDefinition).ToList();
+        StateHasChanged();
+    }
+
+    private async Task HandleDeleteAsync(string id)
+    {
+        await Store.DeleteReportAsync(id);
+        await ReloadAsync();
+    }
+}

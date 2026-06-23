@@ -1,0 +1,225 @@
+@page "/missions"
+@using System.Globalization
+@using EggLedger.Domain.MissionPacking
+@using EggLedger.Domain.MissionQuery
+@using EggLedger.Web.Components
+@using EggLedger.Web.Data
+@using EggLedger.Web.Missions
+@using EggLedger.Web.State
+@implements IDisposable
+@inject MissionQueryHandlers Queries
+@inject MissionConfigProvider Config
+@inject ActiveAccount Active
+@inject IndexedDbSettings Settings
+
+<PageTitle>EggLedger - Mission Data</PageTitle>
+
+<section class="mission-data">
+    @if (Active.ActiveAccountId is null)
+    {
+        <p class="md-empty">Select an account on the Ledger tab to view its missions.</p>
+    }
+    else if (_loading)
+    {
+        <p class="md-empty">Loading mission data...</p>
+    }
+    else if (_allMissions is null || _allMissions.Count == 0)
+    {
+        <p class="md-empty">No mission data for this account yet. Fetch on the Ledger tab first.</p>
+    }
+    else
+    {
+        <div class="md-filter">
+            <span class="md-filter-label">Filter</span>
+            <button type="button" class="md-toggle" @onclick="@(() => _hideFilter = !_hideFilter)">
+                @(_hideFilter ? "Show" : "Hide")
+            </button>
+            @if (!_hideFilter)
+            {
+                <MissionFilterBar FieldCtx="Config.FieldCtx"
+                                  Applying="_applying"
+                                  LastResultText="@_resultText"
+                                  OnApply="ApplyFilterAsync" />
+            }
+        </div>
+
+        <div class="md-options">
+            <label class="md-opt"><input type="checkbox" checked="@_opts.ViewByDate" @onchange="@(e => SetOpt(MissionViewOptions.KeyViewByDate, b => _opts.ViewByDate = b, e))" /> View by date</label>
+            <label class="md-opt"><input type="checkbox" checked="@_opts.ViewMissionTimes" @onchange="@(e => SetOpt(MissionViewOptions.KeyViewTimes, b => _opts.ViewMissionTimes = b, e))" /> Show times</label>
+            <label class="md-opt"><input type="checkbox" checked="@_opts.RecolorDc" @onchange="@(e => SetOpt(MissionViewOptions.KeyRecolorDc, b => _opts.RecolorDc = b, e))" /> Recolor double-cap</label>
+            <label class="md-opt"><input type="checkbox" checked="@_opts.RecolorBc" @onchange="@(e => SetOpt(MissionViewOptions.KeyRecolorBc, b => _opts.RecolorBc = b, e))" /> Recolor bugged-cap</label>
+        </div>
+
+        @if (_hasBothTypes)
+        {
+            <div class="md-tabs">
+                <button type="button" class="md-tab @(_opts.MissionTypeTab is null ? "md-tab-active" : "")" @onclick="@(() => SelectTab(null))">All <span class="md-tab-count">(@(_filtered?.Count ?? 0))</span></button>
+                <button type="button" class="md-tab @(_opts.MissionTypeTab == 0 ? "md-tab-active" : "")" @onclick="@(() => SelectTab(0))">Home <span class="md-tab-count">(@CountOfType(0))</span></button>
+                <button type="button" class="md-tab @(_opts.MissionTypeTab == 1 ? "md-tab-active" : "")" @onclick="@(() => SelectTab(1))">Virtue <span class="md-tab-count">(@CountOfType(1))</span></button>
+            </div>
+        }
+
+        <div class="md-tree">
+            <MissionResultsTable Grouping="_grouping"
+                                 ViewByDate="_opts.ViewByDate"
+                                 ViewMissionTimes="_opts.ViewMissionTimes"
+                                 RecolorDc="_opts.RecolorDc"
+                                 RecolorBc="_opts.RecolorBc"
+                                 MissionBeingViewed="_missionBeingViewed"
+                                 OnViewMission="ViewMissionAsync"
+                                 OnGroupingChanged="StateHasChanged" />
+        </div>
+
+        <MissionOverlay @ref="_overlay"
+                        AccountId="@Active.ActiveAccountId"
+                        FilteredMissions="_tabFiltered ?? Array.Empty<DatabaseMission>()"
+                        SortMethod="_opts.SortMethod" />
+    }
+</section>
+
+@code {
+    private bool _loading;
+    private bool _hideFilter;
+    private bool _applying;
+    private string _resultText = "";
+    private string? _missionBeingViewed;
+
+    private IReadOnlyList<DatabaseMission>? _allMissions;
+    private IReadOnlyList<DatabaseMission>? _filtered;
+    private IReadOnlyList<DatabaseMission>? _tabFiltered;
+    private MissionGrouping? _grouping;
+    private bool _hasBothTypes;
+
+    private readonly MissionViewOptions _opts = new();
+    private MissionFilterMatcher? _matcher;
+    private MissionOverlay? _overlay;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Active.Changed += OnAccountChanged;
+        var settings = await Settings.GetAllSettingsAsync();
+        _opts.LoadFrom(settings);
+        await LoadAsync();
+    }
+
+    private void OnAccountChanged() => InvokeAsync(LoadAsync);
+
+    private async Task LoadAsync()
+    {
+        _missionBeingViewed = null;
+        var id = Active.ActiveAccountId;
+        if (id is null)
+        {
+            _allMissions = null;
+            _filtered = null;
+            _grouping = null;
+            StateHasChanged();
+            return;
+        }
+
+        _loading = true;
+        _resultText = "";
+        StateHasChanged();
+
+        var rows = await Queries.ViewMissionsOfEidAsync(id);
+        var missions = rows?.Cast<DatabaseMission>().ToList() ?? new List<DatabaseMission>();
+
+        _allMissions = missions;
+        _filtered = missions;
+        _hasBothTypes = MissionViewOptions.HasBothMissionTypes(missions);
+        if (!_hasBothTypes)
+        {
+            _opts.MissionTypeTab = null;
+        }
+        _matcher = new MissionFilterMatcher(
+            Config.DurationConfigs,
+            id,
+            DropsFetcher);
+        Regroup();
+        _loading = false;
+        StateHasChanged();
+    }
+
+    private async Task<IReadOnlyList<MissionDrop>?> DropsFetcher(string accountId, string missionId) =>
+        await Queries.GetShipDropsAsync(accountId, missionId);
+
+    private void Regroup()
+    {
+        _tabFiltered = MissionViewOptions.TabFilteredMissions(_filtered, _opts.MissionTypeTab);
+        _grouping = MissionGrouper.Group(_tabFiltered, MissionFilterMatcher.LedgerDate, collapseOlderSections: true);
+    }
+
+    private async Task ApplyFilterAsync(
+        (IReadOnlyList<FilterCondition> Filters, IReadOnlyList<IReadOnlyList<FilterCondition>?> OrFilters) args)
+    {
+        if (_allMissions is null || _matcher is null)
+        {
+            return;
+        }
+
+        _applying = true;
+        StateHasChanged();
+
+        var result = new List<DatabaseMission>();
+        foreach (var mission in _allMissions)
+        {
+            if (await _matcher.MissionMatchesFilterAsync(mission, args.Filters, args.OrFilters))
+            {
+                result.Add(mission);
+            }
+        }
+
+        _filtered = result;
+        int shown = result.Count;
+        int filteredOut = _allMissions.Count - shown;
+        _resultText = $"{shown} shown, {filteredOut} filtered out";
+        Regroup();
+        _applying = false;
+        StateHasChanged();
+    }
+
+    private void SelectTab(int? tab)
+    {
+        _opts.MissionTypeTab = tab;
+        Regroup();
+        StateHasChanged();
+    }
+
+    private int CountOfType(int type)
+    {
+        if (_filtered is null)
+        {
+            return 0;
+        }
+        int n = 0;
+        foreach (var m in _filtered)
+        {
+            if (m.MissionType == type)
+            {
+                n++;
+            }
+        }
+        return n;
+    }
+
+    private async Task SetOpt(string key, Action<bool> apply, ChangeEventArgs e)
+    {
+        bool value = e.Value is bool b ? b : bool.TryParse(e.Value?.ToString(), out var parsed) && parsed;
+        apply(value);
+        await Settings.SetSettingAsync(key, value ? "true" : "false");
+        // ViewByDate affects the day-collapse rows, so re-render the table.
+        StateHasChanged();
+    }
+
+    private async Task ViewMissionAsync(string missionId)
+    {
+        _missionBeingViewed = missionId;
+        StateHasChanged();
+        if (_overlay is not null)
+        {
+            await _overlay.OpenAsync(missionId);
+        }
+    }
+
+    public void Dispose() => Active.Changed -= OnAccountChanged;
+}

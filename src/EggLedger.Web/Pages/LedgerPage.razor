@@ -1,0 +1,225 @@
+@page "/"
+@using EggLedger.Domain.MissionQuery
+@using EggLedger.Web.Components
+@using EggLedger.Web.Data
+@using EggLedger.Web.Services
+@using EggLedger.Web.State
+@implements IDisposable
+@inject MissionQueryHandlers Queries
+@inject FetchService Fetch
+@inject AccountLoader Loader
+@inject ActiveAccount Active
+@inject AppStateService AppStateSvc
+
+<PageTitle>EggLedger - Ledger</PageTitle>
+
+<section class="ledger">
+    <div class="ledger-top">
+        <div class="active-summary">
+            @if (_activeInfo is not null)
+            {
+                <span class="sum-nick" style="color: #@_activeInfo.AccountColor">@_activeInfo.Nickname</span>
+                <span class="sum-eb">@_activeInfo.EBString</span>
+                @if (_activeInfo.SeString != "")
+                {
+                    <span class="sum-sep">&middot;</span>
+                    <span class="sum-se">@_activeInfo.SeString SE</span>
+                    <span class="sum-sep">&middot;</span>
+                    <span class="sum-pe">@_activeInfo.PeCount PE</span>
+                    @if (_activeInfo.TeCount > 0)
+                    {
+                        <span class="sum-sep">&middot;</span>
+                        <span class="sum-te">@_activeInfo.TeCount TE</span>
+                    }
+                }
+            }
+            else
+            {
+                <span class="sum-empty">Select an account below or add one to get started</span>
+            }
+        </div>
+
+        <div class="ledger-buttons">
+            @if (_idle)
+            {
+                <button type="button" class="fetch-button" disabled="@(Active.ActiveAccountId is null)" @onclick="StartFetch">Fetch</button>
+            }
+            else
+            {
+                <button type="button" class="stop-button" @onclick="StopFetch">Stop</button>
+            }
+            <button type="button" class="add-button" @onclick="OpenAddDialog">+ Add Account</button>
+        </div>
+    </div>
+
+    @if (_progress is not null && !_idle || _terminalState is not null)
+    {
+        <div class="progress-box">
+            @switch (_displayState)
+            {
+                case AppState.FetchingSave:
+                    <div class="prog-stage">Fetching save...</div>
+                    break;
+                case AppState.FetchingMissions:
+                    <div class="prog-stage">
+                        Fetching missions...
+                        @if (_progress?.MissionId is { Length: > 0 } mid)
+                        {
+                            <span class="prog-current">@mid</span>
+                        }
+                    </div>
+                    <div class="prog-counts">
+                        <span class="prog-done">@(_progress?.Finished ?? 0)</span>
+                        <span class="prog-total"> / @(_progress?.Total ?? 0) (@PercentText%)</span>
+                    </div>
+                    @if ((_progress?.Failed ?? 0) > 0 || (_progress?.Retried ?? 0) > 0)
+                    {
+                        <div class="prog-counts">
+                            @if ((_progress?.Failed ?? 0) > 0)
+                            {
+                                <span class="prog-failed">@_progress?.Failed failed</span>
+                            }
+                            @if ((_progress?.Retried ?? 0) > 0)
+                            {
+                                <span class="prog-retry"> @_progress?.Retried to retry</span>
+                            }
+                        </div>
+                    }
+                    <div class="prog-bar">
+                        <div class="prog-bar-fill" style="width: @PercentText%"></div>
+                    </div>
+                    break;
+                case AppState.ExportingData:
+                    <div class="prog-stage">Finishing up...</div>
+                    break;
+                case AppState.Success:
+                    <div class="prog-success">Fetch complete.</div>
+                    break;
+                case AppState.Failed:
+                    <div class="prog-failed">Data fetching failed. Please try again.</div>
+                    break;
+                case AppState.Interrupted:
+                    <div class="prog-stage">Interrupted.</div>
+                    break;
+            }
+        </div>
+    }
+
+    <div class="selector-row">
+        <DatabaseAccountSelector Accounts="_existing" ActiveId="Active.ActiveAccountId" OnSelect="SelectAccount" />
+    </div>
+
+    <AccountDataPanel Accounts="_existing" Changed="ReloadAsync" />
+</section>
+
+<AddAccountDialog @ref="_addDialog" Added="OnAccountAdded" />
+
+@code {
+    private AddAccountDialog? _addDialog;
+    private IReadOnlyList<DatabaseAccount> _existing = [];
+    private AccountInfo? _activeInfo;
+
+    private FetchProgress? _progress;
+    private AppState? _terminalState;
+    private CancellationTokenSource? _cts;
+
+    private bool _idle => _terminalState is not null
+        || _progress is null
+        || _progress.State is AppState.AwaitingInput
+            or AppState.Success or AppState.Failed or AppState.Interrupted;
+
+    private AppState? _displayState => _terminalState ?? _progress?.State;
+
+    private int Percent =>
+        _progress is { Total: > 0 } p ? (int)Math.Round((double)p.Finished / p.Total * 100) : 0;
+
+    private string PercentText => Percent.ToString();
+
+    protected override async Task OnInitializedAsync()
+    {
+        Active.Changed += OnActiveChanged;
+        await Loader.EnsureLoadedAsync();
+        await ReloadAsync();
+        RefreshActiveInfo();
+    }
+
+    private void OnActiveChanged()
+    {
+        RefreshActiveInfo();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void RefreshActiveInfo() =>
+        _activeInfo = Loader.Accounts.FirstOrDefault(a => a.Id == Active.ActiveAccountId);
+
+    private async Task ReloadAsync()
+    {
+        await Loader.RefreshAsync();
+        _existing = await Queries.GetExistingDataAsync();
+        RefreshActiveInfo();
+        StateHasChanged();
+    }
+
+    private void SelectAccount(string id) => Active.SetActive(id);
+
+    private async Task OpenAddDialog()
+    {
+        if (_addDialog is not null)
+        {
+            await _addDialog.OpenAsync();
+        }
+    }
+
+    private async Task OnAccountAdded(AccountInfo account)
+    {
+        Active.SetActive(account.Id);
+        await ReloadAsync();
+        await StartFetch();
+    }
+
+    private async Task StartFetch()
+    {
+        var id = Active.ActiveAccountId;
+        if (id is null)
+        {
+            return;
+        }
+
+        _terminalState = null;
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _cts = new CancellationTokenSource();
+
+        var progress = new Progress<FetchProgress>(p =>
+        {
+            _progress = p;
+            AppStateSvc.PipelineState = p.State;
+            InvokeAsync(StateHasChanged);
+        });
+
+        try
+        {
+            var result = await Fetch.FetchPlayerDataAsync(id, progress, _cts.Token);
+            _terminalState = result;
+        }
+        catch (Exception)
+        {
+            _terminalState = AppState.Failed;
+        }
+
+        AppStateSvc.PipelineState = _terminalState;
+        await ReloadAsync();
+    }
+
+    private void StopFetch()
+    {
+        _cts?.Cancel();
+    }
+
+    public void Dispose()
+    {
+        Active.Changed -= OnActiveChanged;
+        _cts?.Cancel();
+        _cts?.Dispose();
+    }
+}

@@ -1,0 +1,24 @@
+namespace EggLedger.Web.Data;
+
+/// <summary>
+/// Async key-value/object-store access over the browser IndexedDB shim.
+/// One instance backs every persistence store (missions, settings, reports, ...).
+/// </summary>
+public interface IIndexedDb
+{
+    ValueTask PutAsync(string store, object value);
+
+    ValueTask<int> PutManyAsync(string store, IEnumerable<object> values);
+
+    ValueTask<T?> GetAsync<T>(string store, object key);
+
+    ValueTask<T[]> GetAllAsync<T>(string store);
+
+    ValueTask<T[]> GetAllByIndexAsync<T>(string store, string index, object value);
+
+    ValueTask DeleteAsync(string store, object key);
+
+    ValueTask ClearAsync(string store);
+
+    ValueTask<int> CountAsync(string store);
+}

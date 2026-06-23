@@ -1,0 +1,86 @@
+@using EggLedger.Domain.Reports
+
+@*
+    AND-filter editor for the report builder. Port of the AND-conditions portion
+    of useReportFilters.ts / ReportBuilderPanel.vue. Each row picks a field, an
+    operator, and a free-text value. OR groups are deferred (note in plan). Values
+    are free text; the option pickers (select/modal) are simplified to text input.
+*@
+
+<div class="filter-editor">
+    <div class="filter-head">
+        <span class="filter-title">Filters (all must match)</span>
+        <button type="button" class="filter-add" @onclick="Add">+ Add filter</button>
+    </div>
+    @for (int i = 0; i < Conditions.Count; i++)
+    {
+        int idx = i;
+        var cond = Conditions[idx];
+        <div class="filter-row">
+            <select class="filter-field" value="@cond.TopLevel" @onchange="e => SetField(idx, e.Value?.ToString() ?? string.Empty)">
+                <option value="">Field...</option>
+                @foreach (var f in ReportFilterFields.All)
+                {
+                    <option value="@f.Key">@f.Label</option>
+                }
+            </select>
+            <select class="filter-op" value="@cond.Op" @onchange="e => SetOp(idx, e.Value?.ToString() ?? string.Empty)" disabled="@(FieldFor(cond) is null)">
+                @if (FieldFor(cond) is { } field)
+                {
+                    @foreach (var op in field.Ops)
+                    {
+                        <option value="@op.Value">@op.Label</option>
+                    }
+                }
+            </select>
+            <input class="filter-val" type="text" value="@cond.Val" placeholder="value"
+                   @onchange="e => SetVal(idx, e.Value?.ToString() ?? string.Empty)" />
+            <button type="button" class="filter-remove" title="Remove" @onclick="() => Remove(idx)">&#215;</button>
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>The live AND-condition list, mutated in place and surfaced to the parent.</summary>
+    [Parameter, EditorRequired]
+    public List<FilterCondition> Conditions { get; set; } = new();
+
+    [Parameter]
+    public EventCallback ConditionsChanged { get; set; }
+
+    private ReportFilterField? FieldFor(FilterCondition c) =>
+        string.IsNullOrEmpty(c.TopLevel) ? null : ReportFilterFields.Get(c.TopLevel);
+
+    private async Task Add()
+    {
+        Conditions.Add(new FilterCondition());
+        await ConditionsChanged.InvokeAsync();
+    }
+
+    private async Task Remove(int idx)
+    {
+        Conditions.RemoveAt(idx);
+        await ConditionsChanged.InvokeAsync();
+    }
+
+    private async Task SetField(int idx, string key)
+    {
+        var field = ReportFilterFields.Get(key);
+        Conditions[idx].TopLevel = key;
+        Conditions[idx].Op = field is not null ? ReportFilterFields.DefaultOp(field) : "";
+        Conditions[idx].Val = "";
+        await ConditionsChanged.InvokeAsync();
+    }
+
+    private async Task SetOp(int idx, string op)
+    {
+        Conditions[idx].Op = op;
+        await ConditionsChanged.InvokeAsync();
+    }
+
+    private async Task SetVal(int idx, string val)
+    {
+        Conditions[idx].Val = val;
+        await ConditionsChanged.InvokeAsync();
+    }
+}

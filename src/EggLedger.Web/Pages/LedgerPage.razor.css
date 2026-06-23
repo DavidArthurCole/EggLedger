@@ -1,0 +1,150 @@
+.ledger {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.ledger-top {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) 0;
+}
+
+.active-summary {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    background-color: var(--color-darkest);
+    border: 1px solid var(--color-border-soft);
+    border-radius: 0.5rem;
+    padding: var(--space-2) var(--space-4);
+    text-align: center;
+    min-height: 1rem;
+}
+
+.sum-nick {
+    font-weight: 500;
+}
+
+.sum-eb {
+    color: var(--color-text-dim);
+    margin-left: var(--space-1);
+}
+
+.sum-sep {
+    color: var(--color-text-faint);
+    margin: 0 var(--space-1);
+}
+
+.sum-se {
+    color: var(--color-se);
+}
+
+.sum-pe {
+    color: var(--color-pe);
+}
+
+.sum-te {
+    color: var(--color-te);
+}
+
+.sum-empty {
+    color: var(--color-text-dim);
+    font-style: italic;
+}
+
+.ledger-buttons {
+    display: flex;
+    gap: var(--space-2);
+}
+
+.fetch-button,
+.stop-button,
+.add-button {
+    font-size: 0.8125rem;
+    padding: var(--space-1) var(--space-4);
+    border-radius: 0.375rem;
+    cursor: pointer;
+    border: 1px solid var(--color-border-soft);
+    color: var(--color-text);
+    background-color: var(--color-darker);
+}
+
+.fetch-button {
+    background-color: var(--color-accent-blue);
+    border-color: var(--color-accent-blue);
+    color: #fff;
+}
+
+.fetch-button:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.stop-button {
+    background-color: var(--color-danger);
+    border-color: var(--color-danger);
+    color: #fff;
+}
+
+.add-button:hover {
+    background-color: var(--color-darkerthandark);
+}
+
+.progress-box {
+    padding: var(--space-2);
+    font-size: 0.75rem;
+    color: var(--color-text-dim);
+    background-color: var(--color-darkest);
+    border-radius: 0.375rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.prog-stage {
+    color: var(--color-pe);
+}
+
+.prog-current {
+    color: var(--color-text-dim);
+    font-style: italic;
+    margin-left: var(--space-1);
+}
+
+.prog-done {
+    color: var(--color-success);
+}
+
+.prog-total {
+    color: var(--color-text-muted);
+}
+
+.prog-failed {
+    color: var(--color-error);
+}
+
+.prog-retry {
+    color: var(--color-warn);
+}
+
+.prog-success {
+    color: var(--color-success);
+}
+
+.prog-bar {
+    height: 0.5rem;
+    margin-top: var(--space-1);
+    border-radius: 0.25rem;
+    overflow: hidden;
+    background-color: var(--color-dark);
+}
+
+.prog-bar-fill {
+    height: 100%;
+    background-color: var(--color-success);
+    transition: width 0.3s ease;
+}
+
+.selector-row {
+    display: flex;
+}

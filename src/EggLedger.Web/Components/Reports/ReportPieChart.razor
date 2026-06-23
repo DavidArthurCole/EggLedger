@@ -1,0 +1,69 @@
+@using System.Globalization
+@using EggLedger.Domain.Reports
+@using EggLedger.Domain.Reports.Charts
+
+@*
+    Pie chart. Port of ReportPieChart.vue. Slice arc geometry and colors come from
+    the golden-tested PieGeometry helper. The heavy connector-line label callouts
+    with collision spreading are simplified to a compact legend beneath the pie;
+    the slices, percentages, and colors are faithful. Tooltip via title attr.
+*@
+
+<div class="pie-chart">
+    <svg viewBox="0 0 @Vw @Vh" preserveAspectRatio="xMidYMid meet" class="pie-svg">
+        @{
+            var slices = Slices();
+        }
+        @foreach (var seg in slices)
+        {
+            <path d="@seg.Path" fill="@seg.Color" class="pie-seg">
+                <title>@seg.Label: @FormatVal(seg.Value) (@seg.Pct.ToString("0.0", CultureInfo.InvariantCulture)%)</title>
+            </path>
+        }
+    </svg>
+    <div class="pie-legend">
+        @foreach (var seg in Slices())
+        {
+            <div class="pie-legend-item" title="@seg.Label">
+                <span class="pie-swatch" style="background-color: @seg.Color;"></span>
+                <span class="pie-legend-label">@seg.Label</span>
+                <span class="pie-legend-pct">@seg.Pct.ToString("0.0", CultureInfo.InvariantCulture)%</span>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private const double Vw = 240;
+    private const double Vh = 240;
+
+    [Parameter, EditorRequired]
+    public ReportResult Result { get; set; } = new();
+
+    [Parameter, EditorRequired]
+    public string Color { get; set; } = "#6366f1";
+
+    [Parameter]
+    public string? LabelColors { get; set; }
+
+    private double Cx => Vw / 2;
+    private double Cy => Vh / 2;
+    private double R => Math.Min(Vw, Vh) * 0.36;
+
+    private List<double> Values() =>
+        Result.IsFloat ? Result.FloatValues : Result.Values.Select(v => (double)v).ToList();
+
+    private List<PieSlice> Slices() => PieGeometry.BuildSlices(
+        Result.Labels,
+        Values(),
+        Cx,
+        Cy,
+        R,
+        Color,
+        SliceColors.ParseLabelColors(LabelColors));
+
+    private string FormatVal(double v) =>
+        Result.IsFloat
+            ? v.ToString("0.00", CultureInfo.InvariantCulture)
+            : ((long)v).ToString(CultureInfo.InvariantCulture);
+}

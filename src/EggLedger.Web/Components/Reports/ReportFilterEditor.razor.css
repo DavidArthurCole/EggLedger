@@ -1,0 +1,66 @@
+.filter-editor {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+}
+
+.filter-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.filter-title {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+.filter-add {
+    font-size: 0.75rem;
+    color: var(--color-accent-blue);
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
+.filter-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+}
+
+.filter-field,
+.filter-op,
+.filter-val {
+    background-color: var(--color-darker);
+    border: 1px solid var(--color-border-soft);
+    color: var(--color-text);
+    border-radius: 4px;
+    padding: 0.2rem 0.35rem;
+    font-size: 0.75rem;
+}
+
+.filter-field {
+    flex: 1;
+}
+
+.filter-op {
+    flex: 1;
+}
+
+.filter-val {
+    flex: 1;
+    min-width: 0;
+}
+
+.filter-remove {
+    background: none;
+    border: none;
+    color: var(--color-text-dim);
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.filter-remove:hover {
+    color: var(--color-error);
+}

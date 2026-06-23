@@ -1,0 +1,92 @@
+@using System.Globalization
+@using EggLedger.Domain.MissionPacking
+@using EggLedger.Web.Missions
+
+@* Port of www/src/components/ShipDisplay.vue (single mode). Identity card +
+   details card + capacity badge, then the drop displays. Hover tooltips and the
+   menno expected-drops detail are deferred. *@
+
+<div class="ship-display">
+    <div class="ship-cards">
+        @if (Mission.IsBuggedCap || Mission.IsDubCap)
+        {
+            <div class="cap-badge @(Mission.IsBuggedCap ? "cap-badge-bugged" : "cap-badge-dub")">
+                <img class="cap-icon"
+                     alt="@(Mission.IsBuggedCap ? "Skull" : "Artifact Crate")"
+                     src="@(Mission.IsBuggedCap ? "images/skull.png" : "images/icon_afx_chest_2.png")" />
+                <span class="cap-text">
+                    @(Mission.IsBuggedCap
+                        ? "0.6x Capacity"
+                        : Data.CapacityModifier.ToString("0.##", CultureInfo.InvariantCulture) + "x Capacity")
+                </span>
+            </div>
+        }
+        else
+        {
+            <div class="cap-badge cap-badge-hidden"></div>
+        }
+
+        <div class="ship-card ship-identity">
+            @if (!string.IsNullOrEmpty(Mission.ShipEnumString))
+            {
+                <img class="ship-icon" src="@($"images/ships/{Mission.ShipEnumString}.png")" alt="@Mission.ShipString" />
+            }
+            <span class="@DurationClass">@Mission.ShipString</span>
+            @if (Mission.Level > 0)
+            {
+                <span class="ship-stars">@(new string('★', Mission.Level))</span>
+            }
+        </div>
+
+        <div class="ship-card ship-details">
+            <div>Launched: @Format(Data.LaunchDT)</div>
+            <div>Returned: @Format(Data.ReturnDT)</div>
+            <div>Duration: @Data.DurationStr</div>
+            <div>Capacity: @Mission.Capacity</div>
+            @if (HasTarget)
+            {
+                <div class="ship-target-row">
+                    <span>Sensor Target:</span>
+                    <span class="ship-target-pill">@ProperCase(Mission.Target.Replace("_", " ", StringComparison.Ordinal))</span>
+                </div>
+            }
+        </div>
+    </div>
+
+    <DropDisplayContainer Artifacts="Data.Artifacts"
+                          Stones="Data.Stones"
+                          Ingredients="Data.Ingredients"
+                          StoneFragments="Data.StoneFragments" />
+</div>
+
+@code {
+    [Parameter]
+    public ViewMissionData Data { get; set; } = new();
+
+    private DatabaseMission Mission => Data.MissionInfo;
+
+    private bool HasTarget =>
+        Mission.Target.Length > 0 && !string.Equals(Mission.Target, "UNKNOWN", StringComparison.OrdinalIgnoreCase);
+
+    private string DurationClass =>
+        Mission.DurationType is { } d
+            ? "text-duration-" + Convert.ToInt32(d, CultureInfo.InvariantCulture)
+            : "text-duration-3";
+
+    private static string Format(DateTime dt) => dt.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+
+    // Port of ShipDisplay.properCase.
+    private static string ProperCase(string value)
+    {
+        var words = value.ToLowerInvariant().Split(' ');
+        for (int i = 0; i < words.Length; i++)
+        {
+            if (words[i] is not ("of" or "the") && words[i].Length > 0)
+            {
+                words[i] = char.ToUpperInvariant(words[i][0]) + words[i].Substring(1);
+            }
+        }
+        var joined = string.Join(' ', words);
+        return joined.Length > 0 ? char.ToUpperInvariant(joined[0]) + joined.Substring(1) : joined;
+    }
+}

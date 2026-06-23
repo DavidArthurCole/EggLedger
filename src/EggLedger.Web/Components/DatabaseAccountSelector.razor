@@ -1,0 +1,59 @@
+@using EggLedger.Domain.MissionQuery
+@using EggLedger.Web.State
+
+<div class="selector">
+    <div class="selector-input-wrap">
+        <input
+            class="selector-input"
+            type="text"
+            placeholder="Filter by player ID or nickname..."
+            @bind="_query"
+            @bind:event="oninput"
+            @onfocus="OpenDropdown" />
+        @if (_open && Filtered.Count > 0)
+        {
+            <ul class="selector-list">
+                @foreach (var acct in Filtered)
+                {
+                    <li class="selector-option @(acct.Id == ActiveId ? "is-active" : "")"
+                        @onclick="() => Select(acct.Id)">
+                        <span class="opt-id">@acct.Id</span>
+                        <span class="opt-meta">
+                            (<span class="opt-nick" style="color: #@acct.AccountColor">@acct.Nickname @acct.EBString</span>
+                            - @acct.MissionCount missions)
+                        </span>
+                    </li>
+                }
+            </ul>
+        }
+    </div>
+</div>
+
+@code {
+    private bool _open;
+    private string _query = "";
+
+    /// <summary>Accounts with stored data (id, nickname, EB, mission count).</summary>
+    [Parameter]
+    public IReadOnlyList<DatabaseAccount> Accounts { get; set; } = [];
+
+    /// <summary>The currently active account id, for the check/highlight.</summary>
+    [Parameter]
+    public string? ActiveId { get; set; }
+
+    /// <summary>Raised with the selected account id.</summary>
+    [Parameter]
+    public EventCallback<string> OnSelect { get; set; }
+
+    private IReadOnlyList<DatabaseAccount> Filtered =>
+        LedgerFormatting.FilterAccounts(Accounts, _query);
+
+    private void OpenDropdown() => _open = true;
+
+    private async Task Select(string id)
+    {
+        _query = "";
+        _open = false;
+        await OnSelect.InvokeAsync(id);
+    }
+}

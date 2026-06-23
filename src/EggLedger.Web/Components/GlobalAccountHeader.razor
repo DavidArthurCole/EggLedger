@@ -1,0 +1,86 @@
+@using EggLedger.Domain.MissionQuery
+@using EggLedger.Web.State
+@implements IDisposable
+@inject ActiveAccount Active
+@inject AppStateService AppStateSvc
+
+<div class="account-header">
+    <button type="button" class="account-button" @onclick="Toggle">
+        @if (_active is not null)
+        {
+            <span class="account-nick" style="color: #@_active.AccountColor">@_active.Nickname</span>
+            <span class="account-eb">@_active.EBString</span>
+        }
+        else
+        {
+            <span class="account-none">No account - click to add</span>
+        }
+        <span class="account-caret">&#9660;</span>
+    </button>
+
+    @if (_open)
+    {
+        <ul class="account-menu">
+            @foreach (var acct in Accounts)
+            {
+                <li class="account-item" @onclick="() => Select(acct.Id)">
+                    <span class="account-check">
+                        @if (acct.Id == Active.ActiveAccountId)
+                        {
+                            <text>&#10003;</text>
+                        }
+                    </span>
+                    <span class="account-detail">
+                        <span class="account-id">@acct.Id</span>
+                        <span class="account-line">
+                            <span class="account-nick" style="color: #@acct.AccountColor">@acct.Nickname</span>
+                            <span class="account-eb">@acct.EBString</span>
+                        </span>
+                    </span>
+                </li>
+            }
+            @if (Accounts.Count == 0)
+            {
+                <li class="account-empty">No known accounts yet</li>
+            }
+        </ul>
+    }
+</div>
+
+@code {
+    private bool _open;
+    private KnownAccount? _active;
+
+    private IReadOnlyList<KnownAccount> Accounts =>
+        AppStateSvc.KnownAccounts;
+
+    protected override void OnInitialized()
+    {
+        Active.Changed += OnStateChanged;
+        AppStateSvc.Changed += OnStateChanged;
+        RefreshActive();
+    }
+
+    private void OnStateChanged()
+    {
+        RefreshActive();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void RefreshActive() =>
+        _active = AppStateSvc.KnownAccounts.FirstOrDefault(a => a.Id == Active.ActiveAccountId);
+
+    private void Toggle() => _open = !_open;
+
+    private void Select(string id)
+    {
+        Active.SetActive(id);
+        _open = false;
+    }
+
+    public void Dispose()
+    {
+        Active.Changed -= OnStateChanged;
+        AppStateSvc.Changed -= OnStateChanged;
+    }
+}

@@ -1,0 +1,121 @@
+@using System.Globalization
+@using System.Text
+@using Microsoft.AspNetCore.Components
+@using EggLedger.Domain.Reports
+@using EggLedger.Domain.Reports.Charts
+
+@*
+    Line / area chart. Port of ReportLineChart.vue. Geometry (points, polyline,
+    area path, y ticks, x label thinning + formatting) comes from the golden-
+    tested ChartGeometry helper. Fixed viewBox (responsive via preserveAspectRatio
+    and CSS width); the Vue ResizeObserver pixel sizing is not needed for the SVG
+    coordinate space. Hover crosshair/tooltip simplified to per-point titles.
+
+    SVG <text> elements are emitted via MarkupString helpers because Razor
+    reserves the bare <text> tag for its own text-transition control block.
+*@
+
+<div class="line-chart">
+    @if (Points().Count >= 2)
+    {
+        var pts = Points();
+        var max = MaxVal();
+        var ticks = ChartGeometry.YTicks(max, H, Result.IsFloat);
+        <svg viewBox="0 0 @Fmt(W) @Fmt(H)" preserveAspectRatio="xMidYMid meet" class="line-svg">
+            <defs>
+                <linearGradient id="@_gradId" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="@Color" stop-opacity="0.3" />
+                    <stop offset="100%" stop-color="@Color" stop-opacity="0.02" />
+                </linearGradient>
+            </defs>
+
+            @if (max > 0)
+            {
+                @foreach (var tick in ticks)
+                {
+                    <line x1="@Fmt(ChartGeometry.PadLeft)" y1="@Fmt(tick.Y)"
+                          x2="@Fmt(W - ChartGeometry.PadRight)" y2="@Fmt(tick.Y)"
+                          stroke="#374151" stroke-dasharray="3 3" stroke-width="0.5" />
+                    @YTickText(tick)
+                }
+            }
+
+            @if (ChartType != "line")
+            {
+                <path d="@ChartGeometry.AreaPath(pts, H)" fill="url(#@_gradId)" />
+            }
+
+            <polyline points="@ChartGeometry.PolylinePoints(pts)" fill="none"
+                      stroke="@Color" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+
+            @foreach (var p in ChartGeometry.ThinLabels(pts))
+            {
+                @XLabelText(p)
+            }
+
+            @foreach (var p in pts)
+            {
+                <circle cx="@Fmt(p.X)" cy="@Fmt(p.Y)" r="2.5" fill="@Color" class="line-dot">
+                    <title>@p.Label: @FormatValue(p.Value)@UnitSuffix</title>
+                </circle>
+            }
+        </svg>
+    }
+    else
+    {
+        <div class="chart-empty">Not enough data for a line chart</div>
+    }
+</div>
+
+@code {
+    private const double W = 300;
+    private const double H = 150;
+    private readonly string _gradId = "line-grad-" + Guid.NewGuid().ToString("N").Substring(0, 5);
+
+    [Parameter, EditorRequired]
+    public ReportResult Result { get; set; } = new();
+
+    [Parameter, EditorRequired]
+    public string Color { get; set; } = "#6366f1";
+
+    [Parameter]
+    public string? UnitLabel { get; set; }
+
+    /// <summary>chart_type: "line" omits the area fill, "area" includes it.</summary>
+    [Parameter]
+    public string? ChartType { get; set; }
+
+    private string UnitSuffix => string.IsNullOrEmpty(UnitLabel) ? "" : " " + UnitLabel;
+
+    private List<double> Values() => ChartGeometry.Values(Result.Values, Result.FloatValues, Result.IsFloat);
+
+    private double MaxVal() => Values().DefaultIfEmpty(0).Max();
+
+    private List<ChartPoint> Points() => ChartGeometry.Points(Values(), Result.Labels, W, H);
+
+    private MarkupString YTickText(YTick tick)
+    {
+        string x = Fmt(ChartGeometry.PadLeft - 4);
+        string y = Fmt(tick.Y);
+        return new MarkupString(
+            $"<text x=\"{x}\" y=\"{y}\" text-anchor=\"end\" dominant-baseline=\"middle\" class=\"axis-text\">{Esc(tick.Label)}</text>");
+    }
+
+    private MarkupString XLabelText(ChartPoint p)
+    {
+        string tx = Fmt(p.X);
+        string ty = Fmt(H - ChartGeometry.PadBottom + 4);
+        string label = Esc(ChartGeometry.FormatXLabel(p.Label));
+        return new MarkupString(
+            $"<text transform=\"translate({tx}, {ty}) rotate(-45)\" text-anchor=\"end\" class=\"axis-text\">{label}</text>");
+    }
+
+    private string FormatValue(double v) =>
+        Result.IsFloat
+            ? v.ToString("0.00", CultureInfo.InvariantCulture)
+            : Math.Round(v).ToString(CultureInfo.InvariantCulture);
+
+    private static string Fmt(double v) => v.ToString("0.###", CultureInfo.InvariantCulture);
+
+    private static string Esc(string s) => ChartGeometry.EscapeText(s);
+}

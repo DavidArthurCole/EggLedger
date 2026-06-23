@@ -1,0 +1,218 @@
+@page "/about"
+@using EggLedger.Web.Platform
+@using EggLedger.Web.State
+@implements IDisposable
+@inject AppStateService AppStateSvc
+@inject IPlatformCapabilities Platform
+@inject IUpdateStatusProvider UpdateStatus
+
+<PageTitle>EggLedger - About</PageTitle>
+
+@*
+    About tab. Port of AboutView.vue: the support banner, FAQ panes, and credits.
+    The desktop self-update banner is gated on IsDesktop (the browser build has no
+    update flow). External links are plain anchors with target="_blank" (fine in
+    both browser and desktop hosts). The coffee-banner dismiss is session-local
+    (the Vue version persists to localStorage; no localStorage helper exists in the
+    C# port, so dismissal lasts the session).
+*@
+
+<section class="about">
+    <div class="about-content">
+        @if (!_coffeeDismissed)
+        {
+            <div class="support-banner">
+                <div class="support-text">
+                    <p class="support-lead">EggLedger is free - if it's saved you time, consider supporting development!</p>
+                    <p class="support-sub">
+                        Getting $10 helps cover Azure Windows signing costs.<br />
+                        As a stretch goal, enough for a $99/yr Apple license to properly sign the app on macOS.
+                    </p>
+                </div>
+                <div class="support-actions">
+                    <a class="support-btn support-btn-coffee" target="_blank" rel="noopener"
+                       href="https://buymeacoffee.com/davidarthurcole">&#x2615; Buy me a coffee</a>
+                    <a class="support-btn support-btn-sponsor" target="_blank" rel="noopener"
+                       href="https://github.com/sponsors/DavidArthurCole">&#10084; GitHub Sponsors</a>
+                    <a class="support-btn support-btn-patreon" target="_blank" rel="noopener"
+                       href="https://patreon.com/DavidArthurCole">&#9733; Patreon</a>
+                    <button type="button" class="support-dismiss" @onclick="DismissCoffee">Dismiss</button>
+                </div>
+            </div>
+        }
+
+        @if (Platform.IsDesktop)
+        {
+            @* Desktop-only: in-place self-update overlay, bound to the live
+               IUpdateStatusProvider the desktop host registers. The browser build
+               has no updater (gated out by IsDesktop). *@
+            <div class="update-banner">
+                @switch (UpdateStatus.Phase)
+                {
+                    case UpdatePhase.Checking:
+                        <p class="update-note">Checking for updates...</p>
+                        break;
+                    case UpdatePhase.Available:
+                        <p class="update-note">Update available: version @UpdateStatus.AvailableVersion</p>
+                        <button type="button" class="support-btn" @onclick="InstallUpdate">Download and install</button>
+                        break;
+                    case UpdatePhase.Downloading:
+                        <p class="update-note">Downloading update@(UpdateStatus.TotalBytes > 0 ? $" ({UpdateStatus.DownloadedBytes * 100 / UpdateStatus.TotalBytes}%)" : "")...</p>
+                        break;
+                    case UpdatePhase.Ready:
+                        <p class="update-note">Update ready. The app will restart to finish.</p>
+                        break;
+                    case UpdatePhase.Failed:
+                        <p class="update-note">Update failed@(string.IsNullOrEmpty(UpdateStatus.Message) ? "." : $": {UpdateStatus.Message}")</p>
+                        <button type="button" class="support-btn" @onclick="CheckUpdate">Try again</button>
+                        break;
+                    default:
+                        <p class="update-note">EggLedger is up to date.</p>
+                        <button type="button" class="support-btn" @onclick="CheckUpdate">Check for updates</button>
+                        break;
+                }
+            </div>
+        }
+
+        <div class="about-grid">
+            <div class="about-pane">
+                <h2 class="pane-title">Is mk2 back?</h2>
+                <p>No. This tool is now being developed independently - the community has taken over mk2's orphaned tools since he went AWOL in 2022.</p>
+                <p><i>For EggLedger specifically</i>, I (<a class="url-link" target="_blank" rel="noopener" href="https://github.com/DavidArthurCole">DavidArthurCole</a>) am the active developer and maintainer.</p>
+                <p>Join my <a class="url-link" target="_blank" rel="noopener" href="https://discord.davidarthurcole.me">Discord server</a> for EggLedger support, bug reports, and general discussion.</p>
+                <p>You can also reach me directly on <a class="url-link" target="_blank" rel="noopener" href="https://discord.com/users/258383847148879874">Discord</a> (<span class="text-duration-0">@@davidarthurcole</span>) or <a class="url-link" target="_blank" rel="noopener" href="https://github.com/DavidArthurCole/EggLedger/issues/new/choose">open a GitHub Issue</a>.</p>
+            </div>
+
+            <div class="about-pane">
+                <h2 class="pane-title">What does EggLedger do?</h2>
+                <p>Exports spaceship mission data - including loot from each mission - to .xlsx and .csv for further analysis.</p>
+                <p>It extends the <a class="url-link" target="_blank" rel="noopener" href="https://wasmegg-carpet.netlify.app/rockets-tracker/">rockets tracker</a> to answer questions like "which mission dropped this artifact?" and "how many times did this item drop?" that can't be answered there.</p>
+                <p>It also lets you browse and filter mission data in-app.</p>
+            </div>
+
+            <div class="about-pane">
+                <h2 class="pane-title">How do I use EggLedger?</h2>
+                <ul class="about-list-1">
+                    <li>Open the account selector and choose <b>+ Add Account</b>, then enter your EID</li>
+                    <li>With your account selected, press <b>Fetch</b> on the <b>Ledger</b> tab
+                        <ul class="about-list-2">
+                            <li>First fetch may take a while if you have many completed missions</li>
+                            <li>Subsequent fetches only pull new missions</li>
+                            <li>Multiple accounts can be added and switched between at any time</li>
+                        </ul>
+                    </li>
+                    <li>Browse and filter your mission history in the <b>Mission Data</b> tab</li>
+                    <li>View lifetime drop totals and statistics in the <b>Lifetime Data</b> tab</li>
+                    <li>Build custom charts and breakdowns in the <b>Reports</b> tab</li>
+                </ul>
+            </div>
+
+            <div class="about-pane">
+                <h2 class="pane-title">Where do I find my Egg, Inc. account ID?</h2>
+                <ul class="about-list-1">
+                    <li>Open the game menu <img src="images/icon_menu.webp" alt="Menu Icon" class="game-btn-ico" /></li>
+                    <li>Choose Settings <img src="images/icon_settings.webp" alt="Settings Icon" class="game-btn-ico" /></li>
+                    <li>Choose <span class="pill pill-privacy">Privacy &amp; Data</span></li>
+                    <li>Your EID is at the bottom
+                        <ul class="about-list-2">
+                            <li><span class="ledger-underline">It should look like EI1234567890123456</span>. That's the letters "EI" followed by 16 digits.</li>
+                            <li>Alternatively, if you choose Help <img src="images/icon_help.webp" alt="Help Icon" class="game-btn-ico" /> in the main menu and click on <span class="pill pill-danger">Data Loss Issue</span> the game will auto-compose an email with your ID in the subject.</li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="about-pane">
+                <h2 class="pane-title">Is my data shared with anyone?</h2>
+                <p>No. EggLedger talks directly to the Egg, Inc. API - all data stays 100% local. No analytics are collected.</p>
+                <p>The only third-party request is an occasional update check against github.com. No personal data is attached and no logs are available to me.</p>
+                <p>Unless you contact me directly, I have no way to know you're even using this tool.</p>
+            </div>
+
+            <div class="about-pane">
+                <h2 class="pane-title">Is the Settings Sync feature private?</h2>
+                <p>Settings Sync is fully optional. If you never connect Discord, nothing leaves your machine beyond the Egg, Inc. API calls and the update check described above.</p>
+                <p>If you do use it, your settings are <span class="ledger-underline">encrypted client-side before upload</span>. The encryption key is derived locally and never transmitted - the sync server receives and stores only an opaque encrypted blob it cannot read.</p>
+                <p>Discord is used solely to verify your identity. No settings data passes through Discord's servers.</p>
+            </div>
+
+            <div class="about-pane">
+                <h2 class="pane-title">Are there account risks?</h2>
+                <p>I'm not aware of any negative effects. The <a class="url-link" target="_blank" rel="noopener" href="https://wasmegg-carpet.netlify.app/rockets-tracker/">rockets tracker</a> has safely used the same techniques for years.</p>
+                <p>That said, no community tools are sanctioned by the Egg, Inc. developer. You use them at your own risk.</p>
+            </div>
+
+            <div class="about-pane">
+                <h2 class="pane-title">Why are recent missions missing?</h2>
+                <p>Your server backup is probably out of date. Watch the freshness message when your backup is fetched.</p>
+                <p>The game backs up every few minutes when network allows, but it's unpredictable. <span class="ledger-underline">Force-closing and reopening the game, or switching farms, reliably triggers a new backup.</span></p>
+                <p>Even after a backup, it may take a minute or two before the API serves the updated data.</p>
+            </div>
+
+            <div class="about-pane">
+                <h2 class="pane-title">Where does EggLedger store data?</h2>
+                <p>All config, data, and exports are stored in the same directory as the EggLedger binary.</p>
+                <p><span class="ledger-underline">Put EggLedger in a directory of its own and don't touch the "internal" folder</span> - doing so risks data corruption.</p>
+                <p>To uninstall, just delete the directory. No system-level traces are left behind.</p>
+            </div>
+
+            <div class="about-pane">
+                <h2 class="pane-title">Known issues</h2>
+                <ul class="about-list-1">
+                    <li>On macOS, clicking the dock icon can open a new browser window</li>
+                    <li>On Windows, the taskbar icon resolution is low</li>
+                    <li>Some missions may fail to fetch
+                        <ul class="about-list-2">
+                            <li>Occasional API timeouts are normal - a second fetch usually resolves them</li>
+                            <li>If the same mission fails repeatedly, please reach out</li>
+                        </ul>
+                    </li>
+                    <li>The Mission Data tab can be slow with very large mission histories</li>
+                </ul>
+            </div>
+
+            <div class="about-pane">
+                <h2 class="pane-title">Where do I get @@mk2's autograph?</h2>
+                <p><a class="url-link" target="_blank" rel="noopener" href="https://areyousure.netlify.app/">Are you sure</a> you want @@mk2's autograph?</p>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(AppStateSvc.AppVersion))
+        {
+            <p class="about-version">Version @AppStateSvc.AppVersion</p>
+        }
+    </div>
+</section>
+
+@code {
+    private bool _coffeeDismissed;
+
+    protected override void OnInitialized()
+    {
+        if (Platform.IsDesktop)
+        {
+            UpdateStatus.Changed += OnUpdateChanged;
+        }
+    }
+
+    private void OnUpdateChanged() => InvokeAsync(StateHasChanged);
+
+    // Explicit user check from the About overlay bypasses the 12h cooldown (force=true),
+    // matching the Go --force-update-check intent for a deliberate "check now".
+    private Task CheckUpdate() => UpdateStatus.CheckForUpdatesAsync(force: true);
+
+    private Task InstallUpdate()
+        => string.IsNullOrEmpty(UpdateStatus.AvailableVersion)
+            ? Task.CompletedTask
+            : UpdateStatus.DownloadAndInstallAsync(UpdateStatus.AvailableVersion);
+
+    private void DismissCoffee() => _coffeeDismissed = true;
+
+    public void Dispose()
+    {
+        if (Platform.IsDesktop)
+        {
+            UpdateStatus.Changed -= OnUpdateChanged;
+        }
+    }
+}

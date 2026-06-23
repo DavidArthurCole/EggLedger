@@ -1,0 +1,25 @@
+@using EggLedger.Web.Missions
+
+@* Port of www/src/components/DropDisplayContainer.vue (useContainers branch).
+   Renders the four spec-type sections inside one rounded container. *@
+
+<div class="drop-container">
+    <DropDisplay Type="artifact" Items="Artifacts" />
+    <DropDisplay Type="stone" Items="Stones" />
+    <DropDisplay Type="ingredient" Items="Ingredients" />
+    <DropDisplay Type="stone_fragment" Items="StoneFragments" />
+</div>
+
+@code {
+    [Parameter]
+    public IReadOnlyList<DropLike>? Artifacts { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<DropLike>? Stones { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<DropLike>? Ingredients { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<DropLike>? StoneFragments { get; set; }
+}

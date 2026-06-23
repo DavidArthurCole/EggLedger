@@ -1,0 +1,7 @@
+{
+  "key": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+  "plaintext": "{\"hello\":\"egg ledger\",\"n\":42}",
+  "nonce_hex": "aabbccddeeff001122334455",
+  "blob": "qrvM3e7/ABEiM0RVHO061Qmu7uWy4k2kfchNntBjwkvb0xH6GtphzJhLVPUCLp+geeIpj6+wc2kY",
+  "plaintext_base64": "eyJoZWxsbyI6ImVnZyBsZWRnZXIiLCJuIjo0Mn0="
+}

@@ -1,0 +1,124 @@
+@page "/lifetime"
+@using EggLedger.Domain.MissionQuery
+@using EggLedger.Web.Components
+@using EggLedger.Web.Data
+@using EggLedger.Web.Missions
+@using EggLedger.Web.State
+@implements IDisposable
+@inject MissionQueryHandlers Queries
+@inject ActiveAccount Active
+@inject AppStateService AppState
+@inject IndexedDbSettings Settings
+
+<PageTitle>EggLedger - Lifetime Data</PageTitle>
+
+<section class="lifetime">
+    @if (Active.ActiveAccountId is null)
+    {
+        <p class="lt-empty">Select an account on the Ledger tab to view its lifetime data.</p>
+    }
+    else if (_loading)
+    {
+        <div class="lt-loading">
+            <span>Lifetime data is being compiled, please wait...</span>
+        </div>
+    }
+    else if (_data is null || _data.MissionCount == 0)
+    {
+        <p class="lt-empty">No mission data for this account yet. Fetch on the Ledger tab first.</p>
+    }
+    else
+    {
+        <div class="lt-options">
+            <span class="lt-opt-heading">Sort Method</span>
+            <label class="lt-opt"><input type="radio" name="lt-sort" checked="@(_sortMethod == LifetimeSortMethod.Default)" @onchange="@(() => SetSortAsync(LifetimeSortMethod.Default))" /> Default</label>
+            <label class="lt-opt"><input type="radio" name="lt-sort" checked="@(_sortMethod == LifetimeSortMethod.Iv)" @onchange="@(() => SetSortAsync(LifetimeSortMethod.Iv))" /> Inventory Visualizer</label>
+            <label class="lt-opt"><input type="radio" name="lt-sort" checked="@(_sortMethod == LifetimeSortMethod.Count)" @onchange="@(() => SetSortAsync(LifetimeSortMethod.Count))" /> Total Count</label>
+            <label class="lt-opt"><input type="radio" name="lt-sort" checked="@(_sortMethod == LifetimeSortMethod.Random)" @onchange="@(() => SetSortAsync(LifetimeSortMethod.Random))" /> Random</label>
+        </div>
+
+        <div class="lt-data">
+            <span class="lt-summary">Data compiled from @_data.MissionCount Missions</span>
+            <DropDisplayContainer Artifacts="_data.Artifacts"
+                                  Stones="_data.Stones"
+                                  Ingredients="_data.Ingredients"
+                                  StoneFragments="_data.StoneFragments" />
+        </div>
+    }
+</section>
+
+@code {
+    private const string KeySortMethod = "lifetime_sort_method";
+
+    private bool _loading;
+    private LifetimeData? _data;
+    private LifetimeSortMethod _sortMethod = LifetimeSortMethod.Default;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Active.Changed += OnAccountChanged;
+        AppState.Changed += OnAppStateChanged;
+        var settings = await Settings.GetAllSettingsAsync();
+        _sortMethod = LifetimeSorter.ParseMethod(
+            settings.TryGetValue(KeySortMethod, out var s) ? s : null);
+        await LoadAsync();
+    }
+
+    private void OnAccountChanged() => InvokeAsync(LoadAsync);
+
+    // Refresh when a fetch completes so freshly fetched missions show up without a
+    // manual reload (mirrors the Vue appState watch).
+    private void OnAppStateChanged()
+    {
+        if (AppState.PipelineState == EggLedger.Web.Services.AppState.Success && Active.ActiveAccountId is not null)
+        {
+            InvokeAsync(LoadAsync);
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        var id = Active.ActiveAccountId;
+        if (id is null)
+        {
+            _data = null;
+            StateHasChanged();
+            return;
+        }
+
+        _loading = true;
+        StateHasChanged();
+
+        var dropsByMission = await Queries.GetAllPlayerDropsAsync(id);
+        if (dropsByMission is null)
+        {
+            _data = null;
+            _loading = false;
+            StateHasChanged();
+            return;
+        }
+
+        var data = LifetimeAggregator.Aggregate(dropsByMission);
+        LifetimeSorter.Sort(data, _sortMethod);
+        _data = data;
+        _loading = false;
+        StateHasChanged();
+    }
+
+    private async Task SetSortAsync(LifetimeSortMethod method)
+    {
+        _sortMethod = method;
+        await Settings.SetSettingAsync(KeySortMethod, LifetimeSorter.MethodString(method));
+        if (_data is not null)
+        {
+            LifetimeSorter.Sort(_data, _sortMethod);
+        }
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        Active.Changed -= OnAccountChanged;
+        AppState.Changed -= OnAppStateChanged;
+    }
+}

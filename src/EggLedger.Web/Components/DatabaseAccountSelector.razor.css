@@ -1,0 +1,72 @@
+.selector {
+    display: flex;
+    width: 100%;
+}
+
+.selector-input-wrap {
+    position: relative;
+    flex: 1 1 auto;
+}
+
+.selector-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: var(--space-1) var(--space-2);
+    font-size: 0.8125rem;
+    border-radius: 0.25rem;
+    background-color: var(--color-darkest);
+    border: 1px solid var(--color-border-soft);
+    color: var(--color-text);
+}
+
+.selector-input:focus {
+    outline: none;
+    border-color: var(--color-accent-blue);
+}
+
+.selector-list {
+    position: absolute;
+    z-index: 10;
+    top: 100%;
+    left: 0;
+    right: 0;
+    margin: var(--space-1) 0 0;
+    padding: 0;
+    list-style: none;
+    max-height: 14rem;
+    overflow-y: auto;
+    background-color: var(--color-darker);
+    border: 1px solid var(--color-border-soft);
+    border-radius: 0.25rem;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+.selector-option {
+    padding: var(--space-1) var(--space-2);
+    font-size: 0.8125rem;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.selector-option:hover {
+    background-color: var(--color-darker-tab-hover);
+}
+
+.selector-option.is-active {
+    background-color: var(--color-darkerthandark);
+}
+
+.opt-id {
+    font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+
+.opt-meta {
+    color: var(--color-text-dim);
+    margin-left: var(--space-1);
+}
+
+.opt-nick {
+    font-weight: 500;
+}

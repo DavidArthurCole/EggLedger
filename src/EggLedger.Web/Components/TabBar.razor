@@ -1,0 +1,34 @@
+@using Microsoft.AspNetCore.Components.Routing
+
+<nav class="tab-bar" aria-label="Main">
+    <div class="tab-row">
+        @foreach (var tab in Tabs)
+        {
+            <NavLink class="tab" ActiveClass="tab-active" href="@tab.Href" Match="@MatchFor(tab.Href)">
+                @tab.Label
+            </NavLink>
+        }
+        @if (Right is not null)
+        {
+            <div class="tab-right">
+                @Right
+            </div>
+        }
+    </div>
+</nav>
+
+@code {
+    /// <summary>One navigable tab: display label plus its route href.</summary>
+    public sealed record TabItem(string Label, string Href);
+
+    [Parameter]
+    public IReadOnlyList<TabItem> Tabs { get; set; } = [];
+
+    [Parameter]
+    public RenderFragment? Right { get; set; }
+
+    // The Ledger tab ("/") must match exactly so it does not stay highlighted on
+    // every other route; the rest match by prefix.
+    private static NavLinkMatch MatchFor(string href) =>
+        href == "/" ? NavLinkMatch.All : NavLinkMatch.Prefix;
+}

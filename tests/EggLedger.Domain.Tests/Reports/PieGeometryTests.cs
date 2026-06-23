@@ -1,0 +1,72 @@
+using EggLedger.Domain.Reports.Charts;
+
+namespace EggLedger.Domain.Tests.Reports;
+
+/// <summary>
+/// Golden tests for the pie geometry, mirroring ReportPieChart.vue: top-N
+/// rollup, slice sweep angles, and arc paths. Reference values from Node.
+/// </summary>
+public class PieGeometryTests
+{
+    [Fact]
+    public void SlicePath_HalfCircle_MatchesVue()
+    {
+        // -90deg to +90deg, center (100,100), r=50.
+        var path = PieGeometry.SlicePath(100, 100, 50, -Math.PI / 2, Math.PI / 2);
+        Assert.Equal("M 100 100 L 100 50 A 50 50 0 0 1 100 150 Z", path);
+    }
+
+    [Fact]
+    public void SlicePath_SetsLargeArcFlagForSweepOverPi()
+    {
+        var path = PieGeometry.SlicePath(0, 0, 10, 0, Math.PI * 1.5);
+        Assert.Contains(" 0 1 1 ", path);
+    }
+
+    [Fact]
+    public void BuildItems_RollsExtraIntoOther()
+    {
+        var values = new double[] { 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 1, 1 };
+        var labels = values.Select((_, i) => "L" + i).ToList();
+        var items = PieGeometry.BuildItems(labels, values);
+
+        Assert.Equal(10, items.Count);
+        Assert.Equal("Other", items[^1].Label);
+        Assert.Equal(3, items[^1].Value); // 1 + 1 + 1
+        Assert.Equal("L0", items[0].Label);
+    }
+
+    [Fact]
+    public void BuildItems_ReturnsEmptyWhenTotalZero()
+    {
+        var items = PieGeometry.BuildItems(new[] { "A", "B" }, new double[] { 0, 0 });
+        Assert.Empty(items);
+    }
+
+    [Fact]
+    public void BuildSlices_SweepsProportionalToValueAndColors()
+    {
+        var labels = new[] { "A", "B" };
+        var values = new double[] { 3, 1 };
+        var slices = PieGeometry.BuildSlices(
+            labels, values, 100, 100, 50, "#6366f1", new Dictionary<string, string>());
+
+        Assert.Equal(2, slices.Count);
+        Assert.Equal(75, slices[0].Pct, 5);
+        Assert.Equal(25, slices[1].Pct, 5);
+        // First slice gets the base color (auto index 0).
+        Assert.Equal("#6366f1", slices[0].Color);
+    }
+
+    [Fact]
+    public void BuildSlices_HonorsLabelColorOverride()
+    {
+        var slices = PieGeometry.BuildSlices(
+            new[] { "A", "B" },
+            new double[] { 1, 1 },
+            100, 100, 50,
+            "#6366f1",
+            new Dictionary<string, string> { ["A"] = "#abcdef" });
+        Assert.Equal("#abcdef", slices[0].Color);
+    }
+}

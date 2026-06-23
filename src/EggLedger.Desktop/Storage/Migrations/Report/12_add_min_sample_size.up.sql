@@ -1,0 +1,1 @@
+ALTER TABLE reports ADD COLUMN min_sample_size INTEGER NOT NULL DEFAULT 0;

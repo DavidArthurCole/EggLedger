@@ -1,0 +1,86 @@
+[
+  {
+    "shipConfiguration": {
+      "shipType": { "id": 9, "name": "Henerprise" },
+      "shipDurationType": { "id": 0, "name": "Short" },
+      "level": 0,
+      "targetArtifact": { "id": 10000, "name": "None" }
+    },
+    "artifactConfiguration": {
+      "artifactType": { "id": 1, "name": "Lunar Totem" },
+      "artifactRarity": { "id": 0, "name": "Common" },
+      "artifactLevel": 0
+    },
+    "totalDrops": 900
+  },
+  {
+    "shipConfiguration": {
+      "shipType": { "id": 9, "name": "Henerprise" },
+      "shipDurationType": { "id": 0, "name": "Short" },
+      "level": 10,
+      "targetArtifact": { "id": 10000, "name": "None" }
+    },
+    "artifactConfiguration": {
+      "artifactType": { "id": 2, "name": "Demeters Necklace" },
+      "artifactRarity": { "id": 1, "name": "Rare" },
+      "artifactLevel": 0
+    },
+    "totalDrops": 1900
+  },
+  {
+    "shipConfiguration": {
+      "shipType": { "id": 9, "name": "Henerprise" },
+      "shipDurationType": { "id": 1, "name": "Long" },
+      "level": 2,
+      "targetArtifact": { "id": 10000, "name": "None" }
+    },
+    "artifactConfiguration": {
+      "artifactType": { "id": 1, "name": "Lunar Totem" },
+      "artifactRarity": { "id": 0, "name": "Common" },
+      "artifactLevel": 0
+    },
+    "totalDrops": 620
+  },
+  {
+    "shipConfiguration": {
+      "shipType": { "id": 10, "name": "Atreggies" },
+      "shipDurationType": { "id": 0, "name": "Short" },
+      "level": 0,
+      "targetArtifact": { "id": 10000, "name": "None" }
+    },
+    "artifactConfiguration": {
+      "artifactType": { "id": 3, "name": "Vial of Martian Dust" },
+      "artifactRarity": { "id": 0, "name": "Common" },
+      "artifactLevel": 0
+    },
+    "totalDrops": 1200
+  },
+  {
+    "shipConfiguration": {
+      "shipType": { "id": 10, "name": "Atreggies" },
+      "shipDurationType": { "id": 1, "name": "Long" },
+      "level": 0,
+      "targetArtifact": { "id": 10000, "name": "None" }
+    },
+    "artifactConfiguration": {
+      "artifactType": { "id": 4, "name": "Ornate Gusset" },
+      "artifactRarity": { "id": 2, "name": "Epic" },
+      "artifactLevel": 0
+    },
+    "totalDrops": 780
+  },
+  {
+    "shipConfiguration": {
+      "shipType": { "id": 5, "name": "Cornish Hen Corvette" },
+      "shipDurationType": { "id": 2, "name": "Epic" },
+      "level": 1,
+      "targetArtifact": { "id": 10000, "name": "None" }
+    },
+    "artifactConfiguration": {
+      "artifactType": { "id": 7, "name": "Unmatched Item" },
+      "artifactRarity": { "id": 0, "name": "Common" },
+      "artifactLevel": 0
+    },
+    "totalDrops": 333
+  }
+]

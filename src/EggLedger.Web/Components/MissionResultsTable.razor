@@ -1,0 +1,256 @@
+@using System.Globalization
+@using EggLedger.Domain.MissionPacking
+@using EggLedger.Web.Missions
+
+@* Port of www/src/components/MissionResultsTable.vue. Renders the year/month/day
+   collapse tree, each mission a clickable row. Multi-view (row/free) selection is
+   deferred. *@
+
+@if (Grouping is null || Grouping.Missions.Count == 0)
+{
+    <div class="mrt-empty">No missions to display.</div>
+}
+else
+{
+    <div class="mrt-list">
+        <div class="mrt-header">
+            <span class="mrt-title">
+                Missions
+                <button type="button" class="mrt-toggle" @onclick="ToggleAll">
+                    @(AllExpanded ? "Collapse All" : "Expand All")
+                </button>
+            </span>
+            <hr class="mrt-hr" />
+        </div>
+
+        @for (int yi = 0; yi < Grouping.Missions.Count; yi++)
+        {
+            int yearIndex = yi;
+            var year = Grouping.Arrays.Year[yearIndex];
+            <div class="mrt-year-head">
+                <span class="mrt-year">@year.Year</span>
+                <button type="button" class="mrt-toggle" @onclick="@(() => ToggleYear(yearIndex))">
+                    @(year.Enabled ? "Collapse" : "Expand")
+                </button>
+            </div>
+
+            @if (year.Enabled)
+            {
+                @for (int mi = 0; mi < Grouping.Missions[yearIndex].Count; mi++)
+                {
+                    int monthIndex = mi;
+                    var month = Grouping.Arrays.Month[yearIndex][monthIndex];
+                    <div class="mrt-month">
+                        <div class="mrt-month-head">
+                            <span class="mrt-month-label">
+                                @year.Year-@month.Month.ToString("00", CultureInfo.InvariantCulture)
+                            </span>
+                            <button type="button" class="mrt-toggle" @onclick="@(() => ToggleMonth(yearIndex, monthIndex))">
+                                @(month.Enabled ? "Collapse" : "Expand")
+                            </button>
+                        </div>
+
+                        @if (month.Enabled)
+                        {
+                            @for (int di = 0; di < Grouping.Missions[yearIndex][monthIndex].Count; di++)
+                            {
+                                int dayIndex = di;
+                                var day = Grouping.Arrays.Day[yearIndex][monthIndex][dayIndex];
+                                <div class="mrt-day">
+                                    @if (ViewByDate)
+                                    {
+                                        <div class="mrt-day-head">
+                                            <span class="mrt-day-label">
+                                                @year.Year-@month.Month.ToString("00", CultureInfo.InvariantCulture)-@day.Day.ToString("00", CultureInfo.InvariantCulture)
+                                            </span>
+                                            <button type="button" class="mrt-toggle"
+                                                    @onclick="@(() => ToggleDay(yearIndex, monthIndex, dayIndex))">
+                                                @(day.Enabled ? "Collapse" : "Expand")
+                                            </button>
+                                        </div>
+                                    }
+
+                                    @if (DayVisible(yearIndex, monthIndex, dayIndex))
+                                    {
+                                        <div class="mrt-day-grid">
+                                            @foreach (var mission in Grouping.Missions[yearIndex][monthIndex][dayIndex])
+                                            {
+                                                var m = mission;
+                                                <button type="button" class="mrt-row" @onclick="@(() => OnView(m.MissiondId))">
+                                                    @if (!ViewByDate)
+                                                    {
+                                                        <span class="@RowColor(m, false)">@DateLabel(year.Year, month.Month, day.Day)</span>
+                                                    }
+                                                    @if (ViewMissionTimes)
+                                                    {
+                                                        <span class="@RowColor(m, true)"> @TimeLabel(m)</span>
+                                                    }
+                                                    <span class="mrt-ship">
+                                                        <span class="@DurationClass(m)">@m.ShipString</span>
+                                                        @if (m.Level > 0)
+                                                        {
+                                                            <span> (@m.Level<span class="text-goldenstar">&#9733;</span>)</span>
+                                                        }
+                                                        <TargetDisplay Target="m.Target" />
+                                                    </span>
+                                                </button>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        }
+                    </div>
+                }
+            }
+        }
+    </div>
+}
+
+@code {
+    [Parameter]
+    public MissionGrouping? Grouping { get; set; }
+
+    [Parameter]
+    public bool ViewByDate { get; set; }
+
+    [Parameter]
+    public bool ViewMissionTimes { get; set; }
+
+    [Parameter]
+    public bool RecolorDc { get; set; }
+
+    [Parameter]
+    public bool RecolorBc { get; set; }
+
+    /// <summary>Mission id currently shown in the overlay, highlighted in the list.</summary>
+    [Parameter]
+    public string? MissionBeingViewed { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnViewMission { get; set; }
+
+    /// <summary>Raised when collapse state mutates so the page can re-render.</summary>
+    [Parameter]
+    public EventCallback OnGroupingChanged { get; set; }
+
+    private async Task OnView(string missionId) => await OnViewMission.InvokeAsync(missionId);
+
+    // Port of isDayRowVisible.
+    private bool DayVisible(int yi, int mi, int di) =>
+        ViewByDate ? Grouping!.Arrays.Day[yi][mi][di].Enabled : Grouping!.Arrays.Month[yi][mi].Enabled;
+
+    // True when every year section is expanded (drives the Collapse/Expand All label).
+    private bool AllExpanded
+    {
+        get
+        {
+            if (Grouping is null)
+            {
+                return true;
+            }
+            foreach (var y in Grouping.Arrays.Year)
+            {
+                if (!y.Enabled)
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+    }
+
+    private async Task ToggleAll()
+    {
+        if (Grouping is null)
+        {
+            return;
+        }
+        SetAll(!AllExpanded);
+        await NotifyAsync();
+    }
+
+    private void SetAll(bool enabled)
+    {
+        foreach (var y in Grouping!.Arrays.Year)
+        {
+            y.Enabled = enabled;
+        }
+        foreach (var months in Grouping.Arrays.Month)
+        {
+            foreach (var mo in months)
+            {
+                mo.Enabled = enabled;
+            }
+        }
+        foreach (var yearDays in Grouping.Arrays.Day)
+        {
+            foreach (var monthDays in yearDays)
+            {
+                foreach (var d in monthDays)
+                {
+                    d.Enabled = enabled;
+                }
+            }
+        }
+    }
+
+    private async Task ToggleYear(int yi)
+    {
+        var y = Grouping!.Arrays.Year[yi];
+        y.Enabled = !y.Enabled;
+        await NotifyAsync();
+    }
+
+    private async Task ToggleMonth(int yi, int mi)
+    {
+        var mo = Grouping!.Arrays.Month[yi][mi];
+        mo.Enabled = !mo.Enabled;
+        await NotifyAsync();
+    }
+
+    private async Task ToggleDay(int yi, int mi, int di)
+    {
+        var d = Grouping!.Arrays.Day[yi][mi][di];
+        d.Enabled = !d.Enabled;
+        await NotifyAsync();
+    }
+
+    private async Task NotifyAsync()
+    {
+        StateHasChanged();
+        await OnGroupingChanged.InvokeAsync();
+    }
+
+    // Port of getShipColorText.
+    private string RowColor(DatabaseMission m, bool altMode)
+    {
+        if (MissionBeingViewed == m.MissiondId)
+        {
+            return altMode ? "text-selectedmission-darker" : "text-selectedmission";
+        }
+        if (RecolorBc && m.IsBuggedCap)
+        {
+            return altMode ? "text-buggedcap-darker" : "text-buggedcap";
+        }
+        if (RecolorDc && m.IsDubCap)
+        {
+            return altMode ? "text-dubcap-darker" : "text-dubcap";
+        }
+        return altMode ? "mrt-faint" : "mrt-muted";
+    }
+
+    private static string DurationClass(DatabaseMission m) =>
+        m.DurationType is { } d
+            ? "text-duration-" + Convert.ToInt32(d, CultureInfo.InvariantCulture)
+            : "text-duration-3";
+
+    private static string DateLabel(int year, int month, int day) =>
+        $"{year}-{month.ToString("00", CultureInfo.InvariantCulture)}-{day.ToString("00", CultureInfo.InvariantCulture)}";
+
+    private static string TimeLabel(DatabaseMission m)
+    {
+        var d = MissionFilterMatcher.LedgerDate(m.LaunchDT);
+        return d.ToString("HH:mm:ss", CultureInfo.InvariantCulture);
+    }
+}

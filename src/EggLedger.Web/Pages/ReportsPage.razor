@@ -1,0 +1,172 @@
+@page "/reports"
+@using EggLedger.Domain.Reports
+@using EggLedger.Web.Components.Reports
+@using EggLedger.Web.Data
+@using EggLedger.Web.State
+@implements IDisposable
+@inject ActiveAccount Active
+@inject IndexedDbReportStore Store
+
+<PageTitle>EggLedger - Reports</PageTitle>
+
+<section class="reports">
+    @if (Active.ActiveAccountId is null)
+    {
+        <p class="reports-empty">Select an account on the Ledger tab to view its reports.</p>
+    }
+    else
+    {
+        <div class="reports-tabs">
+            <button type="button" class="group-tab @(_selectedGroup is null ? "active" : "")"
+                    @onclick="() => SelectGroup(null)">All</button>
+            @foreach (var g in _groups)
+            {
+                <button type="button" class="group-tab @(_selectedGroup == g.Id ? "active" : "")"
+                        @onclick="() => SelectGroup(g.Id)">
+                    @g.Name
+                    @if (_editMode)
+                    {
+                        <span class="group-del" title="Delete group" @onclick:stopPropagation
+                              @onclick="() => DeleteGroupAsync(g.Id)">&#215;</span>
+                    }
+                </button>
+            }
+
+            <div class="reports-actions">
+                @if (_showNewGroup)
+                {
+                    <input class="group-input" type="text" placeholder="Group name" @bind="_newGroupName"
+                           @bind:event="oninput" @onkeydown="GroupKeyDown" />
+                    <button type="button" class="btn-ghost" @onclick="CreateGroupAsync">Add</button>
+                }
+                else
+                {
+                    <button type="button" class="btn-ghost" @onclick="() => _showNewGroup = true">+ Group</button>
+                }
+                <button type="button" class="btn-ghost @(_editMode ? "active" : "")"
+                        @onclick="() => _editMode = !_editMode">@(_editMode ? "Done" : "Edit")</button>
+                <button type="button" class="btn-new" @onclick="OpenCreate">+ New Report</button>
+            </div>
+        </div>
+
+        <ReportGrid @ref="_grid" AccountId="@Active.ActiveAccountId" GroupFilter="@_selectedGroup"
+                    EditMode="_editMode" OnEdit="OpenEdit" />
+    }
+</section>
+
+<ReportBuilderPanel @ref="_builder" AccountId="@(Active.ActiveAccountId ?? "")"
+                    GroupId="@_selectedGroup" Saved="OnSavedAsync" />
+
+@code {
+    private ReportGrid? _grid;
+    private ReportBuilderPanel? _builder;
+    private IReadOnlyList<ReportGroupRow> _groups = Array.Empty<ReportGroupRow>();
+    private string? _selectedGroup;
+    private bool _editMode;
+    private bool _showNewGroup;
+    private string _newGroupName = "";
+    private string _loadedAccount = "";
+
+    protected override void OnInitialized()
+    {
+        Active.Changed += OnActiveChanged;
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var id = Active.ActiveAccountId;
+        if (id is not null && id != _loadedAccount)
+        {
+            _loadedAccount = id;
+            _selectedGroup = null;
+            await LoadGroupsAsync();
+        }
+    }
+
+    private void OnActiveChanged() => InvokeAsync(StateHasChanged);
+
+    private async Task LoadGroupsAsync()
+    {
+        var id = Active.ActiveAccountId;
+        if (id is null)
+        {
+            _groups = Array.Empty<ReportGroupRow>();
+            return;
+        }
+        _groups = await Store.RetrieveAccountGroupsAsync(id);
+        StateHasChanged();
+    }
+
+    private void SelectGroup(string? id) => _selectedGroup = id;
+
+    private async Task OpenCreate()
+    {
+        if (_builder is not null)
+        {
+            await _builder.OpenForCreateAsync();
+        }
+    }
+
+    private async Task OpenEdit(ReportDefinition def)
+    {
+        if (_builder is not null)
+        {
+            await _builder.OpenForEditAsync(def);
+        }
+    }
+
+    private async Task OnSavedAsync()
+    {
+        if (_grid is not null)
+        {
+            await _grid.ReloadAsync();
+        }
+    }
+
+    private async Task CreateGroupAsync()
+    {
+        var id = Active.ActiveAccountId;
+        var name = _newGroupName.Trim();
+        _showNewGroup = false;
+        _newGroupName = "";
+        if (id is null || string.IsNullOrEmpty(name))
+        {
+            return;
+        }
+        var groupId = await Store.InsertReportGroupAsync(new ReportGroupRow { AccountId = id, Name = name });
+        await LoadGroupsAsync();
+        _selectedGroup = groupId;
+    }
+
+    private async Task GroupKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await CreateGroupAsync();
+        }
+        else if (e.Key == "Escape")
+        {
+            _showNewGroup = false;
+            _newGroupName = "";
+        }
+    }
+
+    private async Task DeleteGroupAsync(string id)
+    {
+        await Store.DeleteReportGroupAsync(id);
+        if (_selectedGroup == id)
+        {
+            _selectedGroup = null;
+        }
+        await LoadGroupsAsync();
+        if (_grid is not null)
+        {
+            await _grid.ReloadAsync();
+        }
+    }
+
+    public void Dispose()
+    {
+        Active.Changed -= OnActiveChanged;
+    }
+}

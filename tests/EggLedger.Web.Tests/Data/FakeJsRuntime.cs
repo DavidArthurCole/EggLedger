@@ -1,0 +1,31 @@
+using Microsoft.JSInterop;
+
+namespace EggLedger.Web.Tests.Data;
+
+/// <summary>
+/// Minimal <see cref="IJSRuntime"/> double. Returns the supplied module reference for
+/// <c>import</c> calls; records and returns default for anything else.
+/// </summary>
+public sealed class FakeJsRuntime : IJSRuntime
+{
+    private readonly FakeJsObjectReference _module;
+
+    public FakeJsRuntime(FakeJsObjectReference module) => _module = module;
+
+    public List<(string Identifier, object?[] Args)> Calls { get; } = new();
+
+    public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args)
+    {
+        Calls.Add((identifier, args ?? Array.Empty<object?>()));
+
+        if (identifier == "import")
+        {
+            return new ValueTask<TValue>((TValue)(object)_module);
+        }
+
+        return new ValueTask<TValue>(default(TValue)!);
+    }
+
+    public ValueTask<TValue> InvokeAsync<TValue>(string identifier, CancellationToken cancellationToken, object?[]? args)
+        => InvokeAsync<TValue>(identifier, args);
+}

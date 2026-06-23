@@ -1,0 +1,296 @@
+@using EggLedger.Domain.Reports
+@using EggLedger.Web.Data
+@inject IndexedDbReportStore Store
+@inject IJSRuntime Js
+
+@*
+    Report builder dialog (native <dialog>). Port of the core ReportBuilderPanel.vue
+    form: name/description, subject, group-by + optional secondary group-by, display
+    mode (chart type), normalize, color/unfilled, grid size (ReportGridSizePicker),
+    min-sample, the AND filters (ReportFilterEditor), and the Menno toggle (the
+    Menno comparison RENDER is deferred to C3.6; the flags persist here). Builds a
+    ReportDefinition, auto-classifies weight, and saves via IndexedDbReportStore.
+    Advanced options (OR filters, time buckets, value filters, family weight, label
+    color overrides, report groups assignment) are deferred; see plan notes.
+*@
+
+<dialog @ref="_dialog" class="builder-dialog">
+    @if (_form is not null)
+    {
+        <form method="dialog" class="builder-form" @onsubmit="SaveAsync" @onsubmit:preventDefault>
+            <div class="builder-header">
+                <h2>@(_editingId is null ? "New Report" : "Edit Report")</h2>
+                <button type="button" class="builder-close" @onclick="Close">&#215;</button>
+            </div>
+
+            <div class="builder-body">
+                <label class="field">
+                    <span>Name</span>
+                    <input type="text" @bind="_form.Name" @bind:event="oninput" required />
+                </label>
+
+                <label class="field">
+                    <span>Description</span>
+                    <input type="text" @bind="_form.Description" @bind:event="oninput" />
+                </label>
+
+                <div class="field-row">
+                    <label class="field">
+                        <span>Subject</span>
+                        <select @bind="_form.Subject">
+                            <option value="ships">Missions</option>
+                            <option value="artifacts">Artifacts</option>
+                        </select>
+                    </label>
+
+                    <label class="field">
+                        <span>Mode</span>
+                        <select @bind="_form.Mode">
+                            <option value="aggregate">Aggregate</option>
+                            <option value="time_series">Time series</option>
+                        </select>
+                    </label>
+                </div>
+
+                <div class="field-row">
+                    <label class="field">
+                        <span>Group by</span>
+                        <select @bind="_form.GroupBy">
+                            @foreach (var d in ReportDimensions.All)
+                            {
+                                <option value="@d.Value">@d.Label</option>
+                            }
+                        </select>
+                    </label>
+
+                    <label class="field">
+                        <span>Secondary group by</span>
+                        <select @bind="_form.SecondaryGroupBy">
+                            <option value="">(none)</option>
+                            @foreach (var d in ReportDimensions.All)
+                            {
+                                <option value="@d.Value">@d.Label</option>
+                            }
+                        </select>
+                    </label>
+                </div>
+
+                <div class="field-row">
+                    <label class="field">
+                        <span>Chart</span>
+                        <select @bind="_form.DisplayMode">
+                            <option value="bar">Bar</option>
+                            <option value="line">Line</option>
+                            <option value="pie">Pie</option>
+                            <option value="heatmap">Heatmap</option>
+                            <option value="grouped_bar">Grouped bar</option>
+                            <option value="multi_line">Multi-line</option>
+                        </select>
+                    </label>
+
+                    <label class="field">
+                        <span>Normalize</span>
+                        <select @bind="_form.NormalizeBy">
+                            <option value="none">None</option>
+                            <option value="per_mission">Per mission</option>
+                            <option value="row_pct">Row %</option>
+                            <option value="col_pct">Column %</option>
+                            <option value="global_pct">Global %</option>
+                        </select>
+                    </label>
+                </div>
+
+                <div class="field-row">
+                    <label class="field field-color">
+                        <span>Color</span>
+                        <input type="color" @bind="_form.Color" />
+                    </label>
+
+                    <label class="field field-color">
+                        <span>Unfilled</span>
+                        <input type="color" @bind="_form.UnfilledColor" />
+                    </label>
+
+                    <label class="field">
+                        <span>Min sample</span>
+                        <input type="number" min="0" @bind="_form.MinSampleSize" />
+                    </label>
+                </div>
+
+                <div class="field">
+                    <span>Card size</span>
+                    <ReportGridSizePicker @bind-Width="_form.GridW" @bind-Height="_form.GridH" />
+                </div>
+
+                <ReportFilterEditor Conditions="_form.AndConditions" ConditionsChanged="StateHasChanged" />
+
+                <label class="field-check">
+                    <input type="checkbox" @bind="_form.MennoEnabled" />
+                    <span>Compare to community data (Menno) - rendering arrives later</span>
+                </label>
+            </div>
+
+            <div class="builder-footer">
+                <button type="button" class="btn-secondary" @onclick="Close">Cancel</button>
+                <button type="submit" class="btn-primary" disabled="@string.IsNullOrWhiteSpace(_form.Name)">Save</button>
+            </div>
+        </form>
+    }
+</dialog>
+
+@code {
+    [Parameter, EditorRequired]
+    public string AccountId { get; set; } = "";
+
+    /// <summary>Group id to assign new reports to, or null for ungrouped.</summary>
+    [Parameter]
+    public string? GroupId { get; set; }
+
+    [Parameter]
+    public EventCallback Saved { get; set; }
+
+    private ElementReference _dialog;
+    private FormModel? _form;
+    private string? _editingId;
+    private string _editingGroupId = "";
+    private long _createdAt;
+    private int _sortOrder;
+
+    private sealed class FormModel
+    {
+        public string Name { get; set; } = "";
+        public string Description { get; set; } = "";
+        public string Subject { get; set; } = "ships";
+        public string Mode { get; set; } = "aggregate";
+        public string DisplayMode { get; set; } = "bar";
+        public string GroupBy { get; set; } = "ship_type";
+        public string SecondaryGroupBy { get; set; } = "";
+        public string NormalizeBy { get; set; } = "none";
+        public string Color { get; set; } = "#6366f1";
+        public string UnfilledColor { get; set; } = "#1f2937";
+        public int GridW { get; set; } = 2;
+        public int GridH { get; set; } = 2;
+        public int MinSampleSize { get; set; }
+        public bool MennoEnabled { get; set; }
+        public List<FilterCondition> AndConditions { get; set; } = new();
+    }
+
+    public async Task OpenForCreateAsync()
+    {
+        _editingId = null;
+        _editingGroupId = "";
+        _createdAt = 0;
+        _sortOrder = 0;
+        _form = new FormModel();
+        StateHasChanged();
+        await JsOpenAsync();
+    }
+
+    public async Task OpenForEditAsync(ReportDefinition def)
+    {
+        _editingId = def.Id;
+        _editingGroupId = def.GroupId ?? "";
+        _createdAt = def.CreatedAt;
+        _sortOrder = def.SortOrder;
+        _form = new FormModel
+        {
+            Name = def.Name,
+            Description = def.Description,
+            Subject = def.Subject == "missions" ? "ships" : (string.IsNullOrEmpty(def.Subject) ? "ships" : def.Subject),
+            Mode = string.IsNullOrEmpty(def.Mode) ? "aggregate" : def.Mode,
+            DisplayMode = string.IsNullOrEmpty(def.DisplayMode) ? "bar" : def.DisplayMode,
+            GroupBy = string.IsNullOrEmpty(def.GroupBy) ? "ship_type" : def.GroupBy,
+            SecondaryGroupBy = def.SecondaryGroupBy,
+            NormalizeBy = string.IsNullOrEmpty(def.NormalizeBy) ? "none" : def.NormalizeBy,
+            Color = string.IsNullOrEmpty(def.Color) ? "#6366f1" : def.Color,
+            UnfilledColor = string.IsNullOrEmpty(def.UnfilledColor) ? "#1f2937" : def.UnfilledColor,
+            GridW = def.GridW == 0 ? 2 : def.GridW,
+            GridH = def.GridH == 0 ? 2 : def.GridH,
+            MinSampleSize = def.MinSampleSize,
+            MennoEnabled = def.MennoEnabled,
+            AndConditions = def.Filters.And.Select(c => new FilterCondition { TopLevel = c.TopLevel, Op = c.Op, Val = c.Val }).ToList(),
+        };
+        StateHasChanged();
+        await JsOpenAsync();
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_form is null || string.IsNullOrWhiteSpace(_form.Name))
+        {
+            return;
+        }
+
+        var def = BuildDefinition(_form);
+        def.Weight = Weight.ClassifyWeight(def);
+
+        var row = ReportMapping.ToRow(def);
+        if (_editingId is null)
+        {
+            await Store.InsertReportAsync(row);
+        }
+        else
+        {
+            await Store.UpdateReportAsync(row);
+        }
+
+        await JsCloseAsync();
+        _form = null;
+        await Saved.InvokeAsync();
+    }
+
+    private ReportDefinition BuildDefinition(FormModel f)
+    {
+        var keptConditions = f.AndConditions
+            .Where(c => !string.IsNullOrEmpty(c.TopLevel) && !string.IsNullOrEmpty(c.Op))
+            .Select(c => new FilterCondition { TopLevel = c.TopLevel, Op = c.Op, Val = c.Val })
+            .ToList();
+
+        return new ReportDefinition
+        {
+            Id = _editingId ?? Guid.NewGuid().ToString("D"),
+            AccountId = AccountId,
+            Name = f.Name.Trim(),
+            Description = f.Description,
+            Subject = f.Subject,
+            Mode = f.Mode,
+            DisplayMode = f.DisplayMode,
+            GroupBy = f.GroupBy,
+            SecondaryGroupBy = f.SecondaryGroupBy,
+            NormalizeBy = f.NormalizeBy,
+            Color = f.Color,
+            UnfilledColor = f.UnfilledColor,
+            GridW = f.GridW,
+            GridH = f.GridH,
+            MinSampleSize = f.MinSampleSize,
+            MennoEnabled = f.MennoEnabled,
+            Filters = new ReportFilters { And = keptConditions },
+            GroupId = _editingId is null ? (GroupId ?? "") : _editingGroupId,
+            SortOrder = _sortOrder,
+            CreatedAt = _createdAt,
+        };
+    }
+
+    private async Task Close()
+    {
+        await JsCloseAsync();
+        _form = null;
+    }
+
+    private IJSObjectReference? _module;
+
+    private async ValueTask<IJSObjectReference> ModuleAsync() =>
+        _module ??= await Js.InvokeAsync<IJSObjectReference>("import", "./_content/EggLedger.Web/js/dialog.js");
+
+    private async Task JsOpenAsync()
+    {
+        var module = await ModuleAsync();
+        await module.InvokeVoidAsync("showModal", _dialog);
+    }
+
+    private async Task JsCloseAsync()
+    {
+        var module = await ModuleAsync();
+        await module.InvokeVoidAsync("close", _dialog);
+    }
+}

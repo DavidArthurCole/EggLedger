@@ -1,0 +1,59 @@
+namespace EggLedger.Domain.Reports;
+
+/// <summary>
+/// Whether a dimension groups missions or artifact drops. Port of the Vue
+/// ReportDimension.scope union.
+/// </summary>
+public enum DimensionScope
+{
+    Mission,
+    Artifact,
+}
+
+/// <summary>
+/// Canonical report group-by dimension metadata. Port of the Vue
+/// utils/reportDimensions.ts single source of truth. The <see cref="Value"/>
+/// strings are wire/SQL keys and must never change; labels are display-only.
+/// </summary>
+public sealed record ReportDimension(string Value, string Label, DimensionScope Scope);
+
+/// <summary>
+/// Static dimension tables and lookups, shared by the advanced and guided report
+/// builders. Port of the Vue reportDimensions.ts module.
+/// </summary>
+public static class ReportDimensions
+{
+    /// <summary>Mission-scoped group-by dimensions.</summary>
+    public static readonly IReadOnlyList<ReportDimension> Mission = new[]
+    {
+        new ReportDimension("ship_type", "Ship Type", DimensionScope.Mission),
+        new ReportDimension("duration_type", "Duration Type", DimensionScope.Mission),
+        new ReportDimension("level", "Level", DimensionScope.Mission),
+        new ReportDimension("mission_type", "Mission Type", DimensionScope.Mission),
+        new ReportDimension("mission_target", "Mission Target", DimensionScope.Mission),
+    };
+
+    /// <summary>Artifact-scoped group-by dimensions.</summary>
+    public static readonly IReadOnlyList<ReportDimension> Artifact = new[]
+    {
+        new ReportDimension("artifact_name", "Artifact Name", DimensionScope.Artifact),
+        new ReportDimension("rarity", "Rarity", DimensionScope.Artifact),
+        new ReportDimension("tier", "Tier", DimensionScope.Artifact),
+        new ReportDimension("spec_type", "Spec Type", DimensionScope.Artifact),
+    };
+
+    /// <summary>All group-by dimensions, mission dimensions first.</summary>
+    public static readonly IReadOnlyList<ReportDimension> All =
+        Mission.Concat(Artifact).ToList();
+
+    /// <summary>Set of artifact dimension value keys, for scope checks.</summary>
+    public static readonly IReadOnlySet<string> ArtifactKeys =
+        Artifact.Select(d => d.Value).ToHashSet(StringComparer.Ordinal);
+
+    /// <summary>
+    /// Returns the Title Case label for a dimension value, falling back to the
+    /// value itself. Port of Vue dimensionLabel.
+    /// </summary>
+    public static string DimensionLabel(string value) =>
+        All.FirstOrDefault(d => d.Value == value)?.Label ?? value;
+}

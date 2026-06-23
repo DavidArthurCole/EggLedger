@@ -1,0 +1,54 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <Description>EggLedger Photino desktop host. Boots the shared EggLedger.Web Blazor UI in a native OS window via a system WebView (the .NET-native replacement for the Go/lorca shell).</Description>
+    <AssemblyName>EggLedger</AssemblyName>
+    <Product>EggLedger</Product>
+
+    <!-- Running version for the self-updater compare. Tracks the Go VERSION file
+         (= 2.1.4); the updater reads the InformationalVersion at runtime. Overrides
+         the Directory.Build.props preview Version for the shipped desktop binary. -->
+    <Version>2.1.4</Version>
+    <AssemblyVersion>2.1.4.0</AssemblyVersion>
+    <FileVersion>2.1.4.0</FileVersion>
+    <InformationalVersion>2.1.4</InformationalVersion>
+
+    <!-- Cross-platform publish targets, mirroring the Go CI matrix
+         (linux / mac / mac-arm64 / windows). See publish commands in README. -->
+    <RuntimeIdentifiers>win-x64;osx-x64;osx-arm64;linux-x64</RuntimeIdentifiers>
+
+    <!-- Self-contained, single-file publish defaults (override per command if
+         needed). The Photino native runtime libs and the RCL static web assets are
+         carried into the publish output tree. -->
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <ApplicationIcon>icon.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Photino.Blazor" Version="4.0.13" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.0" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\EggLedger.Web\EggLedger.Web.csproj" />
+    <ProjectReference Include="..\EggLedger.Domain\EggLedger.Domain.csproj" />
+  </ItemGroup>
+
+  <!-- Schema migrations embedded so the SQLite runner applies them in order at
+       startup (mission 1..9, report 1..12). Source of truth is the Go .sql under
+       EggLedger/db/migrations and EggLedger/reportdb/migrations; copied verbatim. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Storage\Migrations\**\*.sql" />
+  </ItemGroup>
+
+  <!-- Native window icon (read from the filesystem by Photino's SetIconFile, not
+       served through the WebView's wwwroot virtual scheme). -->
+  <ItemGroup>
+    <Content Include="icon-64.png" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

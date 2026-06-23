@@ -1,0 +1,109 @@
+.color-picker {
+    position: relative;
+    display: inline-block;
+}
+
+.cp-swatch {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.25rem;
+    border: 1px solid var(--color-border);
+    cursor: pointer;
+}
+
+.cp-swatch:hover {
+    border-color: var(--color-text-muted);
+}
+
+.cp-popover {
+    position: absolute;
+    z-index: 50;
+    top: calc(100% + 0.25rem);
+    left: 0;
+    width: 13.75rem;
+    padding: var(--space-3);
+    background-color: var(--color-darker);
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.45);
+}
+
+.cp-presets {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: var(--space-1);
+    margin-bottom: var(--space-3);
+}
+
+.cp-preset {
+    width: 1.375rem;
+    height: 1.375rem;
+    border-radius: 0.25rem;
+    border: 1px solid transparent;
+    cursor: pointer;
+}
+
+.cp-preset:hover {
+    border-color: var(--color-text-muted);
+}
+
+.cp-preset-active {
+    border-color: #ffffff;
+    outline: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.cp-slider {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: 0.75rem;
+    color: var(--color-text-dim);
+    margin-bottom: var(--space-1);
+}
+
+.cp-slider input[type="range"] {
+    flex: 1;
+}
+
+.cp-slider-key {
+    width: 1rem;
+}
+
+.cp-slider-val {
+    width: 2.5rem;
+    text-align: right;
+    color: var(--color-text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.cp-hex {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+}
+
+.cp-hex-key {
+    font-size: 0.75rem;
+    color: var(--color-text-dim);
+}
+
+.cp-hex input {
+    flex: 1;
+    min-width: 0;
+    background-color: var(--color-darkest);
+    border: 1px solid var(--color-border-soft);
+    border-radius: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    font-family: monospace;
+    color: var(--color-text);
+}
+
+.cp-hex-preview {
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 0.25rem;
+    border: 1px solid var(--color-border);
+    flex-shrink: 0;
+}
