@@ -33,11 +33,13 @@ public sealed class CloudSyncService
 
     private readonly HttpClient _http;
     private readonly INavigation _nav;
+    private readonly IBlobCipher _cipher;
 
-    public CloudSyncService(HttpClient http, INavigation nav)
+    public CloudSyncService(HttpClient http, INavigation nav, IBlobCipher cipher)
     {
         _http = http;
         _nav = nav;
+        _cipher = cipher;
     }
 
     /// <summary>
@@ -155,7 +157,7 @@ public sealed class CloudSyncService
     public async Task PutBlobAsync<T>(CloudSession session, string name, T payload, CancellationToken cancellationToken = default)
     {
         var plaintext = JsonSerializer.SerializeToUtf8Bytes(payload, Json);
-        var ciphertext = BlobCrypto.Encrypt(session.EncryptionKey, plaintext);
+        var ciphertext = await _cipher.EncryptAsync(session.EncryptionKey, plaintext, cancellationToken).ConfigureAwait(false);
 
         using var req = new HttpRequestMessage(HttpMethod.Put, $"{ApiPrefix}/blobs/{Uri.EscapeDataString(name)}");
         req.Content = JsonContent.Create(new PutBlobRequest(ciphertext), options: Json);
@@ -189,7 +191,7 @@ public sealed class CloudSyncService
 
         var env = await resp.Content.ReadFromJsonAsync<GetBlobResponse>(Json, cancellationToken).ConfigureAwait(false)
             ?? throw new CloudSyncException($"getBlob {name}: malformed response");
-        var plaintext = BlobCrypto.Decrypt(session.EncryptionKey, env.Ciphertext);
+        var plaintext = await _cipher.DecryptAsync(session.EncryptionKey, env.Ciphertext, cancellationToken).ConfigureAwait(false);
 
         var value = JsonSerializer.Deserialize<T>(plaintext, Json);
         if (value is null)

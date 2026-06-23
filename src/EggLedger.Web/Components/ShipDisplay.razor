@@ -12,7 +12,7 @@
              style="visibility: @(Mission.IsBuggedCap || Mission.IsDubCap ? "visible" : "hidden");">
             <img class="w-5 mr-0_5rem"
                  alt="@(Mission.IsBuggedCap ? "Skull Emoji" : "Artifact Crate")"
-                 src="@(Mission.IsBuggedCap ? "images/skull.png" : "images/icon_afx_chest_2.png")" />
+                 src="@(Mission.IsBuggedCap ? State.ContentPaths.Asset("images/skull.png") : State.ContentPaths.Asset("images/icon_afx_chest_2.png"))" />
             <span class="text-xs font-bold whitespace-nowrap">
                 @(Mission.IsBuggedCap
                     ? "0.6x Capacity"
@@ -23,7 +23,7 @@
         <div class="rounded-md px-4 py-2 flex flex-col items-center justify-center" style="background: rgba(120, 128, 138, 0.12);">
             @if (!string.IsNullOrEmpty(Mission.ShipEnumString))
             {
-                <img class="w-12 h-12 object-contain mb-2" src="@($"images/ships/{Mission.ShipEnumString}.png")" alt="@Mission.ShipString" />
+                <img class="w-12 h-12 object-contain mb-2" src="@State.ContentPaths.Asset($"images/ships/{Mission.ShipEnumString}.png")" alt="@Mission.ShipString" />
             }
             <span class="@DurationClass">@Mission.ShipString</span>
             @if (Mission.Level > 0)

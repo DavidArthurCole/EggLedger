@@ -3,8 +3,10 @@
 @using EggLedger.Web.Data
 @using EggLedger.Web.Platform
 @using EggLedger.Web.Settings
+@using EggLedger.Web.State
 @inject IndexedDbSettings Settings
 @inject IPlatformCapabilities Platform
+@inject ScreenshotSafetyState ScreenshotSafety
 
 <PageTitle>EggLedger - Settings</PageTitle>
 
@@ -60,6 +62,12 @@
     private async Task OnSettingAsync((string Key, string Value) change)
     {
         await Settings.SetSettingAsync(change.Key, change.Value);
+        // Mask-EID toggle is shared app-wide; push it to the live state so every
+        // EID on screen re-masks immediately without a reload.
+        if (change.Key == SettingsModel.KeyScreenshotSafety)
+        {
+            ScreenshotSafety.Enabled = change.Value == "true";
+        }
         // Auto-sync mirrors the Vue useCloudSync watch: a change to a cloud-syncable
         // setting triggers a push when auto-sync is on and a session is connected.
         // Machine-local keys (auto-export, worker-warning) do not.

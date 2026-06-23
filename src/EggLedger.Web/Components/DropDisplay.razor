@@ -95,6 +95,6 @@
             .Replace("_FRAGMENT", "", StringComparison.Ordinal)
             .Replace("ORNATE_GUSSET", "GUSSET", StringComparison.Ordinal)
             .Replace("VIAL_MARTIAN_DUST", "VIAL_OF_MARTIAN_DUST", StringComparison.Ordinal);
-        return $"images/artifacts/{fixedName}/{fixedName}_{item.Level + SpecPathOffset(item)}.png";
+        return State.ContentPaths.Asset($"images/artifacts/{fixedName}/{fixedName}_{item.Level + SpecPathOffset(item)}.png");
     }
 }

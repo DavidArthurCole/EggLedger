@@ -35,7 +35,7 @@
 
                 <div class="flex flex-col gap-1">
                     <span class="text-xs text-gray-400 flex items-center gap-1">Description (optional)</span>
-                    <input type="text" class="bg-darker border border-gray-700 rounded px-2 py-1.5 text-xs text-gray-400 focus:outline-none focus:border-blue-500" placeholder="What does this report show?" @bind="_form.Description" @bind:event="oninput" />
+                    <textarea rows="2" class="bg-darker border border-gray-700 rounded px-2 py-1.5 text-xs text-gray-400 focus:outline-none focus:border-blue-500 resize-none" placeholder="What does this report show?" @bind="_form.Description" @bind:event="oninput"></textarea>
                 </div>
 
                 <div class="flex items-center gap-2">

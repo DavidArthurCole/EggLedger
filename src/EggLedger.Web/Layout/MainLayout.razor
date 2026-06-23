@@ -1,7 +1,10 @@
 @inherits LayoutComponentBase
 @using EggLedger.Web.Components
+@using EggLedger.Web.Settings
 @using EggLedger.Web.State
 @inject AppStateService AppStateSvc
+@inject ScreenshotSafetyState ScreenshotSafety
+@inject EggLedger.Web.Data.IndexedDbSettings Settings
 
 <div class="h-full flex flex-col space-y-3 pb-3 bg-darker">
     <TabBar Tabs="_tabs">
@@ -26,6 +29,18 @@
 </div>
 
 @code {
+    protected override async Task OnInitializedAsync()
+    {
+        // Load the persisted screenshot-safety (mask EIDs) toggle once at startup so
+        // every component that masks reflects it on first render. Vue loads this in
+        // useSettings; here the shell seeds the shared ScreenshotSafetyState.
+        var settings = await Settings.GetAllSettingsAsync();
+        if (settings.TryGetValue(SettingsModel.KeyScreenshotSafety, out var v))
+        {
+            ScreenshotSafety.Enabled = v == "true";
+        }
+    }
+
     private static readonly IReadOnlyList<TabBar.TabItem> _tabs =
     [
         new("Ledger", "/"),

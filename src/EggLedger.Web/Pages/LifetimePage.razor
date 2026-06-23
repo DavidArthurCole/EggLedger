@@ -21,11 +21,12 @@
     {
         <div class="mt-8 flex flex-col items-center justify-center gap-2">
             <span class="p-0_5rem text-lg">Lifetime data is being compiled, please wait...</span>
+            <img src="@State.ContentPaths.Asset("images/loading.gif")" alt="Loading..." class="xl-ico" />
         </div>
     }
     else if (_data is null || _data.MissionCount == 0)
     {
-        <p class="text-gray-400 italic">No mission data for this account yet. Fetch on the Ledger tab first.</p>
+        <NoDataFallback />
     }
     else
     {

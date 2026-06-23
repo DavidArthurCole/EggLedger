@@ -23,19 +23,22 @@
                 @if (_activeInfo.SeString != "")
                 {
                     <span class="text-gray-400 ml-1.5">&middot;</span>
-                    <span class="ml-1.5" style="color:#a855f7">@_activeInfo.SeString SE</span>
+                    <img src="@State.ContentPaths.Asset("images/soul_egg.png")" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="" />
+                    <span style="color:#a855f7">@_activeInfo.SeString SE</span>
                     <span class="text-gray-400 ml-1.5">&middot;</span>
-                    <span class="ml-1.5" style="color:#eab308">@_activeInfo.PeCount PE</span>
+                    <img src="@State.ContentPaths.Asset("images/prophecy_egg.png")" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="" />
+                    <span style="color:#eab308">@_activeInfo.PeCount PE</span>
                     @if (_activeInfo.TeCount > 0)
                     {
                         <span class="text-gray-400 ml-1.5">&middot;</span>
-                        <span class="ml-1.5" style="color:#c831ff">@_activeInfo.TeCount TE</span>
+                        <img src="@State.ContentPaths.Asset("images/truth_egg.png")" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="" />
+                        <span style="color:#c831ff">@_activeInfo.TeCount TE</span>
                     }
                 }
             }
             else
             {
-                <span class="text-gray-500 italic">Select an account below or add one to get started</span>
+                <span class="text-gray-500 italic">Select an account from the top right to get started</span>
             }
         </div>
 
@@ -79,9 +82,13 @@
                             {
                                 <span class="text-red-500">@_progress?.Failed failed</span>
                             }
+                            @if ((_progress?.Failed ?? 0) > 0 && (_progress?.Retried ?? 0) > 0)
+                            {
+                                <span class="text-gray-400"> &middot; </span>
+                            }
                             @if ((_progress?.Retried ?? 0) > 0)
                             {
-                                <span class="text-orange-400"> @_progress?.Retried to retry</span>
+                                <span class="text-orange-400">@_progress?.Retried to retry</span>
                             }
                         </div>
                     }
@@ -90,7 +97,7 @@
                     </div>
                     break;
                 case AppState.ExportingData:
-                    <div class="text-yellow-400">Finishing up...</div>
+                    <div class="text-yellow-400">Exporting data...</div>
                     break;
                 case AppState.Success:
                     <div class="text-green-400">Fetch complete.</div>
@@ -106,7 +113,6 @@
     }
 
     <div class="w-full max-w-2xl mx-auto flex flex-col gap-3">
-        <DatabaseAccountSelector Accounts="_existing" ActiveId="Active.ActiveAccountId" OnSelect="SelectAccount" />
         <AccountDataPanel Accounts="_existing" Changed="ReloadAsync" />
     </div>
 </section>
@@ -158,8 +164,6 @@
         RefreshActiveInfo();
         StateHasChanged();
     }
-
-    private void SelectAccount(string id) => Active.SetActive(id);
 
     private async Task OpenAddDialog()
     {

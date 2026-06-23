@@ -79,12 +79,18 @@ public static class WebServiceRegistration
         // Cloud sync: Discord OAuth (browser redirect + poll) + AES-encrypted blob
         // transport. The redirect is abstracted behind INavigation for testability.
         services.AddScoped<INavigation, BlazorNavigation>();
+        // Blob crypto seam: the browser cannot run managed AES-GCM (AesGcm is
+        // unsupported on the WASM runtime), so the default is the SubtleCrypto
+        // (JS interop) cipher. The desktop host overrides this with the managed
+        // LocalBlobCipher.
+        services.AddScoped<IBlobCipher, SubtleCryptoBlobCipher>();
         services.AddScoped<CloudSyncService>();
         services.AddScoped<EggLedger.Web.Settings.CloudSessionStore>();
 
         // Shell state and the platform capability seam. Default is the browser
         // (non-desktop) impl; the desktop host overrides it with a native impl.
         services.AddScoped<ActiveAccount>();
+        services.AddScoped<ScreenshotSafetyState>();
         services.AddScoped<AppStateService>();
         services.AddScoped<AccountLoader>();
         services.AddScoped<IPlatformCapabilities, BrowserPlatformCapabilities>();

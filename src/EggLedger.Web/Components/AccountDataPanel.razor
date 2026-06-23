@@ -6,6 +6,8 @@
 @inject IMissionStore Store
 @inject IndexedDbAccountStore AccountStore
 @inject IDownloadService Downloads
+@inject ScreenshotSafetyState ScreenshotSafety
+@implements IDisposable
 
 @*
     Browser adaptation of the desktop ExportManagementPanel. The desktop panel
@@ -29,7 +31,7 @@
                     <div class="flex items-baseline gap-2 flex-wrap">
                         <span class="font-bold" style="color: #@acct.AccountColor">@acct.Nickname</span>
                         <span class="text-gray-500 text-sm">@acct.EBString</span>
-                        <span class="font-mono text-xs text-gray-600">@acct.Id</span>
+                        <span class="font-mono text-xs text-gray-600">@ScreenshotSafety.Mask(acct.Id)</span>
                     </div>
                     <div class="flex items-center gap-1 mt-1 text-xs text-gray-500">
                         <span>@acct.MissionCount missions</span>
@@ -61,6 +63,12 @@
 @code {
     private bool _busy;
     private string _error = "";
+
+    protected override void OnInitialized() => ScreenshotSafety.Changed += OnMaskChanged;
+
+    public void Dispose() => ScreenshotSafety.Changed -= OnMaskChanged;
+
+    private void OnMaskChanged() => InvokeAsync(StateHasChanged);
 
     /// <summary>Accounts with stored data (joined with mission stats).</summary>
     [Parameter]

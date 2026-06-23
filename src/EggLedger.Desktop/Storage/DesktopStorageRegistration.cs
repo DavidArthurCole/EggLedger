@@ -1,5 +1,6 @@
 using EggLedger.Domain.Reports;
 using EggLedger.Web.Data;
+using EggLedger.Web.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -62,6 +63,11 @@ public static class DesktopStorageRegistration
         services.AddScoped<IReportRunner>(sp => new SqliteReportRunner(
             sp.GetRequiredService<SqliteMissionDb>(),
             sp.GetRequiredService<IWeightData>()));
+
+        // Desktop can run managed AES-GCM, so use the in-process cipher instead
+        // of the browser SubtleCrypto (JS interop) default.
+        services.RemoveAll<IBlobCipher>();
+        services.AddScoped<IBlobCipher, LocalBlobCipher>();
 
         return services;
     }

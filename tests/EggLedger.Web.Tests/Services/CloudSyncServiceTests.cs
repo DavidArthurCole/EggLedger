@@ -126,7 +126,7 @@ public sealed class CloudSyncServiceTests
     private static CloudSyncService Make(HttpMessageHandler server, INavigation? nav = null)
     {
         var http = new HttpClient(server) { BaseAddress = Origin };
-        return new CloudSyncService(http, nav ?? new FakeNavigation());
+        return new CloudSyncService(http, nav ?? new FakeNavigation(), new LocalBlobCipher());
     }
 
     // ----- Step 1: blob round-trip -----
