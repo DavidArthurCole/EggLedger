@@ -3,10 +3,10 @@ using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using ProtoBuf.Meta;
 
-// protobuf-net compiles serializers at runtime via System.Reflection.Emit by
-// default. The Blazor WASM runtime forbids Reflection.Emit, so a Deserialize
-// throws Arg_TargetInvocationException. Force the reflection-based interpreter
-// path (no IL emit) so protobuf decode works in the browser.
+// protobuf-net compiles its type model at runtime via Reflection.Emit by
+// default. The Blazor WASM runtime forbids Reflection.Emit, so the model
+// build throws and Serializer.Deserialize fails. Disable AutoCompile so the
+// reflection-based interpreter handles decode instead (no IL emit).
 RuntimeTypeModel.Default.AutoCompile = false;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
