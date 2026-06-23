@@ -105,11 +105,10 @@
         </div>
     }
 
-    <div class="flex">
+    <div class="w-full max-w-2xl mx-auto flex flex-col gap-3">
         <DatabaseAccountSelector Accounts="_existing" ActiveId="Active.ActiveAccountId" OnSelect="SelectAccount" />
+        <AccountDataPanel Accounts="_existing" Changed="ReloadAsync" />
     </div>
-
-    <AccountDataPanel Accounts="_existing" Changed="ReloadAsync" />
 </section>
 
 <AddAccountDialog @ref="_addDialog" Added="OnAccountAdded" />
