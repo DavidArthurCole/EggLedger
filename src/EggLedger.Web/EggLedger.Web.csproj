@@ -1,4 +1,11 @@
-<Project Sdk="Microsoft.NET.Sdk.Razor">
+<!-- InitialTargets runs BuildTailwind at the very start of EVERY build/publish
+     invocation, before the SDK discovers wwwroot static web assets. On a clean build
+     (Docker/CI, no pre-existing tailwind.css) the SDK's static-web-asset glob runs in
+     an early target; BeforeTargets hooks fired too late, so the freshly generated sheet
+     was never collected (404 on /_content/EggLedger.Web/tailwind.css). InitialTargets
+     guarantees the file exists before any target, so the standard wwwroot glob picks it
+     up and it ships in both the WASM and Photino publish output. -->
+<Project Sdk="Microsoft.NET.Sdk.Razor" InitialTargets="BuildTailwind">
 
   <PropertyGroup>
     <Description>EggLedger shared Blazor UI (Razor class library): all 6 tabs, components, services, and the platform capability seam. Referenced by the browser WASM entrypoint (EggLedger.Web.Wasm) and the Photino desktop host (EggLedger.Desktop). Host-agnostic over HttpClient / JSInterop.</Description>
@@ -44,8 +51,12 @@
     <Exec Condition="'$(TailwindIsWindows)' != 'true'"
           Command="curl -fsSL '$(TailwindUrl)' -o '$(TailwindExe)' &amp;&amp; chmod +x '$(TailwindExe)'" />
   </Target>
+  <!-- Run via InitialTargets (see the <Project> element) so the sheet is compiled before the SDK
+       globs wwwroot for static web assets. BeforeTargets is intentionally NOT used: those hooks fired
+       after the glob on a clean build, so the generated file was never collected. DependsOnTargets
+       fetches the CLI first. Idempotent: cheap to re-run on every invocation; the Tailwind CLI is fast
+       and only the resulting file matters. Skip with -p:BuildTailwindCss=false to avoid the fetch. -->
   <Target Name="BuildTailwind"
-          BeforeTargets="GenerateComputedBuildStaticWebAssets;Build"
           DependsOnTargets="FetchTailwindCli"
           Condition="'$(BuildTailwindCss)' != 'false'">
     <Exec Command="&quot;$(TailwindExe)&quot; -c &quot;$(MSBuildProjectDirectory)/tailwind.config.js&quot; -i &quot;$(MSBuildProjectDirectory)/Styles/app.tailwind.css&quot; -o &quot;$(MSBuildProjectDirectory)/wwwroot/tailwind.css&quot; --minify" />
