@@ -8,6 +8,7 @@ public static class SuccessPage {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="refresh" content="2; url=/">
 <title>Authentication Successful</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
@@ -20,14 +21,17 @@ public static class SuccessPage {
     margin:0 auto 24px;font-size:28px;color:#fff}
   h1{color:#f1f5f9;font-size:22px;font-weight:600;margin-bottom:12px}
   p{color:#94a3b8;font-size:14px;line-height:1.6}
+  a{color:#60a5fa;text-decoration:none;font-weight:600}
+  a:hover{text-decoration:underline}
 </style>
 </head>
 <body>
 <div class="card">
   <div class="check">&#10003;</div>
   <h1>Authentication Successful</h1>
-  <p>You're all set. You can close this window and return to EggLedger.</p>
+  <p>You're all set. Redirecting you back to EggLedger&hellip;<br><a href="/">Return now</a></p>
 </div>
+<script>setTimeout(function(){location.href="/"},2000)</script>
 </body>
 </html>
 """;

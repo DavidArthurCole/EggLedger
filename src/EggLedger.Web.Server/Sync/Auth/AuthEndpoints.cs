@@ -37,14 +37,26 @@ public sealed class AuthEndpoints(NpgsqlDataSource source) {
     }
 
     public async Task Discord(HttpContext ctx) {
-        var (url, state) = DiscordOAuth.AuthUrl();
-        await using (var cmd = source.CreateCommand(
-            "INSERT INTO pending_auth (state, expires_at) VALUES ($1, $2) ON CONFLICT (state) DO UPDATE SET expires_at = EXCLUDED.expires_at")) {
-            cmd.Parameters.AddWithValue(state);
-            cmd.Parameters.AddWithValue(Now() + 600);
-            try { await cmd.ExecuteNonQueryAsync(ctx.RequestAborted); } catch { /* match Go fire-and-forget */ }
-        }
+        var (url, state) = await BeginAuthAsync(ctx).ConfigureAwait(false);
         await WriteJsonAsync(ctx, new DiscordInitResponse(url, state));
+    }
+
+    // Browser-friendly entry: 302 straight to Discord. The ConnectGate links here with a
+    // plain anchor, so no Blazor-circuit JS-interop navigation (which spammed render/cancel
+    // errors when the circuit tore down mid-redirect).
+    public async Task Login(HttpContext ctx) {
+        var (url, _) = await BeginAuthAsync(ctx).ConfigureAwait(false);
+        ctx.Response.Redirect(url);
+    }
+
+    private async Task<(string Url, string State)> BeginAuthAsync(HttpContext ctx) {
+        var (url, state) = DiscordOAuth.AuthUrl();
+        await using var cmd = source.CreateCommand(
+            "INSERT INTO pending_auth (state, expires_at) VALUES ($1, $2) ON CONFLICT (state) DO UPDATE SET expires_at = EXCLUDED.expires_at");
+        cmd.Parameters.AddWithValue(state);
+        cmd.Parameters.AddWithValue(Now() + 600);
+        try { await cmd.ExecuteNonQueryAsync(ctx.RequestAborted); } catch { /* match Go fire-and-forget */ }
+        return (url, state);
     }
 
     public async Task Callback(HttpContext ctx) {
