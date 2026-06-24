@@ -57,8 +57,20 @@ if (hasDb)
 }
 
 // Self-origin base for the shared UI's HttpClient (egg-api proxy + same-origin calls).
-var selfBase = new Uri(builder.Configuration["SelfBaseAddress"] ?? "http://localhost:5080");
+// Server-side HttpClient self-base: the app calling its own /api/v1 + /egg-api in process.
+// Default to the bound listen address (ASPNETCORE_URLS), with 0.0.0.0/[::] rewritten to
+// localhost, so it works in-container without a hardcoded port. Overridable via config.
+var selfBase = new Uri(builder.Configuration["SelfBaseAddress"] ?? SelfBaseFromUrls());
 builder.Services.AddEggLedgerWeb(selfBase);
+
+static string SelfBaseFromUrls() {
+    var urls = Environment.GetEnvironmentVariable("ASPNETCORE_URLS");
+    var first = urls?.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).FirstOrDefault();
+    if (string.IsNullOrEmpty(first)) {
+        return "http://localhost:5015";
+    }
+    return first.Replace("0.0.0.0", "localhost").Replace("[::]", "localhost").Replace("+", "localhost");
+}
 
 // Server-side overrides of the WASM-only seams:
 // - decode default is already LocalApiPayloadDecoder (native protobuf-net; emit is
