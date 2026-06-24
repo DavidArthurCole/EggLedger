@@ -19,7 +19,8 @@ var builder = WebApplication.CreateBuilder(args);
 var cfg = AppConfig.FromEnv(Environment.GetEnvironmentVariable);
 var hasDb = !string.IsNullOrEmpty(cfg.DatabaseUrl);
 
-builder.Services.AddRazorComponents().AddInteractiveServerComponents();
+builder.Services.AddRazorComponents()
+    .AddInteractiveServerComponents(o => o.DetailedErrors = true);
 
 // Behind nginx TLS termination: trust the forwarded proto/host so the app knows it is
 // HTTPS (secure cookies + correct OAuth redirect scheme).
