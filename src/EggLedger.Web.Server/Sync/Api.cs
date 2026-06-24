@@ -13,10 +13,8 @@ using Synckit.Contract;
 
 namespace EggLedger.Web.Server.Sync;
 
-public static class Api
-{
-    public static void Map(WebApplication app, AppConfig cfg, VerifyInfo build)
-    {
+public static class Api {
+    public static void Map(WebApplication app, AppConfig cfg, VerifyInfo build) {
         var source = app.Services.GetService<NpgsqlDataSource>()
                      ?? NpgsqlDataSource.Create(cfg.DatabaseUrl);
 
@@ -65,8 +63,7 @@ public static class Api
     }
 
     private static void MapAuthed(WebApplication app, string[] methods, string pattern,
-        ISessionStore store, RequestDelegate handler)
-    {
+        ISessionStore store, RequestDelegate handler) {
         Task Pipeline(HttpContext ctx) => new RequireAuth(handler, store).Invoke(ctx);
         app.MapMethods(pattern, methods, (RequestDelegate)Pipeline);
     }

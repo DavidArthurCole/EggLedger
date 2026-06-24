@@ -12,12 +12,10 @@ public sealed record AppConfig(
     string DeployAgentUrl,
     string DeployAgentSecret,
     string MennoFunctionKey,
-    IReadOnlySet<string> AdminDiscordIds)
-{
+    IReadOnlySet<string> AdminDiscordIds) {
     public const string MennoUpstreamUrl = "https://eggincdatacollection.azurewebsites.net/api/SubmitEid";
 
-    public static AppConfig FromEnv(Func<string, string?> get)
-    {
+    public static AppConfig FromEnv(Func<string, string?> get) {
         string V(string k) => get(k) ?? string.Empty;
         var addr = V("LISTEN_ADDR");
         var admins = V("ADMIN_DISCORD_IDS")

@@ -1,7 +1,6 @@
 namespace EggLedger.Web.Server.Sync.Auth;
 
-public static class SuccessPage
-{
+public static class SuccessPage {
     public const string Html =
 """
 <!DOCTYPE html>

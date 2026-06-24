@@ -43,8 +43,7 @@ builder.Services.AddAuthentication(EggLedger.Web.Server.Auth.AuthScheme.Cookie)
 builder.Services.AddAuthorization();
 builder.Services.AddCascadingAuthenticationState();
 
-if (hasDb)
-{
+if (hasDb) {
     var dataSource = NpgsqlDataSource.Create(cfg.DatabaseUrl);
     builder.Services.AddSingleton(dataSource);
 
@@ -83,8 +82,7 @@ builder.Services.AddScoped<IBlobCipher, LocalBlobCipher>();
 // session cookie; PostgresIndexedDb scopes every store op to that user. Only when a DB
 // is configured - dev without DB keeps the browser IndexedDB path.
 builder.Services.AddScoped<EggLedger.Web.Server.Storage.CurrentUser>();
-if (hasDb)
-{
+if (hasDb) {
     builder.Services.AddScoped<ISessionStore>(sp =>
         new EggLedger.Web.Server.Sync.Db.SessionStore(sp.GetRequiredService<NpgsqlDataSource>()));
     builder.Services.RemoveAll<IIndexedDb>();
@@ -103,7 +101,10 @@ app.UseForwardedHeaders();
 app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
-app.UseAntiforgery();
+// No UseAntiforgery: this host has no server-side form posts (the UI is fully interactive
+// over the circuit; the OAuth callback is a GET). UseAntiforgery + a stale browser token
+// from a prior DataProtection key threw AntiforgeryValidationException and crashed the
+// render. Dropping it removes that failure class with no security loss here.
 
 // Reverse-proxy the egg-api prefix to auxbrain server-side (replaces the nginx CORS dodge).
 app.Map("/egg-api/{**rest}", async (HttpContext ctx, IHttpClientFactory factory, string rest) => {
@@ -126,22 +127,20 @@ app.Map("/egg-api/{**rest}", async (HttpContext ctx, IHttpClientFactory factory,
 });
 
 // Sync server endpoints (/api/v1/*). Explicit routes win over the component fallback.
-if (hasDb)
-{
+if (hasDb) {
     var build = new VerifyInfo { Name = "EggLedger", Sha256 = "dev", Version = "dev", Date = "dev" };
 
     if (!string.IsNullOrEmpty(cfg.DiscordClientId))
         DiscordOAuth.Init(cfg.DiscordClientId, cfg.DiscordClientSecret, cfg.RedirectUrl);
 
+    Console.WriteLine($"eggledger: DB configured, running migrations. selfBase={selfBase}");
     var conn = await Database.InitAsync(cfg.DatabaseUrl);
     await Migrator.MigrateAsync(conn, Path.Combine(AppContext.BaseDirectory, "Migrations"));
+    Console.WriteLine("eggledger: migrations complete, /api/v1 + Postgres storage active");
 
-    if (!string.IsNullOrEmpty(cfg.BotToken))
-    {
-        try
-        {
-            await SynckitBot.StartAsync(new BotConfig
-            {
+    if (!string.IsNullOrEmpty(cfg.BotToken)) {
+        try {
+            await SynckitBot.StartAsync(new BotConfig {
                 Name = "EggLedger",
                 Token = cfg.BotToken,
                 AppId = cfg.DiscordClientId,
@@ -152,14 +151,14 @@ if (hasDb)
                 DeployAgentSecret = cfg.DeployAgentSecret,
                 SharedRoleId = cfg.SharedRoleId,
             });
-        }
-        catch (Exception ex)
-        {
+        } catch (Exception ex) {
             Console.Error.WriteLine($"synckit: bot start failed, continuing: {ex.Message}");
         }
     }
 
     Api.Map(app, cfg, build);
+} else {
+    Console.WriteLine("eggledger: WARNING - DATABASE_URL not set. /api/v1 + Postgres storage DISABLED; auth/sync will not work. UI boots only.");
 }
 
 app.MapRazorComponents<AppHost>()

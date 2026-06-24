@@ -5,49 +5,40 @@ using Npgsql;
 
 namespace EggLedger.Web.Server.Sync.Blobs;
 
-public sealed class BlobEndpoints(NpgsqlDataSource source)
-{
+public sealed class BlobEndpoints(NpgsqlDataSource source) {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
     private static long Now() => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
     private static string DiscordId(HttpContext ctx) => ctx.Request.Headers["X-Discord-ID"].ToString();
 
-    private static async Task WriteTextAsync(HttpContext ctx, int statusCode, string text)
-    {
+    private static async Task WriteTextAsync(HttpContext ctx, int statusCode, string text) {
         ctx.Response.StatusCode = statusCode;
         ctx.Response.ContentType = "text/plain; charset=utf-8";
         await ctx.Response.Body.WriteAsync(Encoding.UTF8.GetBytes(text), ctx.RequestAborted);
     }
 
-    private static async Task WriteJsonAsync<T>(HttpContext ctx, T value)
-    {
+    private static async Task WriteJsonAsync<T>(HttpContext ctx, T value) {
         ctx.Response.StatusCode = StatusCodes.Status200OK;
         ctx.Response.ContentType = "application/json; charset=utf-8";
         await JsonSerializer.SerializeAsync(ctx.Response.Body, value, Json, ctx.RequestAborted);
     }
 
-    public async Task Put(HttpContext ctx, string name)
-    {
+    public async Task Put(HttpContext ctx, string name) {
         var discordId = DiscordId(ctx);
         PutBlobRequest? body;
-        try { body = await JsonSerializer.DeserializeAsync<PutBlobRequest>(ctx.Request.Body, Json, ctx.RequestAborted); }
-        catch (JsonException)
-        {
+        try { body = await JsonSerializer.DeserializeAsync<PutBlobRequest>(ctx.Request.Body, Json, ctx.RequestAborted); } catch (JsonException) {
             await WriteTextAsync(ctx, StatusCodes.Status400BadRequest, "bad request\n");
             return;
         }
-        if (body is null)
-        {
+        if (body is null) {
             await WriteTextAsync(ctx, StatusCodes.Status400BadRequest, "bad request\n");
             return;
         }
-        await using (var u = source.CreateCommand("INSERT INTO users (discord_id, created_at) VALUES ($1, $2) ON CONFLICT DO NOTHING"))
-        {
+        await using (var u = source.CreateCommand("INSERT INTO users (discord_id, created_at) VALUES ($1, $2) ON CONFLICT DO NOTHING")) {
             u.Parameters.AddWithValue(discordId);
             u.Parameters.AddWithValue(Now());
             try { await u.ExecuteNonQueryAsync(ctx.RequestAborted); } catch { /* match Go fire-and-forget */ }
         }
-        try
-        {
+        try {
             await using var cmd = source.CreateCommand(
                 "INSERT INTO blobs (discord_id, name, ciphertext, updated_at) VALUES ($1, $2, $3, $4) " +
                 "ON CONFLICT (discord_id, name) DO UPDATE SET ciphertext = EXCLUDED.ciphertext, updated_at = EXCLUDED.updated_at");
@@ -56,43 +47,34 @@ public sealed class BlobEndpoints(NpgsqlDataSource source)
             cmd.Parameters.AddWithValue(body.Ciphertext);
             cmd.Parameters.AddWithValue(Now());
             await cmd.ExecuteNonQueryAsync(ctx.RequestAborted);
-        }
-        catch
-        {
+        } catch {
             await WriteTextAsync(ctx, StatusCodes.Status500InternalServerError, "internal error\n");
             return;
         }
         ctx.Response.StatusCode = StatusCodes.Status204NoContent;
     }
 
-    public async Task Get(HttpContext ctx, string name)
-    {
+    public async Task Get(HttpContext ctx, string name) {
         var discordId = DiscordId(ctx);
-        try
-        {
+        try {
             await using var cmd = source.CreateCommand("SELECT ciphertext, updated_at FROM blobs WHERE discord_id = $1 AND name = $2");
             cmd.Parameters.AddWithValue(discordId);
             cmd.Parameters.AddWithValue(name);
             await using var reader = await cmd.ExecuteReaderAsync(ctx.RequestAborted);
-            if (!await reader.ReadAsync(ctx.RequestAborted))
-            {
+            if (!await reader.ReadAsync(ctx.RequestAborted)) {
                 await WriteTextAsync(ctx, StatusCodes.Status404NotFound, "not found\n");
                 return;
             }
             var resp = new GetBlobResponse(reader.GetString(0), reader.GetInt64(1));
             await WriteJsonAsync(ctx, resp);
-        }
-        catch
-        {
+        } catch {
             await WriteTextAsync(ctx, StatusCodes.Status500InternalServerError, "internal error\n");
         }
     }
 
-    public async Task List(HttpContext ctx)
-    {
+    public async Task List(HttpContext ctx) {
         var discordId = DiscordId(ctx);
-        try
-        {
+        try {
             await using var cmd = source.CreateCommand("SELECT name, updated_at FROM blobs WHERE discord_id = $1");
             cmd.Parameters.AddWithValue(discordId);
             var items = new List<BlobListEntry>();
@@ -100,15 +82,12 @@ public sealed class BlobEndpoints(NpgsqlDataSource source)
             while (await reader.ReadAsync(ctx.RequestAborted))
                 items.Add(new BlobListEntry(reader.GetString(0), reader.GetInt64(1)));
             await WriteJsonAsync(ctx, items);
-        }
-        catch
-        {
+        } catch {
             await WriteTextAsync(ctx, StatusCodes.Status500InternalServerError, "internal error\n");
         }
     }
 
-    public async Task Delete(HttpContext ctx, string name)
-    {
+    public async Task Delete(HttpContext ctx, string name) {
         var discordId = DiscordId(ctx);
         await using var cmd = source.CreateCommand("DELETE FROM blobs WHERE discord_id = $1 AND name = $2");
         cmd.Parameters.AddWithValue(discordId);
@@ -117,8 +96,7 @@ public sealed class BlobEndpoints(NpgsqlDataSource source)
         ctx.Response.StatusCode = StatusCodes.Status204NoContent;
     }
 
-    public async Task DeleteUser(HttpContext ctx)
-    {
+    public async Task DeleteUser(HttpContext ctx) {
         var discordId = DiscordId(ctx);
         await using var cmd = source.CreateCommand("DELETE FROM users WHERE discord_id = $1");
         cmd.Parameters.AddWithValue(discordId);
