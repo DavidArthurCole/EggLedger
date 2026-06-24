@@ -158,9 +158,9 @@ public static class CloudSyncBlobs {
         ["mission_recolor_dc"] = SettingsModel.FormatBool(s.MissionRecolorDC),
         ["mission_recolor_bc"] = SettingsModel.FormatBool(s.MissionRecolorBC),
         ["mission_show_expected_drops"] = SettingsModel.FormatBool(s.MissionShowExpectedDrops),
-        ["mission_multi_view_mode"] = s.MissionMultiViewMode,
-        ["mission_sort_method"] = s.MissionSortMethod,
-        ["lifetime_sort_method"] = s.LifetimeSortMethod,
+        ["mission_multi_view_mode"] = s.MissionMultiViewMode ?? "",
+        ["mission_sort_method"] = s.MissionSortMethod ?? "",
+        ["lifetime_sort_method"] = s.LifetimeSortMethod ?? "",
         ["lifetime_show_drops_per_ship"] = SettingsModel.FormatBool(s.LifetimeShowDropsPerShip),
         ["lifetime_show_expected_totals"] = SettingsModel.FormatBool(s.LifetimeShowExpectedTotals),
     };
@@ -172,7 +172,7 @@ public static class CloudSyncBlobs {
         IReadOnlyCollection<string> existingReportIds) {
         var groups = new List<ReportGroupRow>();
         var seenGroups = new HashSet<string>(existingGroupIds, StringComparer.Ordinal);
-        foreach (var g in remote.Groups) {
+        foreach (var g in remote.Groups ?? []) {
             if (string.IsNullOrEmpty(g.Id) || !seenGroups.Add(g.Id)) {
                 continue;
             }
@@ -181,7 +181,7 @@ public static class CloudSyncBlobs {
 
         var reports = new List<ReportRow>();
         var seenReports = new HashSet<string>(existingReportIds, StringComparer.Ordinal);
-        foreach (var d in remote.Reports) {
+        foreach (var d in remote.Reports ?? []) {
             if (string.IsNullOrEmpty(d.Id) || !seenReports.Add(d.Id)) {
                 continue;
             }

@@ -372,35 +372,35 @@
             try
             {
                 var remoteAccounts = await Cloud.GetBlobAsync<List<AccountInfo>>(_session, CloudSyncBlobs.AccountsBlob);
-                foreach (var acct in remoteAccounts)
+                foreach (var acct in remoteAccounts ?? [])
                 {
                     await Accounts.AddKnownAccountAsync(acct);
                 }
             }
-            catch (CloudSyncException)
-            {
-                // Nothing synced yet for accounts; skip.
-            }
+            catch (CloudSyncException) { /* nothing synced yet */ }
+            catch (Exception ex) { throw new CloudSyncException($"restore accounts: {ex.Message}", ex); }
 
             try
             {
                 var remoteSettings = await Cloud.GetBlobAsync<CloudSyncableSettings>(_session, CloudSyncBlobs.SettingsBlob);
-                await Settings.SetSettingsAsync(CloudSyncBlobs.UnpackSettings(remoteSettings));
+                if (remoteSettings is not null)
+                {
+                    await Settings.SetSettingsAsync(CloudSyncBlobs.UnpackSettings(remoteSettings));
+                }
             }
-            catch (CloudSyncException)
-            {
-                // Nothing synced yet for settings; skip.
-            }
+            catch (CloudSyncException) { /* nothing synced yet */ }
+            catch (Exception ex) { throw new CloudSyncException($"restore settings: {ex.Message}", ex); }
 
             try
             {
                 var remoteReports = await Cloud.GetBlobAsync<CloudReportsBlob>(_session, CloudSyncBlobs.ReportsBlob);
-                await ImportReportsAsync(remoteReports);
+                if (remoteReports is not null)
+                {
+                    await ImportReportsAsync(remoteReports);
+                }
             }
-            catch (CloudSyncException)
-            {
-                // Nothing synced yet for reports; skip.
-            }
+            catch (CloudSyncException) { /* nothing synced yet */ }
+            catch (Exception ex) { throw new CloudSyncException($"restore reports: {ex.Message}", ex); }
 
             _lastPullAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             await SessionStore.SetLastPullAtAsync(_lastPullAt);
