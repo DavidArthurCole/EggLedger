@@ -2,7 +2,8 @@
 @using EggLedger.Domain.MissionPacking
 @using EggLedger.Web.Missions
 
-@* Year/month/day collapse tree, each mission a clickable row. Multi-view selection deferred. *@
+@* Year/month/day collapse tree, each mission a clickable row. Multi-view: Row/Date adds a
+   per-day "View row" button; Free Select adds a per-mission checkbox plus a Select All header. *@
 
 @if (Grouping is null || Grouping.Missions.Count == 0)
 {
@@ -21,6 +22,20 @@ else
                         @(AllExpanded ? "Collapse All" : "Expand All")
                     </button>
                 </span>
+                @if (MultiViewMode == MultiViewMode.Free)
+                {
+                    <button type="button" class="text-base toggle-link" disabled="@(SelectedIds.Count == 0)" @onclick="ViewSelected">
+                        View Selected (@SelectedIds.Count)
+                    </button>
+                    @if (SelectedIds.Count > 0)
+                    {
+                        <button type="button" class="text-base toggle-link" @onclick="DeselectAll">Deselect All</button>
+                    }
+                    @if (!AllSelected)
+                    {
+                        <button type="button" class="text-base toggle-link" @onclick="SelectAll">Select All</button>
+                    }
+                }
             </div>
             <hr class="mt-0_5rem mb-0_5rem w-full" />
         </div>
@@ -68,6 +83,13 @@ else
                                                     @(day.Enabled ? "Collapse" : "Expand")
                                                 </button>
                                             }
+                                            @if (MultiViewMode == MultiViewMode.Row)
+                                            {
+                                                <button type="button" class="tb-c text-sm mr-0_5rem toggle-link"
+                                                        @onclick="@(() => ViewRow(yearIndex, monthIndex, dayIndex))">
+                                                    View row
+                                                </button>
+                                            }
 
                                             <div class="mt-1rem mission-grid">
                                                 <div class="mission-grid mission-items-full">
@@ -76,7 +98,13 @@ else
                                                         @foreach (var mission in Grouping.Missions[yearIndex][monthIndex][dayIndex])
                                                         {
                                                             var m = mission;
-                                                            <div @key="m.MissiondId" class="text-sm mission-item-3" data-missionid="@m.MissiondId">
+                                                            <div @key="m.MissiondId" class="text-sm mission-item-3 flex items-center" data-missionid="@m.MissiondId">
+                                                                @if (MultiViewMode == MultiViewMode.Free)
+                                                                {
+                                                                    <input type="checkbox" class="mr-0_5rem flex-shrink-0"
+                                                                           checked="@SelectedIds.Contains(m.MissiondId)"
+                                                                           @onchange="@(() => ToggleSelected(m.MissiondId))" />
+                                                                }
                                                                 <button type="button" class="text-sm mr-5 font-bold btn btn-outline-dark bg-transparent" @onclick="@(() => OnView(m.MissiondId))">
                                                                     @if (!ViewByDate)
                                                                     {
@@ -134,6 +162,17 @@ else
     [Parameter]
     public bool RecolorBc { get; set; }
 
+    [Parameter]
+    public MultiViewMode MultiViewMode { get; set; } = MultiViewMode.Off;
+
+    /// <summary>Free-select mission ids; owned by the page, mutated here.</summary>
+    [Parameter]
+    public HashSet<string> SelectedIds { get; set; } = new();
+
+    /// <summary>Tab-filtered missions in display order; the Select All universe.</summary>
+    [Parameter]
+    public IReadOnlyList<DatabaseMission> TabFiltered { get; set; } = Array.Empty<DatabaseMission>();
+
     /// <summary>Mission id shown in the overlay, highlighted in the list.</summary>
     [Parameter]
     public string? MissionBeingViewed { get; set; }
@@ -141,11 +180,69 @@ else
     [Parameter]
     public EventCallback<string> OnViewMission { get; set; }
 
+    /// <summary>Raised with a set of mission ids to view together (Row/Date or Free Select).</summary>
+    [Parameter]
+    public EventCallback<IReadOnlyList<string>> OnViewRow { get; set; }
+
+    /// <summary>Raised when the free-select set changes.</summary>
+    [Parameter]
+    public EventCallback OnSelectionChanged { get; set; }
+
     /// <summary>Raised when collapse state mutates so the page can re-render.</summary>
     [Parameter]
     public EventCallback OnGroupingChanged { get; set; }
 
     private async Task OnView(string missionId) => await OnViewMission.InvokeAsync(missionId);
+
+    private bool AllSelected => TabFiltered.Count > 0 && SelectedIds.Count >= TabFiltered.Count;
+
+    private async Task ViewRow(int yi, int mi, int di)
+    {
+        var ids = new List<string>();
+        foreach (var m in Grouping!.Missions[yi][mi][di])
+        {
+            ids.Add(m.MissiondId);
+        }
+        await OnViewRow.InvokeAsync(ids);
+    }
+
+    private async Task ViewSelected()
+    {
+        // Preserve display order from TabFiltered rather than HashSet order.
+        var ids = new List<string>();
+        foreach (var m in TabFiltered)
+        {
+            if (SelectedIds.Contains(m.MissiondId))
+            {
+                ids.Add(m.MissiondId);
+            }
+        }
+        await OnViewRow.InvokeAsync(ids);
+    }
+
+    private async Task ToggleSelected(string missionId)
+    {
+        if (!SelectedIds.Remove(missionId))
+        {
+            SelectedIds.Add(missionId);
+        }
+        await OnSelectionChanged.InvokeAsync();
+    }
+
+    private async Task SelectAll()
+    {
+        foreach (var m in TabFiltered)
+        {
+            SelectedIds.Add(m.MissiondId);
+        }
+        await OnSelectionChanged.InvokeAsync();
+    }
+
+    private async Task DeselectAll()
+    {
+        SelectedIds.Clear();
+        await OnSelectionChanged.InvokeAsync();
+    }
 
     private bool DayVisible(int yi, int mi, int di) =>
         ViewByDate ? Grouping!.Arrays.Day[yi][mi][di].Enabled : Grouping!.Arrays.Month[yi][mi].Enabled;

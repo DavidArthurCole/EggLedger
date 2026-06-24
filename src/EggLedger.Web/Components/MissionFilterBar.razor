@@ -18,7 +18,7 @@
             <div class="text-gray-400 mt-0_5rem">-- AND --</div>
         }
 
-        <div class="filter-container focus-within:z-10">
+        <div class="filter-container">
             @RenderConditionControls(row.Cond, () => OnRowChanged(index))
 
             @if (RowComplete(row.Cond))
@@ -43,7 +43,7 @@
         {
             var orIndex = oi;
             var orRow = row.Or[orIndex];
-            <div class="ml-2rem filter-container focus-within:z-10">
+            <div class="ml-2rem filter-container">
                 <div class="text-gray-400 mt-0_5rem mr-1rem"><span class="text-gray text-lg">⮡ </span> OR</div>
 
                 @RenderConditionControls(orRow, () => OnOrRowChanged(index))

@@ -1,6 +1,10 @@
+@using System.Globalization
 @using EggLedger.Web.Missions
+@using EggLedger.Web.Services
 
-@* One spec-type section: colored label "Label (totalCount)" then grouped drop icons with counts. Tooltips deferred. *@
+@* One spec-type section: colored label "Label (totalCount)" then grouped drop icons.
+   Each icon links to the artifact explorer and shows a hover tooltip (name, tier, rarity,
+   count, effect string, and menno expected-drops when enabled). *@
 
 @if (Items is { Count: > 0 })
 {
@@ -11,17 +15,57 @@
         @foreach (var item in Items)
         {
             <div class="mission-view-rep">
-                <span class="@RarityBgClass(item)">
-                    <img class="h-full w-full" loading="lazy" decoding="async" alt="@item.Name" src="@SpecPath(item)" />
+                <a class="@RarityBgClass(item)" target="_blank" rel="noopener" href="@ExplorerUrl(item)"
+                   @onmouseenter="@(e => ShowTooltip(item, e))" @onmouseleave="HideTooltip">
+                    <img class="h-full w-full" loading="lazy" decoding="async" alt="@item.GameName" src="@SpecPath(item)" />
                     @if (item.Count > 1)
                     {
                         <span class="ledger-af-count @NumToDigClass(item.Count)">@item.Count</span>
                     }
-                </span>
+                </a>
             </div>
         }
     </div>
     <br />
+}
+
+@if (_hovered is not null)
+{
+    <div class="tooltip-floating text-sm" style="left: @(_x.ToString(CultureInfo.InvariantCulture))px; top: @(_y.ToString(CultureInfo.InvariantCulture))px;">
+        @_hovered.GameName (T@(_hovered.Level + SpecPathOffset(_hovered)))
+        @if (_hovered.SpecType == "Artifact")
+        {
+            <span class="text-rarity-@_hovered.Rarity">@RarityWord(_hovered.Rarity) </span>
+        }
+        × @_hovered.Count
+        @if (_hovered.SpecType is "Artifact" or "Stone")
+        {
+            <br />
+            var bound = BoundEffectString(_hovered.EffectString);
+            <span>
+                @bound.Prefix<span class="text-green-500">@bound.Highlight</span>@bound.Suffix
+            </span>
+        }
+        @if (ShowExpectedDrops)
+        {
+            <hr class="mt-0_5rem mb-0_5rem w-full" />
+            var calc = DropCalcs(_hovered);
+            @if (calc is null)
+            {
+                <span class="text-red-700">Not enough data to determine drop rate.</span>
+            }
+            else
+            {
+                <span class="text-gray-400">
+                    <span class="text-green-500">@calc.Value.Seen.ToString("N0", CultureInfo.InvariantCulture)</span>
+                    <span> seen out of </span>
+                    <span class="text-green-500">@calc.Value.Total.ToString("N0", CultureInfo.InvariantCulture)</span>
+                    <span> drops</span><br />
+                    <span>(Average of <span class="text-green-500">@ExpectedPerShip(_hovered)</span> expected in this ship)</span>
+                </span>
+            }
+        }
+    </div>
 }
 
 @code {
@@ -31,6 +75,29 @@
 
     [Parameter]
     public IReadOnlyList<DropLike>? Items { get; set; }
+
+    [Parameter]
+    public MissionMennoData? MennoData { get; set; }
+
+    [Parameter]
+    public bool ShowExpectedDrops { get; set; }
+
+    /// <summary>Total drop count across all spec sections of the mission; the expected-per-ship multiplier.</summary>
+    [Parameter]
+    public int MissionTotalDrops { get; set; }
+
+    private DropLike? _hovered;
+    private double _x;
+    private double _y;
+
+    private void ShowTooltip(DropLike item, MouseEventArgs e)
+    {
+        _hovered = item;
+        _x = e.ClientX;
+        _y = e.ClientY;
+    }
+
+    private void HideTooltip() => _hovered = null;
 
     private int TotalCount
     {
@@ -65,12 +132,26 @@
         _ => "bg-gray-900",
     };
 
+    private static readonly string[] Rarities = ["Common", "Rare", "Epic", "Legendary"];
+
+    private static string RarityWord(int rarity) =>
+        rarity >= 0 && rarity < Rarities.Length ? Rarities[rarity] : "";
+
     // Stone -> +2, else +1.
     private static int SpecPathOffset(DropLike item) => item.SpecType == "Stone" ? 2 : 1;
 
     // Artifacts carry their rarity background, others bg-r-0.
     private static string RarityBgClass(DropLike item) =>
         item.SpecType == "Artifact" ? "ledger-af-link bg-r-" + item.Rarity : "ledger-af-link bg-r-0";
+
+    private static string ExplorerUrl(DropLike item)
+    {
+        var slug = item.Name
+            .Replace("_FRAGMENT", "", StringComparison.Ordinal)
+            .ToLowerInvariant()
+            .Replace("_", "-", StringComparison.Ordinal);
+        return $"https://wasmegg-carpet.netlify.app/artifact-explorer/#/artifact/{slug}-{item.Level + SpecPathOffset(item)}";
+    }
 
     // Count badge width by digit count.
     private static string NumToDigClass(int num) => num switch
@@ -91,5 +172,57 @@
             .Replace("ORNATE_GUSSET", "GUSSET", StringComparison.Ordinal)
             .Replace("VIAL_MARTIAN_DUST", "VIAL_OF_MARTIAN_DUST", StringComparison.Ordinal);
         return State.ContentPaths.Asset($"images/artifacts/{fixedName}/{fixedName}_{item.Level + SpecPathOffset(item)}.png");
+    }
+
+    // Port of boundEffectString: splits "[x]" or "!!...<x>" into prefix / highlight / suffix.
+    private static (string Prefix, string Highlight, string Suffix) BoundEffectString(string str)
+    {
+        if (str.StartsWith("!!", StringComparison.Ordinal))
+        {
+            int open = str.IndexOf('<', StringComparison.Ordinal);
+            int close = open >= 0 ? str.IndexOf('>', open) : -1;
+            return close > open
+                ? (str.Substring(2, open - 2), str.Substring(open + 1, close - open - 1), "")
+                : ("?", "?", "?");
+        }
+        int lb = str.IndexOf('[', StringComparison.Ordinal);
+        int rb = lb >= 0 ? str.IndexOf(']', lb) : -1;
+        return rb > lb
+            ? (str.Substring(0, lb), str.Substring(lb + 1, rb - lb - 1), str.Substring(rb + 1))
+            : ("?", "?", "?");
+    }
+
+    // Port of getDropCalcs (mission mode): [community drops for this artifact, community total].
+    private (long Seen, long Total)? DropCalcs(DropLike item)
+    {
+        if (MennoData?.Configs is null)
+        {
+            return null;
+        }
+        foreach (var c in MennoData.Configs)
+        {
+            var ac = c.ArtifactConfiguration;
+            if (ac?.ArtifactType is null || ac.ArtifactRarity is null)
+            {
+                continue;
+            }
+            if (ac.ArtifactType.Id == item.Id && ac.ArtifactLevel == item.Level && ac.ArtifactRarity.Id == item.Rarity)
+            {
+                return (c.TotalDrops, MennoData.TotalDropsCount);
+            }
+        }
+        return null;
+    }
+
+    // Port of getExpectedPerShip: (seen / total) * missionTotalDrops, 3 decimals.
+    private string ExpectedPerShip(DropLike item)
+    {
+        var calc = DropCalcs(item);
+        if (calc is null || calc.Value.Total == 0)
+        {
+            return "";
+        }
+        double v = ((double)calc.Value.Seen / calc.Value.Total) * MissionTotalDrops;
+        return v.ToString("0.000", CultureInfo.InvariantCulture);
     }
 }

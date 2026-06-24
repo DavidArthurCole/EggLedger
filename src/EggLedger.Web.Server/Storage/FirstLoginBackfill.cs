@@ -1,4 +1,5 @@
 using System.Text.Json;
+using EggLedger.Domain.MissionQuery;
 using EggLedger.Web.Data;
 using EggLedger.Web.Services;
 using EggLedger.Web.Settings;
@@ -7,20 +8,22 @@ using Npgsql;
 namespace EggLedger.Web.Server.Storage;
 
 /// <summary>
-/// On a user's first login to the unified host, restores their settings + reports from the
-/// cloud blobs the old sync server already holds (encrypted in the blobs table). The new
-/// per-user Postgres store starts empty, so without this returning users would lose their
-/// synced settings/reports. Mission history is NOT in any blob (only the first-contact
-/// backup is), so it is not backfilled - the user re-fetches once on the new host.
+/// On a user's first login to the unified host, restores their accounts + settings + reports
+/// from the cloud blobs the old sync server already holds (encrypted in the blobs table). The
+/// new per-user Postgres store starts empty, so without this returning users would lose their
+/// synced data. Mission history is NOT in any blob (only the first-contact backup is), so it is
+/// not backfilled - the user re-fetches once on the new host.
 ///
-/// Idempotent + cheap: runs only when the user's settings store is empty (the fresh-store
-/// signal). Reads ciphertext + the user's encryption key from Postgres and decrypts in
-/// process via IBlobCipher (managed AES-GCM); no HTTP, no Bearer token.
+/// Guard: runs only when the user has NO known accounts yet. Settings get written early by the
+/// app, so "settings empty" is a false fresh-store signal; "no accounts" is the real one.
+/// Reads ciphertext + the user's encryption key from Postgres and decrypts in process via
+/// IBlobCipher (managed AES-GCM); no HTTP, no Bearer token.
 /// </summary>
 public sealed class FirstLoginBackfill(
     NpgsqlDataSource source,
     CurrentUser user,
     IBlobCipher cipher,
+    IndexedDbAccountStore accounts,
     IndexedDbSettings settings,
     IndexedDbReportStore reports) {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
@@ -31,9 +34,10 @@ public sealed class FirstLoginBackfill(
             return;
         }
 
-        // Fresh store signal: no settings rows yet for this user.
-        var existing = await settings.GetAllSettingsAsync().ConfigureAwait(false);
-        if (existing.Count > 0) {
+        // Fresh-store signal: no known accounts yet. (Settings are written early by the app,
+        // so settings-empty is unreliable; accounts only exist after restore or a fetch.)
+        var known = await accounts.GetKnownAccountsAsync().ConfigureAwait(false);
+        if (known.Count > 0) {
             return;
         }
 
@@ -42,8 +46,20 @@ public sealed class FirstLoginBackfill(
             return;
         }
 
+        await RestoreAccountsAsync(discordId, encKey, ct).ConfigureAwait(false);
         await RestoreSettingsAsync(discordId, encKey, ct).ConfigureAwait(false);
         await RestoreReportsAsync(discordId, encKey, ct).ConfigureAwait(false);
+    }
+
+    private async Task RestoreAccountsAsync(string discordId, string encKey, CancellationToken ct) {
+        var list = await DecryptBlobAsync<List<AccountInfo>>(discordId, encKey, CloudSyncBlobs.AccountsBlob, ct)
+            .ConfigureAwait(false);
+        if (list is null) {
+            return;
+        }
+        foreach (var acct in list) {
+            await accounts.AddKnownAccountAsync(acct).ConfigureAwait(false);
+        }
     }
 
     private async Task RestoreSettingsAsync(string discordId, string encKey, CancellationToken ct) {

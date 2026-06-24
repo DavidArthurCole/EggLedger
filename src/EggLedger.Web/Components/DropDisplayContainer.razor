@@ -3,10 +3,10 @@
 @* Renders the four spec-type sections inside one rounded container. *@
 
 <div class="rounded-md px-2 pt-1 pb-0 mb-2 ml-2rem mr-2rem" style="background: rgba(120, 128, 138, 0.12)">
-    <DropDisplay Type="artifact" Items="Artifacts" />
-    <DropDisplay Type="stone" Items="Stones" />
-    <DropDisplay Type="ingredient" Items="Ingredients" />
-    <DropDisplay Type="stone_fragment" Items="StoneFragments" />
+    <DropDisplay Type="artifact" Items="Artifacts" MennoData="MennoData" ShowExpectedDrops="ShowExpectedDrops" MissionTotalDrops="TotalDrops" />
+    <DropDisplay Type="stone" Items="Stones" MennoData="MennoData" ShowExpectedDrops="ShowExpectedDrops" MissionTotalDrops="TotalDrops" />
+    <DropDisplay Type="ingredient" Items="Ingredients" MennoData="MennoData" ShowExpectedDrops="ShowExpectedDrops" MissionTotalDrops="TotalDrops" />
+    <DropDisplay Type="stone_fragment" Items="StoneFragments" MennoData="MennoData" ShowExpectedDrops="ShowExpectedDrops" MissionTotalDrops="TotalDrops" />
 </div>
 
 @code {
@@ -21,4 +21,36 @@
 
     [Parameter]
     public IReadOnlyList<DropLike>? StoneFragments { get; set; }
+
+    [Parameter]
+    public MissionMennoData? MennoData { get; set; }
+
+    [Parameter]
+    public bool ShowExpectedDrops { get; set; }
+
+    private int TotalDrops
+    {
+        get
+        {
+            int sum = 0;
+            sum += Sum(Artifacts);
+            sum += Sum(Stones);
+            sum += Sum(Ingredients);
+            sum += Sum(StoneFragments);
+            return sum;
+        }
+    }
+
+    private static int Sum(IReadOnlyList<DropLike>? items)
+    {
+        int s = 0;
+        if (items is not null)
+        {
+            foreach (var i in items)
+            {
+                s += i.Count;
+            }
+        }
+        return s;
+    }
 }

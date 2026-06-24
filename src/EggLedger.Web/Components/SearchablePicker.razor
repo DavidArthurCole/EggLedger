@@ -14,14 +14,15 @@
 @if (_open)
 {
     <div class="popup-selector-main overlay-@OverlayKind" @onclick="Close">
-        <div class="popup-selector-inner" @onclick:stopPropagation="true" @onkeydown="OnKeyDown">
+        <div class="popup-selector-inner" @onclick:stopPropagation="true"
+             @onkeydown="OnKeyDown" @onkeydown:preventDefault="_preventKey">
             <button type="button" class="close-button" @onclick="Close" aria-label="Close">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
             </button>
             <input @ref="_searchInput" type="text" class="input-search" placeholder="Search..."
-                   @bind="_query" @bind:event="oninput" />
+                   value="@_query" @oninput="OnQueryInput" />
             <div class="popup-opt-container">
                 @{ var filtered = Filtered(); }
                 @if (filtered.Count == 0)
@@ -65,6 +66,7 @@
 
     private bool _open;
     private bool _focusPending;
+    private bool _preventKey;
     private ElementReference _searchInput;
     private string _query = "";
     private int _activeIndex = -1;
@@ -103,13 +105,20 @@
         }
     }
 
+    private void OnQueryInput(ChangeEventArgs e)
+    {
+        _query = e.Value?.ToString() ?? "";
+        _activeIndex = -1;
+    }
+
     private void OnKeyDown(KeyboardEventArgs e)
     {
         var filtered = Filtered();
+        _preventKey = e.Key is "ArrowDown" or "ArrowUp" or "Enter";
         switch (e.Key)
         {
             case "ArrowDown":
-                _activeIndex = Math.Min(_activeIndex + 1, filtered.Count - 1);
+                _activeIndex = filtered.Count == 0 ? -1 : Math.Min(_activeIndex + 1, filtered.Count - 1);
                 break;
             case "ArrowUp":
                 _activeIndex = Math.Max(_activeIndex - 1, 0);

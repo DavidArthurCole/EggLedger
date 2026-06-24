@@ -32,6 +32,8 @@ public static class MissionDetailBuilder {
     private static DropLike ToDropLike(MissionDrop d) => new() {
         Id = d.Id,
         Name = d.Name,
+        GameName = d.GameName,
+        EffectString = d.EffectString,
         Level = d.Level,
         Rarity = d.Rarity,
         Quality = d.Quality,
@@ -99,11 +101,17 @@ public static class MissionDetailBuilder {
         data.Ingredients = sortFn(data.Ingredients);
     }
 
-    /// <summary>Menno lookup key for a mission: target -1 remapped to 10000, key is ship_duration_level_target.</summary>
-    public static string MennoKey(DatabaseMission mission) {
+    /// <summary>Menno lookup parameters for a mission: target -1 remapped to the no-target sentinel (10000).</summary>
+    public static (int Ship, int Duration, int Level, int Target) MennoParams(DatabaseMission mission) {
         int target = mission.TargetInt == -1 ? 10000 : mission.TargetInt;
         int ship = mission.Ship is { } s ? Convert.ToInt32(s) : 0;
         int duration = mission.DurationType is { } d ? Convert.ToInt32(d) : 0;
-        return $"{ship}_{duration}_{mission.Level}_{target}";
+        return (ship, duration, mission.Level, target);
+    }
+
+    /// <summary>Menno lookup key for a mission, key is ship_duration_level_target.</summary>
+    public static string MennoKey(DatabaseMission mission) {
+        var (ship, duration, level, target) = MennoParams(mission);
+        return $"{ship}_{duration}_{level}_{target}";
     }
 }

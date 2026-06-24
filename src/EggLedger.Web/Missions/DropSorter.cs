@@ -4,6 +4,8 @@ namespace EggLedger.Web.Missions;
 public sealed class DropLike {
     public int Id { get; set; }
     public string Name { get; set; } = "";
+    public string GameName { get; set; } = "";
+    public string EffectString { get; set; } = "";
     public int Level { get; set; }
     public int Rarity { get; set; }
     public double Quality { get; set; }

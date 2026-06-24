@@ -2,8 +2,7 @@
 @using EggLedger.Domain.MissionPacking
 @using EggLedger.Web.Missions
 
-@* Single-mode ship display: identity + details + capacity badge, then drops.
-   Hover tooltips and menno expected-drops detail are deferred. *@
+@* Single-mode ship display: identity + details + capacity badge, then drops, then the footer tip. *@
 
 <div class="text-gray-300 text-center">
     <div class="flex flex-row gap-2 mb-3 mx-auto items-center" style="width: fit-content;">
@@ -49,12 +48,24 @@
     <DropDisplayContainer Artifacts="Data.Artifacts"
                           Stones="Data.Stones"
                           Ingredients="Data.Ingredients"
-                          StoneFragments="Data.StoneFragments" />
+                          StoneFragments="Data.StoneFragments"
+                          MennoData="Data.MennoData"
+                          ShowExpectedDrops="ShowExpectedDrops" />
+
+    <div class="text-xs text-gray-300 text-center flex-shrink-0 pb-2">
+        Hover mouse over an item to show details.<br />
+        Click to open the relevant
+        <a class="ledger-underline" target="_blank" rel="noopener" href="https://wasmegg-carpet.netlify.app/artifact-explorer/">artifact explorer</a>
+        page.
+    </div>
 </div>
 
 @code {
     [Parameter]
     public ViewMissionData Data { get; set; } = new();
+
+    [Parameter]
+    public bool ShowExpectedDrops { get; set; }
 
     private DatabaseMission Mission => Data.MissionInfo;
 

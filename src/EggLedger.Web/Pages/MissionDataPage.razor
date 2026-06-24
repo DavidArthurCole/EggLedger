@@ -44,10 +44,33 @@
         </div>
 
         <div class="min-h-7 max-h-50 px-2 py-2 text-sm text-gray-400 bg-darkest rounded-md tabular-nums overflow-auto mt-0_75rem">
-            <label class="inline-block mr-5"><input type="checkbox" class="ext-opt-check mr-0_5rem" checked="@_opts.ViewByDate" @onchange="@(e => SetOpt(MissionViewOptions.KeyViewByDate, b => _opts.ViewByDate = b, e))" /> View by date</label>
-            <label class="inline-block mr-5"><input type="checkbox" class="ext-opt-check mr-0_5rem" checked="@_opts.ViewMissionTimes" @onchange="@(e => SetOpt(MissionViewOptions.KeyViewTimes, b => _opts.ViewMissionTimes = b, e))" /> Show times</label>
-            <label class="inline-block mr-5"><input type="checkbox" class="ext-opt-check mr-0_5rem" checked="@_opts.RecolorDc" @onchange="@(e => SetOpt(MissionViewOptions.KeyRecolorDc, b => _opts.RecolorDc = b, e))" /> Recolor double-cap</label>
-            <label class="inline-block mr-5"><input type="checkbox" class="ext-opt-check mr-0_5rem" checked="@_opts.RecolorBc" @onchange="@(e => SetOpt(MissionViewOptions.KeyRecolorBc, b => _opts.RecolorBc = b, e))" /> Recolor bugged-cap</label>
+            <div class="mb-1">
+                <span class="font-bold text-gray-400 mr-0_5rem">Options</span>
+                <button type="button" class="text-base toggle-link" @onclick="@(() => _hideOptions = !_hideOptions)">
+                    @(_hideOptions ? "Show" : "Hide")
+                </button>
+            </div>
+            @if (!_hideOptions)
+            {
+                <div>
+                    <label class="inline-block mr-5"><input type="checkbox" class="ext-opt-check mr-0_5rem" checked="@_opts.ViewByDate" @onchange="@(e => SetOpt(MissionViewOptions.KeyViewByDate, b => _opts.ViewByDate = b, e))" /> Separate missions by day</label>
+                    <label class="inline-block mr-5"><input type="checkbox" class="ext-opt-check mr-0_5rem" checked="@_opts.ViewMissionTimes" @onchange="@(e => SetOpt(MissionViewOptions.KeyViewTimes, b => _opts.ViewMissionTimes = b, e))" /> Show launch times</label>
+                    <label class="inline-block mr-5"><input type="checkbox" class="ext-opt-check mr-0_5rem" checked="@_opts.RecolorDc" @onchange="@(e => SetOpt(MissionViewOptions.KeyRecolorDc, b => _opts.RecolorDc = b, e))" /> Re-color dubcaps</label>
+                    <label class="inline-block mr-5"><input type="checkbox" class="ext-opt-check mr-0_5rem" checked="@_opts.RecolorBc" @onchange="@(e => SetOpt(MissionViewOptions.KeyRecolorBc, b => _opts.RecolorBc = b, e))" /> Re-color bugged-caps</label>
+                    <label class="inline-block mr-5"><input type="checkbox" class="ext-opt-check mr-0_5rem" checked="@_opts.ShowExpectedDropsPerShip" @onchange="@(e => SetOpt(MissionViewOptions.KeyShowExpectedDrops, b => _opts.ShowExpectedDropsPerShip = b, e))" /> Show "Expected Drops Per Ship"</label>
+                </div>
+                <div class="mt-1">
+                    <span class="font-bold text-gray-400 mr-0_5rem">Multi-View Method</span>
+                    <label class="inline-block mr-4"><input type="radio" name="multiview" class="mr-0_5rem" checked="@(_opts.MultiViewMode == MultiViewMode.Off)" @onchange="@(() => SetMultiView(MultiViewMode.Off))" /> Off</label>
+                    <label class="inline-block mr-4"><input type="radio" name="multiview" class="mr-0_5rem" checked="@(_opts.MultiViewMode == MultiViewMode.Row)" @onchange="@(() => SetMultiView(MultiViewMode.Row))" /> Row/Date Select</label>
+                    <label class="inline-block mr-4"><input type="radio" name="multiview" class="mr-0_5rem" checked="@(_opts.MultiViewMode == MultiViewMode.Free)" @onchange="@(() => SetMultiView(MultiViewMode.Free))" /> Free Select</label>
+                </div>
+                <div class="mt-1">
+                    <span class="font-bold text-gray-400 mr-0_5rem">Drops Sort Method</span>
+                    <label class="inline-block mr-4"><input type="radio" name="dropsort" class="mr-0_5rem" checked="@(_opts.SortMethod == MissionSortMethod.Default)" @onchange="@(() => SetSortMethod(MissionSortMethod.Default))" /> Default</label>
+                    <label class="inline-block mr-4"><input type="radio" name="dropsort" class="mr-0_5rem" checked="@(_opts.SortMethod == MissionSortMethod.Iv)" @onchange="@(() => SetSortMethod(MissionSortMethod.Iv))" /> Inventory Visualizer</label>
+                </div>
+            }
         </div>
 
         @if (_hasBothTypes)
@@ -65,21 +88,28 @@
                                  ViewMissionTimes="_opts.ViewMissionTimes"
                                  RecolorDc="_opts.RecolorDc"
                                  RecolorBc="_opts.RecolorBc"
+                                 MultiViewMode="_opts.MultiViewMode"
+                                 SelectedIds="_multiSelectedIds"
+                                 TabFiltered="_tabFiltered ?? Array.Empty<DatabaseMission>()"
                                  MissionBeingViewed="_missionBeingViewed"
                                  OnViewMission="ViewMissionAsync"
+                                 OnViewRow="ViewRowAsync"
+                                 OnSelectionChanged="StateHasChanged"
                                  OnGroupingChanged="StateHasChanged" />
         </div>
 
         <MissionOverlay @ref="_overlay"
                         AccountId="@Active.ActiveAccountId"
                         FilteredMissions="_tabFiltered ?? Array.Empty<DatabaseMission>()"
-                        SortMethod="_opts.SortMethod" />
+                        SortMethod="_opts.SortMethod"
+                        ShowExpectedDrops="_opts.ShowExpectedDropsPerShip" />
     }
 </section>
 
 @code {
     private bool _loading;
     private bool _hideFilter;
+    private bool _hideOptions;
     private bool _applying;
     private string _resultText = "";
     private string? _missionBeingViewed;
@@ -91,6 +121,7 @@
     private bool _hasBothTypes;
 
     private readonly MissionViewOptions _opts = new();
+    private readonly HashSet<string> _multiSelectedIds = new();
     private MissionFilterMatcher? _matcher;
     private MissionOverlay? _overlay;
 
@@ -221,6 +252,25 @@
         StateHasChanged();
     }
 
+    private async Task SetMultiView(MultiViewMode mode)
+    {
+        _opts.MultiViewMode = mode;
+        _multiSelectedIds.Clear();
+        await Settings.SetSettingAsync(MissionViewOptions.KeyMultiViewMode, MissionViewOptions.MultiViewModeToString(mode));
+        StateHasChanged();
+    }
+
+    private async Task SetSortMethod(MissionSortMethod method)
+    {
+        _opts.SortMethod = method;
+        await Settings.SetSettingAsync(MissionViewOptions.KeySortMethod, MissionViewOptions.SortMethodToString(method));
+        if (_overlay is not null)
+        {
+            await _overlay.ReSortAsync(method);
+        }
+        StateHasChanged();
+    }
+
     private async Task ViewMissionAsync(string missionId)
     {
         _missionBeingViewed = missionId;
@@ -229,6 +279,23 @@
         {
             await _overlay.OpenAsync(missionId);
         }
+    }
+
+    // Row/Date and Free Select both funnel here: one id opens single, many open the multi grid.
+    private async Task ViewRowAsync(IReadOnlyList<string> missionIds)
+    {
+        if (missionIds.Count == 0 || _overlay is null)
+        {
+            return;
+        }
+        if (missionIds.Count == 1)
+        {
+            await ViewMissionAsync(missionIds[0]);
+            return;
+        }
+        _missionBeingViewed = null;
+        StateHasChanged();
+        await _overlay.OpenMultiAsync(missionIds);
     }
 
     public void Dispose() => Active.Changed -= OnAccountChanged;

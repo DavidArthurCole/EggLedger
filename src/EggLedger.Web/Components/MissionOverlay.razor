@@ -1,45 +1,64 @@
 @using EggLedger.Domain.MissionPacking
 @using EggLedger.Domain.MissionQuery
 @using EggLedger.Web.Missions
+@using EggLedger.Web.Services
 @inject MissionQueryHandlers Queries
+@inject MennoService Menno
 
-@* Single-mode mission overlay. Blazor-controlled overlay (full-screen fixed backdrop +
-   centered panel). NOT a native <dialog>.showModal(): top-layer promotion desyncs the
-   Blazor Server render tree (insertBefore/parentNode-null crashes). Backdrop click closes.
-   Multi mode deferred. *@
+@* Mission overlay: single mode (prev/next nav) or multi mode (a grid of ship cards).
+   Blazor-controlled overlay (full-screen fixed backdrop + centered panel). NOT a native
+   <dialog>.showModal(): top-layer promotion desyncs the Blazor Server render tree
+   (insertBefore/parentNode-null crashes). Backdrop click closes. *@
 
 @if (_open)
 {
 <div class="fixed inset-0 z-40 flex items-center justify-center bg-black/60" @onclick="Close">
-<div class="mission-overlay w-60vw max-h-95vh bg-dark rounded-lg relative flex flex-col" @onclick:stopPropagation="true">
+<div class="mission-overlay @(_multi is null ? "w-60vw" : "w-90vw") max-h-95vh bg-dark rounded-lg relative flex flex-col" @onclick:stopPropagation="true">
     <button class="absolute top-2 right-2 z-10 rounded-md text-gray-400 hover:text-gray-200 focus:outline-none" type="button" @onclick="Close" aria-label="Close">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
         </svg>
     </button>
 
-    <button class="disabled:cursor-not-allowed absolute left-2 top-1/2 -translate-y-1/2 z-10 rounded-md text-gray-400 focus:outline-none disabled:text-gray-600 hover:text-gray-200" type="button" title="Previous mission"
-            disabled="@(_data?.PrevMission is null)"
-            @onclick="@(() => NavigateAsync(_data?.PrevMission))">
-        <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-        </svg>
-    </button>
-    <button class="disabled:cursor-not-allowed absolute right-2 top-1/2 -translate-y-1/2 z-10 rounded-md text-gray-400 focus:outline-none disabled:text-gray-600 hover:text-gray-200" type="button" title="Next mission"
-            disabled="@(_data?.NextMission is null)"
-            @onclick="@(() => NavigateAsync(_data?.NextMission))">
-        <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-        </svg>
-    </button>
+    @if (_multi is null)
+    {
+        <button class="disabled:cursor-not-allowed absolute left-2 top-1/2 -translate-y-1/2 z-10 rounded-md text-gray-400 focus:outline-none disabled:text-gray-600 hover:text-gray-200" type="button" title="Previous mission"
+                disabled="@(_data?.PrevMission is null)"
+                @onclick="@(() => NavigateAsync(_data?.PrevMission))">
+            <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+        </button>
+        <button class="disabled:cursor-not-allowed absolute right-2 top-1/2 -translate-y-1/2 z-10 rounded-md text-gray-400 focus:outline-none disabled:text-gray-600 hover:text-gray-200" type="button" title="Next mission"
+                disabled="@(_data?.NextMission is null)"
+                @onclick="@(() => NavigateAsync(_data?.NextMission))">
+            <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+        </button>
+    }
 
     <div class="overflow-auto flex-1 min-h-0 pt-8 px-10 pb-2">
-        <div class="bg-darkerer rounded-lg py-2">
-            @if (_data is not null)
-            {
-                <ShipDisplay Data="_data" />
-            }
-        </div>
+        @if (_multi is null)
+        {
+            <div class="bg-darkerer rounded-lg py-2">
+                @if (_data is not null)
+                {
+                    <ShipDisplay Data="_data" ShowExpectedDrops="ShowExpectedDrops" />
+                }
+            </div>
+        }
+        else
+        {
+            <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3">
+                @foreach (var d in _multi)
+                {
+                    <div class="bg-darkerer rounded-lg py-2">
+                        <ShipDisplay Data="d" ShowExpectedDrops="ShowExpectedDrops" />
+                    </div>
+                }
+            </div>
+        }
     </div>
 </div>
 </div>
@@ -56,23 +75,71 @@
     [Parameter]
     public MissionSortMethod SortMethod { get; set; } = MissionSortMethod.Default;
 
+    [Parameter]
+    public bool ShowExpectedDrops { get; set; }
+
     private bool _open;
     private ViewMissionData? _data;
+    private List<ViewMissionData>? _multi;
 
     public async Task OpenAsync(string missionId)
     {
         _open = true;
+        _multi = null;
         await LoadAsync(missionId);
+    }
+
+    public async Task OpenMultiAsync(IReadOnlyList<string> missionIds)
+    {
+        _open = true;
+        _data = null;
+        _multi = new List<ViewMissionData>();
+        StateHasChanged();
+        foreach (var id in missionIds)
+        {
+            var data = await BuildAsync(id);
+            if (data is not null)
+            {
+                _multi.Add(data);
+            }
+        }
+        StateHasChanged();
+    }
+
+    /// <summary>Re-sort the open overlay's drop lists when the sort method changes.</summary>
+    public async Task ReSortAsync(MissionSortMethod method)
+    {
+        if (!_open)
+        {
+            return;
+        }
+        if (_data is not null)
+        {
+            MissionDetailBuilder.ApplySortMethod(_data, method);
+        }
+        if (_multi is not null)
+        {
+            foreach (var d in _multi)
+            {
+                MissionDetailBuilder.ApplySortMethod(d, method);
+            }
+        }
+        StateHasChanged();
+        await Task.CompletedTask;
     }
 
     private async Task LoadAsync(string missionId)
     {
+        _data = await BuildAsync(missionId);
+        StateHasChanged();
+    }
+
+    private async Task<ViewMissionData?> BuildAsync(string missionId)
+    {
         var mission = FindMission(missionId);
         if (mission is null)
         {
-            _data = null;
-            StateHasChanged();
-            return;
+            return null;
         }
 
         var drops = AccountId is null
@@ -85,8 +152,33 @@
             FilteredMissions,
             extendedInfo: true);
         MissionDetailBuilder.ApplySortMethod(data, SortMethod);
-        _data = data;
-        StateHasChanged();
+        await PopulateMennoAsync(mission, data);
+        return data;
+    }
+
+    private async Task PopulateMennoAsync(DatabaseMission mission, ViewMissionData data)
+    {
+        if (!ShowExpectedDrops)
+        {
+            return;
+        }
+        try
+        {
+            await Menno.EnsureLoadedAsync();
+        }
+        catch
+        {
+            // Community data is best-effort; tooltip falls back to "not enough data".
+            return;
+        }
+        var (ship, duration, level, target) = MissionDetailBuilder.MennoParams(mission);
+        var configs = Menno.GetData(ship, duration, level, target);
+        int total = 0;
+        foreach (var c in configs)
+        {
+            total += c.TotalDrops;
+        }
+        data.MennoData = new MissionMennoData { Configs = configs, TotalDropsCount = total };
     }
 
     private DatabaseMission? FindMission(string missionId)
@@ -113,5 +205,6 @@
     {
         _open = false;
         _data = null;
+        _multi = null;
     }
 }

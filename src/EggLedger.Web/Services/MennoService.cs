@@ -106,6 +106,39 @@ public sealed class MennoService {
     /// <summary>The cached items, or null if no successful refresh has run.</summary>
     public IReadOnlyList<ConfigurationItem>? CachedItems => _cache;
 
+    /// <summary>Sentinel target id for "no target set" missions in the community data.</summary>
+    public const int NoTarget = 10000;
+
+    /// <summary>Community records matching one mission's ship config (ship/duration/level/target). Mirrors mennodata.go GetData: if nothing matches a real target, retries with the no-target sentinel.</summary>
+    public IReadOnlyList<ConfigurationItem> GetData(int shipId, int durationId, int level, int targetId) {
+        if (_cache is not { Count: > 0 } items) {
+            return Array.Empty<ConfigurationItem>();
+        }
+        var matches = Filter(items, shipId, durationId, level, targetId);
+        if (matches.Count == 0 && targetId != NoTarget) {
+            matches = Filter(items, shipId, durationId, level, NoTarget);
+        }
+        return matches;
+    }
+
+    private static List<ConfigurationItem> Filter(
+        IReadOnlyList<ConfigurationItem> items, int shipId, int durationId, int level, int targetId) {
+        var result = new List<ConfigurationItem>();
+        foreach (var item in items) {
+            var sc = item.ShipConfiguration;
+            if (sc?.ShipType is null || sc.ShipDurationType is null || sc.TargetArtifact is null) {
+                continue;
+            }
+            if (sc.ShipType.Id == shipId
+                && sc.ShipDurationType.Id == durationId
+                && sc.Level == level
+                && sc.TargetArtifact.Id == targetId) {
+                result.Add(item);
+            }
+        }
+        return result;
+    }
+
     /// <summary>Runs a community-data comparison, returning a <see cref="ReportResult"/> matrix or null when the report is ineligible. rawRowLabels/rawColLabels are the pre-FormatLabel integer strings used to map cells back to record ids without string matching.</summary>
     public static ReportResult? ExecuteComparison(
         ReportDefinition def,
