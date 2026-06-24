@@ -5,15 +5,18 @@
 @using WebCondition = EggLedger.Web.Missions.FilterCondition
 @inject IndexedDbReportStore Store
 @inject MissionConfigProvider Config
-@inject IJSRuntime Js
 
-@* Report builder dialog (native <dialog>). Builds a ReportDefinition, auto-classifies
-   weight, saves via IndexedDbReportStore. Advanced options (OR filters, time buckets,
-   value filters, family weight, label color overrides, group assignment) are deferred. *@
+@* Report builder modal. Blazor-controlled overlay (full-screen fixed backdrop + centered
+   panel). NOT a native <dialog>.showModal(): top-layer promotion desyncs the Blazor Server
+   render tree (insertBefore/parentNode-null crashes). Backdrop click closes. Builds a
+   ReportDefinition, auto-classifies weight, saves via IndexedDbReportStore. Advanced options
+   (OR filters, time buckets, value filters, family weight, label color overrides, group
+   assignment) are deferred. *@
 
-<dialog @ref="_dialog" class="builder-dialog bg-dark rounded-lg relative shadow-xl w-full max-w-2xl max-h-90vh flex flex-col">
-    @if (_form is not null)
-    {
+@if (_open && _form is not null)
+{
+<div class="fixed inset-0 z-40 flex items-center justify-center bg-black/60" @onclick="Close">
+<div class="builder-dialog bg-dark rounded-lg relative shadow-xl w-full max-w-2xl max-h-90vh flex flex-col" @onclick:stopPropagation="true">
         <form method="dialog" class="flex flex-col min-h-0 flex-1" @onsubmit="SaveAsync" @onsubmit:preventDefault>
             <button type="button" class="close-button" @onclick="Close">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -155,8 +158,9 @@
                 <button type="submit" class="flex-1 px-3 py-1.5 rounded border border-indigo-600 bg-indigo-700 text-xs text-white hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none" disabled="@string.IsNullOrWhiteSpace(_form.Name)">Save</button>
             </div>
         </form>
-    }
-</dialog>
+</div>
+</div>
+}
 
 @code {
     [Parameter, EditorRequired]
@@ -169,7 +173,7 @@
     [Parameter]
     public EventCallback Saved { get; set; }
 
-    private ElementReference _dialog;
+    private bool _open;
     private FormModel? _form;
     private string? _editingId;
     private string _editingGroupId = "";
@@ -199,7 +203,7 @@
         public bool MennoEnabled { get; set; }
     }
 
-    public async Task OpenForCreateAsync()
+    public Task OpenForCreateAsync()
     {
         _editingId = null;
         _editingGroupId = "";
@@ -209,11 +213,12 @@
         _initialOr = null;
         _filterBarKey++;
         _form = new FormModel();
+        _open = true;
         StateHasChanged();
-        await JsOpenAsync();
+        return Task.CompletedTask;
     }
 
-    public async Task OpenForEditAsync(ReportDefinition def)
+    public Task OpenForEditAsync(ReportDefinition def)
     {
         _editingId = def.Id;
         _editingGroupId = def.GroupId ?? "";
@@ -241,8 +246,9 @@
             MinSampleSize = def.MinSampleSize,
             MennoEnabled = def.MennoEnabled,
         };
+        _open = true;
         StateHasChanged();
-        await JsOpenAsync();
+        return Task.CompletedTask;
     }
 
     private async Task SaveAsync()
@@ -265,7 +271,7 @@
             await Store.UpdateReportAsync(row);
         }
 
-        await JsCloseAsync();
+        _open = false;
         _form = null;
         await Saved.InvokeAsync();
     }
@@ -313,26 +319,9 @@
         };
     }
 
-    private async Task Close()
+    private void Close()
     {
-        await JsCloseAsync();
+        _open = false;
         _form = null;
-    }
-
-    private IJSObjectReference? _module;
-
-    private async ValueTask<IJSObjectReference> ModuleAsync() =>
-        _module ??= await Js.InvokeAsync<IJSObjectReference>("import", "./_content/EggLedger.Web/js/dialog.js");
-
-    private async Task JsOpenAsync()
-    {
-        var module = await ModuleAsync();
-        await module.InvokeVoidAsync("showModal", _dialog);
-    }
-
-    private async Task JsCloseAsync()
-    {
-        var module = await ModuleAsync();
-        await module.InvokeVoidAsync("close", _dialog);
     }
 }

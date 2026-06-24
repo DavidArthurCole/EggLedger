@@ -1,42 +1,45 @@
-@inject IJSRuntime Js
+@* Spinner modal shown while the Menno community aggregate downloads. Blazor-controlled
+   overlay (full-screen fixed backdrop + centered panel). NOT a native <dialog>.showModal():
+   top-layer promotion desyncs the Blazor Server render tree (insertBefore/parentNode-null
+   crashes). Non-dismissable: no backdrop click close. Open before the await, close after. *@
 
-@* Spinner modal shown while the Menno community aggregate downloads. Open before
-   the await, close after. *@
-
-<dialog @ref="_dialog" class="menno-loading">
-    <div class="menno-body">
-        <span class="menno-title">Data Refresh in Progress</span>
-        <hr class="menno-rule" />
-        <p class="menno-text">
-            <a class="url-link" target="_blank" rel="noopener"
-               href="https://github.com/menno-egginc/eggincdatacollection-docs/blob/main/DataEndpoints.md">Menno's Ship Data</a>
-            is currently being loaded. This data is used to provide further insights
-            into the drops of your ships, and how "lucky" you've been.
-        </p>
-        <hr class="menno-rule" />
-        <div class="menno-spinner-row">
-            <img class="menno-spinner" src="@ContentPaths.Asset("images/loading.gif")" alt="Loading..." />
-            <span class="menno-phase">Loading community data...</span>
+@if (_open)
+{
+<div class="fixed inset-0 z-40 flex items-center justify-center bg-black/60">
+    <div class="menno-loading">
+        <div class="menno-body">
+            <span class="menno-title">Data Refresh in Progress</span>
+            <hr class="menno-rule" />
+            <p class="menno-text">
+                <a class="url-link" target="_blank" rel="noopener"
+                   href="https://github.com/menno-egginc/eggincdatacollection-docs/blob/main/DataEndpoints.md">Menno's Ship Data</a>
+                is currently being loaded. This data is used to provide further insights
+                into the drops of your ships, and how "lucky" you've been.
+            </p>
+            <hr class="menno-rule" />
+            <div class="menno-spinner-row">
+                <img class="menno-spinner" src="@ContentPaths.Asset("images/loading.gif")" alt="Loading..." />
+                <span class="menno-phase">Loading community data...</span>
+            </div>
         </div>
     </div>
-</dialog>
+</div>
+}
 
 @code {
-    private ElementReference _dialog;
-    private IJSObjectReference? _module;
+    private bool _open;
 
-    private async ValueTask<IJSObjectReference> ModuleAsync() =>
-        _module ??= await Js.InvokeAsync<IJSObjectReference>("import", "./_content/EggLedger.Web/js/dialog.js");
-
-    public async Task OpenAsync()
+    public Task OpenAsync()
     {
-        var module = await ModuleAsync();
-        await module.InvokeVoidAsync("showModal", _dialog);
+        _open = true;
+        StateHasChanged();
+        return Task.CompletedTask;
     }
 
-    public async Task CloseAsync()
+    public Task CloseAsync()
     {
-        var module = await ModuleAsync();
-        await module.InvokeVoidAsync("close", _dialog);
+        _open = false;
+        StateHasChanged();
+        return Task.CompletedTask;
     }
 }

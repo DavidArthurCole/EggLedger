@@ -171,12 +171,9 @@
         StateHasChanged();
     }
 
-    private async Task OpenAddDialog()
+    private void OpenAddDialog()
     {
-        if (_addDialog is not null)
-        {
-            await _addDialog.OpenAsync();
-        }
+        _addDialog?.Open();
     }
 
     private async Task OnAccountAdded(AccountInfo account)

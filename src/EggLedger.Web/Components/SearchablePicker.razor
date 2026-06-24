@@ -1,54 +1,57 @@
 @using EggLedger.Web.Missions
 @using EggLedger.Web.State
-@inject IJSRuntime Js
-@implements IAsyncDisposable
 
-@* Searchable modal picker (port of the Vue SearchOverSelector). A readonly trigger
-   field opens a native <dialog> in the browser top layer, so it escapes any
-   transformed/contained ancestor and centers over the whole viewport. The
-   ::backdrop is dimmed via .overlay-* . Drops show a rarity ring; targets the icon. *@
+@* Searchable modal picker (port of the Vue SearchOverSelector). A readonly trigger field
+   opens a Blazor-controlled overlay (full-screen fixed backdrop + centered panel). NOT a
+   native <dialog>.showModal(): top-layer promotion desyncs the Blazor Server render tree
+   (insertBefore/parentNode-null crashes). Backdrop click closes. Drops show a rarity ring. *@
 
 <input type="text" readonly placeholder="@Placeholder"
        class="filter-select w-auto border-gray-300 text-gray-400 cursor-pointer"
        value="@(Selected?.Text ?? "")"
        @onclick="Open" />
 
-<dialog @ref="_dialog" class="popup-selector-inner overlay-@OverlayKind" @onkeydown="OnDialogKeyDown">
-    <button type="button" class="close-button" @onclick="Close" aria-label="Close">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-        </svg>
-    </button>
-    <input @ref="_searchInput" type="text" class="input-search" placeholder="Search..."
-           @bind="_query" @bind:event="oninput" />
-    <div class="popup-opt-container">
-        @{ var filtered = Filtered(); }
-        @if (filtered.Count == 0)
-        {
-            <span class="text-gray-400">No results found.</span>
-        }
-        else
-        {
-            @for (var i = 0; i < filtered.Count; i++)
-            {
-                var opt = filtered[i];
-                <div class="popup-opt @(i == _activeIndex ? "selected-popup-opt" : "")"
-                     @onclick="() => Choose(opt)">
-                    @if (!string.IsNullOrEmpty(opt.ImagePath))
+@if (_open)
+{
+    <div class="popup-selector-main overlay-@OverlayKind" @onclick="Close">
+        <div class="popup-selector-inner" @onclick:stopPropagation="true" @onkeydown="OnKeyDown">
+            <button type="button" class="close-button" @onclick="Close" aria-label="Close">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+            <input @ref="_searchInput" type="text" class="input-search" placeholder="Search..."
+                   @bind="_query" @bind:event="oninput" />
+            <div class="popup-opt-container">
+                @{ var filtered = Filtered(); }
+                @if (filtered.Count == 0)
+                {
+                    <span class="text-gray-400">No results found.</span>
+                }
+                else
+                {
+                    @for (var i = 0; i < filtered.Count; i++)
                     {
-                        <img class="max-w-7 mr-1rem @RingClass(opt)" loading="lazy" decoding="async"
-                             alt="@opt.Text" src="@ImageSrc(opt)" />
+                        var opt = filtered[i];
+                        <div class="popup-opt @(i == _activeIndex ? "selected-popup-opt" : "")"
+                             @onclick="() => Choose(opt)">
+                            @if (!string.IsNullOrEmpty(opt.ImagePath))
+                            {
+                                <img class="max-w-7 mr-1rem @RingClass(opt)" loading="lazy" decoding="async"
+                                     alt="@opt.Text" src="@ImageSrc(opt)" />
+                            }
+                            <span class="@(opt.StyleClass ?? "text-gray-400")">@opt.Text</span>
+                        </div>
                     }
-                    <span class="@(opt.StyleClass ?? "text-gray-400")">@opt.Text</span>
-                </div>
+                }
+            </div>
+            @if (Footer is not null)
+            {
+                <div class="flex items-center gap-1.5 px-1 pt-1 pb-0.5 text-xs text-gray-400 border-t border-gray-600 mr-1rem">@Footer</div>
             }
-        }
+        </div>
     </div>
-    @if (Footer is not null)
-    {
-        <div class="flex items-center gap-1.5 px-1 pt-1 pb-0.5 text-xs text-gray-400 border-t border-gray-600 mr-1rem">@Footer</div>
-    }
-</dialog>
+}
 
 @code {
     [Parameter] public IReadOnlyList<FilterOption> Options { get; set; } = [];
@@ -60,11 +63,11 @@
     [Parameter] public EventCallback<FilterOption> OnSelect { get; set; }
     [Parameter] public RenderFragment? Footer { get; set; }
 
-    private ElementReference _dialog;
+    private bool _open;
+    private bool _focusPending;
     private ElementReference _searchInput;
     private string _query = "";
     private int _activeIndex = -1;
-    private IJSObjectReference? _module;
 
     private FilterOption? Selected =>
         SelectedValue is null ? null : Options.FirstOrDefault(o => o.Value == SelectedValue);
@@ -79,25 +82,28 @@
     private string RingClass(FilterOption o) =>
         RarityRing && o.Rarity is { } r ? $"rounded-full bg-r-{r}" : "";
 
-    private async ValueTask<IJSObjectReference> ModuleAsync() =>
-        _module ??= await Js.InvokeAsync<IJSObjectReference>("import", "./_content/EggLedger.Web/js/dialog.js");
-
-    private async Task Open()
+    private void Open()
     {
         _query = "";
         _activeIndex = -1;
-        var module = await ModuleAsync();
-        await module.InvokeVoidAsync("showModal", _dialog);
-        await _searchInput.FocusAsync();
+        _open = true;
+        _focusPending = true;
     }
 
-    private async Task Close()
+    private void Close() => _open = false;
+
+    // Focus the search box after the overlay is in the DOM (interop only post-render).
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        var module = await ModuleAsync();
-        await module.InvokeVoidAsync("close", _dialog);
+        if (_focusPending)
+        {
+            _focusPending = false;
+            try { await _searchInput.FocusAsync(); }
+            catch { /* element gone (closed before focus) - ignore */ }
+        }
     }
 
-    private void OnDialogKeyDown(KeyboardEventArgs e)
+    private void OnKeyDown(KeyboardEventArgs e)
     {
         var filtered = Filtered();
         switch (e.Key)
@@ -111,21 +117,15 @@
             case "Enter" when _activeIndex >= 0 && _activeIndex < filtered.Count:
                 _ = Choose(filtered[_activeIndex]);
                 break;
+            case "Escape":
+                Close();
+                break;
         }
     }
 
     private async Task Choose(FilterOption opt)
     {
-        await Close();
+        _open = false;
         await OnSelect.InvokeAsync(opt);
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        if (_module is not null)
-        {
-            try { await _module.DisposeAsync(); }
-            catch (JSDisconnectedException) { }
-        }
     }
 }

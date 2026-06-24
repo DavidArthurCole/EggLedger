@@ -2,12 +2,17 @@
 @using EggLedger.Domain.MissionQuery
 @using EggLedger.Web.Missions
 @inject MissionQueryHandlers Queries
-@inject IJSRuntime Js
 
-@* Single-mode mission overlay (native <dialog> via dialog.js). Multi mode deferred. *@
+@* Single-mode mission overlay. Blazor-controlled overlay (full-screen fixed backdrop +
+   centered panel). NOT a native <dialog>.showModal(): top-layer promotion desyncs the
+   Blazor Server render tree (insertBefore/parentNode-null crashes). Backdrop click closes.
+   Multi mode deferred. *@
 
-<dialog @ref="_dialog" class="mission-overlay w-60vw max-h-95vh bg-dark rounded-lg relative flex flex-col" @oncancel="OnCancel" @oncancel:preventDefault="false" @onclose="OnCancel">
-    <button class="absolute top-2 right-2 z-10 rounded-md text-gray-400 hover:text-gray-200 focus:outline-none" type="button" @onclick="CloseAsync" aria-label="Close">
+@if (_open)
+{
+<div class="fixed inset-0 z-40 flex items-center justify-center bg-black/60" @onclick="Close">
+<div class="mission-overlay w-60vw max-h-95vh bg-dark rounded-lg relative flex flex-col" @onclick:stopPropagation="true">
+    <button class="absolute top-2 right-2 z-10 rounded-md text-gray-400 hover:text-gray-200 focus:outline-none" type="button" @onclick="Close" aria-label="Close">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
         </svg>
@@ -36,7 +41,9 @@
             }
         </div>
     </div>
-</dialog>
+</div>
+</div>
+}
 
 @code {
     [Parameter]
@@ -49,18 +56,13 @@
     [Parameter]
     public MissionSortMethod SortMethod { get; set; } = MissionSortMethod.Default;
 
-    private ElementReference _dialog;
-    private IJSObjectReference? _module;
+    private bool _open;
     private ViewMissionData? _data;
-
-    private async ValueTask<IJSObjectReference> ModuleAsync() =>
-        _module ??= await Js.InvokeAsync<IJSObjectReference>("import", "./_content/EggLedger.Web/js/dialog.js");
 
     public async Task OpenAsync(string missionId)
     {
+        _open = true;
         await LoadAsync(missionId);
-        var module = await ModuleAsync();
-        await module.InvokeVoidAsync("showModal", _dialog);
     }
 
     private async Task LoadAsync(string missionId)
@@ -107,14 +109,9 @@
         }
     }
 
-    private async Task CloseAsync()
+    private void Close()
     {
-        var module = await ModuleAsync();
-        await module.InvokeVoidAsync("close", _dialog);
-    }
-
-    private void OnCancel()
-    {
+        _open = false;
         _data = null;
     }
 }
