@@ -6,8 +6,9 @@ namespace EggLedger.Web.Server.Storage;
 /// <summary>
 /// Resolves the authenticated Discord user id for the current circuit from the framework
 /// AuthenticationState (cookie-auth principal). Read by <see cref="PostgresIndexedDb"/> on
-/// each op so storage is scoped to the right tenant. Throws if used before authentication;
-/// the data UI is gated behind an authenticated principal.
+/// each op so storage is scoped to the right tenant. <see cref="GetDiscordIdAsync"/> is the
+/// tolerant accessor (null when unauthenticated, used by reads); <see cref="RequireAsync"/>
+/// throws (used by writes). The data UI is gated behind an authenticated principal.
 /// </summary>
 public sealed class CurrentUser(AuthenticationStateProvider auth) {
     public async Task<string?> GetDiscordIdAsync() {

@@ -3,6 +3,7 @@ using EggLedger.Web.Data;
 using EggLedger.Web.Server.Components;
 using EggLedger.Web.Server.Sync;
 using EggLedger.Web.Services;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Npgsql;
@@ -44,7 +45,15 @@ builder.Services.AddCascadingAuthenticationState();
 
 if (hasDb)
 {
-    builder.Services.AddSingleton(NpgsqlDataSource.Create(cfg.DatabaseUrl));
+    var dataSource = NpgsqlDataSource.Create(cfg.DatabaseUrl);
+    builder.Services.AddSingleton(dataSource);
+
+    // Persist the DataProtection key ring to Postgres so cookie-auth keys survive
+    // container redeploys (otherwise every deploy invalidates all sessions).
+    builder.Services.AddDataProtection()
+        .SetApplicationName("EggLedger")
+        .AddKeyManagementOptions(o =>
+            o.XmlRepository = new EggLedger.Web.Server.Auth.PostgresXmlRepository(dataSource));
 }
 
 // Self-origin base for the shared UI's HttpClient (egg-api proxy + same-origin calls).
@@ -70,6 +79,7 @@ if (hasDb)
     builder.Services.AddScoped<IIndexedDb>(sp => new EggLedger.Web.Server.Storage.PostgresIndexedDb(
         sp.GetRequiredService<NpgsqlDataSource>(),
         sp.GetRequiredService<EggLedger.Web.Server.Storage.CurrentUser>()));
+    builder.Services.AddScoped<EggLedger.Web.Server.Storage.FirstLoginBackfill>();
 }
 
 // Outbound client for the egg-api forward (server calls auxbrain directly; no browser CORS).
@@ -124,7 +134,7 @@ if (hasDb)
                 Token = cfg.BotToken,
                 AppId = cfg.DiscordClientId,
                 GuildId = cfg.GuildId,
-                RepoUrl = "https://github.com/DavidArthurCole/EggLedgerSyncServer",
+                RepoUrl = "https://github.com/DavidArthurCole/EggLedger.Csharp",
                 Build = build,
                 DeployAgentUrl = cfg.DeployAgentUrl,
                 DeployAgentSecret = cfg.DeployAgentSecret,

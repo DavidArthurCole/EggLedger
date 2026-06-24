@@ -10,6 +10,7 @@
         <Found Context="routeData">
             <AuthorizeView>
                 <Authorized>
+                    <BackfillTrigger />
                     <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
                     <FocusOnNavigate RouteData="@routeData" Selector="h1" />
                 </Authorized>

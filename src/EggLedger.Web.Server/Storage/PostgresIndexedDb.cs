@@ -28,8 +28,11 @@ public sealed class PostgresIndexedDb : IIndexedDb {
         _stores = BuildStoreMeta();
     }
 
-    // Resolved per op from the circuit's auth principal.
+    // Writes require an authenticated user (throw otherwise). Reads tolerate the
+    // unauthenticated/gated state by returning empty, so shared RCL components that read
+    // settings on init (before the auth gate decides) don't crash the circuit.
     private Task<string> UserAsync() => _user.RequireAsync();
+    private Task<string?> TryUserAsync() => _user.GetDiscordIdAsync();
 
     private static readonly JsonSerializerOptions JsonOpts = Rows.JsonOptions;
 
@@ -52,12 +55,15 @@ public sealed class PostgresIndexedDb : IIndexedDb {
     }
 
     public async ValueTask<T?> GetAsync<T>(string store, object key) {
+        if (await TryUserAsync().ConfigureAwait(false) is not { } user) {
+            return default;
+        }
         var meta = Meta(store);
         var (where, keyArgs) = KeyPredicate(meta, key);
         await using var conn = await _source.OpenConnectionAsync().ConfigureAwait(false);
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = $"SELECT * FROM {meta.Table} WHERE discord_id = @user AND {where} LIMIT 1;";
-        cmd.Parameters.AddWithValue("user", await UserAsync());
+        cmd.Parameters.AddWithValue("user", user);
         BindKeyArgs(cmd, keyArgs);
         await using var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false);
         if (!await reader.ReadAsync().ConfigureAwait(false)) {
@@ -67,20 +73,26 @@ public sealed class PostgresIndexedDb : IIndexedDb {
     }
 
     public async ValueTask<T[]> GetAllAsync<T>(string store) {
+        if (await TryUserAsync().ConfigureAwait(false) is not { } user) {
+            return [];
+        }
         var meta = Meta(store);
         await using var conn = await _source.OpenConnectionAsync().ConfigureAwait(false);
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = $"SELECT * FROM {meta.Table} WHERE discord_id = @user;";
-        cmd.Parameters.AddWithValue("user", await UserAsync());
+        cmd.Parameters.AddWithValue("user", user);
         return await ReadAllAsync<T>(meta, cmd).ConfigureAwait(false);
     }
 
     public async ValueTask<T[]> GetAllByIndexAsync<T>(string store, string index, object value) {
+        if (await TryUserAsync().ConfigureAwait(false) is not { } user) {
+            return [];
+        }
         var meta = Meta(store);
         await using var conn = await _source.OpenConnectionAsync().ConfigureAwait(false);
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = $"SELECT * FROM {meta.Table} WHERE discord_id = @user AND {Ident(index)} = @idx;";
-        cmd.Parameters.AddWithValue("user", await UserAsync());
+        cmd.Parameters.AddWithValue("user", user);
         cmd.Parameters.AddWithValue("idx", value ?? (object)DBNull.Value);
         return await ReadAllAsync<T>(meta, cmd).ConfigureAwait(false);
     }
@@ -106,11 +118,14 @@ public sealed class PostgresIndexedDb : IIndexedDb {
     }
 
     public async ValueTask<int> CountAsync(string store) {
+        if (await TryUserAsync().ConfigureAwait(false) is not { } user) {
+            return 0;
+        }
         var meta = Meta(store);
         await using var conn = await _source.OpenConnectionAsync().ConfigureAwait(false);
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = $"SELECT COUNT(*) FROM {meta.Table} WHERE discord_id = @user;";
-        cmd.Parameters.AddWithValue("user", await UserAsync());
+        cmd.Parameters.AddWithValue("user", user);
         var result = await cmd.ExecuteScalarAsync().ConfigureAwait(false);
         return result is null or DBNull ? 0 : Convert.ToInt32(result, CultureInfo.InvariantCulture);
     }

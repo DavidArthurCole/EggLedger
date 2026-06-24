@@ -1,0 +1,17 @@
+@using EggLedger.Web.Server.Storage
+@inject IServiceProvider Services
+
+@* Renders nothing. Runs the first-login backfill (settings/reports from cloud blobs) once
+   per authenticated circuit. Resolved optionally: in dev / no-DB there is no backfill
+   service, so this is a no-op. *@
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        if (Services.GetService(typeof(FirstLoginBackfill)) is FirstLoginBackfill backfill)
+        {
+            try { await backfill.RunIfNeededAsync(); }
+            catch { /* never block the UI on backfill; manual restore stays available */ }
+        }
+    }
+}

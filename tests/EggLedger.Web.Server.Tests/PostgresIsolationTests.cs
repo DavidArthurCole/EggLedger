@@ -84,8 +84,10 @@ public sealed class PostgresIsolationTests {
         await CreateSchemaAsync(src);
         try {
             var anon = StoreFor(src, null);
+            // Reads tolerate the gated state (return empty); writes must throw.
+            Assert.Empty(await anon.GetAllAsync<MissionRow>("mission"));
             await Assert.ThrowsAsync<InvalidOperationException>(
-                async () => await anon.GetAllAsync<MissionRow>("mission"));
+                async () => await anon.PutAsync("mission", Mission("EI_X", "x1")));
         } finally {
             await DropSchemaAsync(src);
         }
