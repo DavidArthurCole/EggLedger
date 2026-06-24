@@ -8,6 +8,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/EggLedger.Domain.Tests/EggLedger.Domain.Tests.csproj" />
+    <Project Path="tests/EggLedger.Web.Server.Tests/EggLedger.Web.Server.Tests.csproj" />
     <Project Path="tests/EggLedger.Web.Tests/EggLedger.Web.Tests.csproj" />
     <Project Path="tests/EggLedger.Desktop.Tests/EggLedger.Desktop.Tests.csproj" />
   </Folder>
