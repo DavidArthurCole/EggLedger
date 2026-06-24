@@ -8,8 +8,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
-using Synckit.Auth;
-using Synckit.Contract;
+using SyncKit.Auth;
+using SyncKit.Contract;
 
 namespace EggLedger.Web.Server.Sync;
 

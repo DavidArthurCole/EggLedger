@@ -4,11 +4,11 @@
      an early target; BeforeTargets hooks fired too late, so the freshly generated sheet
      was never collected (404 on /_content/EggLedger.Web/tailwind.css). InitialTargets
      guarantees the file exists before any target, so the standard wwwroot glob picks it
-     up and it ships in both the WASM and Photino publish output. -->
+     up and it ships in both the Server and Photino publish output. -->
 <Project Sdk="Microsoft.NET.Sdk.Razor" InitialTargets="BuildTailwind">
 
   <PropertyGroup>
-    <Description>EggLedger shared Blazor UI (Razor class library): all 6 tabs, components, services, and the platform capability seam. Referenced by the browser WASM entrypoint (EggLedger.Web.Wasm) and the Photino desktop host (EggLedger.Desktop). Host-agnostic over HttpClient / JSInterop.</Description>
+    <Description>EggLedger shared Blazor UI (Razor class library): all 6 tabs, components, services, and the platform capability seam. Referenced by the Blazor Server host (EggLedger.Web.Server) and the Photino desktop host (EggLedger.Desktop). Host-agnostic over HttpClient / JSInterop.</Description>
   </PropertyGroup>
 
   <ItemGroup>
@@ -22,7 +22,7 @@
   <!-- Compile Tailwind utilities into wwwroot/tailwind.css at build time using the standalone CLI
        (no Node), mirroring EggIncognito. On first build the CLI binary is fetched to tools/tailwind/.
        Skip with -p:BuildTailwindCss=false (avoids the network fetch when a sheet already exists).
-       The compiled file is gitignored + shipped as a static web asset, so both the WASM host and the
+       The compiled file is gitignored + shipped as a static web asset, so both the Server host and the
        Photino desktop host serve it at _content/EggLedger.Web/tailwind.css with one build. It runs
        BEFORE static web assets are gathered so the freshly compiled sheet is always included.
        The fetch is RID-aware so Linux/macOS CI gets the right binary, not the Windows .exe. -->

@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
-using Synckit.Contract;
+using SyncKit.Contract;
 
 namespace EggLedger.Web.Server.Sync.Verify;
 

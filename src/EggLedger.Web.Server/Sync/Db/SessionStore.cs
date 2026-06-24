@@ -1,5 +1,5 @@
 using Npgsql;
-using Synckit.Auth;
+using SyncKit.Auth;
 
 namespace EggLedger.Web.Server.Sync.Db;
 

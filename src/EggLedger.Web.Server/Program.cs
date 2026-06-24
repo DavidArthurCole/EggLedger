@@ -7,10 +7,10 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Npgsql;
-using Synckit.Auth;
-using Synckit.Bot;
-using Synckit.Contract;
-using Synckit.Db;
+using SyncKit.Auth;
+using SyncKit.Bot;
+using SyncKit.Contract;
+using SyncKit.Db;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -141,12 +141,12 @@ if (hasDb) {
 
     if (!string.IsNullOrEmpty(cfg.BotToken)) {
         try {
-            await SynckitBot.StartAsync(new BotConfig {
+            await SyncKitBot.StartAsync(new BotConfig {
                 Name = "EggLedger",
                 Token = cfg.BotToken,
                 AppId = cfg.DiscordClientId,
                 GuildId = cfg.GuildId,
-                RepoUrl = "https://github.com/DavidArthurCole/EggLedger.Csharp",
+                RepoUrl = "https://github.com/DavidArthurCole/EggLedger",
                 Build = build,
                 DeployAgentUrl = cfg.DeployAgentUrl,
                 DeployAgentSecret = cfg.DeployAgentSecret,

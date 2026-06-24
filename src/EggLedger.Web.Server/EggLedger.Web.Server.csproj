@@ -10,11 +10,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Synckit.Core" Version="0.1.0-preview.1" />
-    <PackageReference Include="Synckit.Auth" Version="0.1.0-preview.1" />
-    <PackageReference Include="Synckit.Bot" Version="0.1.0-preview.1" />
-    <PackageReference Include="Synckit.Contract" Version="0.1.0-preview.1" />
-    <PackageReference Include="Synckit.Db" Version="0.1.0-preview.1" />
+    <PackageReference Include="SyncKit.Core" Version="0.2.0-preview.1" />
+    <PackageReference Include="SyncKit.Auth" Version="0.2.0-preview.1" />
+    <PackageReference Include="SyncKit.Bot" Version="0.2.0-preview.1" />
+    <PackageReference Include="SyncKit.Contract" Version="0.2.0-preview.1" />
+    <PackageReference Include="SyncKit.Db" Version="0.2.0-preview.1" />
     <PackageReference Include="Npgsql" Version="10.0.3" />
   </ItemGroup>
 

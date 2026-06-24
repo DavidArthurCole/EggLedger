@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http;
 using Npgsql;
-using Synckit.Auth;
+using SyncKit.Auth;
 
 namespace EggLedger.Web.Server.Sync.Auth;
 
