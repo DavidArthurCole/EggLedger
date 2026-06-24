@@ -17,13 +17,13 @@
 
     @if (_reachableChecking)
     {
-        <div class="mt-0_5rem text-gray-500 italic text-xs">Checking connection to ledgersync.davidarthurcole.me...</div>
+        <div class="mt-0_5rem text-gray-500 italic text-xs">Checking sync server connection...</div>
     }
     else if (!_reachable)
     {
         <div class="mt-0_5rem">
             <div class="border border-yellow-700 rounded-md px-3 py-2 text-yellow-400 text-xs space-y-1">
-                <p class="font-semibold">Could not reach ledgersync.davidarthurcole.me</p>
+                <p class="font-semibold">Could not reach the sync server</p>
                 <p>Settings sync is unavailable right now. Try disabling any active VPN, then click Retry below.</p>
             </div>
             <button type="button" class="apply-filter-button mt-0_5rem" @onclick="RecheckReachableAsync">Retry</button>
