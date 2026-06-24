@@ -6,20 +6,16 @@ using Xunit;
 
 namespace EggLedger.Domain.Tests.Api;
 
-public class LocalApiPayloadDecoderTests
-{
-    private static byte[] Serialize<T>(T msg)
-    {
+public class LocalApiPayloadDecoderTests {
+    private static byte[] Serialize<T>(T msg) {
         using var ms = new MemoryStream();
         Serializer.Serialize(ms, msg);
         return ms.ToArray();
     }
 
     [Fact]
-    public async Task DecodeFirstContactAsync_RoundTrips()
-    {
-        var fc = new EggIncFirstContactResponse
-        {
+    public async Task DecodeFirstContactAsync_RoundTrips() {
+        var fc = new EggIncFirstContactResponse {
             EiUserId = "EI1234567890123456",
             Backup = new Backup { EiUserId = "EI1234567890123456" },
         };
@@ -33,8 +29,7 @@ public class LocalApiPayloadDecoderTests
     }
 
     [Fact]
-    public async Task DecodeCompleteMissionAsync_RoundTrips()
-    {
+    public async Task DecodeCompleteMissionAsync_RoundTrips() {
         var inner = new CompleteMissionResponse { Success = true, EiUserId = "EI999" };
         var auth = new AuthenticatedMessage { Message = Serialize(inner), Compressed = false };
         byte[] payload = Serialize(auth);

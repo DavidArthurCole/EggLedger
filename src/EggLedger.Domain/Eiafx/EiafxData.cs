@@ -12,8 +12,7 @@ public sealed record FamilyMeta(string Id, string Name);
 /// Crafting weights and artifact families from the embedded eiafx-data-min.json. Port of Go
 /// eiafx/data.go, embedded-only (the Go cache/download path is a host concern, omitted here).
 /// </summary>
-public static class EiafxData
-{
+public static class EiafxData {
     private const string ResourceName = "EggLedger.Domain.Resources.eiafx-data-min.json";
 
     private static readonly Lazy<ParsedData> _data = new(LoadEmbedded);
@@ -37,10 +36,8 @@ public static class EiafxData
     /// Crafting weight for a tier, falling back to 1.0 when the key is absent or the cycle-sentinel
     /// (0). Port of Go reports.craftingWeight.
     /// </summary>
-    public static double CraftingWeightOrOne(long afxId, long afxLevel)
-    {
-        if (CraftingWeights.TryGetValue(((int)afxId, (int)afxLevel), out var w) && w != 0d)
-        {
+    public static double CraftingWeightOrOne(long afxId, long afxLevel) {
+        if (CraftingWeights.TryGetValue(((int)afxId, (int)afxLevel), out var w) && w != 0d) {
             return w;
         }
         return 1d;
@@ -51,8 +48,7 @@ public static class EiafxData
         IReadOnlyDictionary<string, IReadOnlyList<int>> FamilyAfxIds,
         IReadOnlyList<FamilyMeta> Families);
 
-    private static ParsedData LoadEmbedded()
-    {
+    private static ParsedData LoadEmbedded() {
         var asm = typeof(EiafxData).Assembly;
         using var stream = asm.GetManifestResourceStream(ResourceName)
             ?? throw new InvalidOperationException(
@@ -63,72 +59,60 @@ public static class EiafxData
     }
 
     // Port of Go parseDataConfig.
-    private static ParsedData Parse(ArtifactDataConfig cfg)
-    {
+    private static ParsedData Parse(ArtifactDataConfig cfg) {
         var families = cfg.Families ?? [];
 
         // Flat map from (afxId, afxLevel) -> tier for weight traversal.
         var tierMap = new Dictionary<(int, int), TierData>();
-        foreach (var fam in families)
-        {
-            foreach (var t in fam.Tiers ?? [])
-            {
+        foreach (var fam in families) {
+            foreach (var t in fam.Tiers ?? []) {
                 tierMap[(t.AfxId, t.AfxLevel)] = t;
             }
         }
 
         // Memoized recursive weight computation.
         var memo = new Dictionary<(int, int), double>();
-        double ComputeWeight(int afxId, int afxLevel)
-        {
+        double ComputeWeight(int afxId, int afxLevel) {
             var key = (afxId, afxLevel);
-            if (memo.TryGetValue(key, out var cached))
-            {
+            if (memo.TryGetValue(key, out var cached)) {
                 return cached;
             }
-            if (!tierMap.TryGetValue(key, out var t) || t.Recipe == null || t.Recipe.Count == 0)
-            {
+            if (!tierMap.TryGetValue(key, out var t) || t.Recipe == null || t.Recipe.Count == 0) {
                 memo[key] = 1.0;
                 return 1.0;
             }
             memo[key] = 0; // cycle sentinel: prevents infinite recursion if data has a cycle
             var w = 0.0;
-            foreach (var ing in t.Recipe)
-            {
+            foreach (var ing in t.Recipe) {
                 w += ing.Count * ComputeWeight(ing.AfxId, ing.AfxLevel);
             }
             memo[key] = w;
             return w;
         }
 
-        foreach (var key in tierMap.Keys)
-        {
+        foreach (var key in tierMap.Keys) {
             ComputeWeight(key.Item1, key.Item2);
         }
 
         var fids = new Dictionary<string, IReadOnlyList<int>>(families.Count);
-        foreach (var f in families)
-        {
+        foreach (var f in families) {
             fids[f.Id] = f.ChildAfxIds ?? [];
         }
 
         var fams = new List<FamilyMeta>(families.Count);
-        foreach (var f in families)
-        {
+        foreach (var f in families) {
             fams.Add(new FamilyMeta(f.Id, f.Name));
         }
 
         return new ParsedData(memo, fids, fams);
     }
 
-    internal sealed class ArtifactDataConfig
-    {
+    internal sealed class ArtifactDataConfig {
         [JsonPropertyName("families")]
         public List<FamilyData>? Families { get; set; }
     }
 
-    internal sealed class FamilyData
-    {
+    internal sealed class FamilyData {
         [JsonPropertyName("id")]
         public string Id { get; set; } = "";
 
@@ -142,8 +126,7 @@ public static class EiafxData
         public List<TierData>? Tiers { get; set; }
     }
 
-    internal sealed class TierData
-    {
+    internal sealed class TierData {
         [JsonPropertyName("afx_id")]
         public int AfxId { get; set; }
 
@@ -154,8 +137,7 @@ public static class EiafxData
         public List<IngredientData>? Recipe { get; set; }
     }
 
-    internal sealed class IngredientData
-    {
+    internal sealed class IngredientData {
         [JsonPropertyName("afx_id")]
         public int AfxId { get; set; }
 

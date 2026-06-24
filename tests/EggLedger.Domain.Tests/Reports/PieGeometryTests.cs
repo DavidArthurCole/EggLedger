@@ -6,26 +6,22 @@ namespace EggLedger.Domain.Tests.Reports;
 /// Golden tests for the pie geometry, mirroring ReportPieChart.vue: top-N
 /// rollup, slice sweep angles, and arc paths. Reference values from Node.
 /// </summary>
-public class PieGeometryTests
-{
+public class PieGeometryTests {
     [Fact]
-    public void SlicePath_HalfCircle_MatchesVue()
-    {
+    public void SlicePath_HalfCircle_MatchesVue() {
         // -90deg to +90deg, center (100,100), r=50.
         var path = PieGeometry.SlicePath(100, 100, 50, -Math.PI / 2, Math.PI / 2);
         Assert.Equal("M 100 100 L 100 50 A 50 50 0 0 1 100 150 Z", path);
     }
 
     [Fact]
-    public void SlicePath_SetsLargeArcFlagForSweepOverPi()
-    {
+    public void SlicePath_SetsLargeArcFlagForSweepOverPi() {
         var path = PieGeometry.SlicePath(0, 0, 10, 0, Math.PI * 1.5);
         Assert.Contains(" 0 1 1 ", path);
     }
 
     [Fact]
-    public void BuildItems_RollsExtraIntoOther()
-    {
+    public void BuildItems_RollsExtraIntoOther() {
         var values = new double[] { 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 1, 1 };
         var labels = values.Select((_, i) => "L" + i).ToList();
         var items = PieGeometry.BuildItems(labels, values);
@@ -37,15 +33,13 @@ public class PieGeometryTests
     }
 
     [Fact]
-    public void BuildItems_ReturnsEmptyWhenTotalZero()
-    {
+    public void BuildItems_ReturnsEmptyWhenTotalZero() {
         var items = PieGeometry.BuildItems(new[] { "A", "B" }, new double[] { 0, 0 });
         Assert.Empty(items);
     }
 
     [Fact]
-    public void BuildSlices_SweepsProportionalToValueAndColors()
-    {
+    public void BuildSlices_SweepsProportionalToValueAndColors() {
         var labels = new[] { "A", "B" };
         var values = new double[] { 3, 1 };
         var slices = PieGeometry.BuildSlices(
@@ -59,8 +53,7 @@ public class PieGeometryTests
     }
 
     [Fact]
-    public void BuildSlices_HonorsLabelColorOverride()
-    {
+    public void BuildSlices_HonorsLabelColorOverride() {
         var slices = PieGeometry.BuildSlices(
             new[] { "A", "B" },
             new double[] { 1, 1 },

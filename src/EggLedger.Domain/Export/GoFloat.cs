@@ -6,32 +6,26 @@ namespace EggLedger.Domain.Export;
 /// Reproduces Go's strconv float formatting so exported numbers match the Go
 /// reference byte-for-byte. Pure.
 /// </summary>
-public static class GoFloat
-{
+public static class GoFloat {
     /// <summary>
     /// Mirror of Go strconv.FormatFloat(v, 'f', -1, 64): shortest decimal that
     /// round-trips, never exponential. Used for XLSX numeric cell values.
     /// </summary>
-    public static string FormatF(double v)
-    {
-        if (double.IsNaN(v))
-        {
+    public static string FormatF(double v) {
+        if (double.IsNaN(v)) {
             return "NaN";
         }
-        if (double.IsPositiveInfinity(v))
-        {
+        if (double.IsPositiveInfinity(v)) {
             return "+Inf";
         }
-        if (double.IsNegativeInfinity(v))
-        {
+        if (double.IsNegativeInfinity(v)) {
             return "-Inf";
         }
 
         // "R" / shortest round-trip can yield exponential form (e.g. 1E-05).
         // Convert any exponential representation to plain decimal.
         string s = v.ToString("R", CultureInfo.InvariantCulture);
-        if (s.IndexOf('E') < 0 && s.IndexOf('e') < 0)
-        {
+        if (s.IndexOf('E') < 0 && s.IndexOf('e') < 0) {
             return s;
         }
         return ExpandExponential(s);
@@ -42,18 +36,14 @@ public static class GoFloat
     /// -1, 64): shortest decimal, exponential only for very large/small
     /// magnitudes. Used for CSV numeric fields.
     /// </summary>
-    public static string FormatG(double v)
-    {
-        if (double.IsNaN(v))
-        {
+    public static string FormatG(double v) {
+        if (double.IsNaN(v)) {
             return "NaN";
         }
-        if (double.IsPositiveInfinity(v))
-        {
+        if (double.IsPositiveInfinity(v)) {
             return "+Inf";
         }
-        if (double.IsNegativeInfinity(v))
-        {
+        if (double.IsNegativeInfinity(v)) {
             return "-Inf";
         }
 
@@ -64,17 +54,13 @@ public static class GoFloat
         return NormalizeG(v, shortest);
     }
 
-    private static string ExpandExponential(string s)
-    {
+    private static string ExpandExponential(string s) {
         bool neg = false;
         int i = 0;
-        if (s[0] == '-')
-        {
+        if (s[0] == '-') {
             neg = true;
             i = 1;
-        }
-        else if (s[0] == '+')
-        {
+        } else if (s[0] == '+') {
             i = 1;
         }
 
@@ -85,13 +71,10 @@ public static class GoFloat
         string intPart;
         string fracPart;
         int dot = mantissa.IndexOf('.');
-        if (dot < 0)
-        {
+        if (dot < 0) {
             intPart = mantissa;
             fracPart = "";
-        }
-        else
-        {
+        } else {
             intPart = mantissa[..dot];
             fracPart = mantissa[(dot + 1)..];
         }
@@ -100,16 +83,11 @@ public static class GoFloat
         int pointPos = intPart.Length + exp;
 
         string result;
-        if (pointPos <= 0)
-        {
+        if (pointPos <= 0) {
             result = "0." + new string('0', -pointPos) + digits;
-        }
-        else if (pointPos >= digits.Length)
-        {
+        } else if (pointPos >= digits.Length) {
             result = digits + new string('0', pointPos - digits.Length);
-        }
-        else
-        {
+        } else {
             result = digits[..pointPos] + "." + digits[pointPos..];
         }
 
@@ -117,24 +95,19 @@ public static class GoFloat
         return neg ? "-" + result : result;
     }
 
-    private static string TrimDecimal(string s)
-    {
-        if (s.IndexOf('.') < 0)
-        {
+    private static string TrimDecimal(string s) {
+        if (s.IndexOf('.') < 0) {
             return s;
         }
         s = s.TrimEnd('0');
-        if (s.EndsWith('.'))
-        {
+        if (s.EndsWith('.')) {
             s = s[..^1];
         }
         return s;
     }
 
-    private static string NormalizeG(double v, string shortest)
-    {
-        if (v == 0)
-        {
+    private static string NormalizeG(double v, string shortest) {
+        if (v == 0) {
             return shortest;
         }
 
@@ -150,39 +123,31 @@ public static class GoFloat
         string fracPart = dot < 0 ? "" : abs[(dot + 1)..];
 
         int exp;
-        if (intPart != "0" && intPart.Length > 0)
-        {
+        if (intPart != "0" && intPart.Length > 0) {
             exp = intPart.Length - 1;
-        }
-        else
-        {
+        } else {
             // Leading zeros in fractional part.
             int lead = 0;
-            while (lead < fracPart.Length && fracPart[lead] == '0')
-            {
+            while (lead < fracPart.Length && fracPart[lead] == '0') {
                 lead++;
             }
             exp = -(lead + 1);
         }
 
         // Go 'g': use exponential when exp < -4 or exp >= 21.
-        if (exp is < -4 or >= 21)
-        {
+        if (exp is < -4 or >= 21) {
             return ToGoExponential(neg, intPart, fracPart, exp);
         }
         return plain;
     }
 
-    private static string ToGoExponential(bool neg, string intPart, string fracPart, int exp)
-    {
+    private static string ToGoExponential(bool neg, string intPart, string fracPart, int exp) {
         string digits = (intPart + fracPart).TrimStart('0');
-        if (digits.Length == 0)
-        {
+        if (digits.Length == 0) {
             digits = "0";
         }
         digits = digits.TrimEnd('0');
-        if (digits.Length == 0)
-        {
+        if (digits.Length == 0) {
             digits = "0";
         }
 

@@ -2,18 +2,15 @@ using EggLedger.Web.State;
 
 namespace EggLedger.Web.Tests.State;
 
-public sealed class ActiveAccountTests
-{
+public sealed class ActiveAccountTests {
     [Fact]
-    public void StartsWithNoActiveAccount()
-    {
+    public void StartsWithNoActiveAccount() {
         var sut = new ActiveAccount();
         Assert.Null(sut.ActiveAccountId);
     }
 
     [Fact]
-    public void SetActiveUpdatesGetterAndFiresChanged()
-    {
+    public void SetActiveUpdatesGetterAndFiresChanged() {
         var sut = new ActiveAccount();
         var fired = 0;
         sut.Changed += () => fired++;
@@ -25,8 +22,7 @@ public sealed class ActiveAccountTests
     }
 
     [Fact]
-    public void SetActiveToSameValueDoesNotFireChanged()
-    {
+    public void SetActiveToSameValueDoesNotFireChanged() {
         var sut = new ActiveAccount();
         sut.SetActive("EI1234");
         var fired = 0;
@@ -40,8 +36,7 @@ public sealed class ActiveAccountTests
     [Theory]
     [InlineData(null)]
     [InlineData("")]
-    public void EmptyOrNullIsTreatedAsNoAccount(string? id)
-    {
+    public void EmptyOrNullIsTreatedAsNoAccount(string? id) {
         var sut = new ActiveAccount();
         sut.SetActive("EI1234");
         var fired = 0;
@@ -54,8 +49,7 @@ public sealed class ActiveAccountTests
     }
 
     [Fact]
-    public void ClearingWhenAlreadyEmptyDoesNotFireChanged()
-    {
+    public void ClearingWhenAlreadyEmptyDoesNotFireChanged() {
         var sut = new ActiveAccount();
         var fired = 0;
         sut.Changed += () => fired++;
@@ -67,8 +61,7 @@ public sealed class ActiveAccountTests
     }
 
     [Fact]
-    public void SwitchingAccountsFiresChangedEachTime()
-    {
+    public void SwitchingAccountsFiresChangedEachTime() {
         var sut = new ActiveAccount();
         var fired = 0;
         sut.Changed += () => fired++;

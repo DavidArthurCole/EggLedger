@@ -7,11 +7,9 @@ namespace EggLedger.Web.Tests.Settings;
 /// (storage.go) and www/src/composables/useSettings.ts: the default values, the
 /// worker-count clamp, and the settings-map hydration.
 /// </summary>
-public sealed class SettingsModelTests
-{
+public sealed class SettingsModelTests {
     [Fact]
-    public void Defaults_MatchGo()
-    {
+    public void Defaults_MatchGo() {
         var m = new SettingsModel();
         Assert.False(m.AutoRefreshMenno);
         Assert.False(m.AutoRetry);
@@ -38,8 +36,7 @@ public sealed class SettingsModelTests
         Assert.Equal(expected, SettingsModel.ClampWorkerCount(input));
 
     [Fact]
-    public void LoadFrom_EmptyMap_KeepsDefaults()
-    {
+    public void LoadFrom_EmptyMap_KeepsDefaults() {
         var m = new SettingsModel();
         m.LoadFrom(new Dictionary<string, string>());
         Assert.True(m.ShowMissionProgress);
@@ -50,10 +47,8 @@ public sealed class SettingsModelTests
     }
 
     [Fact]
-    public void LoadFrom_ReadsAllKeys()
-    {
-        var settings = new Dictionary<string, string>
-        {
+    public void LoadFrom_ReadsAllKeys() {
+        var settings = new Dictionary<string, string> {
             [SettingsModel.KeyAutoRefreshMenno] = "true",
             [SettingsModel.KeyRetryFailedMissions] = "true",
             [SettingsModel.KeyHideTimeoutErrors] = "true",
@@ -83,16 +78,14 @@ public sealed class SettingsModelTests
     }
 
     [Fact]
-    public void LoadFrom_ClampsOutOfRangeWorkerCount()
-    {
+    public void LoadFrom_ClampsOutOfRangeWorkerCount() {
         var m = new SettingsModel();
         m.LoadFrom(new Dictionary<string, string> { [SettingsModel.KeyWorkerCount] = "99" });
         Assert.Equal(10, m.WorkerCount);
     }
 
     [Fact]
-    public void FormatBool_MatchesGo()
-    {
+    public void FormatBool_MatchesGo() {
         Assert.Equal("true", SettingsModel.FormatBool(true));
         Assert.Equal("false", SettingsModel.FormatBool(false));
     }

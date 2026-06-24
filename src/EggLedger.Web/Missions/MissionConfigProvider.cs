@@ -4,8 +4,7 @@ using EggLedger.Domain.MissionQuery;
 namespace EggLedger.Web.Missions;
 
 /// <summary>Supplies the shared read-only mission config the filter UI and MissionFilterMatcher need (duration configs, targets, artifacts, max quality). Thin scoped wrapper caching the Domain MissionConfigData builders.</summary>
-public sealed class MissionConfigProvider
-{
+public sealed class MissionConfigProvider {
     private readonly Lazy<IReadOnlyList<PossibleMission>> _durationConfigs =
         new(() => MissionQueryHandlers.GetDurationConfigs(EiafxConfig.Config.mission_parameters));
 
@@ -19,8 +18,7 @@ public sealed class MissionConfigProvider
     public IReadOnlyList<PossibleArtifact> PossibleArtifacts => _artifacts.Value;
 
     /// <summary>Filter field context built from the active config.</summary>
-    public FilterFieldCtx FieldCtx => new()
-    {
+    public FilterFieldCtx FieldCtx => new() {
         PossibleTargets = PossibleTargets,
         ArtifactConfigs = PossibleArtifacts,
         MaxQuality = MaxQuality,

@@ -11,21 +11,18 @@ namespace EggLedger.Web.Tests.Settings;
 /// (cloudsync/blob.go): the syncable-settings projection, the frozen JSON wire
 /// names, account merge, and report import selection.
 /// </summary>
-public sealed class CloudSyncBlobsTests
-{
+public sealed class CloudSyncBlobsTests {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
     [Fact]
-    public void BlobNames_MatchGo()
-    {
+    public void BlobNames_MatchGo() {
         Assert.Equal("accounts", CloudSyncBlobs.AccountsBlob);
         Assert.Equal("settings", CloudSyncBlobs.SettingsBlob);
         Assert.Equal("reports", CloudSyncBlobs.ReportsBlob);
     }
 
     [Fact]
-    public void PackSettings_EmptyMap_UsesGoDefaults()
-    {
+    public void PackSettings_EmptyMap_UsesGoDefaults() {
         var s = CloudSyncBlobs.PackSettings(new Dictionary<string, string>());
         Assert.False(s.AutoRefreshMennoPref);
         Assert.Equal(1, s.WorkerCount);
@@ -39,10 +36,8 @@ public sealed class CloudSyncBlobsTests
     }
 
     [Fact]
-    public void PackSettings_ReadsValues()
-    {
-        var map = new Dictionary<string, string>
-        {
+    public void PackSettings_ReadsValues() {
+        var map = new Dictionary<string, string> {
             ["auto_refresh_menno_pref"] = "true",
             ["worker_count"] = "8",
             ["mission_multi_view_mode"] = "row",
@@ -60,10 +55,8 @@ public sealed class CloudSyncBlobsTests
     }
 
     [Fact]
-    public void SyncableSettings_JsonNames_MatchGoContract()
-    {
-        var s = new CloudSyncableSettings
-        {
+    public void SyncableSettings_JsonNames_MatchGoContract() {
+        var s = new CloudSyncableSettings {
             WorkerCount = 3,
             MissionMultiViewMode = "free",
             MissionSortMethod = "iv",
@@ -80,17 +73,14 @@ public sealed class CloudSyncBlobsTests
             "mission_view_times", "mission_recolor_dc", "mission_recolor_bc",
             "mission_show_expected_drops", "mission_multi_view_mode", "mission_sort_method",
             "lifetime_sort_method", "lifetime_show_drops_per_ship", "lifetime_show_expected_totals",
-        })
-        {
+        }) {
             Assert.Contains($"\"{key}\"", json, StringComparison.Ordinal);
         }
     }
 
     [Fact]
-    public void Pack_Then_Unpack_RoundTrips()
-    {
-        var map = new Dictionary<string, string>
-        {
+    public void Pack_Then_Unpack_RoundTrips() {
+        var map = new Dictionary<string, string> {
             ["auto_refresh_menno_pref"] = "true",
             ["retry_failed_missions"] = "true",
             ["worker_count"] = "6",
@@ -112,8 +102,7 @@ public sealed class CloudSyncBlobsTests
     }
 
     [Fact]
-    public void UnpackSettings_OmitsMachineLocalKeys()
-    {
+    public void UnpackSettings_OmitsMachineLocalKeys() {
         var unpacked = CloudSyncBlobs.UnpackSettings(new CloudSyncableSettings());
         // Machine-local prefs must never appear (Go applyCloudSettings skips them).
         Assert.False(unpacked.ContainsKey("default_resolution_x"));
@@ -123,10 +112,8 @@ public sealed class CloudSyncBlobsTests
     }
 
     [Fact]
-    public void SelectReportsToImport_SkipsExistingAndBlankAndDuplicates()
-    {
-        var remote = new CloudReportsBlob
-        {
+    public void SelectReportsToImport_SkipsExistingAndBlankAndDuplicates() {
+        var remote = new CloudReportsBlob {
             Groups =
             [
                 new CloudReportGroup { Id = "g1" },
@@ -152,10 +139,8 @@ public sealed class CloudSyncBlobsTests
     }
 
     [Fact]
-    public void ReportsBlob_SerializesGoWireShape()
-    {
-        var row = new ReportRow
-        {
+    public void ReportsBlob_SerializesGoWireShape() {
+        var row = new ReportRow {
             Id = "rep1",
             AccountId = "EI42",
             Name = "Eggs over time",
@@ -164,8 +149,7 @@ public sealed class CloudSyncBlobsTests
             ValueFilterOp = "gte",
             Filters = "{\"and\":[{\"topLevel\":\"ship\",\"op\":\"eq\",\"val\":\"henerprise\"}],\"or\":[]}",
         };
-        var group = new ReportGroupRow
-        {
+        var group = new ReportGroupRow {
             Id = "grp1",
             AccountId = "EI42",
             Name = "Favorites",
@@ -204,8 +188,7 @@ public sealed class CloudSyncBlobsTests
     }
 
     [Fact]
-    public void ReportsBlob_DeserializesGoWireShape_RoundTrips()
-    {
+    public void ReportsBlob_DeserializesGoWireShape_RoundTrips() {
         // Hand-written Go-shaped blob: camelCase report with nested filters,
         // PascalCase group. Mirrors what the desktop app (Go) would PUT.
         const string goJson = """

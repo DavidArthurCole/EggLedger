@@ -16,18 +16,15 @@ namespace EggLedger.Desktop.Tests;
 /// the artifact_drops JOIN, the EXISTS subquery, strftime bucketing, and the
 /// weighted cap_weight SUM are all exercised.
 /// </summary>
-public sealed class ReportParityTests
-{
+public sealed class ReportParityTests {
     private const string Eid = "EI1";
 
-    private sealed class NoWeights : IWeightData
-    {
+    private sealed class NoWeights : IWeightData {
         public double CraftingWeight(long artifactId, long level) => 1;
         public IReadOnlyList<int> FamilyAfxIds(string familyId) => Array.Empty<int>();
     }
 
-    private sealed class FixedFamily : IWeightData
-    {
+    private sealed class FixedFamily : IWeightData {
         private readonly int[] _ids;
         public FixedFamily(params int[] ids) => _ids = ids;
         public double CraftingWeight(long artifactId, long level) => 1;
@@ -38,8 +35,7 @@ public sealed class ReportParityTests
     private static MissionRowData M(
         string id, int ship, int duration, long start, long ret,
         int cap = 1, int nominal = 1, int target = 0, int type = 0,
-        int level = 0, bool dub = false, bool bugged = false) => new()
-        {
+        int level = 0, bool dub = false, bool bugged = false) => new() {
             PlayerId = Eid,
             MissionId = id,
             Ship = ship,
@@ -57,8 +53,7 @@ public sealed class ReportParityTests
 
     private static ArtifactDropRowData D(
         string mission, int artifactId, int rarity, int tier,
-        int dropIndex = 0, double quality = 0, string spec = "Artifact") => new()
-        {
+        int dropIndex = 0, double quality = 0, string spec = "Artifact") => new() {
             PlayerId = Eid,
             MissionId = mission,
             DropIndex = dropIndex,
@@ -101,17 +96,14 @@ public sealed class ReportParityTests
         D("m6", artifactId: 14, rarity: 2, tier: 1, dropIndex: 1, spec: "Artifact"),
     ];
 
-    private static SqliteConnection SeedSqlite(IReadOnlyList<MissionRowData> missions, IReadOnlyList<ArtifactDropRowData> drops)
-    {
+    private static SqliteConnection SeedSqlite(IReadOnlyList<MissionRowData> missions, IReadOnlyList<ArtifactDropRowData> drops) {
         var name = "parity_" + Guid.NewGuid().ToString("N");
         var conn = new SqliteConnection($"Data Source={name};Mode=Memory;Cache=Shared");
         conn.Open();
         SqliteMigrationRunner.MigrateMissionDb(conn);
 
-        using (var tx = conn.BeginTransaction())
-        {
-            foreach (var m in missions)
-            {
+        using (var tx = conn.BeginTransaction()) {
+            foreach (var m in missions) {
                 using var cmd = conn.CreateCommand();
                 cmd.Transaction = tx;
                 cmd.CommandText =
@@ -135,8 +127,7 @@ public sealed class ReportParityTests
                 cmd.Parameters.AddWithValue("@ret", m.ReturnTimestamp);
                 cmd.ExecuteNonQuery();
             }
-            foreach (var d in drops)
-            {
+            foreach (var d in drops) {
                 using var cmd = conn.CreateCommand();
                 cmd.Transaction = tx;
                 cmd.CommandText =
@@ -158,8 +149,7 @@ public sealed class ReportParityTests
         return conn;
     }
 
-    private static void AssertParity(ReportDefinition def, IWeightData weights)
-    {
+    private static void AssertParity(ReportDefinition def, IWeightData weights) {
         var missions = Missions();
         var drops = Drops();
 
@@ -173,25 +163,21 @@ public sealed class ReportParityTests
     }
 
     [Fact]
-    public void Parity_Aggregate1D_ByShip()
-    {
+    public void Parity_Aggregate1D_ByShip() {
         AssertParity(
             new ReportDefinition { Mode = "aggregate", GroupBy = "ship_type", Subject = "missions", AccountId = Eid },
             new NoWeights());
     }
 
     [Fact]
-    public void Parity_Aggregate1D_WithMissionFilter()
-    {
+    public void Parity_Aggregate1D_WithMissionFilter() {
         AssertParity(
-            new ReportDefinition
-            {
+            new ReportDefinition {
                 Mode = "aggregate",
                 GroupBy = "ship_type",
                 Subject = "missions",
                 AccountId = Eid,
-                Filters = new ReportFilters
-                {
+                Filters = new ReportFilters {
                     And = [new FilterCondition { TopLevel = "duration", Op = "=", Val = "0" }],
                 },
             },
@@ -199,11 +185,9 @@ public sealed class ReportParityTests
     }
 
     [Fact]
-    public void Parity_Pivot2D_ShipByDuration()
-    {
+    public void Parity_Pivot2D_ShipByDuration() {
         AssertParity(
-            new ReportDefinition
-            {
+            new ReportDefinition {
                 Mode = "aggregate",
                 GroupBy = "ship_type",
                 SecondaryGroupBy = "duration_type",
@@ -214,25 +198,21 @@ public sealed class ReportParityTests
     }
 
     [Fact]
-    public void Parity_DropsSubject_ByRarity()
-    {
+    public void Parity_DropsSubject_ByRarity() {
         AssertParity(
             new ReportDefinition { Mode = "aggregate", GroupBy = "rarity", Subject = "artifacts", AccountId = Eid },
             new NoWeights());
     }
 
     [Fact]
-    public void Parity_DropsExistsSubquery_Contains()
-    {
+    public void Parity_DropsExistsSubquery_Contains() {
         AssertParity(
-            new ReportDefinition
-            {
+            new ReportDefinition {
                 Mode = "aggregate",
                 GroupBy = "ship_type",
                 Subject = "missions",
                 AccountId = Eid,
-                Filters = new ReportFilters
-                {
+                Filters = new ReportFilters {
                     And = [new FilterCondition { TopLevel = "drops", Op = "c", Val = "%_%_2_%" }],
                 },
             },
@@ -240,17 +220,14 @@ public sealed class ReportParityTests
     }
 
     [Fact]
-    public void Parity_DropsExistsSubquery_DoesNotContain()
-    {
+    public void Parity_DropsExistsSubquery_DoesNotContain() {
         AssertParity(
-            new ReportDefinition
-            {
+            new ReportDefinition {
                 Mode = "aggregate",
                 GroupBy = "ship_type",
                 Subject = "missions",
                 AccountId = Eid,
-                Filters = new ReportFilters
-                {
+                Filters = new ReportFilters {
                     And = [new FilterCondition { TopLevel = "drops", Op = "dnc", Val = "%_%_0_%" }],
                 },
             },
@@ -258,11 +235,9 @@ public sealed class ReportParityTests
     }
 
     [Fact]
-    public void Parity_TimeSeries_ByMonth()
-    {
+    public void Parity_TimeSeries_ByMonth() {
         AssertParity(
-            new ReportDefinition
-            {
+            new ReportDefinition {
                 Mode = "time_series",
                 GroupBy = "time_bucket",
                 TimeBucket = "month",
@@ -273,11 +248,9 @@ public sealed class ReportParityTests
     }
 
     [Fact]
-    public void Parity_Normalized_Launches()
-    {
+    public void Parity_Normalized_Launches() {
         AssertParity(
-            new ReportDefinition
-            {
+            new ReportDefinition {
                 Mode = "aggregate",
                 GroupBy = "ship_type",
                 Subject = "missions",
@@ -288,11 +261,9 @@ public sealed class ReportParityTests
     }
 
     [Fact]
-    public void Parity_Normalized_Airtime()
-    {
+    public void Parity_Normalized_Airtime() {
         AssertParity(
-            new ReportDefinition
-            {
+            new ReportDefinition {
                 Mode = "aggregate",
                 GroupBy = "ship_type",
                 Subject = "missions",
@@ -303,11 +274,9 @@ public sealed class ReportParityTests
     }
 
     [Fact]
-    public void Parity_FamilyWeighted_Aggregate()
-    {
+    public void Parity_FamilyWeighted_Aggregate() {
         AssertParity(
-            new ReportDefinition
-            {
+            new ReportDefinition {
                 Subject = "artifacts",
                 Mode = "aggregate",
                 GroupBy = "ship_type",
@@ -318,11 +287,9 @@ public sealed class ReportParityTests
     }
 
     [Fact]
-    public void Parity_TimePivot_MonthByShip()
-    {
+    public void Parity_TimePivot_MonthByShip() {
         AssertParity(
-            new ReportDefinition
-            {
+            new ReportDefinition {
                 Mode = "time_series",
                 GroupBy = "time_bucket",
                 SecondaryGroupBy = "ship_type",

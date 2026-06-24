@@ -6,8 +6,7 @@ namespace EggLedger.Domain.MissionQuery;
 /// Data-access contract for the MissionQuery handlers. Mirrors the Go missionquery
 /// db/storage calls; methods async because IndexedDB access is async.
 /// </summary>
-public interface IMissionStore
-{
+public interface IMissionStore {
     /// <summary>Complete mission identifiers stored for the player. Null on error.</summary>
     Task<IReadOnlyList<string>?> GetCompleteMissionIdsAsync(string playerId);
 
@@ -45,6 +44,14 @@ public interface IMissionStore
     Task<IReadOnlyList<CompleteMissionResponse>?> GetPlayerCompleteMissionsAsync(string eid);
 
     /// <summary>
+    /// Stored artifact-drop rows for the player, read directly from the drops store
+    /// (no per-mission decode). Used by the Lifetime tab so it does not re-decode the
+    /// entire mission history (in the browser each decode is a server round-trip).
+    /// Null on error.
+    /// </summary>
+    Task<IReadOnlyList<StoredDrop>?> GetStoredPlayerDropsAsync(string playerId);
+
+    /// <summary>
     /// Compiles a decoded complete mission into a display row (slow path).
     /// Mirrors missionpacking.CompileMissionInformation; injected to avoid a hard dependency.
     /// </summary>
@@ -57,10 +64,12 @@ public interface IMissionStore
     void QueueFilterColBackfill(string eid);
 }
 
+/// <summary>A stored artifact drop: which mission, and the spec identity needed to rebuild it.</summary>
+public sealed record StoredDrop(string MissionId, int ArtifactId, int Level, int Rarity);
+
 /// <summary>
 /// Opaque display row returned by mission listing. Concrete type is MissionPacking.DatabaseMission;
 /// kept as a marker here to avoid a cross-package hard dependency.
 /// </summary>
-public interface IMissionRow
-{
+public interface IMissionRow {
 }

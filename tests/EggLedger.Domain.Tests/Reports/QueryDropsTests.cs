@@ -3,8 +3,7 @@ using EggLedger.Domain.Reports;
 namespace EggLedger.Domain.Tests.Reports;
 
 // Port of Go reports/query_drops_test.go: the drops EXISTS subquery builder.
-public class QueryDropsTests
-{
+public class QueryDropsTests {
     public static IEnumerable<object?[]> Cases() => new[]
     {
         new object?[]
@@ -44,18 +43,15 @@ public class QueryDropsTests
 
     [Theory]
     [MemberData(nameof(Cases))]
-    public void ConditionToSql_Drops(FilterCondition cond, string? wantSub, object?[]? wantArgs, bool wantEmpty)
-    {
+    public void ConditionToSql_Drops(FilterCondition cond, string? wantSub, object?[]? wantArgs, bool wantEmpty) {
         var (clause, args) = QueryBuilder.ConditionToSql(cond);
-        if (wantEmpty)
-        {
+        if (wantEmpty) {
             Assert.Equal("", clause);
             return;
         }
         Assert.Equal(wantSub, clause);
         Assert.Equal(wantArgs!.Length, args.Count);
-        for (var i = 0; i < args.Count; i++)
-        {
+        for (var i = 0; i < args.Count; i++) {
             Assert.Equal(wantArgs[i], args[i]);
         }
     }

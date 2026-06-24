@@ -8,11 +8,9 @@ namespace EggLedger.Desktop.Tests;
 /// cross-PROCESS part is manual-verify, but the token check + request/response shape
 /// are exercised here, mirroring the Go TestHandshakeReadyPing case.
 /// </summary>
-public sealed class HandshakeTests
-{
+public sealed class HandshakeTests {
     [Fact]
-    public async Task CorrectToken_SignalsServed()
-    {
+    public async Task CorrectToken_SignalsServed() {
         const string token = "tok123";
         using var listener = HandshakeListener.Start(token);
         using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };
@@ -25,8 +23,7 @@ public sealed class HandshakeTests
     }
 
     [Fact]
-    public async Task WrongToken_DoesNotSignal()
-    {
+    public async Task WrongToken_DoesNotSignal() {
         const string token = "tok123";
         using var listener = HandshakeListener.Start(token);
         using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };
@@ -42,8 +39,7 @@ public sealed class HandshakeTests
     }
 
     [Fact]
-    public async Task ServedFiresExactlyOnce_AcrossMultiplePings()
-    {
+    public async Task ServedFiresExactlyOnce_AcrossMultiplePings() {
         const string token = "abc";
         using var listener = HandshakeListener.Start(token);
         using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };
@@ -56,8 +52,7 @@ public sealed class HandshakeTests
     }
 
     [Fact]
-    public void Token_IsRandomHexOf32Chars()
-    {
+    public void Token_IsRandomHexOf32Chars() {
         var a = HandshakeToken.New();
         var b = HandshakeToken.New();
         Assert.Equal(32, a.Length);

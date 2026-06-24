@@ -5,8 +5,7 @@ namespace EggLedger.Desktop.Update;
 /// best-effort with a few quick retries until a 200. Returns true once the old
 /// instance acknowledged.
 /// </summary>
-public sealed class HandshakeClient(HttpClient httpClient)
-{
+public sealed class HandshakeClient(HttpClient httpClient) {
     private readonly HttpClient _httpClient = httpClient;
 
     /// <summary>
@@ -14,27 +13,20 @@ public sealed class HandshakeClient(HttpClient httpClient)
     /// instance is up. Up to 5 attempts with 300ms spacing, mirroring Go. Returns
     /// true if a 200 was received.
     /// </summary>
-    public async Task<bool> PingOldReadyAsync(string addr, string token, CancellationToken cancel = default)
-    {
+    public async Task<bool> PingOldReadyAsync(string addr, string token, CancellationToken cancel = default) {
         var url = $"http://{addr}/ready?token={token}";
-        for (var i = 0; i < 5; i++)
-        {
-            try
-            {
+        for (var i = 0; i < 5; i++) {
+            try {
                 using var content = new StringContent("");
                 using var resp = await _httpClient.PostAsync(url, content, cancel).ConfigureAwait(false);
-                if (resp.IsSuccessStatusCode)
-                {
+                if (resp.IsSuccessStatusCode) {
                     return true;
                 }
-            }
-            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
-            {
+            } catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException) {
                 // Old instance may not be listening yet; retry below.
             }
 
-            if (cancel.IsCancellationRequested)
-            {
+            if (cancel.IsCancellationRequested) {
                 return false;
             }
             await Task.Delay(TimeSpan.FromMilliseconds(300), cancel).ConfigureAwait(false);

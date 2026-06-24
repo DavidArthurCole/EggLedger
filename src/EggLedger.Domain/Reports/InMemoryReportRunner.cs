@@ -6,8 +6,7 @@ namespace EggLedger.Domain.Reports;
 /// A single mission row, typed equivalent of the SQLite <c>mission</c> columns the
 /// report queries read. Browser materializes these from IndexedDB.
 /// </summary>
-public sealed record MissionRowData
-{
+public sealed record MissionRowData {
     public string PlayerId { get; init; } = "";
     public string MissionId { get; init; } = "";
     public long Ship { get; init; }
@@ -24,8 +23,7 @@ public sealed record MissionRowData
 }
 
 /// <summary>A single artifact-drop row, typed equivalent of the SQLite <c>artifact_drops</c> columns.</summary>
-public sealed record ArtifactDropRowData
-{
+public sealed record ArtifactDropRowData {
     public string PlayerId { get; init; } = "";
     public string MissionId { get; init; } = "";
     public long DropIndex { get; init; }
@@ -41,12 +39,10 @@ public sealed record ArtifactDropRowData
 /// Reuses <see cref="ReportExecutor"/> verbatim by wrapping the typed rows in an
 /// in-memory <see cref="IMissionDb"/>, so the report math is identical by construction.
 /// </summary>
-public sealed class InMemoryReportRunner
-{
+public sealed class InMemoryReportRunner {
     private readonly IWeightData _weights;
 
-    public InMemoryReportRunner(IWeightData weights)
-    {
+    public InMemoryReportRunner(IWeightData weights) {
         _weights = weights ?? throw new ArgumentNullException(nameof(weights));
     }
 
@@ -57,8 +53,7 @@ public sealed class InMemoryReportRunner
     public ReportResult Run(
         ReportDefinition def,
         IReadOnlyList<MissionRowData> missions,
-        IReadOnlyList<ArtifactDropRowData> drops)
-    {
+        IReadOnlyList<ArtifactDropRowData> drops) {
         var db = new InMemoryMissionDb(def, missions, drops, _weights);
         var executor = new ReportExecutor(db, _weights);
         return executor.ExecuteReport(def);

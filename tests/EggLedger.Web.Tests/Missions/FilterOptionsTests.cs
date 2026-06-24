@@ -8,11 +8,9 @@ namespace EggLedger.Web.Tests.Missions;
 /// www/src/utils/filterOptions.ts: option counts, value encodings, dedup/sort,
 /// and the drop-option wildcard rows.
 /// </summary>
-public sealed class FilterOptionsTests
-{
+public sealed class FilterOptionsTests {
     [Fact]
-    public void ShipOptions_ElevenShipsValuedByIndex()
-    {
+    public void ShipOptions_ElevenShipsValuedByIndex() {
         var opts = FilterOptions.GetShipFilterOptions();
         Assert.Equal(11, opts.Count);
         Assert.Equal("Chicken One", opts[0].Text);
@@ -22,8 +20,7 @@ public sealed class FilterOptionsTests
     }
 
     [Fact]
-    public void DurationOptions_HaveDurationStyleClass()
-    {
+    public void DurationOptions_HaveDurationStyleClass() {
         var opts = FilterOptions.GetDurationFilterOptions();
         Assert.Equal(4, opts.Count);
         Assert.Equal("text-duration-0", opts[0].StyleClass);
@@ -31,8 +28,7 @@ public sealed class FilterOptionsTests
     }
 
     [Fact]
-    public void LevelOptions_NineStarredLevels()
-    {
+    public void LevelOptions_NineStarredLevels() {
         var opts = FilterOptions.GetLevelFilterOptions();
         Assert.Equal(9, opts.Count);
         Assert.Equal("0★", opts[0].Text);
@@ -41,8 +37,7 @@ public sealed class FilterOptionsTests
     }
 
     [Fact]
-    public void MissionTypeOptions_HomeVirtueUnknown()
-    {
+    public void MissionTypeOptions_HomeVirtueUnknown() {
         var opts = FilterOptions.GetMissionTypeFilterOptions();
         Assert.Collection(opts,
             o => Assert.Equal(("Home", "0"), (o.Text, o.Value)),
@@ -51,8 +46,7 @@ public sealed class FilterOptionsTests
     }
 
     [Fact]
-    public void MissionFilterValueOptions_DispatchesByKey()
-    {
+    public void MissionFilterValueOptions_DispatchesByKey() {
         Assert.Equal(11, FilterOptions.GetMissionFilterValueOptions("ship").Count);
         Assert.Equal(2, FilterOptions.GetMissionFilterValueOptions("farm").Count);
         Assert.Equal(2, FilterOptions.GetMissionFilterValueOptions("dubcap").Count);
@@ -61,8 +55,7 @@ public sealed class FilterOptionsTests
     }
 
     [Fact]
-    public void TargetOptions_MapIdAndImage()
-    {
+    public void TargetOptions_MapIdAndImage() {
         var targets = new[]
         {
             new PossibleTarget { DisplayName = "None (Pre 1.27)", Id = -1, ImageString = "none.png" },
@@ -75,8 +68,7 @@ public sealed class FilterOptionsTests
     }
 
     [Fact]
-    public void ArtifactTierOptions_DedupedSortedAscending()
-    {
+    public void ArtifactTierOptions_DedupedSortedAscending() {
         var arts = new[]
         {
             new PossibleArtifact { Name = 1, Level = 2 },
@@ -92,8 +84,7 @@ public sealed class FilterOptionsTests
     }
 
     [Fact]
-    public void ArtifactNameOptions_RepresentativeIsLowestLevelSortedByText()
-    {
+    public void ArtifactNameOptions_RepresentativeIsLowestLevelSortedByText() {
         var arts = new[]
         {
             new PossibleArtifact { Name = 10, ProtoName = "ZETA", DisplayName = "Zeta", Level = 1 },
@@ -111,8 +102,7 @@ public sealed class FilterOptionsTests
     }
 
     [Fact]
-    public void DropOptions_LeadWithAnyRarityTrio()
-    {
+    public void DropOptions_LeadWithAnyRarityTrio() {
         var opts = FilterOptions.GetDropFilterOptions(Array.Empty<PossibleArtifact>(), 100, advanced: false);
         Assert.Equal(3, opts.Count);
         Assert.Equal("%_%_1_%", opts[0].Value);
@@ -121,8 +111,7 @@ public sealed class FilterOptionsTests
     }
 
     [Fact]
-    public void DropOptions_FiltersByMaxQualityAndEncodesValue()
-    {
+    public void DropOptions_FiltersByMaxQualityAndEncodesValue() {
         var arts = new[]
         {
             new PossibleArtifact { Name = 40, ProtoName = "BOOK_OF_BASAN", DisplayName = "Book of Basan", Level = 1, Rarity = 0, BaseQuality = 3 },
@@ -137,8 +126,7 @@ public sealed class FilterOptionsTests
     }
 
     [Fact]
-    public void DropOptions_AdvancedAddsAnyAndAnyRarityRows()
-    {
+    public void DropOptions_AdvancedAddsAnyAndAnyRarityRows() {
         var arts = new[]
         {
             new PossibleArtifact { Name = 40, ProtoName = "BASAN", DisplayName = "Basan", Level = 1, Rarity = 0, BaseQuality = 3 },

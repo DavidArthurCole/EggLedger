@@ -9,15 +9,12 @@ namespace EggLedger.Desktop.Tests;
 /// Update-status file round-trip (mirrors Go TestUpdateStatusRoundTrip) plus the
 /// CheckForUpdates decision driven through a stubbed GitHub client.
 /// </summary>
-public sealed class UpdateStatusTests
-{
-    private sealed class RecordingRunner : IProcessRunner
-    {
+public sealed class UpdateStatusTests {
+    private sealed class RecordingRunner : IProcessRunner {
         public string? Exe { get; private set; }
         public IReadOnlyList<string>? Args { get; private set; }
 
-        public Task RunAsync(string exe, IReadOnlyList<string> args)
-        {
+        public Task RunAsync(string exe, IReadOnlyList<string> args) {
             Exe = exe;
             Args = args;
             return Task.CompletedTask;
@@ -28,12 +25,10 @@ public sealed class UpdateStatusTests
         => new(new HttpClient(new StubHttpMessageHandler(responder)));
 
     /// <summary>HTTP handler that counts requests so a test can prove no poll happened.</summary>
-    private sealed class CountingHandler(Func<HttpRequestMessage, HttpResponseMessage> responder) : HttpMessageHandler
-    {
+    private sealed class CountingHandler(Func<HttpRequestMessage, HttpResponseMessage> responder) : HttpMessageHandler {
         public int Calls { get; private set; }
 
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-        {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) {
             Calls++;
             return Task.FromResult(responder(request));
         }
@@ -44,22 +39,18 @@ public sealed class UpdateStatusTests
     /// cooldown snapshot can be exercised without SQLite. Supports the GetAll + keyed
     /// upsert the settings wrapper uses; any other operation throws.
     /// </summary>
-    private sealed class InMemorySettingsDb : IIndexedDb
-    {
+    private sealed class InMemorySettingsDb : IIndexedDb {
         private readonly Dictionary<string, SettingRow> _rows = [];
 
-        public ValueTask PutAsync(string store, object value)
-        {
+        public ValueTask PutAsync(string store, object value) {
             var row = (SettingRow)value;
             _rows[row.Key] = row;
             return ValueTask.CompletedTask;
         }
 
-        public ValueTask<int> PutManyAsync(string store, IEnumerable<object> values)
-        {
+        public ValueTask<int> PutManyAsync(string store, IEnumerable<object> values) {
             var n = 0;
-            foreach (var v in values)
-            {
+            foreach (var v in values) {
                 var row = (SettingRow)v;
                 _rows[row.Key] = row;
                 n++;
@@ -78,12 +69,10 @@ public sealed class UpdateStatusTests
     }
 
     [Fact]
-    public void StatusFile_RoundTrips_AndClears()
-    {
+    public void StatusFile_RoundTrips_AndClears() {
         var dir = Path.Combine(Path.GetTempPath(), "egg-status-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dir);
-        try
-        {
+        try {
             // No file -> null.
             Assert.Null(UpdateStatusFile.ReadAndClear(dir));
 
@@ -96,16 +85,13 @@ public sealed class UpdateStatusTests
 
             // Cleared after read.
             Assert.Null(UpdateStatusFile.ReadAndClear(dir));
-        }
-        finally
-        {
+        } finally {
             Directory.Delete(dir, recursive: true);
         }
     }
 
     [Fact]
-    public async Task CheckForUpdates_NewerLatest_SetsAvailable()
-    {
+    public async Task CheckForUpdates_NewerLatest_SetsAvailable() {
         var github = Github(_ => StubHttpMessageHandler.Json("""{"tag_name":"2.5.0","body":"new"}"""));
         var svc = new UpdateService(github, () => "2.1.4");
 
@@ -117,8 +103,7 @@ public sealed class UpdateStatusTests
     }
 
     [Fact]
-    public async Task CheckForUpdates_SameVersion_UpToDate()
-    {
+    public async Task CheckForUpdates_SameVersion_UpToDate() {
         var github = Github(_ => StubHttpMessageHandler.Json("""{"tag_name":"2.1.4","body":""}"""));
         var svc = new UpdateService(github, () => "2.1.4");
 
@@ -129,8 +114,7 @@ public sealed class UpdateStatusTests
     }
 
     [Fact]
-    public async Task CheckForUpdates_OlderLatest_UpToDate()
-    {
+    public async Task CheckForUpdates_OlderLatest_UpToDate() {
         var github = Github(_ => StubHttpMessageHandler.Json("""{"tag_name":"2.0.0","body":""}"""));
         var svc = new UpdateService(github, () => "2.1.4");
 
@@ -140,8 +124,7 @@ public sealed class UpdateStatusTests
     }
 
     [Fact]
-    public async Task CheckForUpdates_RunningNewerThanStable_ChecksPreReleases()
-    {
+    public async Task CheckForUpdates_RunningNewerThanStable_ChecksPreReleases() {
         // Running 2.6.0 is newer than the stable 2.5.0, so the pre-release list is
         // consulted; it has 2.7.0-rc.1 which IS newer than running -> Available.
         var stableJson = """{"tag_name":"2.5.0","body":"stable"}""";
@@ -159,8 +142,7 @@ public sealed class UpdateStatusTests
     }
 
     [Fact]
-    public async Task CheckForUpdates_FetchFails_Failed()
-    {
+    public async Task CheckForUpdates_FetchFails_Failed() {
         var github = Github(_ => new HttpResponseMessage(System.Net.HttpStatusCode.NotFound));
         var svc = new UpdateService(github, () => "2.1.4");
 
@@ -170,13 +152,11 @@ public sealed class UpdateStatusTests
     }
 
     [Fact]
-    public async Task DownloadAndInstall_WritesNewBinaryAndGoesReady()
-    {
+    public async Task DownloadAndInstall_WritesNewBinaryAndGoesReady() {
         var exeDir = Path.Combine(Path.GetTempPath(), "egg-dl-svc-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(exeDir);
         var exePath = Path.Combine(exeDir, OperatingSystem.IsWindows() ? "EggLedger.exe" : "EggLedger");
-        try
-        {
+        try {
             var want = GithubReleaseClient.ExpectedAssetName();
             var assetJson = $$"""{"assets":[{"name":"{{want}}","browser_download_url":"https://x/{{want}}"}]}""";
             var payload = new byte[1024];
@@ -191,16 +171,13 @@ public sealed class UpdateStatusTests
             Assert.Equal(UpdatePhase.Ready, svc.Phase);
             var tempPath = UpdateService.NewBinaryTempPath(exePath);
             Assert.True(File.Exists(tempPath), "downloaded _new binary should exist");
-        }
-        finally
-        {
+        } finally {
             Directory.Delete(exeDir, recursive: true);
         }
     }
 
     [Fact]
-    public async Task DownloadAndInstall_ReachesHandoff_LaunchesNewAndExits()
-    {
+    public async Task DownloadAndInstall_ReachesHandoff_LaunchesNewAndExits() {
         // Proves the wiring that was missing: DownloadAndInstall now reaches the
         // self-replace handoff (launches the _new binary with the replace flags +
         // handshake token) and, after the handshake wait + exit delay, runs the
@@ -209,8 +186,7 @@ public sealed class UpdateStatusTests
         var exeDir = Path.Combine(Path.GetTempPath(), "egg-dl-handoff-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(exeDir);
         var exePath = Path.Combine(exeDir, OperatingSystem.IsWindows() ? "EggLedger.exe" : "EggLedger");
-        try
-        {
+        try {
             var want = GithubReleaseClient.ExpectedAssetName();
             var assetJson = $$"""{"assets":[{"name":"{{want}}","browser_download_url":"https://x/{{want}}"}]}""";
             var payload = new byte[1024];
@@ -226,8 +202,7 @@ public sealed class UpdateStatusTests
                 () => "2.1.4",
                 () => exePath,
                 runner,
-                exitAction: () =>
-                {
+                exitAction: () => {
                     exited = true;
                     return Task.CompletedTask;
                 },
@@ -247,9 +222,7 @@ public sealed class UpdateStatusTests
             Assert.Contains(runner.Args!, a => a.StartsWith("--handshake-token=", StringComparison.Ordinal));
             // After the handshake wait + exit delay, the injected old-instance exit ran.
             Assert.True(exited, "DownloadAndInstall should reach the handoff and run the exit action");
-        }
-        finally
-        {
+        } finally {
             Directory.Delete(exeDir, recursive: true);
         }
     }
@@ -257,26 +230,21 @@ public sealed class UpdateStatusTests
     [Theory]
     [InlineData("127.0.0.1:5000", "tok", true)]
     [InlineData(null, null, false)]
-    public void BuildReplaceArgs_IncludesHandshakeOnlyWhenPresent(string? addr, string? token, bool hasHandshake)
-    {
+    public void BuildReplaceArgs_IncludesHandshakeOnlyWhenPresent(string? addr, string? token, bool hasHandshake) {
         var args = UpdateService.BuildReplaceArgs(1234, @"C:\app\EggLedger.exe", addr, token);
 
         Assert.Contains("--replace-pid=1234", args);
         Assert.Contains(@"--replace-path=C:\app\EggLedger.exe", args);
-        if (hasHandshake)
-        {
+        if (hasHandshake) {
             Assert.Contains($"--handshake-port={addr}", args);
             Assert.Contains($"--handshake-token={token}", args);
-        }
-        else
-        {
+        } else {
             Assert.DoesNotContain(args, a => a.StartsWith("--handshake-port", StringComparison.Ordinal));
         }
     }
 
     [Fact]
-    public async Task Cooldown_FirstCheckEver_PollsAndPersistsSnapshot()
-    {
+    public async Task Cooldown_FirstCheckEver_PollsAndPersistsSnapshot() {
         var settingsDb = new InMemorySettingsDb();
         var settings = new IndexedDbSettings(settingsDb);
         var now = DateTimeOffset.Parse("2026-06-23T12:00:00Z", System.Globalization.CultureInfo.InvariantCulture);
@@ -298,14 +266,12 @@ public sealed class UpdateStatusTests
     }
 
     [Fact]
-    public async Task Cooldown_WithinWindowNotForced_SkipsPoll_UpToDateFromSnapshot()
-    {
+    public async Task Cooldown_WithinWindowNotForced_SkipsPoll_UpToDateFromSnapshot() {
         var settingsDb = new InMemorySettingsDb();
         var settings = new IndexedDbSettings(settingsDb);
         var now = DateTimeOffset.Parse("2026-06-23T12:00:00Z", System.Globalization.CultureInfo.InvariantCulture);
         // Last checked 1h ago, snapshot says latest == running -> up to date, no poll.
-        await settings.SetSettingsAsync(new Dictionary<string, string>
-        {
+        await settings.SetSettingsAsync(new Dictionary<string, string> {
             [UpdateService.LastUpdateCheckAtKey] = now.AddHours(-1).ToString("O", System.Globalization.CultureInfo.InvariantCulture),
             [UpdateService.KnownLatestVersionKey] = "2.1.4",
             [UpdateService.KnownLatestReleaseNotesKey] = "",
@@ -322,13 +288,11 @@ public sealed class UpdateStatusTests
     }
 
     [Fact]
-    public async Task Cooldown_WithinWindow_StoredLatestNewer_AvailableFromSnapshot_NoPoll()
-    {
+    public async Task Cooldown_WithinWindow_StoredLatestNewer_AvailableFromSnapshot_NoPoll() {
         var settingsDb = new InMemorySettingsDb();
         var settings = new IndexedDbSettings(settingsDb);
         var now = DateTimeOffset.Parse("2026-06-23T12:00:00Z", System.Globalization.CultureInfo.InvariantCulture);
-        await settings.SetSettingsAsync(new Dictionary<string, string>
-        {
+        await settings.SetSettingsAsync(new Dictionary<string, string> {
             [UpdateService.LastUpdateCheckAtKey] = now.AddHours(-2).ToString("O", System.Globalization.CultureInfo.InvariantCulture),
             [UpdateService.KnownLatestVersionKey] = "2.5.0",
             [UpdateService.KnownLatestReleaseNotesKey] = "cached notes",
@@ -347,14 +311,12 @@ public sealed class UpdateStatusTests
     }
 
     [Fact]
-    public async Task Cooldown_AfterWindow_PollsAgainAndUpdatesSnapshot()
-    {
+    public async Task Cooldown_AfterWindow_PollsAgainAndUpdatesSnapshot() {
         var settingsDb = new InMemorySettingsDb();
         var settings = new IndexedDbSettings(settingsDb);
         var now = DateTimeOffset.Parse("2026-06-23T12:00:00Z", System.Globalization.CultureInfo.InvariantCulture);
         // Last checked 13h ago (> 12h) -> cooldown elapsed, real poll runs.
-        await settings.SetSettingsAsync(new Dictionary<string, string>
-        {
+        await settings.SetSettingsAsync(new Dictionary<string, string> {
             [UpdateService.LastUpdateCheckAtKey] = now.AddHours(-13).ToString("O", System.Globalization.CultureInfo.InvariantCulture),
             [UpdateService.KnownLatestVersionKey] = "2.1.4",
             [UpdateService.KnownLatestReleaseNotesKey] = "",
@@ -375,14 +337,12 @@ public sealed class UpdateStatusTests
     }
 
     [Fact]
-    public async Task Cooldown_ForcedWithinWindow_BypassesCooldown_Polls()
-    {
+    public async Task Cooldown_ForcedWithinWindow_BypassesCooldown_Polls() {
         var settingsDb = new InMemorySettingsDb();
         var settings = new IndexedDbSettings(settingsDb);
         var now = DateTimeOffset.Parse("2026-06-23T12:00:00Z", System.Globalization.CultureInfo.InvariantCulture);
         // Checked 1h ago and stored latest is newer; force must still poll past both.
-        await settings.SetSettingsAsync(new Dictionary<string, string>
-        {
+        await settings.SetSettingsAsync(new Dictionary<string, string> {
             [UpdateService.LastUpdateCheckAtKey] = now.AddHours(-1).ToString("O", System.Globalization.CultureInfo.InvariantCulture),
             [UpdateService.KnownLatestVersionKey] = "2.5.0",
             [UpdateService.KnownLatestReleaseNotesKey] = "stale",
@@ -402,8 +362,7 @@ public sealed class UpdateStatusTests
     }
 
     [Fact]
-    public async Task Cooldown_NoSettingsStore_AlwaysPolls()
-    {
+    public async Task Cooldown_NoSettingsStore_AlwaysPolls() {
         // No settings store wired -> cooldown disabled, every check polls (pre-snapshot
         // behavior the existing tests rely on).
         var handler = new CountingHandler(_ => StubHttpMessageHandler.Json("""{"tag_name":"2.5.0","body":"n"}"""));
@@ -417,13 +376,11 @@ public sealed class UpdateStatusTests
     }
 
     [Fact]
-    public async Task RunSelfReplaceHandoff_LaunchesNewWithFlagsAndExits()
-    {
+    public async Task RunSelfReplaceHandoff_LaunchesNewWithFlagsAndExits() {
         var exeDir = Path.Combine(Path.GetTempPath(), "egg-handoff-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(exeDir);
         var exePath = Path.Combine(exeDir, OperatingSystem.IsWindows() ? "EggLedger.exe" : "EggLedger");
-        try
-        {
+        try {
             // Pre-place the downloaded _new binary so the handoff has something to launch.
             var tempPath = UpdateService.NewBinaryTempPath(exePath);
             await File.WriteAllBytesAsync(tempPath, new byte[8]);
@@ -434,8 +391,7 @@ public sealed class UpdateStatusTests
 
             var exited = false;
             var ok = await svc.RunSelfReplaceHandoffAsync(
-                () =>
-                {
+                () => {
                     exited = true;
                     return Task.CompletedTask;
                 },
@@ -448,9 +404,7 @@ public sealed class UpdateStatusTests
             Assert.NotNull(runner.Args);
             Assert.Contains(runner.Args!, a => a.StartsWith("--replace-pid=", StringComparison.Ordinal));
             Assert.Contains(runner.Args!, a => a.StartsWith("--handshake-port=", StringComparison.Ordinal));
-        }
-        finally
-        {
+        } finally {
             Directory.Delete(exeDir, recursive: true);
         }
     }

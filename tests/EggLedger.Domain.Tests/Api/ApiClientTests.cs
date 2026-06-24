@@ -8,20 +8,16 @@ using ProtoBuf;
 
 namespace EggLedger.Domain.Tests.Api;
 
-public class ApiClientTests
-{
-    private static byte[] Serialize<T>(T msg)
-    {
+public class ApiClientTests {
+    private static byte[] Serialize<T>(T msg) {
         using var ms = new MemoryStream();
         Serializer.Serialize(ms, msg);
         return ms.ToArray();
     }
 
-    private static byte[] ZlibCompress(byte[] data)
-    {
+    private static byte[] ZlibCompress(byte[] data) {
         using var output = new MemoryStream();
-        using (var zlib = new ZLibStream(output, CompressionLevel.Optimal, leaveOpen: true))
-        {
+        using (var zlib = new ZLibStream(output, CompressionLevel.Optimal, leaveOpen: true)) {
             zlib.Write(data, 0, data.Length);
         }
         return output.ToArray();
@@ -29,18 +25,15 @@ public class ApiClientTests
 
     // Test 1: wire round-trip for the two response types (unauthenticated path).
     [Fact]
-    public void DecodeApiResponse_FirstContact_RoundTrips()
-    {
+    public void DecodeApiResponse_FirstContact_RoundTrips() {
         // Build a Backup with a nested Artifacts.LastFueledShip (the proto2
         // landmine field) plus other fields, wrapped in a first-contact response.
-        var backup = new Backup
-        {
+        var backup = new Backup {
             EiUserId = "EI1234567890123456",
             artifacts = new Backup.Artifacts { LastFueledShip = MissionInfo.Spaceship.Henerprise },
             game = new Backup.Game { SoulEggsD = 1234.5, EggsOfProphecy = 7 },
         };
-        var fc = new EggIncFirstContactResponse
-        {
+        var fc = new EggIncFirstContactResponse {
             EiUserId = "EI1234567890123456",
             ErrorCode = 0,
             Backup = backup,
@@ -60,16 +53,13 @@ public class ApiClientTests
     }
 
     [Fact]
-    public void DecodeApiResponse_CompleteMission_RoundTrips()
-    {
-        var info = new MissionInfo
-        {
+    public void DecodeApiResponse_CompleteMission_RoundTrips() {
+        var info = new MissionInfo {
             Identifier = "mission-abc",
             Ship = MissionInfo.Spaceship.Henerprise,
             duration_type = MissionInfo.DurationType.Epic,
         };
-        var resp = new CompleteMissionResponse
-        {
+        var resp = new CompleteMissionResponse {
             Success = true,
             EiUserId = "EI999",
             Info = info,
@@ -90,16 +80,13 @@ public class ApiClientTests
 
     // Test 2: AuthenticatedMessage wrapping, compressed and uncompressed branches.
     [Fact]
-    public void DecodeApiResponse_Authenticated_Compressed()
-    {
-        var resp = new CompleteMissionResponse
-        {
+    public void DecodeApiResponse_Authenticated_Compressed() {
+        var resp = new CompleteMissionResponse {
             Success = true,
             Info = new MissionInfo { Identifier = "zipped" },
         };
         byte[] inner = Serialize(resp);
-        var auth = new AuthenticatedMessage
-        {
+        var auth = new AuthenticatedMessage {
             Message = ZlibCompress(inner),
             Compressed = true,
         };
@@ -114,15 +101,12 @@ public class ApiClientTests
     }
 
     [Fact]
-    public void DecodeApiResponse_Authenticated_Uncompressed()
-    {
-        var resp = new CompleteMissionResponse
-        {
+    public void DecodeApiResponse_Authenticated_Uncompressed() {
+        var resp = new CompleteMissionResponse {
             Success = true,
             Info = new MissionInfo { Identifier = "plain" },
         };
-        var auth = new AuthenticatedMessage
-        {
+        var auth = new AuthenticatedMessage {
             Message = Serialize(resp),
             Compressed = false,
         };
@@ -138,8 +122,7 @@ public class ApiClientTests
 
     // Test 3: form encoding (data=<base64>) + base64 response decode, via a stub handler.
     [Fact]
-    public async Task RequestRawPayload_PostsBase64FormAndDecodesResponse()
-    {
+    public async Task RequestRawPayload_PostsBase64FormAndDecodesResponse() {
         var resp = new CompleteMissionResponse { Success = true };
         byte[] respBin = Serialize(resp);
         string respBase64 = Convert.ToBase64String(respBin);
@@ -171,8 +154,7 @@ public class ApiClientTests
     }
 
     [Fact]
-    public async Task RequestRawPayload_ThrowsOnNon2xx()
-    {
+    public async Task RequestRawPayload_ThrowsOnNon2xx() {
         var handler = new CapturingHandler("ignored", HttpStatusCode.InternalServerError);
         var http = new HttpClient(handler);
         var client = new ApiClient(http);
@@ -183,8 +165,7 @@ public class ApiClientTests
     }
 
     [Fact]
-    public void NewBasicRequestInfo_UsesDefaultsAndProtoPlatformName()
-    {
+    public void NewBasicRequestInfo_UsesDefaultsAndProtoPlatformName() {
         var client = new ApiClient();
         var rinfo = client.NewBasicRequestInfo("EI777");
 
@@ -195,13 +176,11 @@ public class ApiClientTests
         Assert.Equal("IOS", rinfo.Platform);
     }
 
-    private sealed class CapturingHandler : HttpMessageHandler
-    {
+    private sealed class CapturingHandler : HttpMessageHandler {
         private readonly string _responseBody;
         private readonly HttpStatusCode _status;
 
-        public CapturingHandler(string responseBody, HttpStatusCode status = HttpStatusCode.OK)
-        {
+        public CapturingHandler(string responseBody, HttpStatusCode status = HttpStatusCode.OK) {
             _responseBody = responseBody;
             _status = status;
         }
@@ -213,17 +192,14 @@ public class ApiClientTests
         public string? ContentType { get; private set; }
 
         protected override async Task<HttpResponseMessage> SendAsync(
-            HttpRequestMessage request, CancellationToken cancellationToken)
-        {
+            HttpRequestMessage request, CancellationToken cancellationToken) {
             LastRequest = request;
-            if (request.Content != null)
-            {
+            if (request.Content != null) {
                 RequestBody = await request.Content.ReadAsStringAsync(cancellationToken)
                     .ConfigureAwait(false);
                 ContentType = request.Content.Headers.ContentType?.MediaType;
             }
-            return new HttpResponseMessage(_status)
-            {
+            return new HttpResponseMessage(_status) {
                 Content = new StringContent(_responseBody),
             };
         }

@@ -5,16 +5,14 @@ using EggLedger.Web.Services;
 namespace EggLedger.Web.Missions;
 
 /// <summary>Menno community-data summary attached to a viewed mission (configs + total drop count).</summary>
-public sealed class MissionMennoData
-{
+public sealed class MissionMennoData {
     public int TotalDropsCount { get; set; }
     public IReadOnlyList<ConfigurationItem> Configs { get; set; } =
         Array.Empty<ConfigurationItem>();
 }
 
 /// <summary>Computed detail for one viewed mission: drop lists grouped + sorted, metadata (capacity modifier, prev/next ids, dates) derived once.</summary>
-public sealed class ViewMissionData
-{
+public sealed class ViewMissionData {
     public DatabaseMission MissionInfo { get; set; } = new();
     public List<DropLike> Artifacts { get; set; } = [];
     public List<DropLike> Stones { get; set; } = [];
@@ -30,10 +28,8 @@ public sealed class ViewMissionData
 }
 
 /// <summary>Pure mission-detail computation: shapes already-fetched data only. Async overlay state, bridge fetches, and caching stay in the Blazor component.</summary>
-public static class MissionDetailBuilder
-{
-    private static DropLike ToDropLike(MissionDrop d) => new()
-    {
+public static class MissionDetailBuilder {
+    private static DropLike ToDropLike(MissionDrop d) => new() {
         Id = d.Id,
         Name = d.Name,
         Level = d.Level,
@@ -48,16 +44,13 @@ public static class MissionDetailBuilder
         DatabaseMission missionInfo,
         IReadOnlyList<MissionDrop> allDrops,
         IReadOnlyList<DatabaseMission> filteredMissions,
-        bool extendedInfo)
-    {
+        bool extendedInfo) {
         var artifacts = new List<DropLike>();
         var stones = new List<DropLike>();
         var stoneFragments = new List<DropLike>();
         var ingredients = new List<DropLike>();
-        foreach (var d in allDrops)
-        {
-            switch (d.SpecType)
-            {
+        foreach (var d in allDrops) {
+            switch (d.SpecType) {
                 case "Artifact": artifacts.Add(ToDropLike(d)); break;
                 case "Stone": stones.Add(ToDropLike(d)); break;
                 case "StoneFragment": stoneFragments.Add(ToDropLike(d)); break;
@@ -66,12 +59,9 @@ public static class MissionDetailBuilder
         }
 
         int shipIndex = -1;
-        if (extendedInfo)
-        {
-            for (int i = 0; i < filteredMissions.Count; i++)
-            {
-                if (filteredMissions[i].MissiondId == missionInfo.MissiondId)
-                {
+        if (extendedInfo) {
+            for (int i = 0; i < filteredMissions.Count; i++) {
+                if (filteredMissions[i].MissiondId == missionInfo.MissiondId) {
                     shipIndex = i;
                     break;
                 }
@@ -80,8 +70,7 @@ public static class MissionDetailBuilder
 
         double nominal = missionInfo.NominalCapcity != 0 ? missionInfo.NominalCapcity : 1;
 
-        return new ViewMissionData
-        {
+        return new ViewMissionData {
             MissionInfo = missionInfo,
             Artifacts = DropSorter.SortedGroupedSpecType(artifacts),
             Stones = DropSorter.SortedGroupedSpecType(stones),
@@ -100,8 +89,7 @@ public static class MissionDetailBuilder
     }
 
     /// <summary>Re-sorts the already-grouped drop lists: iv -> inventoryVisualizerSort, otherwise sortGroupAlreadyCombed.</summary>
-    public static void ApplySortMethod(ViewMissionData data, MissionSortMethod method)
-    {
+    public static void ApplySortMethod(ViewMissionData data, MissionSortMethod method) {
         Func<IEnumerable<DropLike>, List<DropLike>> sortFn = method == MissionSortMethod.Iv
             ? DropSorter.InventoryVisualizerSort
             : DropSorter.SortGroupAlreadyCombed;
@@ -112,8 +100,7 @@ public static class MissionDetailBuilder
     }
 
     /// <summary>Menno lookup key for a mission: target -1 remapped to 10000, key is ship_duration_level_target.</summary>
-    public static string MennoKey(DatabaseMission mission)
-    {
+    public static string MennoKey(DatabaseMission mission) {
         int target = mission.TargetInt == -1 ? 10000 : mission.TargetInt;
         int ship = mission.Ship is { } s ? Convert.ToInt32(s) : 0;
         int duration = mission.DurationType is { } d ? Convert.ToInt32(d) : 0;

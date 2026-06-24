@@ -3,23 +3,20 @@ using EggLedger.Domain.MissionPacking;
 namespace EggLedger.Web.Missions;
 
 /// <summary>Multi-view selection mode for the mission list (off/row/free).</summary>
-public enum MultiViewMode
-{
+public enum MultiViewMode {
     Off,
     Row,
     Free,
 }
 
 /// <summary>Drop sort method for the mission overlay (default/iv).</summary>
-public enum MissionSortMethod
-{
+public enum MissionSortMethod {
     Default,
     Iv,
 }
 
 /// <summary>Mission-list display preferences plus mission-type tab filtering. Display flags default to and (de)serialize exactly as the Go storage settings do.</summary>
-public sealed class MissionViewOptions
-{
+public sealed class MissionViewOptions {
     // Vue defaults (useMissionViewOptions.ts).
     public bool ViewByDate { get; set; }
     public bool ViewMissionTimes { get; set; } = true;
@@ -42,22 +39,16 @@ public sealed class MissionViewOptions
     public const string KeySortMethod = "mission_sort_method";
 
     /// <summary>True only when the loaded set contains at least one Home (0) and one Virtue (1) mission.</summary>
-    public static bool HasBothMissionTypes(IReadOnlyList<DatabaseMission>? missions)
-    {
-        if (missions is null || missions.Count == 0)
-        {
+    public static bool HasBothMissionTypes(IReadOnlyList<DatabaseMission>? missions) {
+        if (missions is null || missions.Count == 0) {
             return false;
         }
         bool home = false;
         bool virtue = false;
-        foreach (var m in missions)
-        {
-            if (m.MissionType == 0)
-            {
+        foreach (var m in missions) {
+            if (m.MissionType == 0) {
                 home = true;
-            }
-            else if (m.MissionType == 1)
-            {
+            } else if (m.MissionType == 1) {
                 virtue = true;
             }
         }
@@ -67,32 +58,26 @@ public sealed class MissionViewOptions
     /// <summary>When no tab is selected (null) the input passes through unchanged; otherwise only missions whose type equals the tab.</summary>
     public static IReadOnlyList<DatabaseMission>? TabFilteredMissions(
         IReadOnlyList<DatabaseMission>? filteredMissions,
-        int? missionTypeTab)
-    {
-        if (missionTypeTab is null || filteredMissions is null)
-        {
+        int? missionTypeTab) {
+        if (missionTypeTab is null || filteredMissions is null) {
             return filteredMissions;
         }
         var result = new List<DatabaseMission>();
-        foreach (var m in filteredMissions)
-        {
-            if (m.MissionType == missionTypeTab.Value)
-            {
+        foreach (var m in filteredMissions) {
+            if (m.MissionType == missionTypeTab.Value) {
                 result.Add(m);
             }
         }
         return result;
     }
 
-    public static MultiViewMode ParseMultiViewMode(string? raw) => raw switch
-    {
+    public static MultiViewMode ParseMultiViewMode(string? raw) => raw switch {
         "row" => MultiViewMode.Row,
         "free" => MultiViewMode.Free,
         _ => MultiViewMode.Off,
     };
 
-    public static string MultiViewModeToString(MultiViewMode mode) => mode switch
-    {
+    public static string MultiViewModeToString(MultiViewMode mode) => mode switch {
         MultiViewMode.Row => "row",
         MultiViewMode.Free => "free",
         _ => "off",
@@ -105,34 +90,26 @@ public sealed class MissionViewOptions
         method == MissionSortMethod.Iv ? "iv" : "default";
 
     /// <summary>Hydrates display flags from a settings map; missing keys keep the defaults.</summary>
-    public void LoadFrom(IReadOnlyDictionary<string, string> settings)
-    {
-        if (settings.TryGetValue(KeyViewByDate, out var vbd))
-        {
+    public void LoadFrom(IReadOnlyDictionary<string, string> settings) {
+        if (settings.TryGetValue(KeyViewByDate, out var vbd)) {
             ViewByDate = ParseBool(vbd, ViewByDate);
         }
-        if (settings.TryGetValue(KeyViewTimes, out var vt))
-        {
+        if (settings.TryGetValue(KeyViewTimes, out var vt)) {
             ViewMissionTimes = ParseBool(vt, ViewMissionTimes);
         }
-        if (settings.TryGetValue(KeyRecolorDc, out var dc))
-        {
+        if (settings.TryGetValue(KeyRecolorDc, out var dc)) {
             RecolorDc = ParseBool(dc, RecolorDc);
         }
-        if (settings.TryGetValue(KeyRecolorBc, out var bc))
-        {
+        if (settings.TryGetValue(KeyRecolorBc, out var bc)) {
             RecolorBc = ParseBool(bc, RecolorBc);
         }
-        if (settings.TryGetValue(KeyShowExpectedDrops, out var sed))
-        {
+        if (settings.TryGetValue(KeyShowExpectedDrops, out var sed)) {
             ShowExpectedDropsPerShip = ParseBool(sed, ShowExpectedDropsPerShip);
         }
-        if (settings.TryGetValue(KeyMultiViewMode, out var mvm))
-        {
+        if (settings.TryGetValue(KeyMultiViewMode, out var mvm)) {
             MultiViewMode = ParseMultiViewMode(mvm);
         }
-        if (settings.TryGetValue(KeySortMethod, out var sm))
-        {
+        if (settings.TryGetValue(KeySortMethod, out var sm)) {
             SortMethod = ParseSortMethod(sm);
         }
     }

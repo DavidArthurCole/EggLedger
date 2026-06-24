@@ -1,49 +1,37 @@
 namespace EggLedger.Domain.Util;
 
 /// <summary>Matrix normalization helpers. Go port of util/matrix.go.</summary>
-public static class Matrix
-{
+public static class Matrix {
     /// <summary>
     /// Normalizes a row-major matrix in-place (index r*nC+c) so each row/col/grid sums to 100.
     /// mode is "row_pct"/"col_pct"/"global_pct"; other values are a no-op, zero sums untouched.
     /// </summary>
-    public static void Apply2DPctNormalization(double[] vals, int nR, int nC, string mode)
-    {
-        if (nR == 0 || nC == 0)
-        {
+    public static void Apply2DPctNormalization(double[] vals, int nR, int nC, string mode) {
+        if (nR == 0 || nC == 0) {
             return;
         }
-        switch (mode)
-        {
+        switch (mode) {
             case "row_pct":
-                for (var r = 0; r < nR; r++)
-                {
+                for (var r = 0; r < nR; r++) {
                     double rowSum = 0;
-                    for (var c = 0; c < nC; c++)
-                    {
+                    for (var c = 0; c < nC; c++) {
                         rowSum += vals[r * nC + c];
                     }
-                    if (rowSum > 0)
-                    {
-                        for (var c = 0; c < nC; c++)
-                        {
+                    if (rowSum > 0) {
+                        for (var c = 0; c < nC; c++) {
                             vals[r * nC + c] = vals[r * nC + c] / rowSum * 100;
                         }
                     }
                 }
                 break;
             case "col_pct":
-                for (var c = 0; c < nC; c++)
-                {
+                for (var c = 0; c < nC; c++) {
                     double colSum = 0;
-                    for (var r = 0; r < nR; r++)
-                    {
+                    for (var r = 0; r < nR; r++) {
                         colSum += vals[r * nC + c];
                     }
-                    if (colSum > 0)
-                    {
-                        for (var r = 0; r < nR; r++)
-                        {
+                    if (colSum > 0) {
+                        for (var r = 0; r < nR; r++) {
                             vals[r * nC + c] = vals[r * nC + c] / colSum * 100;
                         }
                     }
@@ -51,14 +39,11 @@ public static class Matrix
                 break;
             case "global_pct":
                 double total = 0;
-                foreach (var v in vals)
-                {
+                foreach (var v in vals) {
                     total += v;
                 }
-                if (total > 0)
-                {
-                    for (var i = 0; i < vals.Length; i++)
-                    {
+                if (total > 0) {
+                    for (var i = 0; i < vals.Length; i++) {
                         vals[i] = vals[i] / total * 100;
                     }
                 }

@@ -7,13 +7,10 @@ namespace EggLedger.Web.Tests.Data;
 /// rely on: full round-trip, filters JSON parse/serialize, and the column
 /// defaults applied when building a row from a sparse definition.
 /// </summary>
-public sealed class ReportMappingTests
-{
+public sealed class ReportMappingTests {
     [Fact]
-    public void RoundTrips_AllScalarFields()
-    {
-        var row = new ReportRow
-        {
+    public void RoundTrips_AllScalarFields() {
+        var row = new ReportRow {
             Id = "r1",
             AccountId = "EI1",
             Name = "Report",
@@ -69,8 +66,7 @@ public sealed class ReportMappingTests
     }
 
     [Fact]
-    public void ToRow_AppliesColumnDefaultsForBlankFields()
-    {
+    public void ToRow_AppliesColumnDefaultsForBlankFields() {
         var def = new EggLedger.Domain.Reports.ReportDefinition { Id = "x" };
         var row = ReportMapping.ToRow(def);
         Assert.Equal("LOW", row.Weight);
@@ -81,8 +77,7 @@ public sealed class ReportMappingTests
     }
 
     [Fact]
-    public void GroupId_SurvivesEditShapedRoundTrip()
-    {
+    public void GroupId_SurvivesEditShapedRoundTrip() {
         // An edit loads a persisted row, then re-saves it. The builder preserves the
         // report's existing GroupId on edit (no clobber to ""), so the mapping must
         // carry GroupId through ToDefinition -> ToRow unchanged.
@@ -94,8 +89,7 @@ public sealed class ReportMappingTests
     }
 
     [Fact]
-    public void ParseFilters_TolerantOfBlankAndInvalid()
-    {
+    public void ParseFilters_TolerantOfBlankAndInvalid() {
         Assert.Empty(ReportMapping.ParseFilters("").And);
         Assert.Empty(ReportMapping.ParseFilters("garbage").Or);
         Assert.Empty(ReportMapping.ParseFilters(null).And);

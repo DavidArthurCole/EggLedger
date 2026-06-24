@@ -7,8 +7,7 @@ namespace EggLedger.Web.Data;
 /// player's mission and drop rows and runs them through <see cref="InMemoryReportRunner"/>.
 /// Deliberately does not implement the SQL <see cref="IMissionDb"/> contract (kept for a future server backend).
 /// </summary>
-public sealed class IndexedDbMissionDb : IReportRunner
-{
+public sealed class IndexedDbMissionDb : IReportRunner {
     private const string MissionStore = "mission";
     private const string DropStore = "artifact_drops";
     private const string PlayerIdIndex = "player_id";
@@ -16,8 +15,7 @@ public sealed class IndexedDbMissionDb : IReportRunner
     private readonly IIndexedDb _db;
     private readonly IWeightData _weights;
 
-    public IndexedDbMissionDb(IIndexedDb db, IWeightData weights)
-    {
+    public IndexedDbMissionDb(IIndexedDb db, IWeightData weights) {
         _db = db ?? throw new ArgumentNullException(nameof(db));
         _weights = weights ?? throw new ArgumentNullException(nameof(weights));
     }
@@ -26,8 +24,7 @@ public sealed class IndexedDbMissionDb : IReportRunner
     /// Runs the report for the account id. Mission rows from the <c>player_id</c> index;
     /// drop rows read store-wide and filtered to the player (browser DB is single-account).
     /// </summary>
-    public async Task<ReportResult> RunReportAsync(ReportDefinition def, string accountId)
-    {
+    public async Task<ReportResult> RunReportAsync(ReportDefinition def, string accountId) {
         var missionRows = await _db.GetAllByIndexAsync<MissionRow>(MissionStore, PlayerIdIndex, accountId);
         var dropRows = await _db.GetAllAsync<ArtifactDropRow>(DropStore);
 
@@ -44,8 +41,7 @@ public sealed class IndexedDbMissionDb : IReportRunner
         return runner.Run(def, missions, drops);
     }
 
-    private static MissionRowData ToMissionData(MissionRow r) => new()
-    {
+    private static MissionRowData ToMissionData(MissionRow r) => new() {
         PlayerId = r.PlayerId,
         MissionId = r.MissionId,
         Ship = r.Ship,
@@ -61,8 +57,7 @@ public sealed class IndexedDbMissionDb : IReportRunner
         IsBuggedCap = r.IsBuggedCap,
     };
 
-    private static ArtifactDropRowData ToDropData(ArtifactDropRow r) => new()
-    {
+    private static ArtifactDropRowData ToDropData(ArtifactDropRow r) => new() {
         PlayerId = r.PlayerId,
         MissionId = r.MissionId,
         DropIndex = r.DropIndex,

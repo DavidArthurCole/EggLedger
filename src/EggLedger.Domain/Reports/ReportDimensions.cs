@@ -1,8 +1,7 @@
 namespace EggLedger.Domain.Reports;
 
 /// <summary>Whether a dimension groups missions or artifact drops. Port of the Vue ReportDimension.scope union.</summary>
-public enum DimensionScope
-{
+public enum DimensionScope {
     Mission,
     Artifact,
 }
@@ -16,8 +15,7 @@ public sealed record ReportDimension(string Value, string Label, DimensionScope 
 /// <summary>
 /// Static dimension tables and lookups for the report builders. Port of Vue reportDimensions.ts.
 /// </summary>
-public static class ReportDimensions
-{
+public static class ReportDimensions {
     /// <summary>Mission-scoped group-by dimensions.</summary>
     public static readonly IReadOnlyList<ReportDimension> Mission = new[]
     {

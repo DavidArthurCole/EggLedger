@@ -3,21 +3,18 @@ using EggLedger.Domain.Export;
 namespace EggLedger.Domain.Tests.Export;
 
 /// <summary>Port of Go export/export_management_test.go.</summary>
-public class ExportManagementTests
-{
+public class ExportManagementTests {
     private static string MissionsDir(string root) => System.IO.Path.Combine(root, "missions");
 
     [Fact]
-    public void ListGroups_MissingDir()
-    {
+    public void ListGroups_MissingDir() {
         var fs = new InMemoryExportFileSystem();
         var groups = ExportManagement.ListGroups("root", fs);
         Assert.Empty(groups);
     }
 
     [Fact]
-    public void ListGroups_ParsesAndGroups()
-    {
+    public void ListGroups_ParsesAndGroups() {
         const string root = "root";
         var md = MissionsDir(root);
         var fs = new InMemoryExportFileSystem();
@@ -38,8 +35,7 @@ public class ExportManagementTests
     }
 
     [Fact]
-    public void ListGroups_PartialPair()
-    {
+    public void ListGroups_PartialPair() {
         const string root = "root";
         var fs = new InMemoryExportFileSystem();
         fs.AddFile(MissionsDir(root), "EI123.20240311_221737.csv", 50);
@@ -51,8 +47,7 @@ public class ExportManagementTests
     }
 
     [Fact]
-    public void PruneForPlayer_DeletesOldest()
-    {
+    public void PruneForPlayer_DeletesOldest() {
         const string root = "root";
         var md = MissionsDir(root);
         var fs = new InMemoryExportFileSystem();
@@ -61,8 +56,7 @@ public class ExportManagementTests
             "EI123.20240310_000000.csv", "EI123.20240310_000000.xlsx",
             "EI123.20240311_000000.csv", "EI123.20240311_000000.xlsx",
             "EI123.20240312_000000.csv", "EI123.20240312_000000.xlsx",
-        })
-        {
+        }) {
             fs.AddFile(md, f, 4);
         }
 
@@ -74,8 +68,7 @@ public class ExportManagementTests
     }
 
     [Fact]
-    public void PruneForPlayer_NoOp()
-    {
+    public void PruneForPlayer_NoOp() {
         var fs = new InMemoryExportFileSystem();
         var (deleted, freed) = ExportManagement.PruneForPlayer("root", "EI123", 0, fs);
         Assert.Equal(0, deleted);
@@ -83,8 +76,7 @@ public class ExportManagementTests
     }
 
     [Fact]
-    public void PruneForPlayer_BelowLimit()
-    {
+    public void PruneForPlayer_BelowLimit() {
         const string root = "root";
         var fs = new InMemoryExportFileSystem();
         fs.AddFile(MissionsDir(root), "EI123.20240311_221737.csv", 10);

@@ -10,21 +10,17 @@ namespace EggLedger.Desktop.Tests;
 /// dialog-cancel contract, window-size passthrough, and that restart relaunches the
 /// exe then exits. The real dialog and real relaunch are MANUAL-VERIFY.
 /// </summary>
-public sealed class DesktopPlatformCapabilitiesTests
-{
-    private sealed class FakeProcessRunner : IProcessRunner
-    {
+public sealed class DesktopPlatformCapabilitiesTests {
+    private sealed class FakeProcessRunner : IProcessRunner {
         public List<(string Exe, IReadOnlyList<string> Args)> Calls { get; } = [];
 
-        public Task RunAsync(string exe, IReadOnlyList<string> args)
-        {
+        public Task RunAsync(string exe, IReadOnlyList<string> args) {
             Calls.Add((exe, args));
             return Task.CompletedTask;
         }
     }
 
-    private sealed class FakeWindow : IDesktopWindow
-    {
+    private sealed class FakeWindow : IDesktopWindow {
         public (int Width, int Height) SizeToReturn { get; set; } = (0, 0);
         public string? SaveResult { get; set; }
         public int ExitCalls { get; private set; }
@@ -37,15 +33,13 @@ public sealed class DesktopPlatformCapabilitiesTests
     }
 
     [Fact]
-    public void IsDesktop_IsTrue()
-    {
+    public void IsDesktop_IsTrue() {
         var caps = new DesktopPlatformCapabilities(new FakeProcessRunner(), new FakeWindow());
         Assert.True(caps.IsDesktop);
     }
 
     [Fact]
-    public async Task OpenFileAsync_RunsCurrentPlatformOpenCommand()
-    {
+    public async Task OpenFileAsync_RunsCurrentPlatformOpenCommand() {
         var runner = new FakeProcessRunner();
         var caps = new DesktopPlatformCapabilities(runner, new FakeWindow());
 
@@ -59,8 +53,7 @@ public sealed class DesktopPlatformCapabilitiesTests
     }
 
     [Fact]
-    public async Task OpenFileInFolderAsync_RunsCurrentPlatformRevealCommand()
-    {
+    public async Task OpenFileInFolderAsync_RunsCurrentPlatformRevealCommand() {
         var runner = new FakeProcessRunner();
         var caps = new DesktopPlatformCapabilities(runner, new FakeWindow());
 
@@ -74,16 +67,14 @@ public sealed class DesktopPlatformCapabilitiesTests
     }
 
     [Fact]
-    public async Task ChooseSaveFilePathAsync_ReturnsNull_WhenDialogCancelled()
-    {
+    public async Task ChooseSaveFilePathAsync_ReturnsNull_WhenDialogCancelled() {
         var caps = new DesktopPlatformCapabilities(new FakeProcessRunner(), new FakeWindow { SaveResult = null });
         var result = await caps.ChooseSaveFilePathAsync("export.json");
         Assert.Null(result);
     }
 
     [Fact]
-    public async Task ChooseSaveFilePathAsync_ReturnsChosenPath()
-    {
+    public async Task ChooseSaveFilePathAsync_ReturnsChosenPath() {
         var window = new FakeWindow { SaveResult = "/chosen/export.json" };
         var caps = new DesktopPlatformCapabilities(new FakeProcessRunner(), window);
         var result = await caps.ChooseSaveFilePathAsync("export.json");
@@ -91,8 +82,7 @@ public sealed class DesktopPlatformCapabilitiesTests
     }
 
     [Fact]
-    public async Task GetWindowSizeAsync_PassesThroughWindowSize()
-    {
+    public async Task GetWindowSizeAsync_PassesThroughWindowSize() {
         var window = new FakeWindow { SizeToReturn = (1280, 800) };
         var caps = new DesktopPlatformCapabilities(new FakeProcessRunner(), window);
         var (w, h) = await caps.GetWindowSizeAsync();
@@ -101,8 +91,7 @@ public sealed class DesktopPlatformCapabilitiesTests
     }
 
     [Fact]
-    public async Task RestartAppAsync_RelaunchesExe_ThenExits()
-    {
+    public async Task RestartAppAsync_RelaunchesExe_ThenExits() {
         var runner = new FakeProcessRunner();
         var window = new FakeWindow();
         var caps = new DesktopPlatformCapabilities(runner, window);
@@ -117,14 +106,11 @@ public sealed class DesktopPlatformCapabilitiesTests
         Assert.Equal(1, window.ExitCalls);
     }
 
-    private static OSPlatform CurrentPlatform()
-    {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
+    private static OSPlatform CurrentPlatform() {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
             return OSPlatform.Windows;
         }
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-        {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
             return OSPlatform.OSX;
         }
         return OSPlatform.Linux;

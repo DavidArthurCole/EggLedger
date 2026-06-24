@@ -8,8 +8,7 @@ namespace EggLedger.Domain.Export.Xlsx;
 /// Writes minimal single-sheet XLSX files. Port of Go package xlsxwriter: streaming row writes,
 /// optional column widths, one built-in datetime style.
 /// </summary>
-public sealed class XlsxWriter : IDisposable
-{
+public sealed class XlsxWriter : IDisposable {
     private readonly ZipArchive _zip;
     private double[] _colWidths = [];
     private int _rowNum;
@@ -17,8 +16,7 @@ public sealed class XlsxWriter : IDisposable
     private StringBuilder? _sheet;
     private bool _closed;
 
-    private XlsxWriter(Stream output)
-    {
+    private XlsxWriter(Stream output) {
         _zip = new ZipArchive(output, ZipArchiveMode.Create, leaveOpen: true);
     }
 
@@ -26,8 +24,7 @@ public sealed class XlsxWriter : IDisposable
     /// Creates a writer over <paramref name="output"/>. Static ZIP entries
     /// (content types, relationships, workbook, styles) are written immediately.
     /// </summary>
-    public static XlsxWriter New(Stream output)
-    {
+    public static XlsxWriter New(Stream output) {
         var w = new XlsxWriter(output);
         w.WriteStaticEntries();
         return w;
@@ -37,40 +34,30 @@ public sealed class XlsxWriter : IDisposable
     /// Sets column widths in Excel character units (index 0 = column A). Must be
     /// called before the first <see cref="WriteRow"/>.
     /// </summary>
-    public void SetColWidths(IReadOnlyList<double> widths)
-    {
+    public void SetColWidths(IReadOnlyList<double> widths) {
         _colWidths = [.. widths];
     }
 
     /// <summary>Appends a row of cells to the sheet.</summary>
-    public void WriteRow(IReadOnlyList<XlsxCell> cells)
-    {
-        if (!_sheetStarted)
-        {
+    public void WriteRow(IReadOnlyList<XlsxCell> cells) {
+        if (!_sheetStarted) {
             StartSheet();
             _sheetStarted = true;
         }
         _rowNum++;
         var buf = _sheet!;
         buf.Append(CultureInfo.InvariantCulture, $"<row r=\"{_rowNum}\">");
-        for (int col = 0; col < cells.Count; col++)
-        {
+        for (int col = 0; col < cells.Count; col++) {
             var cell = cells[col];
             string r = XlsxCell.CellRef(col + 1, _rowNum);
-            if (cell.IsNum)
-            {
+            if (cell.IsNum) {
                 string s = GoFloat.FormatF(cell.NumVal);
-                if (cell.Style != XlsxStyle.None)
-                {
+                if (cell.Style != XlsxStyle.None) {
                     buf.Append(CultureInfo.InvariantCulture, $"<c r=\"{r}\" s=\"{(int)cell.Style}\"><v>{s}</v></c>");
-                }
-                else
-                {
+                } else {
                     buf.Append(CultureInfo.InvariantCulture, $"<c r=\"{r}\"><v>{s}</v></c>");
                 }
-            }
-            else
-            {
+            } else {
                 string escaped = EscapeText(cell.StrVal);
                 buf.Append(CultureInfo.InvariantCulture, $"<c r=\"{r}\" t=\"inlineStr\"><is><t>{escaped}</t></is></c>");
             }
@@ -79,14 +66,11 @@ public sealed class XlsxWriter : IDisposable
     }
 
     /// <summary>Finalises the sheet XML and closes the ZIP archive.</summary>
-    public void Close()
-    {
-        if (_closed)
-        {
+    public void Close() {
+        if (_closed) {
             return;
         }
-        if (!_sheetStarted)
-        {
+        if (!_sheetStarted) {
             StartSheet();
             _sheetStarted = true;
         }
@@ -96,26 +80,21 @@ public sealed class XlsxWriter : IDisposable
         _closed = true;
     }
 
-    public void Dispose()
-    {
-        if (!_closed)
-        {
+    public void Dispose() {
+        if (!_closed) {
             _zip.Dispose();
             _closed = true;
         }
     }
 
-    private void StartSheet()
-    {
+    private void StartSheet() {
         var sb = new StringBuilder();
         sb.Append("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>");
         sb.Append("<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\">");
         sb.Append("<sheetFormatPr defaultRowHeight=\"15\"/>");
-        if (_colWidths.Length > 0)
-        {
+        if (_colWidths.Length > 0) {
             sb.Append("<cols>");
-            for (int i = 0; i < _colWidths.Length; i++)
-            {
+            for (int i = 0; i < _colWidths.Length; i++) {
                 int col = i + 1;
                 string width = _colWidths[i].ToString("F2", CultureInfo.InvariantCulture);
                 sb.Append(CultureInfo.InvariantCulture, $"<col min=\"{col}\" max=\"{col}\" width=\"{width}\" customWidth=\"1\"/>");
@@ -126,16 +105,13 @@ public sealed class XlsxWriter : IDisposable
         _sheet = sb;
     }
 
-    private void WriteStaticEntries()
-    {
-        foreach (var (name, content) in StaticEntries)
-        {
+    private void WriteStaticEntries() {
+        foreach (var (name, content) in StaticEntries) {
             WriteEntry(name, content);
         }
     }
 
-    private void WriteEntry(string name, string content)
-    {
+    private void WriteEntry(string name, string content) {
         var entry = _zip.CreateEntry(name, CompressionLevel.Optimal);
         using var s = entry.Open();
         var bytes = Encoding.UTF8.GetBytes(content);
@@ -146,13 +122,10 @@ public sealed class XlsxWriter : IDisposable
     /// Mirror of Go encoding/xml.EscapeText: escapes &lt; &gt; &amp; ' " and the
     /// control chars \t \n \r as numeric entities.
     /// </summary>
-    private static string EscapeText(string s)
-    {
+    private static string EscapeText(string s) {
         var sb = new StringBuilder(s.Length);
-        foreach (char c in s)
-        {
-            switch (c)
-            {
+        foreach (char c in s) {
+            switch (c) {
                 case '"':
                     sb.Append("&#34;");
                     break;

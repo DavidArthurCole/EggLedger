@@ -10,10 +10,8 @@ namespace EggLedger.Desktop.Export;
 /// sink. Call AFTER AddEggLedgerWeb so this override wins. The concrete
 /// <see cref="DownloadService"/> is dropped too so the JS-shim path cannot resolve.
 /// </summary>
-public static class DesktopExportRegistration
-{
-    public static IServiceCollection AddDesktopExportSink(this IServiceCollection services)
-    {
+public static class DesktopExportRegistration {
+    public static IServiceCollection AddDesktopExportSink(this IServiceCollection services) {
         services.RemoveAll<IDownloadService>();
         services.RemoveAll<DownloadService>();
         services.AddScoped<IDownloadService>(sp =>

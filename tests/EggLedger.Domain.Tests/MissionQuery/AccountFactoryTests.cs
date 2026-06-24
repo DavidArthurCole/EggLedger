@@ -3,15 +3,12 @@ using Ei;
 
 namespace EggLedger.Domain.Tests.MissionQuery;
 
-public sealed class AccountFactoryTests
-{
+public sealed class AccountFactoryTests {
     private const string Eid = "EI1234567890123456";
 
     [Fact]
-    public void CarriesIdAndNickname()
-    {
-        var backup = new Backup
-        {
+    public void CarriesIdAndNickname() {
+        var backup = new Backup {
             UserName = "Alice",
             game = new Backup.Game { SoulEggsD = 0, EggsOfProphecy = 0 },
         };
@@ -23,10 +20,8 @@ public sealed class AccountFactoryTests
     }
 
     [Fact]
-    public void AbbreviatesSoulEggsAndCountsProphecy()
-    {
-        var backup = new Backup
-        {
+    public void AbbreviatesSoulEggsAndCountsProphecy() {
+        var backup = new Backup {
             UserName = "Bob",
             game = new Backup.Game { SoulEggsD = 1_500_000_000, EggsOfProphecy = 42 },
         };
@@ -39,10 +34,8 @@ public sealed class AccountFactoryTests
     }
 
     [Fact]
-    public void SumsTruthEggsAcrossVirtueSlice()
-    {
-        var backup = new Backup
-        {
+    public void SumsTruthEggsAcrossVirtueSlice() {
+        var backup = new Backup {
             UserName = "Carol",
             game = new Backup.Game(),
             virtue = new Backup.Virtue { EovEarneds = [3, 5, 7] },
@@ -54,10 +47,8 @@ public sealed class AccountFactoryTests
     }
 
     [Fact]
-    public void NoVirtueMeansZeroTruthEggs()
-    {
-        var backup = new Backup
-        {
+    public void NoVirtueMeansZeroTruthEggs() {
+        var backup = new Backup {
             UserName = "Dave",
             game = new Backup.Game(),
         };
@@ -68,13 +59,11 @@ public sealed class AccountFactoryTests
     }
 
     [Fact]
-    public void EbStringMatchesRoleFromEbShaping()
-    {
+    public void EbStringMatchesRoleFromEbShaping() {
         // A base game with no SE/PE/TE produces a small EB; the string is the
         // role-precision-formatted value plus the OOM addendum. Assert it is
         // non-empty and free of a leading sign, i.e. it round-trips the shaping.
-        var backup = new Backup
-        {
+        var backup = new Backup {
             UserName = "Eve",
             game = new Backup.Game { SoulEggsD = 250, EggsOfProphecy = 1 },
         };
@@ -86,10 +75,8 @@ public sealed class AccountFactoryTests
     }
 
     [Fact]
-    public void ToKnownAccountProjectsHeaderSubset()
-    {
-        var info = new AccountInfo
-        {
+    public void ToKnownAccountProjectsHeaderSubset() {
+        var info = new AccountInfo {
             Id = Eid,
             Nickname = "Frank",
             EBString = "1.23q",

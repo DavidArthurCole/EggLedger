@@ -3,18 +3,15 @@ using EggLedger.Web.Data;
 
 namespace EggLedger.Web.Tests.Data;
 
-public sealed class IndexedDbMissionDbTests
-{
+public sealed class IndexedDbMissionDbTests {
     private const string Eid = "EI1";
 
-    private sealed class NoWeights : IWeightData
-    {
+    private sealed class NoWeights : IWeightData {
         public double CraftingWeight(long artifactId, long level) => 1;
         public IReadOnlyList<int> FamilyAfxIds(string familyId) => Array.Empty<int>();
     }
 
-    private static MissionRow Mission(string id, int ship, double start) => new()
-    {
+    private static MissionRow Mission(string id, int ship, double start) => new() {
         PlayerId = Eid,
         MissionId = id,
         Ship = ship,
@@ -25,8 +22,7 @@ public sealed class IndexedDbMissionDbTests
     };
 
     [Fact]
-    public async Task RunReportAsync_AggregateByShip_RunsEndToEnd()
-    {
+    public async Task RunReportAsync_AggregateByShip_RunsEndToEnd() {
         var db = new FakeIndexedDb();
         db.Seed("mission", Mission("a", ship: 9, start: 100));
         db.Seed("mission", Mission("b", ship: 9, start: 200));
@@ -34,8 +30,7 @@ public sealed class IndexedDbMissionDbTests
         db.Seed("mission", Mission("other", ship: 9, start: 400) with { PlayerId = "EI2" });
 
         var sut = new IndexedDbMissionDb(db, new NoWeights());
-        var def = new ReportDefinition
-        {
+        var def = new ReportDefinition {
             Mode = "aggregate",
             GroupBy = "ship_type",
             Subject = "missions",
@@ -51,12 +46,10 @@ public sealed class IndexedDbMissionDbTests
     }
 
     [Fact]
-    public async Task RunReportAsync_DropBasedByRarity_ReadsDropStore()
-    {
+    public async Task RunReportAsync_DropBasedByRarity_ReadsDropStore() {
         var db = new FakeIndexedDb();
         db.Seed("mission", Mission("a", ship: 9, start: 100));
-        db.Seed("artifact_drops", new ArtifactDropRow
-        {
+        db.Seed("artifact_drops", new ArtifactDropRow {
             PlayerId = Eid,
             MissionId = "a",
             DropIndex = 0,
@@ -64,8 +57,7 @@ public sealed class IndexedDbMissionDbTests
             Rarity = 3,
             Level = 2,
         });
-        db.Seed("artifact_drops", new ArtifactDropRow
-        {
+        db.Seed("artifact_drops", new ArtifactDropRow {
             PlayerId = Eid,
             MissionId = "a",
             DropIndex = 1,
@@ -73,8 +65,7 @@ public sealed class IndexedDbMissionDbTests
             Rarity = 3,
             Level = 1,
         });
-        db.Seed("artifact_drops", new ArtifactDropRow
-        {
+        db.Seed("artifact_drops", new ArtifactDropRow {
             PlayerId = Eid,
             MissionId = "a",
             DropIndex = 2,
@@ -83,8 +74,7 @@ public sealed class IndexedDbMissionDbTests
             Level = 0,
         });
         // Other player's drop must be ignored.
-        db.Seed("artifact_drops", new ArtifactDropRow
-        {
+        db.Seed("artifact_drops", new ArtifactDropRow {
             PlayerId = "EI2",
             MissionId = "z",
             DropIndex = 0,
@@ -94,8 +84,7 @@ public sealed class IndexedDbMissionDbTests
         });
 
         var sut = new IndexedDbMissionDb(db, new NoWeights());
-        var def = new ReportDefinition
-        {
+        var def = new ReportDefinition {
             Mode = "aggregate",
             GroupBy = "rarity",
             Subject = "artifacts",
@@ -111,12 +100,10 @@ public sealed class IndexedDbMissionDbTests
     }
 
     [Fact]
-    public async Task RunReportAsync_EmptyWhenNoRows()
-    {
+    public async Task RunReportAsync_EmptyWhenNoRows() {
         var db = new FakeIndexedDb();
         var sut = new IndexedDbMissionDb(db, new NoWeights());
-        var def = new ReportDefinition
-        {
+        var def = new ReportDefinition {
             Mode = "aggregate",
             GroupBy = "ship_type",
             Subject = "missions",

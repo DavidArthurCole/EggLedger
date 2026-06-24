@@ -8,11 +8,9 @@ namespace EggLedger.Desktop.Tests;
 /// replicate a directory tree. Bootstrap-redirect resolution is verified through
 /// the resolvers' fallback branch (no bootstrap.json present in the test env).
 /// </summary>
-public sealed class StoragePathsTests
-{
+public sealed class StoragePathsTests {
     [Fact]
-    public void Resolvers_FallBackToRootDir_WhenNoBootstrap()
-    {
+    public void Resolvers_FallBackToRootDir_WhenNoBootstrap() {
         // In the test environment there is normally no EggLedger/bootstrap.json, so
         // the resolvers must fall back to rootDir-relative paths. If a developer's
         // machine happens to have one, the data_root_dir branch is exercised instead;
@@ -31,11 +29,9 @@ public sealed class StoragePathsTests
     }
 
     [Fact]
-    public void CopyFile_CreatesDestinationDirectory()
-    {
+    public void CopyFile_CreatesDestinationDirectory() {
         var baseDir = Path.Combine(Path.GetTempPath(), "egl_copy_" + Guid.NewGuid().ToString("N"));
-        try
-        {
+        try {
             var src = Path.Combine(baseDir, "src.txt");
             Directory.CreateDirectory(baseDir);
             File.WriteAllText(src, "hello");
@@ -45,22 +41,17 @@ public sealed class StoragePathsTests
 
             Assert.True(File.Exists(dst));
             Assert.Equal("hello", File.ReadAllText(dst));
-        }
-        finally
-        {
-            if (Directory.Exists(baseDir))
-            {
+        } finally {
+            if (Directory.Exists(baseDir)) {
                 Directory.Delete(baseDir, recursive: true);
             }
         }
     }
 
     [Fact]
-    public void CopyDir_ReplicatesTree()
-    {
+    public void CopyDir_ReplicatesTree() {
         var baseDir = Path.Combine(Path.GetTempPath(), "egl_copydir_" + Guid.NewGuid().ToString("N"));
-        try
-        {
+        try {
             var src = Path.Combine(baseDir, "src");
             Directory.CreateDirectory(Path.Combine(src, "sub"));
             File.WriteAllText(Path.Combine(src, "a.txt"), "A");
@@ -71,11 +62,8 @@ public sealed class StoragePathsTests
 
             Assert.Equal("A", File.ReadAllText(Path.Combine(dst, "a.txt")));
             Assert.Equal("B", File.ReadAllText(Path.Combine(dst, "sub", "b.txt")));
-        }
-        finally
-        {
-            if (Directory.Exists(baseDir))
-            {
+        } finally {
+            if (Directory.Exists(baseDir)) {
                 Directory.Delete(baseDir, recursive: true);
             }
         }

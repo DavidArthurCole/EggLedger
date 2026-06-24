@@ -10,14 +10,12 @@ namespace EggLedger.Desktop.Tests;
 /// on: composite keys, the player_id/account_id index, blob+bool columns, the
 /// autoIncrement drops store, and upsert-on-conflict.
 /// </summary>
-public sealed class SqliteIndexedDbTests : IDisposable
-{
+public sealed class SqliteIndexedDbTests : IDisposable {
     private readonly SqliteDatabase _missionDb;
     private readonly SqliteDatabase _reportDb;
     private readonly SqliteIndexedDb _db;
 
-    public SqliteIndexedDbTests()
-    {
+    public SqliteIndexedDbTests() {
         var tag = Guid.NewGuid().ToString("N");
         _missionDb = SqliteDatabase.Open($"Data Source=m_{tag};Mode=Memory;Cache=Shared");
         _reportDb = SqliteDatabase.Open($"Data Source=r_{tag};Mode=Memory;Cache=Shared");
@@ -26,15 +24,13 @@ public sealed class SqliteIndexedDbTests : IDisposable
         _db = new SqliteIndexedDb(_missionDb, _reportDb);
     }
 
-    public void Dispose()
-    {
+    public void Dispose() {
         _missionDb.Dispose();
         _reportDb.Dispose();
     }
 
     [Fact]
-    public async Task Settings_PutGetRoundTrip()
-    {
+    public async Task Settings_PutGetRoundTrip() {
         await _db.PutAsync("settings", new SettingRow { Key = "theme", Value = "dark" });
         var row = await _db.GetAsync<SettingRow>("settings", "theme");
         Assert.NotNull(row);
@@ -47,11 +43,9 @@ public sealed class SqliteIndexedDbTests : IDisposable
     }
 
     [Fact]
-    public async Task Mission_CompositeKeyAndBlobAndBool()
-    {
+    public async Task Mission_CompositeKeyAndBlobAndBool() {
         var payload = new byte[] { 1, 2, 3, 250, 255 };
-        var mission = new MissionRow
-        {
+        var mission = new MissionRow {
             PlayerId = "EI1",
             MissionId = "abc",
             StartTimestamp = 1700000000,
@@ -80,8 +74,7 @@ public sealed class SqliteIndexedDbTests : IDisposable
     }
 
     [Fact]
-    public async Task Mission_GetAllByPlayerIndex()
-    {
+    public async Task Mission_GetAllByPlayerIndex() {
         await _db.PutAsync("mission", Mission("EI1", "m1"));
         await _db.PutAsync("mission", Mission("EI1", "m2"));
         await _db.PutAsync("mission", Mission("EI2", "m3"));
@@ -92,8 +85,7 @@ public sealed class SqliteIndexedDbTests : IDisposable
     }
 
     [Fact]
-    public async Task ArtifactDrops_AutoIncrementInsert()
-    {
+    public async Task ArtifactDrops_AutoIncrementInsert() {
         await _db.PutManyAsync("artifact_drops", new object[]
         {
             new ArtifactDropRow { MissionId = "m1", PlayerId = "EI1", DropIndex = 0, ArtifactId = 12, SpecType = "Artifact", Level = 1, Rarity = 0, Quality = 1.5 },
@@ -107,10 +99,8 @@ public sealed class SqliteIndexedDbTests : IDisposable
     }
 
     [Fact]
-    public async Task Reports_RoutedToReportDb_WithBoolAndNullableColumns()
-    {
-        var report = new ReportRow
-        {
+    public async Task Reports_RoutedToReportDb_WithBoolAndNullableColumns() {
+        var report = new ReportRow {
             Id = "r1",
             AccountId = "EI1",
             Name = "Test",
@@ -138,8 +128,7 @@ public sealed class SqliteIndexedDbTests : IDisposable
     }
 
     [Fact]
-    public async Task Delete_And_Count_And_Clear()
-    {
+    public async Task Delete_And_Count_And_Clear() {
         await _db.PutAsync("settings", new SettingRow { Key = "a", Value = "1" });
         await _db.PutAsync("settings", new SettingRow { Key = "b", Value = "2" });
         Assert.Equal(2, await _db.CountAsync("settings"));
@@ -152,13 +141,11 @@ public sealed class SqliteIndexedDbTests : IDisposable
     }
 
     [Fact]
-    public async Task ReportStore_OverSqlite_CrudWorks()
-    {
+    public async Task ReportStore_OverSqlite_CrudWorks() {
         // The concrete IndexedDbReportStore unchanged, backed by SQLite via the
         // IIndexedDb seam. Proves the browser store layer works natively.
         var store = new IndexedDbReportStore(_db, now: () => 1234);
-        await store.InsertReportAsync(new ReportRow
-        {
+        await store.InsertReportAsync(new ReportRow {
             Id = "r1",
             AccountId = "EI1",
             Name = "R1",
@@ -168,8 +155,7 @@ public sealed class SqliteIndexedDbTests : IDisposable
             GroupBy = "ship_type",
             SortOrder = 0,
         });
-        await store.InsertReportAsync(new ReportRow
-        {
+        await store.InsertReportAsync(new ReportRow {
             Id = "r2",
             AccountId = "EI1",
             Name = "R2",
@@ -191,14 +177,12 @@ public sealed class SqliteIndexedDbTests : IDisposable
     }
 
     [Fact]
-    public async Task Backup_RoundTripTimestampAndPayload()
-    {
+    public async Task Backup_RoundTripTimestampAndPayload() {
         // Direct store round-trip against the migrated backup table (id PK,
         // backed_up_at column). Catches the recorded_at/backed_up_at + ON CONFLICT
         // bugs: an INSERT against a stale column name or a missing UNIQUE would throw.
         var payload = new byte[] { 9, 8, 7, 254, 255, 0 };
-        await _db.PutAsync("backup", new BackupRow
-        {
+        await _db.PutAsync("backup", new BackupRow {
             PlayerId = "EI1",
             RecordedAt = 1700000000d,
             Payload = payload,
@@ -211,8 +195,7 @@ public sealed class SqliteIndexedDbTests : IDisposable
         Assert.Equal(payload, got.Payload);
 
         // Put-by-player_id keeps a single row per player (browser keyPath semantics).
-        await _db.PutAsync("backup", new BackupRow
-        {
+        await _db.PutAsync("backup", new BackupRow {
             PlayerId = "EI1",
             RecordedAt = 1700000500d,
             Payload = [1],
@@ -223,8 +206,7 @@ public sealed class SqliteIndexedDbTests : IDisposable
     }
 
     [Fact]
-    public async Task InsertBackup_RoundTripAndTwelveHourDedup()
-    {
+    public async Task InsertBackup_RoundTripAndTwelveHourDedup() {
         // Through the real IndexedDbMissionStore.InsertBackupAsync over migrated
         // SQLite: the timestamp+payload survive and the 12h min-gap dedup works.
         var store = new IndexedDbMissionStore(_db, new EggLedger.Domain.Api.LocalApiPayloadDecoder(new EggLedger.Domain.Api.ApiClient()));
@@ -255,8 +237,7 @@ public sealed class SqliteIndexedDbTests : IDisposable
         Assert.Equal(1, await _db.CountAsync("backup"));
     }
 
-    private static byte[] Gunzip(byte[] data)
-    {
+    private static byte[] Gunzip(byte[] data) {
         using var input = new MemoryStream(data, writable: false);
         using var gzip = new GZipStream(input, CompressionMode.Decompress);
         using var output = new MemoryStream();
@@ -264,8 +245,7 @@ public sealed class SqliteIndexedDbTests : IDisposable
         return output.ToArray();
     }
 
-    private static MissionRow Mission(string player, string mission) => new()
-    {
+    private static MissionRow Mission(string player, string mission) => new() {
         PlayerId = player,
         MissionId = mission,
         StartTimestamp = 1700000000,

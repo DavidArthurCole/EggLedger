@@ -7,8 +7,7 @@ namespace EggLedger.Domain.Eiafx;
 /// Default <see cref="IEiafxConfigSource"/>: lazily decodes the embedded eiafx-config.bin once.
 /// Wire-equivalent to Go loading eiafx-config-min.json.
 /// </summary>
-public sealed class EmbeddedEiafxConfigSource : IEiafxConfigSource
-{
+public sealed class EmbeddedEiafxConfigSource : IEiafxConfigSource {
     /// <summary>Shared default instance.</summary>
     public static readonly EmbeddedEiafxConfigSource Instance = new();
 
@@ -19,8 +18,7 @@ public sealed class EmbeddedEiafxConfigSource : IEiafxConfigSource
     /// <inheritdoc />
     public ArtifactsConfigurationResponse Config => _config.Value;
 
-    private static ArtifactsConfigurationResponse LoadEmbedded()
-    {
+    private static ArtifactsConfigurationResponse LoadEmbedded() {
         var asm = typeof(EmbeddedEiafxConfigSource).Assembly;
         using var stream = asm.GetManifestResourceStream(ResourceName)
             ?? throw new InvalidOperationException(

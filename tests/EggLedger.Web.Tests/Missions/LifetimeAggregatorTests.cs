@@ -9,8 +9,7 @@ namespace EggLedger.Web.Tests.Missions;
 /// empty-artifacts history: a representative non-empty input MUST produce
 /// non-empty grouped output, and drops must land in the right spec-type bucket.
 /// </summary>
-public sealed class LifetimeAggregatorTests
-{
+public sealed class LifetimeAggregatorTests {
     private static MissionDrop Drop(
         int id,
         string spec,
@@ -19,8 +18,7 @@ public sealed class LifetimeAggregatorTests
         string name = "X",
         double quality = 0,
         int iv = 0) =>
-        new()
-        {
+        new() {
             Id = id,
             SpecType = spec,
             Name = name,
@@ -31,19 +29,16 @@ public sealed class LifetimeAggregatorTests
             IVOrder = iv,
         };
 
-    private static Dictionary<string, List<MissionDrop>> Missions(params (string Id, MissionDrop[] Drops)[] missions)
-    {
+    private static Dictionary<string, List<MissionDrop>> Missions(params (string Id, MissionDrop[] Drops)[] missions) {
         var d = new Dictionary<string, List<MissionDrop>>();
-        foreach (var (id, drops) in missions)
-        {
+        foreach (var (id, drops) in missions) {
             d[id] = [.. drops];
         }
         return d;
     }
 
     [Fact]
-    public void Aggregate_RepresentativeInput_ProducesNonEmptyGroups()
-    {
+    public void Aggregate_RepresentativeInput_ProducesNonEmptyGroups() {
         // The historical empty-artifacts guard: a real spread of spec types must
         // aggregate to NON-EMPTY grouped lists, one per bucket.
         var input = Missions(
@@ -69,8 +64,7 @@ public sealed class LifetimeAggregatorTests
     }
 
     [Fact]
-    public void Aggregate_CombinesIdenticalDropsAndSumsCount()
-    {
+    public void Aggregate_CombinesIdenticalDropsAndSumsCount() {
         // Same id+level+rarity across two missions -> one representative, count 2.
         var input = Missions(
             ("m1", new[] { Drop(1, "Artifact", level: 5, rarity: 2) }),
@@ -83,8 +77,7 @@ public sealed class LifetimeAggregatorTests
     }
 
     [Fact]
-    public void Aggregate_MergeKeyIsIdLevelRarity_NotName()
-    {
+    public void Aggregate_MergeKeyIsIdLevelRarity_NotName() {
         // The Vue key is id_level_rarity (NOT name, NOT specType). Same id but
         // different level => two representatives.
         var input = Missions(
@@ -102,8 +95,7 @@ public sealed class LifetimeAggregatorTests
     }
 
     [Fact]
-    public void Aggregate_DifferentRarity_AreSeparateGroups()
-    {
+    public void Aggregate_DifferentRarity_AreSeparateGroups() {
         var input = Missions(
             ("m1", new[]
             {
@@ -117,8 +109,7 @@ public sealed class LifetimeAggregatorTests
     }
 
     [Fact]
-    public void Aggregate_RoutesEachSpecTypeToItsBucket()
-    {
+    public void Aggregate_RoutesEachSpecTypeToItsBucket() {
         var input = Missions(
             ("m1", new[]
             {
@@ -137,8 +128,7 @@ public sealed class LifetimeAggregatorTests
     }
 
     [Fact]
-    public void Aggregate_UnknownSpecType_IsDropped()
-    {
+    public void Aggregate_UnknownSpecType_IsDropped() {
         // A spec type the Vue split would not match falls through (no bucket).
         var input = Missions(("m1", new[] { Drop(1, "Mystery") }));
 
@@ -151,8 +141,7 @@ public sealed class LifetimeAggregatorTests
     }
 
     [Fact]
-    public void Aggregate_FirstOccurrenceIsRepresentative_PreservesOrder()
-    {
+    public void Aggregate_FirstOccurrenceIsRepresentative_PreservesOrder() {
         var input = Missions(
             ("m1", new[]
             {
@@ -167,8 +156,7 @@ public sealed class LifetimeAggregatorTests
     }
 
     [Fact]
-    public void Aggregate_PreservesDisplayFields()
-    {
+    public void Aggregate_PreservesDisplayFields() {
         var input = Missions(
             ("m1", new[] { Drop(9, "Artifact", level: 3, rarity: 2, name: "QUANTUM", quality: 4.5, iv: 7) }));
 
@@ -185,8 +173,7 @@ public sealed class LifetimeAggregatorTests
     }
 
     [Fact]
-    public void Aggregate_EmptyInput_GivesEmptyGroupsAndZeroCount()
-    {
+    public void Aggregate_EmptyInput_GivesEmptyGroupsAndZeroCount() {
         var result = LifetimeAggregator.Aggregate(new Dictionary<string, List<MissionDrop>>());
 
         Assert.Empty(result.Artifacts);

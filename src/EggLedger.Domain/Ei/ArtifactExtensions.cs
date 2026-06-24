@@ -8,18 +8,15 @@ namespace EggLedger.Domain.Ei;
 /// Port of Go ei/artifacts.go: display + classification for ArtifactSpec and its enums. Go
 /// pointer-presence (a.Name == nil) maps to the protobuf-net ShouldSerialize* guards.
 /// </summary>
-public static class ArtifactExtensions
-{
+public static class ArtifactExtensions {
     private static LedgerDisplayData Config => LedgerData.LedgerData.Config;
 
     // ArtifactSpec.Name (enum) methods.
 
     /// <summary>GameName is in all caps. Use CasedName for cased version.</summary>
-    public static string GameName(this ArtifactSpec.Name a)
-    {
+    public static string GameName(this ArtifactSpec.Name a) {
         string name = EnumNames.ProtoName(a).Replace("_", " ");
-        switch (a)
-        {
+        switch (a) {
             case ArtifactSpec.Name.VialMartianDust:
                 name = "VIAL OF MARTIAN DUST";
                 break;
@@ -39,12 +36,9 @@ public static class ArtifactExtensions
     public static int InventoryVisualizerOrder(this ArtifactSpec.Name a) =>
         Config.InventoryVisualizerOrder.TryGetValue(EnumNames.ProtoName(a), out var order) ? order : 0;
 
-    public static ArtifactSpec.Type ArtifactType(this ArtifactSpec.Name a)
-    {
-        if (Config.ArtifactTypes.TryGetValue(EnumNames.ProtoName(a), out var t))
-        {
-            switch (t)
-            {
+    public static ArtifactSpec.Type ArtifactType(this ArtifactSpec.Name a) {
+        if (Config.ArtifactTypes.TryGetValue(EnumNames.ProtoName(a), out var t)) {
+            switch (t) {
                 case "ARTIFACT":
                     return ArtifactSpec.Type.Artifact;
                 case "STONE":
@@ -66,24 +60,19 @@ public static class ArtifactExtensions
         a.ArtifactType() == ArtifactSpec.Type.StoneIngredient ? a.CorrespondingStone() : a;
 
     /// <summary>Corresponding stone for a stone fragment. Undefined for non-fragments.</summary>
-    public static ArtifactSpec.Name CorrespondingStone(this ArtifactSpec.Name a)
-    {
+    public static ArtifactSpec.Name CorrespondingStone(this ArtifactSpec.Name a) {
         if (Config.StoneFragmentMap.TryGetValue(EnumNames.ProtoName(a), out var stone)
-            && EnumNames.TryValue<ArtifactSpec.Name>(stone, out var val))
-        {
+            && EnumNames.TryValue<ArtifactSpec.Name>(stone, out var val)) {
             return val;
         }
         return ArtifactSpec.Name.Unknown;
     }
 
     /// <summary>Corresponding stone fragment for a stone. Undefined for non-stones.</summary>
-    public static ArtifactSpec.Name CorrespondingFragment(this ArtifactSpec.Name a)
-    {
+    public static ArtifactSpec.Name CorrespondingFragment(this ArtifactSpec.Name a) {
         string target = EnumNames.ProtoName(a);
-        foreach (var (fragment, stone) in Config.StoneFragmentMap)
-        {
-            if (stone == target && EnumNames.TryValue<ArtifactSpec.Name>(fragment, out var val))
-            {
+        foreach (var (fragment, stone) in Config.StoneFragmentMap) {
+            if (stone == target && EnumNames.TryValue<ArtifactSpec.Name>(fragment, out var val)) {
                 return val;
             }
         }
@@ -92,34 +81,27 @@ public static class ArtifactExtensions
 
     // ArtifactSpec (message) methods.
 
-    public static string GenericBenefitString(this ArtifactSpec a)
-    {
-        if (!a.ShouldSerializename())
-        {
+    public static string GenericBenefitString(this ArtifactSpec a) {
+        if (!a.ShouldSerializename()) {
             return "";
         }
         return Config.GenericBenefitStrings.TryGetValue(EnumNames.ProtoName(a.name), out var s) ? s : "";
     }
 
-    public static string DropEffectString(this ArtifactSpec a)
-    {
-        if (!a.ShouldSerializename())
-        {
+    public static string DropEffectString(this ArtifactSpec a) {
+        if (!a.ShouldSerializename()) {
             return "";
         }
         if (!Config.ArtifactEffects.TryGetValue(EnumNames.ProtoName(a.name), out var effects)
-            || !a.ShouldSerializelevel() || (int)a.level >= effects.Length)
-        {
+            || !a.ShouldSerializelevel() || (int)a.level >= effects.Length) {
             return "";
         }
         var row = effects[(int)a.level];
-        if (!a.ShouldSerializerarity() || (int)a.rarity >= row.Length)
-        {
+        if (!a.ShouldSerializerarity() || (int)a.rarity >= row.Length) {
             return "";
         }
         var v = row[(int)a.rarity];
-        if (v == "")
-        {
+        if (v == "") {
             return "";
         }
         return "[" + v + "]";
@@ -129,66 +111,52 @@ public static class ArtifactExtensions
     /// Combines the artifact's specific value with its generic benefit description. Special !! values
     /// are returned as-is; normal values substitute into the generic template where [^b] appears.
     /// </summary>
-    public static string CombinedEffectString(this ArtifactSpec a)
-    {
-        if (!a.ShouldSerializename())
-        {
+    public static string CombinedEffectString(this ArtifactSpec a) {
+        if (!a.ShouldSerializename()) {
             return "";
         }
         if (!Config.ArtifactEffects.TryGetValue(EnumNames.ProtoName(a.name), out var effects)
-            || !a.ShouldSerializelevel() || (int)a.level >= effects.Length)
-        {
+            || !a.ShouldSerializelevel() || (int)a.level >= effects.Length) {
             return "";
         }
         var row = effects[(int)a.level];
-        if (!a.ShouldSerializerarity() || (int)a.rarity >= row.Length)
-        {
+        if (!a.ShouldSerializerarity() || (int)a.rarity >= row.Length) {
             return "";
         }
         var v = row[(int)a.rarity];
-        if (v == "")
-        {
+        if (v == "") {
             return "";
         }
-        if (v.StartsWith("!!", StringComparison.Ordinal))
-        {
+        if (v.StartsWith("!!", StringComparison.Ordinal)) {
             return v;
         }
         var generic = a.GenericBenefitString();
-        if (generic != "")
-        {
-            if (generic.Contains("[^b]", StringComparison.Ordinal))
-            {
+        if (generic != "") {
+            if (generic.Contains("[^b]", StringComparison.Ordinal)) {
                 return ReplaceFirst(generic, "[^b]", "[" + v + "]");
             }
-            if (generic.Contains("[+^b]", StringComparison.Ordinal))
-            {
+            if (generic.Contains("[+^b]", StringComparison.Ordinal)) {
                 return ReplaceFirst(generic, "[+^b]", "[+" + v + "]");
             }
-            if (generic.Contains("[-^b]", StringComparison.Ordinal))
-            {
+            if (generic.Contains("[-^b]", StringComparison.Ordinal)) {
                 return ReplaceFirst(generic, "[-^b]", "[-" + v + "]");
             }
         }
         return "[" + v + "]";
     }
 
-    public static string DisplayTierName(this ArtifactSpec a, bool includeSpace)
-    {
+    public static string DisplayTierName(this ArtifactSpec a, bool includeSpace) {
         var tierName = a.TierName();
-        if (tierName == "REGULAR")
-        {
+        if (tierName == "REGULAR") {
             return "";
         }
         return includeSpace ? tierName + " " : tierName;
     }
 
     /// <summary>GameName is in all caps. Use CasedName for cased version.</summary>
-    public static string GameName(this ArtifactSpec a)
-    {
+    public static string GameName(this ArtifactSpec a) {
         string baseName = "";
-        switch (a.name)
-        {
+        switch (a.name) {
             // Artifacts
             case ArtifactSpec.Name.LunarTotem:
                 baseName = "LUNAR TOTEM";
@@ -298,8 +266,7 @@ public static class ArtifactExtensions
                 return EnumNames.ProtoName(a.name).Replace("_", " ");
             // Ingredients
             case ArtifactSpec.Name.GoldMeteorite:
-                switch (a.level)
-                {
+                switch (a.level) {
                     case ArtifactSpec.Level.Inferior:
                         return "TINY GOLD METEORITE";
                     case ArtifactSpec.Level.Lesser:
@@ -309,8 +276,7 @@ public static class ArtifactExtensions
                 }
                 break;
             case ArtifactSpec.Name.TauCetiGeode:
-                switch (a.level)
-                {
+                switch (a.level) {
                     case ArtifactSpec.Level.Inferior:
                         return "TAU CETI GEODE PIECE";
                     case ArtifactSpec.Level.Lesser:
@@ -320,8 +286,7 @@ public static class ArtifactExtensions
                 }
                 break;
             case ArtifactSpec.Name.SolarTitanium:
-                switch (a.level)
-                {
+                switch (a.level) {
                     case ArtifactSpec.Level.Inferior:
                         return "SOLAR TITANIUM ORE";
                     case ArtifactSpec.Level.Lesser:
@@ -360,10 +325,8 @@ public static class ArtifactExtensions
     /// </summary>
     public static ArtifactSpec.Name Family(this ArtifactSpec a) => a.name.Family();
 
-    public static int TierNumber(this ArtifactSpec a)
-    {
-        return a.Type() switch
-        {
+    public static int TierNumber(this ArtifactSpec a) {
+        return a.Type() switch {
             ArtifactSpec.Type.Artifact => (int)a.level + 1,
             ArtifactSpec.Type.Stone => (int)a.level + 2,
             ArtifactSpec.Type.StoneIngredient => 1,
@@ -372,17 +335,13 @@ public static class ArtifactExtensions
         };
     }
 
-    public static string TierName(this ArtifactSpec a)
-    {
-        if (!a.ShouldSerializename() || !a.ShouldSerializelevel())
-        {
+    public static string TierName(this ArtifactSpec a) {
+        if (!a.ShouldSerializename() || !a.ShouldSerializelevel()) {
             return "?";
         }
-        if (Config.ArtifactTierNames.TryGetValue(EnumNames.ProtoName(a.name), out var names))
-        {
+        if (Config.ArtifactTierNames.TryGetValue(EnumNames.ProtoName(a.name), out var names)) {
             int idx = (int)a.level;
-            if (idx >= 0 && idx < names.Length)
-            {
+            if (idx >= 0 && idx < names.Length) {
                 return names[idx];
             }
         }
@@ -392,11 +351,9 @@ public static class ArtifactExtensions
     public static string CasedTierName(this ArtifactSpec a) =>
         CultureInfo.GetCultureInfo("en-US").TextInfo.ToTitleCase(a.TierName().ToLowerInvariant());
 
-    public static string Display(this ArtifactSpec a)
-    {
+    public static string Display(this ArtifactSpec a) {
         string s = $"{a.CasedName()} (T{a.TierNumber()})";
-        if ((int)a.rarity > 0)
-        {
+        if ((int)a.rarity > 0) {
             s += $", {a.rarity.Display()}";
         }
         return s;
@@ -404,10 +361,8 @@ public static class ArtifactExtensions
 
     // ArtifactSpec.Rarity and ArtifactSpec.Type display.
 
-    public static string Display(this ArtifactSpec.Rarity r)
-    {
-        return r switch
-        {
+    public static string Display(this ArtifactSpec.Rarity r) {
+        return r switch {
             ArtifactSpec.Rarity.Common => "Common",
             ArtifactSpec.Rarity.Rare => "Rare",
             ArtifactSpec.Rarity.Epic => "Epic",
@@ -419,8 +374,7 @@ public static class ArtifactExtensions
     public static string Display(this ArtifactSpec.Type t) =>
         new[] { "Artifact", "Stone", "Ingredient", "Stone ingredient" }[(int)t];
 
-    private static string CapitalizeArtifactName(string n)
-    {
+    private static string CapitalizeArtifactName(string n) {
         n = char.ToUpperInvariant(n[0]) + n[1..];
         // Capitalize proper nouns.
         var replacements = new (string from, string to)[]
@@ -435,18 +389,15 @@ public static class ArtifactExtensions
             ("tau ceti", "Tau Ceti"),
             ("Tau ceti", "Tau Ceti"),
         };
-        foreach (var (from, to) in replacements)
-        {
+        foreach (var (from, to) in replacements) {
             n = n.Replace(from, to);
         }
         return n;
     }
 
-    private static string ReplaceFirst(string source, string oldValue, string newValue)
-    {
+    private static string ReplaceFirst(string source, string oldValue, string newValue) {
         int idx = source.IndexOf(oldValue, StringComparison.Ordinal);
-        if (idx < 0)
-        {
+        if (idx < 0) {
             return source;
         }
         return string.Concat(source.AsSpan(0, idx), newValue, source.AsSpan(idx + oldValue.Length));

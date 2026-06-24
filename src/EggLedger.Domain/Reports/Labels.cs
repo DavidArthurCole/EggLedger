@@ -9,8 +9,7 @@ namespace EggLedger.Domain.Reports;
 /// Raw-value to display-string conversion and sort ordering for report group-by dimensions.
 /// Port of Go reports/labels.go.
 /// </summary>
-public static class Labels
-{
+public static class Labels {
     private static readonly string[] RarityNames = ["Common", "Rare", "Epic", "Legendary"];
     private static readonly string[] TierNames = ["T1", "T2", "T3", "T4"];
 
@@ -20,13 +19,10 @@ public static class Labels
     /// Display name for an artifact enum value via ledgerdata.ArtifactTargets,
     /// falling back to CasedName. Port of Go artifactDisplayName.
     /// </summary>
-    private static string ArtifactDisplayName(int v)
-    {
+    private static string ArtifactDisplayName(int v) {
         var protoName = EnumNames.ProtoName((ArtifactSpec.Name)v);
-        foreach (var t in Config.ArtifactTargets)
-        {
-            if (t.Name == protoName)
-            {
+        foreach (var t in Config.ArtifactTargets) {
+            if (t.Name == protoName) {
                 return t.DisplayName;
             }
         }
@@ -44,14 +40,11 @@ public static class Labels
     /// True when rawA sorts before rawB for the groupBy. Numeric dimensions compare
     /// by integer, others ordinal. Port of Go LabelSortLess.
     /// </summary>
-    public static bool LabelSortLess(string groupBy, string rawA, string rawB)
-    {
-        if (NumericGroupBys.Contains(groupBy))
-        {
+    public static bool LabelSortLess(string groupBy, string rawA, string rawB) {
+        if (NumericGroupBys.Contains(groupBy)) {
             var okA = long.TryParse(rawA, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var a);
             var okB = long.TryParse(rawB, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var b);
-            if (okA && okB)
-            {
+            if (okA && okB) {
                 return a < b;
             }
         }
@@ -59,16 +52,13 @@ public static class Labels
     }
 
     /// <summary>Converts a raw SQL GROUP BY value to a display string. Port of Go FormatLabel.</summary>
-    public static string FormatLabel(string groupBy, string rawVal)
-    {
-        int ParseInt()
-        {
+    public static string FormatLabel(string groupBy, string rawVal) {
+        int ParseInt() {
             int.TryParse(rawVal, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var v);
             return v;
         }
 
-        switch (groupBy)
-        {
+        switch (groupBy) {
             case "ship_type":
                 return ((MissionInfo.Spaceship)ParseInt()).Name();
             case "duration_type":
@@ -79,12 +69,10 @@ public static class Labels
                 return ((MissionInfo.MissionType)ParseInt()).Display();
             case "mission_target":
                 var v = ParseInt();
-                if (v < 0)
-                {
+                if (v < 0) {
                     return "None (Pre 1.27)";
                 }
-                if (v == 0)
-                {
+                if (v == 0) {
                     return "Untargeted";
                 }
                 return ArtifactDisplayName(v);
@@ -92,15 +80,13 @@ public static class Labels
                 return ArtifactDisplayName(ParseInt());
             case "rarity":
                 var ri = ParseInt();
-                if (ri >= 0 && ri < RarityNames.Length)
-                {
+                if (ri >= 0 && ri < RarityNames.Length) {
                     return RarityNames[ri];
                 }
                 return rawVal;
             case "tier":
                 var ti = ParseInt();
-                if (ti >= 0 && ti < TierNames.Length)
-                {
+                if (ti >= 0 && ti < TierNames.Length) {
                     return TierNames[ti];
                 }
                 return rawVal;

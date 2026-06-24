@@ -9,8 +9,7 @@ public readonly record struct HeatmapCellStyle(string BackgroundColor, string Co
 /// Heatmap cell math. Port of ReportHeatmap.vue: intensity, base/unfilled color blending,
 /// relative-luminance text color, and the below-sample-threshold check.
 /// </summary>
-public static class HeatmapGeometry
-{
+public static class HeatmapGeometry {
     /// <summary>Whether a normalizeBy mode renders cells as percentages.</summary>
     public static bool IsPct(string? normalizeBy) =>
         normalizeBy is "row_pct" or "col_pct" or "global_pct";
@@ -26,10 +25,8 @@ public static class HeatmapGeometry
         int.Parse(hex.AsSpan(5, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture));
 
     /// <summary>WCAG relative luminance of an sRGB color. Port of relativeLuminance.</summary>
-    public static double RelativeLuminance(int r, int g, int b)
-    {
-        static double ToLinear(int c)
-        {
+    public static double RelativeLuminance(int r, int g, int b) {
+        static double ToLinear(int c) {
             double s = c / 255.0;
             return s <= 0.04045 ? s / 12.92 : Math.Pow((s + 0.055) / 1.055, 2.4);
         }
@@ -44,28 +41,22 @@ public static class HeatmapGeometry
         double value,
         double globalMax,
         string? normalizeBy,
-        double? colorValue)
-    {
-        if (colorValue is double cv)
-        {
+        double? colorValue) {
+        if (colorValue is double cv) {
             return Math.Max(0.12, cv > 0 ? Math.Min(cv / 2, 1) : 0);
         }
-        if (IsPct(normalizeBy))
-        {
+        if (IsPct(normalizeBy)) {
             return Math.Max(0.12, value / 100);
         }
-        if (normalizeBy == "ratio")
-        {
+        if (normalizeBy == "ratio") {
             return Math.Max(0.12, Math.Min(value / 2, 1));
         }
         return Math.Max(0.12, globalMax > 0 ? value / globalMax : 0);
     }
 
     /// <summary>Whether a cell is below the minimum sample size. Port of isBelowThreshold.</summary>
-    public static bool IsBelowThreshold(int? missionCount, int minSampleSize)
-    {
-        if (minSampleSize <= 0 || missionCount is null)
-        {
+    public static bool IsBelowThreshold(int? missionCount, int minSampleSize) {
+        if (minSampleSize <= 0 || missionCount is null) {
             return false;
         }
         return missionCount.Value < minSampleSize;
@@ -82,13 +73,11 @@ public static class HeatmapGeometry
         string unfilledColor,
         string? normalizeBy,
         double? colorValue,
-        bool belowThreshold)
-    {
+        bool belowThreshold) {
         string safeBase = SafeColor(baseColor, "#6366f1");
         string safeUnfilled = SafeColor(unfilledColor, "#1f2937");
 
-        if (belowThreshold || value == 0)
-        {
+        if (belowThreshold || value == 0) {
             var (ur, ug, ub) = HexToRgb(safeUnfilled);
             return new HeatmapCellStyle(
                 safeUnfilled,
@@ -110,26 +99,20 @@ public static class HeatmapGeometry
     /// Display string for a cell value (ratio/pct/integer/float); below-threshold returns "-".
     /// Port of displayValue.
     /// </summary>
-    public static string DisplayValue(double value, string? normalizeBy, bool belowThreshold)
-    {
-        if (belowThreshold)
-        {
+    public static string DisplayValue(double value, string? normalizeBy, bool belowThreshold) {
+        if (belowThreshold) {
             return "-";
         }
-        if (normalizeBy == "ratio")
-        {
-            if (value == 0)
-            {
+        if (normalizeBy == "ratio") {
+            if (value == 0) {
                 return "-";
             }
             return "x" + value.ToString("0.00", CultureInfo.InvariantCulture);
         }
-        if (value == 0)
-        {
+        if (value == 0) {
             return "0";
         }
-        if (IsPct(normalizeBy))
-        {
+        if (IsPct(normalizeBy)) {
             return value.ToString("0.0", CultureInfo.InvariantCulture) + "%";
         }
         return value % 1 == 0
@@ -141,18 +124,14 @@ public static class HeatmapGeometry
     /// Display string for the optional secondary sub-line (Menno dual_value); below-threshold
     /// returns empty, else 0/pct/integer/float (no ratio case). Port of secondaryDisplayValue.
     /// </summary>
-    public static string SecondaryDisplayValue(double value, string? normalizeBy, bool belowThreshold)
-    {
-        if (belowThreshold)
-        {
+    public static string SecondaryDisplayValue(double value, string? normalizeBy, bool belowThreshold) {
+        if (belowThreshold) {
             return "";
         }
-        if (value == 0)
-        {
+        if (value == 0) {
             return "0";
         }
-        if (IsPct(normalizeBy))
-        {
+        if (IsPct(normalizeBy)) {
             return value.ToString("0.0", CultureInfo.InvariantCulture) + "%";
         }
         return value % 1 == 0

@@ -12,15 +12,13 @@ namespace EggLedger.Desktop.Storage;
 /// Swaps IIndexedDb -&gt; SqliteIndexedDb and IReportRunner -&gt; SqliteReportRunner;
 /// the other stores are unchanged because they funnel through IIndexedDb.
 /// </summary>
-public static class DesktopStorageRegistration
-{
+public static class DesktopStorageRegistration {
     /// <summary>
     /// Opens the mission and report SQLite DBs under <paramref name="dataRootDir"/>
     /// (migrating to v9 / v12) and registers the SQLite services as singletons so
     /// the held connections live for the app lifetime.
     /// </summary>
-    public static IServiceCollection AddDesktopSqliteStorage(this IServiceCollection services, string dataRootDir)
-    {
+    public static IServiceCollection AddDesktopSqliteStorage(this IServiceCollection services, string dataRootDir) {
         var internalDir = StoragePaths.ResolveInternalDir(dataRootDir);
         var missionDbPath = Path.Combine(internalDir, "ledger.db");
         var reportDbPath = Path.Combine(internalDir, "reports.db");
@@ -37,8 +35,7 @@ public static class DesktopStorageRegistration
     /// overload above and directly by tests that hold in-memory DBs.
     /// </summary>
     public static IServiceCollection AddDesktopSqliteStorage(
-        this IServiceCollection services, SqliteDatabase missionDb, SqliteDatabase reportDb)
-    {
+        this IServiceCollection services, SqliteDatabase missionDb, SqliteDatabase reportDb) {
         services.AddSingleton(missionDb);
         services.AddSingleton(reportDb);
 

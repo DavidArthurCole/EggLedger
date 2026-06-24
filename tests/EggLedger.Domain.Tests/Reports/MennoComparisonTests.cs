@@ -7,13 +7,11 @@ namespace EggLedger.Domain.Tests.Reports;
 /// computed properties in ReportCard.vue (mennoAirtimeResult, userPerMissionResult,
 /// ratioMatrix, ratioResult) plus the ShouldRender gating.
 /// </summary>
-public class MennoComparisonTests
-{
+public class MennoComparisonTests {
     private static ReportResult Heatmap2D(
         List<double> matrix,
         List<double>? perMission = null,
-        List<double>? airtime = null) => new()
-        {
+        List<double>? airtime = null) => new() {
             Is2D = true,
             IsFloat = true,
             RowLabels = ["a", "b"],
@@ -29,8 +27,7 @@ public class MennoComparisonTests
         bool menno = true,
         string display = "heatmap",
         string mode = "side_by_side",
-        string normalize = "none") => new()
-        {
+        string normalize = "none") => new() {
             MennoEnabled = menno,
             DisplayMode = display,
             MennoCompareMode = mode,
@@ -38,47 +35,41 @@ public class MennoComparisonTests
         };
 
     [Fact]
-    public void ShouldRender_TrueForEnabled2DHeatmapWithMennoResult()
-    {
+    public void ShouldRender_TrueForEnabled2DHeatmapWithMennoResult() {
         var user = Heatmap2D([1, 2, 3, 4]);
         var menno = Heatmap2D([1, 1, 1, 1]);
         Assert.True(MennoComparison.ShouldRender(Def(), user, menno));
     }
 
     [Fact]
-    public void ShouldRender_FalseWhenMennoDisabled()
-    {
+    public void ShouldRender_FalseWhenMennoDisabled() {
         var user = Heatmap2D([1, 2, 3, 4]);
         var menno = Heatmap2D([1, 1, 1, 1]);
         Assert.False(MennoComparison.ShouldRender(Def(menno: false), user, menno));
     }
 
     [Fact]
-    public void ShouldRender_FalseForNonHeatmapDisplay()
-    {
+    public void ShouldRender_FalseForNonHeatmapDisplay() {
         var user = Heatmap2D([1, 2, 3, 4]);
         var menno = Heatmap2D([1, 1, 1, 1]);
         Assert.False(MennoComparison.ShouldRender(Def(display: "grouped_bar"), user, menno));
     }
 
     [Fact]
-    public void ShouldRender_FalseWhenComparisonMissing()
-    {
+    public void ShouldRender_FalseWhenComparisonMissing() {
         var user = Heatmap2D([1, 2, 3, 4]);
         Assert.False(MennoComparison.ShouldRender(Def(), user, null));
     }
 
     [Fact]
-    public void ShouldRender_FalseWhenUserResultNot2D()
-    {
+    public void ShouldRender_FalseWhenUserResultNot2D() {
         var user = new ReportResult { Is2D = false };
         var menno = Heatmap2D([1, 1, 1, 1]);
         Assert.False(MennoComparison.ShouldRender(Def(), user, menno));
     }
 
     [Fact]
-    public void MennoAirtimeResult_SubstitutesAirtimeWhenNormalizeAirtime()
-    {
+    public void MennoAirtimeResult_SubstitutesAirtimeWhenNormalizeAirtime() {
         var menno = Heatmap2D(
             [10, 20, 30, 40],
             airtime: [1, 2, 3, 4]);
@@ -87,8 +78,7 @@ public class MennoComparisonTests
     }
 
     [Fact]
-    public void MennoAirtimeResult_UnchangedWhenNotAirtime()
-    {
+    public void MennoAirtimeResult_UnchangedWhenNotAirtime() {
         var menno = Heatmap2D(
             [10, 20, 30, 40],
             airtime: [1, 2, 3, 4]);
@@ -97,16 +87,14 @@ public class MennoComparisonTests
     }
 
     [Fact]
-    public void MennoAirtimeResult_UnchangedWhenNoAirtimeValues()
-    {
+    public void MennoAirtimeResult_UnchangedWhenNoAirtimeValues() {
         var menno = Heatmap2D([10, 20, 30, 40]);
         var res = MennoComparison.MennoAirtimeResult(Def(normalize: "airtime"), menno);
         Assert.Same(menno, res);
     }
 
     [Fact]
-    public void UserPerMissionResult_SubstitutesPerMissionWhenPresent()
-    {
+    public void UserPerMissionResult_SubstitutesPerMissionWhenPresent() {
         var user = Heatmap2D(
             [100, 200, 300, 400],
             perMission: [1, 2, 3, 4]);
@@ -115,16 +103,14 @@ public class MennoComparisonTests
     }
 
     [Fact]
-    public void UserPerMissionResult_UnchangedWhenNoPerMission()
-    {
+    public void UserPerMissionResult_UnchangedWhenNoPerMission() {
         var user = Heatmap2D([100, 200, 300, 400]);
         var res = MennoComparison.UserPerMissionResult(user);
         Assert.Same(user, res);
     }
 
     [Fact]
-    public void RatioMatrix_DividesUserByMenno()
-    {
+    public void RatioMatrix_DividesUserByMenno() {
         var user = Heatmap2D([10, 20, 30, 40]);
         var menno = Heatmap2D([5, 10, 10, 8]);
         var ratio = MennoComparison.RatioMatrix(user, menno);
@@ -132,8 +118,7 @@ public class MennoComparisonTests
     }
 
     [Fact]
-    public void RatioMatrix_NullWhenMennoZero()
-    {
+    public void RatioMatrix_NullWhenMennoZero() {
         var user = Heatmap2D([10, 20]);
         var menno = Heatmap2D([0, 4]);
         var ratio = MennoComparison.RatioMatrix(user, menno);
@@ -142,8 +127,7 @@ public class MennoComparisonTests
     }
 
     [Fact]
-    public void RatioMatrix_PrefersPerMissionNumerator()
-    {
+    public void RatioMatrix_PrefersPerMissionNumerator() {
         var user = Heatmap2D(
             [100, 200],
             perMission: [10, 20]);
@@ -153,8 +137,7 @@ public class MennoComparisonTests
     }
 
     [Fact]
-    public void RatioResult_FlattensNullsToZeroAndSetsFloat()
-    {
+    public void RatioResult_FlattensNullsToZeroAndSetsFloat() {
         var user = Heatmap2D([10, 20]);
         var menno = Heatmap2D([0, 4]);
         var res = MennoComparison.RatioResult(user, menno);
@@ -164,8 +147,7 @@ public class MennoComparisonTests
     }
 
     [Fact]
-    public void RatioColorValues_MatchRatioWithNullsAsZero()
-    {
+    public void RatioColorValues_MatchRatioWithNullsAsZero() {
         var user = Heatmap2D([10, 20]);
         var menno = Heatmap2D([0, 4]);
         var cv = MennoComparison.RatioColorValues(user, menno);

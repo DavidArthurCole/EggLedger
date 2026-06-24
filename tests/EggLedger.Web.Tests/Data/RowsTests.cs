@@ -3,13 +3,10 @@ using EggLedger.Web.Data;
 
 namespace EggLedger.Web.Tests.Data;
 
-public sealed class RowsTests
-{
+public sealed class RowsTests {
     [Fact]
-    public void MissionRow_serializes_with_snake_case_keys()
-    {
-        var row = new MissionRow
-        {
+    public void MissionRow_serializes_with_snake_case_keys() {
+        var row = new MissionRow {
             PlayerId = "EI1",
             MissionId = "m1",
             StartTimestamp = 1.5,
@@ -35,10 +32,8 @@ public sealed class RowsTests
     }
 
     [Fact]
-    public void ArtifactDropRow_null_id_omits_id_key()
-    {
-        var row = new ArtifactDropRow
-        {
+    public void ArtifactDropRow_null_id_omits_id_key() {
+        var row = new ArtifactDropRow {
             Id = null,
             MissionId = "m1",
             PlayerId = "EI1",
@@ -56,10 +51,8 @@ public sealed class RowsTests
     }
 
     [Fact]
-    public void ArtifactDropRow_non_null_id_emits_id_key()
-    {
-        var row = new ArtifactDropRow
-        {
+    public void ArtifactDropRow_non_null_id_emits_id_key() {
+        var row = new ArtifactDropRow {
             Id = 42,
             MissionId = "m1",
             PlayerId = "EI1",
@@ -77,10 +70,8 @@ public sealed class RowsTests
     }
 
     [Fact]
-    public void ReportRow_round_trips_with_nullable_and_filters()
-    {
-        var row = new ReportRow
-        {
+    public void ReportRow_round_trips_with_nullable_and_filters() {
+        var row = new ReportRow {
             Id = "r1",
             AccountId = "acc1",
             Name = "Test",
@@ -110,8 +101,7 @@ public sealed class RowsTests
     }
 
     [Fact]
-    public void MissionRow_complete_payload_round_trips()
-    {
+    public void MissionRow_complete_payload_round_trips() {
         byte[] original = [0, 1, 2, 250, 255, 7];
         var row = new MissionRow { PlayerId = "EI1", MissionId = "m1", CompletePayload = original };
 

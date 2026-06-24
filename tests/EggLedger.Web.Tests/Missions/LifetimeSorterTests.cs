@@ -7,8 +7,7 @@ namespace EggLedger.Web.Tests.Missions;
 /// in www/src/composables/useLifetimeSorting.ts: sortGroupByCount, the shuffle,
 /// the method parse/serialize, and the reuse of DropSorter for default/iv.
 /// </summary>
-public sealed class LifetimeSorterTests
-{
+public sealed class LifetimeSorterTests {
     private static DropLike D(int id, int level, int rarity, int count, double quality = 0, int iv = 0, string spec = "Artifact") =>
         new() { Id = id, Name = "X", Level = level, Rarity = rarity, Count = count, Quality = quality, IvOrder = iv, SpecType = spec };
 
@@ -19,8 +18,7 @@ public sealed class LifetimeSorterTests
     [InlineData("random", LifetimeSortMethod.Random)]
     [InlineData("nonsense", LifetimeSortMethod.Default)]
     [InlineData(null, LifetimeSortMethod.Default)]
-    public void ParseMethod_MatchesVueSwitch(string? value, LifetimeSortMethod expected)
-    {
+    public void ParseMethod_MatchesVueSwitch(string? value, LifetimeSortMethod expected) {
         Assert.Equal(expected, LifetimeSorter.ParseMethod(value));
     }
 
@@ -29,14 +27,12 @@ public sealed class LifetimeSorterTests
     [InlineData(LifetimeSortMethod.Iv, "iv")]
     [InlineData(LifetimeSortMethod.Count, "count")]
     [InlineData(LifetimeSortMethod.Random, "random")]
-    public void MethodString_RoundTrips(LifetimeSortMethod method, string expected)
-    {
+    public void MethodString_RoundTrips(LifetimeSortMethod method, string expected) {
         Assert.Equal(expected, LifetimeSorter.MethodString(method));
     }
 
     [Fact]
-    public void SortGroupByCount_OrdersByCountDesc()
-    {
+    public void SortGroupByCount_OrdersByCountDesc() {
         var input = new[]
         {
             D(1, 0, 0, count: 1),
@@ -52,8 +48,7 @@ public sealed class LifetimeSorterTests
     }
 
     [Fact]
-    public void SortGroupByCount_TieBreaksByLevelThenRarityThenIdThenQuality()
-    {
+    public void SortGroupByCount_TieBreaksByLevelThenRarityThenIdThenQuality() {
         // Equal count -> level desc, then rarity desc, then id desc, then quality asc.
         var input = new[]
         {
@@ -82,10 +77,8 @@ public sealed class LifetimeSorterTests
     }
 
     [Fact]
-    public void Sort_Default_DelegatesToSortGroupAlreadyCombed()
-    {
-        var data = new LifetimeData
-        {
+    public void Sort_Default_DelegatesToSortGroupAlreadyCombed() {
+        var data = new LifetimeData {
             Artifacts = [D(1, 2, 0, 1), D(2, 0, 0, 1)],
         };
 
@@ -97,10 +90,8 @@ public sealed class LifetimeSorterTests
     }
 
     [Fact]
-    public void Sort_Count_AppliesToEveryBucket()
-    {
-        var data = new LifetimeData
-        {
+    public void Sort_Count_AppliesToEveryBucket() {
+        var data = new LifetimeData {
             Artifacts = [D(1, 0, 0, 1), D(2, 0, 0, 9)],
             Stones = [D(3, 0, 0, 1), D(4, 0, 0, 9)],
             StoneFragments = [D(5, 0, 0, 1), D(6, 0, 0, 9)],
@@ -116,10 +107,8 @@ public sealed class LifetimeSorterTests
     }
 
     [Fact]
-    public void Sort_Random_PreservesAllElements()
-    {
-        var data = new LifetimeData
-        {
+    public void Sort_Random_PreservesAllElements() {
+        var data = new LifetimeData {
             Artifacts = [D(1, 0, 0, 1), D(2, 0, 0, 1), D(3, 0, 0, 1)],
         };
 

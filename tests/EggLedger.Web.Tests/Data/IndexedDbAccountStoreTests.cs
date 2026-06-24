@@ -3,8 +3,7 @@ using EggLedger.Web.Data;
 
 namespace EggLedger.Web.Tests.Data;
 
-public sealed class IndexedDbAccountStoreTests
-{
+public sealed class IndexedDbAccountStoreTests {
     private static IndexedDbAccountStore Make(FakeIndexedDb db) =>
         new(new IndexedDbSettings(db));
 
@@ -12,15 +11,13 @@ public sealed class IndexedDbAccountStoreTests
         new() { Id = id, Nickname = nick, EBString = "1.0q", AccountColor = "abc", SeString = "5.00B", PeCount = 3, TeCount = 1 };
 
     [Fact]
-    public async Task EmptyByDefault()
-    {
+    public async Task EmptyByDefault() {
         var store = Make(new FakeIndexedDb());
         Assert.Empty(await store.GetKnownAccountsAsync());
     }
 
     [Fact]
-    public async Task AddPersistsAndRoundTrips()
-    {
+    public async Task AddPersistsAndRoundTrips() {
         var store = Make(new FakeIndexedDb());
         await store.AddKnownAccountAsync(Acct("EI1", "Alice"));
 
@@ -34,8 +31,7 @@ public sealed class IndexedDbAccountStoreTests
     }
 
     [Fact]
-    public async Task AddUpsertsByIdNotDuplicate()
-    {
+    public async Task AddUpsertsByIdNotDuplicate() {
         var store = Make(new FakeIndexedDb());
         await store.AddKnownAccountAsync(Acct("EI1", "Old"));
         await store.AddKnownAccountAsync(Acct("EI1", "New"));
@@ -47,8 +43,7 @@ public sealed class IndexedDbAccountStoreTests
     }
 
     [Fact]
-    public async Task AddPreservesInsertionOrder()
-    {
+    public async Task AddPreservesInsertionOrder() {
         var store = Make(new FakeIndexedDb());
         await store.AddKnownAccountAsync(Acct("EI1"));
         await store.AddKnownAccountAsync(Acct("EI2"));
@@ -60,8 +55,7 @@ public sealed class IndexedDbAccountStoreTests
     }
 
     [Fact]
-    public async Task RemoveDropsAccount()
-    {
+    public async Task RemoveDropsAccount() {
         var store = Make(new FakeIndexedDb());
         await store.AddKnownAccountAsync(Acct("EI1"));
         await store.AddKnownAccountAsync(Acct("EI2"));
@@ -74,8 +68,7 @@ public sealed class IndexedDbAccountStoreTests
     }
 
     [Fact]
-    public async Task CorruptBlobReturnsEmpty()
-    {
+    public async Task CorruptBlobReturnsEmpty() {
         var db = new FakeIndexedDb();
         var settings = new IndexedDbSettings(db);
         await settings.SetSettingAsync("known_accounts", "not json{");
@@ -86,8 +79,7 @@ public sealed class IndexedDbAccountStoreTests
     }
 
     [Fact]
-    public async Task ActiveAccountRoundTrips()
-    {
+    public async Task ActiveAccountRoundTrips() {
         var store = Make(new FakeIndexedDb());
         Assert.Null(await store.GetActiveAccountIdAsync());
 

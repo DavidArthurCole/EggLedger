@@ -3,16 +3,14 @@ using EggLedger.Domain.MissionQuery;
 namespace EggLedger.Web.Missions;
 
 /// <summary>Context the field option-sources draw from.</summary>
-public sealed class FilterFieldCtx
-{
+public sealed class FilterFieldCtx {
     public IReadOnlyList<PossibleTarget> PossibleTargets { get; init; } = Array.Empty<PossibleTarget>();
     public IReadOnlyList<PossibleArtifact> ArtifactConfigs { get; init; } = Array.Empty<PossibleArtifact>();
     public double MaxQuality { get; init; }
 }
 
 /// <summary>Definition of a filter field: key, label, scope, value-picker kind, operator list, optional option source.</summary>
-public sealed class FilterFieldDef
-{
+public sealed class FilterFieldDef {
     public string Key { get; init; } = "";
     public string Label { get; init; } = "";
 
@@ -27,8 +25,7 @@ public sealed class FilterFieldDef
 }
 
 /// <summary>Static filter field/operator definitions, golden-matched to filterFields.ts (field set, operator lists, default-operator rules, scope partitions).</summary>
-public static class FilterFields
-{
+public static class FilterFields {
     public static readonly IReadOnlyList<FilterOp> EqualityOps = new[]
     {
         new FilterOp("=", "is"),
@@ -160,12 +157,9 @@ public static class FilterFields
     };
 
     /// <summary>Field definition for a key, or null.</summary>
-    public static FilterFieldDef? GetReportField(string key)
-    {
-        foreach (var f in ReportFilterFields)
-        {
-            if (f.Key == key)
-            {
+    public static FilterFieldDef? GetReportField(string key) {
+        foreach (var f in ReportFilterFields) {
+            if (f.Key == key) {
                 return f;
             }
         }
@@ -173,14 +167,11 @@ public static class FilterFields
     }
 
     /// <summary>Default operator for a field in the Mission Data bar: bool -> "true", drops -> "c", date -> "d=", else first operator.</summary>
-    public static string DefaultOpForField(FilterFieldDef def)
-    {
-        if (def.ValueKind == FilterValueKind.Bool)
-        {
+    public static string DefaultOpForField(FilterFieldDef def) {
+        if (def.ValueKind == FilterValueKind.Bool) {
             return "true";
         }
-        if (def.Key == "drops")
-        {
+        if (def.Key == "drops") {
             return "c";
         }
         var ops = MissionBarOpsFor(def);
@@ -188,13 +179,10 @@ public static class FilterFields
     }
 
     /// <summary>Mission-scoped fields.</summary>
-    public static List<FilterFieldDef> ReportMissionFields()
-    {
+    public static List<FilterFieldDef> ReportMissionFields() {
         var result = new List<FilterFieldDef>();
-        foreach (var f in ReportFilterFields)
-        {
-            if (f.Scope == "mission")
-            {
+        foreach (var f in ReportFilterFields) {
+            if (f.Scope == "mission") {
                 result.Add(f);
             }
         }
@@ -202,13 +190,10 @@ public static class FilterFields
     }
 
     /// <summary>Artifact-scoped fields.</summary>
-    public static List<FilterFieldDef> ReportArtifactFields()
-    {
+    public static List<FilterFieldDef> ReportArtifactFields() {
         var result = new List<FilterFieldDef>();
-        foreach (var f in ReportFilterFields)
-        {
-            if (f.Scope == "artifact")
-            {
+        foreach (var f in ReportFilterFields) {
+            if (f.Scope == "artifact") {
                 result.Add(f);
             }
         }

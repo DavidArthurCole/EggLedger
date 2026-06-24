@@ -7,11 +7,9 @@ namespace EggLedger.Web.Tests.Missions;
 /// www/src/utils/filterFields.ts: the field set, default operators, and scope
 /// partitioning.
 /// </summary>
-public sealed class FilterFieldsTests
-{
+public sealed class FilterFieldsTests {
     [Fact]
-    public void ReportFilterFields_HasExpectedKeysInOrder()
-    {
+    public void ReportFilterFields_HasExpectedKeysInOrder() {
         var keys = FilterFields.ReportFilterFields.Select(f => f.Key).ToArray();
         Assert.Equal(new[]
         {
@@ -22,15 +20,13 @@ public sealed class FilterFieldsTests
     }
 
     [Fact]
-    public void GetReportField_FindsByKey()
-    {
+    public void GetReportField_FindsByKey() {
         Assert.Equal("Ship", FilterFields.GetReportField("ship")!.Label);
         Assert.Null(FilterFields.GetReportField("nope"));
     }
 
     [Fact]
-    public void DefaultOpForField_BoolIsTrue_DropsIsContains_DateIsDayEq_ElseFirst()
-    {
+    public void DefaultOpForField_BoolIsTrue_DropsIsContains_DateIsDayEq_ElseFirst() {
         Assert.Equal("true", FilterFields.DefaultOpForField(FilterFields.GetReportField("dubcap")!));
         Assert.Equal("c", FilterFields.DefaultOpForField(FilterFields.GetReportField("drops")!));
         Assert.Equal("=", FilterFields.DefaultOpForField(FilterFields.GetReportField("ship")!));
@@ -41,8 +37,7 @@ public sealed class FilterFieldsTests
     }
 
     [Fact]
-    public void MissionBarOpsFor_DateFields_UseDayEqOnOperator()
-    {
+    public void MissionBarOpsFor_DateFields_UseDayEqOnOperator() {
         var ops = FilterFields.MissionBarOpsFor(FilterFields.GetReportField("launchDT")!);
         Assert.Equal(new[] { "d=", "<", ">" }, ops.Select(o => o.Value).ToArray());
         // "on" is the day-equality operator the matcher's d= branch handles.
@@ -54,15 +49,13 @@ public sealed class FilterFieldsTests
     }
 
     [Fact]
-    public void Scopes_PartitionMissionAndArtifact()
-    {
+    public void Scopes_PartitionMissionAndArtifact() {
         Assert.Equal(10, FilterFields.ReportMissionFields().Count);
         Assert.Equal(5, FilterFields.ReportArtifactFields().Count);
     }
 
     [Fact]
-    public void OperatorLists_MatchVue()
-    {
+    public void OperatorLists_MatchVue() {
         Assert.Equal(6, FilterFields.ComparisonOps.Count);
         Assert.Equal(2, FilterFields.EqualityOps.Count);
         Assert.Equal(5, FilterFields.DateOps.Count);

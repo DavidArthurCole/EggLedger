@@ -9,35 +9,27 @@ namespace EggLedger.Desktop.Tests;
 /// CleanStaleBinaries) plus the process-exists probe (update_windows.go /
 /// update_unix.go waitForProcessExit). No real process replace happens.
 /// </summary>
-public sealed class BinaryReplacementTests : IDisposable
-{
+public sealed class BinaryReplacementTests : IDisposable {
     private readonly string _dir;
 
-    public BinaryReplacementTests()
-    {
+    public BinaryReplacementTests() {
         _dir = Path.Combine(Path.GetTempPath(), "egg-replace-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_dir);
     }
 
-    public void Dispose()
-    {
-        try
-        {
+    public void Dispose() {
+        try {
             Directory.Delete(_dir, recursive: true);
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or DirectoryNotFoundException)
-        {
+        } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or DirectoryNotFoundException) {
         }
     }
 
-    private sealed class FakeProbe(HashSet<int> alive) : IProcessProbe
-    {
+    private sealed class FakeProbe(HashSet<int> alive) : IProcessProbe {
         public bool Exists(int pid) => alive.Contains(pid);
     }
 
     [Fact]
-    public void RenameWithRetry_MovesFileContents()
-    {
+    public void RenameWithRetry_MovesFileContents() {
         var src = Path.Combine(_dir, "src.bin");
         var dst = Path.Combine(_dir, "dst.bin");
         File.WriteAllText(src, "new");
@@ -48,8 +40,7 @@ public sealed class BinaryReplacementTests : IDisposable
     }
 
     [Fact]
-    public void RenameWithRetry_OverwritesExistingDestination()
-    {
+    public void RenameWithRetry_OverwritesExistingDestination() {
         var src = Path.Combine(_dir, "src.bin");
         var dst = Path.Combine(_dir, "dst.bin");
         File.WriteAllText(src, "fresh");
@@ -60,8 +51,7 @@ public sealed class BinaryReplacementTests : IDisposable
     }
 
     [Fact]
-    public void AcquireLock_SecondAcquireFailsWhileHeldThenSucceedsAfterRelease()
-    {
+    public void AcquireLock_SecondAcquireFailsWhileHeldThenSucceedsAfterRelease() {
         // The lock writes the CURRENT process id, which the real probe reports alive.
         var repl = new BinaryReplacement(new ProcessProbe());
         var lockPath = Path.Combine(_dir, BinaryReplacement.LockFileName);
@@ -82,8 +72,7 @@ public sealed class BinaryReplacementTests : IDisposable
     }
 
     [Fact]
-    public void AcquireLock_ReclaimsStaleLockFromDeadOwner()
-    {
+    public void AcquireLock_ReclaimsStaleLockFromDeadOwner() {
         var lockPath = Path.Combine(_dir, BinaryReplacement.LockFileName);
         // A lock file whose owner PID is reported dead by the fake probe.
         File.WriteAllText(lockPath, "424242");
@@ -95,8 +84,7 @@ public sealed class BinaryReplacementTests : IDisposable
     }
 
     [Fact]
-    public void CleanStaleBinaries_RemovesNewBinariesButNotSelf()
-    {
+    public void CleanStaleBinaries_RemovesNewBinariesButNotSelf() {
         var self = Path.Combine(_dir, "EggLedger_new.exe");
         var otherNew = Path.Combine(_dir, "EggLedgerOther_new.exe");
         var canonical = Path.Combine(_dir, "EggLedger.exe");
@@ -113,8 +101,7 @@ public sealed class BinaryReplacementTests : IDisposable
     }
 
     [Fact]
-    public void CleanStaleBinaries_RemovesStaleLockWhenOwnerDead()
-    {
+    public void CleanStaleBinaries_RemovesStaleLockWhenOwnerDead() {
         var self = Path.Combine(_dir, "EggLedger.exe");
         File.WriteAllText(self, "self");
         var lockPath = Path.Combine(_dir, BinaryReplacement.LockFileName);
@@ -127,8 +114,7 @@ public sealed class BinaryReplacementTests : IDisposable
     }
 
     [Fact]
-    public void CleanStaleBinaries_KeepsLockWhenOwnerAlive()
-    {
+    public void CleanStaleBinaries_KeepsLockWhenOwnerAlive() {
         var self = Path.Combine(_dir, "EggLedger.exe");
         File.WriteAllText(self, "self");
         var lockPath = Path.Combine(_dir, BinaryReplacement.LockFileName);
@@ -141,8 +127,7 @@ public sealed class BinaryReplacementTests : IDisposable
     }
 
     [Fact]
-    public void ProcessProbe_CurrentProcessExists_BogusDoesNot()
-    {
+    public void ProcessProbe_CurrentProcessExists_BogusDoesNot() {
         var probe = new ProcessProbe();
         Assert.True(probe.Exists(Environment.ProcessId));
         // A PID extremely unlikely to be live.
@@ -152,22 +137,19 @@ public sealed class BinaryReplacementTests : IDisposable
     }
 
     [Fact]
-    public void ProcessWait_ReturnsTrueImmediatelyForDeadPid()
-    {
+    public void ProcessWait_ReturnsTrueImmediatelyForDeadPid() {
         var probe = new FakeProbe([]);
         Assert.True(ProcessWait.WaitForExit(probe, 4242, TimeSpan.Zero));
     }
 
     [Fact]
-    public void ProcessWait_ReturnsFalseWhenAliveAndTimesOut()
-    {
+    public void ProcessWait_ReturnsFalseWhenAliveAndTimesOut() {
         var probe = new FakeProbe([4242]);
         Assert.False(ProcessWait.WaitForExit(probe, 4242, TimeSpan.FromMilliseconds(60)));
     }
 
     [Fact]
-    public void SameFile_TrueForSamePathFalseForDifferent()
-    {
+    public void SameFile_TrueForSamePathFalseForDifferent() {
         var a = Path.Combine(_dir, "a.bin");
         var b = Path.Combine(_dir, "b.bin");
         File.WriteAllText(a, "x");

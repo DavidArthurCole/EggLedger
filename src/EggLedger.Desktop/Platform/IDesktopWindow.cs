@@ -5,8 +5,7 @@ namespace EggLedger.Desktop.Platform;
 /// real impl wraps the Photino window; native dialogs are isolated here because
 /// they cannot run headless. Tests inject a fake.
 /// </summary>
-public interface IDesktopWindow
-{
+public interface IDesktopWindow {
     /// <summary>Current window size in pixels.</summary>
     (int Width, int Height) GetSize();
 

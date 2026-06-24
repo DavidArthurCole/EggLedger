@@ -6,8 +6,7 @@ using Ei;
 namespace EggLedger.Domain.Tests.Export;
 
 /// <summary>Port of Go export/export_test.go.</summary>
-public class ExportTests
-{
+public class ExportTests {
     private static List<Mission> TestMissions() =>
     [
         new Mission
@@ -44,16 +43,13 @@ public class ExportTests
         },
     ];
 
-    private static List<string[]> ParseCsv(byte[] bytes)
-    {
+    private static List<string[]> ParseCsv(byte[] bytes) {
         // Minimal CSV reader for the fields these tests produce (no embedded
         // newlines). Matches Go encoding/csv for this data.
         var text = Encoding.UTF8.GetString(bytes);
         var records = new List<string[]>();
-        foreach (var line in text.Split("\r\n"))
-        {
-            if (line.Length == 0)
-            {
+        foreach (var line in text.Split("\r\n")) {
+            if (line.Length == 0) {
                 continue;
             }
             records.Add(SplitCsvLine(line));
@@ -61,44 +57,29 @@ public class ExportTests
         return records;
     }
 
-    private static string[] SplitCsvLine(string line)
-    {
+    private static string[] SplitCsvLine(string line) {
         var fields = new List<string>();
         var sb = new StringBuilder();
         bool inQuotes = false;
-        for (int i = 0; i < line.Length; i++)
-        {
+        for (int i = 0; i < line.Length; i++) {
             char c = line[i];
-            if (inQuotes)
-            {
-                if (c == '"')
-                {
-                    if (i + 1 < line.Length && line[i + 1] == '"')
-                    {
+            if (inQuotes) {
+                if (c == '"') {
+                    if (i + 1 < line.Length && line[i + 1] == '"') {
                         sb.Append('"');
                         i++;
-                    }
-                    else
-                    {
+                    } else {
                         inQuotes = false;
                     }
-                }
-                else
-                {
+                } else {
                     sb.Append(c);
                 }
-            }
-            else if (c == '"')
-            {
+            } else if (c == '"') {
                 inQuotes = true;
-            }
-            else if (c == ',')
-            {
+            } else if (c == ',') {
                 fields.Add(sb.ToString());
                 sb.Clear();
-            }
-            else
-            {
+            } else {
                 sb.Append(c);
             }
         }
@@ -106,13 +87,11 @@ public class ExportTests
         return [.. fields];
     }
 
-    private static string ReadZipEntry(byte[] data, string name)
-    {
+    private static string ReadZipEntry(byte[] data, string name) {
         using var ms = new MemoryStream(data);
         using var zip = new ZipArchive(ms, ZipArchiveMode.Read);
         var entry = zip.GetEntry(name);
-        if (entry == null)
-        {
+        if (entry == null) {
             return "";
         }
         using var s = entry.Open();
@@ -121,8 +100,7 @@ public class ExportTests
     }
 
     [Fact]
-    public void ExportMissionsToCsv_Structure()
-    {
+    public void ExportMissionsToCsv_Structure() {
         var records = ParseCsv(MissionExport.MissionsToCsvBytes(TestMissions()));
         Assert.Equal(3, records.Count);
 
@@ -134,8 +112,7 @@ public class ExportTests
             "Launched at", "Returned at", "Duration days", "Capacity", "Target",
             "Artifact 1", "Artifact 2",
         ];
-        for (int i = 0; i < wantHeaders.Length; i++)
-        {
+        for (int i = 0; i < wantHeaders.Length; i++) {
             Assert.Equal(wantHeaders[i], header[i]);
         }
 
@@ -153,14 +130,12 @@ public class ExportTests
     [InlineData(1, "Virtue")]
     [InlineData(-1, "Unknown")]
     [InlineData(99, "Unknown")]
-    public void MissionTypeName_Cases(int input, string want)
-    {
+    public void MissionTypeName_Cases(int input, string want) {
         Assert.Equal(want, Mission.MissionTypeName(input));
     }
 
     [Fact]
-    public void ExportMissionsToCsv_UnknownMissionType()
-    {
+    public void ExportMissionsToCsv_UnknownMissionType() {
         var missions = new List<Mission>
         {
             new()
@@ -187,8 +162,7 @@ public class ExportTests
     }
 
     [Fact]
-    public void ExportMissionsToXlsx_Structure()
-    {
+    public void ExportMissionsToXlsx_Structure() {
         var data = MissionExport.MissionsToXlsxBytes(TestMissions());
         var sheetXml = ReadZipEntry(data, "xl/worksheets/sheet1.xml");
         Assert.NotEqual("", sheetXml);
@@ -198,8 +172,7 @@ public class ExportTests
             "ID", "Type", "Ship", "Duration Type", "Level",
             "Launched at", "Returned at", "Duration days", "Capacity", "Target",
         ];
-        foreach (var h in wantHeaders)
-        {
+        foreach (var h in wantHeaders) {
             Assert.Contains("<t>" + h + "</t>", sheetXml, StringComparison.Ordinal);
         }
         Assert.Contains("<t>Artifact 2</t>", sheetXml, StringComparison.Ordinal);

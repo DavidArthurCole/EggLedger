@@ -7,64 +7,52 @@ namespace EggLedger.Domain.Reports;
 /// Runs report queries and assembles labeled results. Port of Go reports
 /// execute.go / execute_weighted.go / normalize.go, with DB and weighting data injected.
 /// </summary>
-public sealed class ReportExecutor
-{
+public sealed class ReportExecutor {
     private readonly IMissionDb _db;
     private readonly IWeightData _weights;
 
-    public ReportExecutor(IMissionDb db, IWeightData weights)
-    {
+    public ReportExecutor(IMissionDb db, IWeightData weights) {
         _db = db ?? throw new ArgumentNullException(nameof(db));
         _weights = weights ?? throw new ArgumentNullException(nameof(weights));
     }
 
     /// <summary>Runs the report query and returns labeled results. Port of Go ExecuteReport.</summary>
-    public ReportResult ExecuteReport(ReportDefinition def)
-    {
+    public ReportResult ExecuteReport(ReportDefinition def) {
         var (whereClause, filterArgs) = QueryBuilder.BuildWhereClause(def.Filters);
         var baseWhere = "m.player_id = ?";
-        if (whereClause != "")
-        {
+        if (whereClause != "") {
             baseWhere += " AND " + whereClause;
         }
         var args = new List<object?> { def.AccountId };
         args.AddRange(filterArgs);
         var baseArgs = new List<object?>(args);
 
-        if (def.FamilyWeight != "")
-        {
+        if (def.FamilyWeight != "") {
             var ids = _weights.FamilyAfxIds(def.FamilyWeight);
             var (fwClause, fwArgs) = QueryBuilder.FamilyWeightClause(ids);
-            if (fwClause != "")
-            {
-                if (def.SecondaryGroupBy != "" && def.Mode == "time_series")
-                {
+            if (fwClause != "") {
+                if (def.SecondaryGroupBy != "" && def.Mode == "time_series") {
                     return ExecuteWeightedTimePivot(def, baseWhere, args, fwClause, fwArgs);
                 }
-                if (def.SecondaryGroupBy != "")
-                {
+                if (def.SecondaryGroupBy != "") {
                     return ExecuteWeightedPivot(def, baseWhere, args, baseArgs, fwClause, fwArgs);
                 }
-                if (def.Mode == "time_series")
-                {
+                if (def.Mode == "time_series") {
                     return ExecuteWeightedTimeSeries(def, baseWhere, args, fwClause, fwArgs);
                 }
                 return ExecuteWeightedAggregate(def, baseWhere, args, baseArgs, fwClause, fwArgs);
             }
         }
 
-        if (def.SecondaryGroupBy != "" && def.Mode == "time_series")
-        {
+        if (def.SecondaryGroupBy != "" && def.Mode == "time_series") {
             return ExecuteTimePivotReport(def, baseWhere, args);
         }
-        if (def.SecondaryGroupBy != "")
-        {
+        if (def.SecondaryGroupBy != "") {
             return ExecutePivotReport(def, baseWhere, args, baseArgs);
         }
 
         string query;
-        (query, args) = def.Mode switch
-        {
+        (query, args) = def.Mode switch {
             "aggregate" => QueryBuilder.BuildAggregateQuery(def, baseWhere, args),
             "time_series" => QueryBuilder.BuildTimeSeriesQuery(def, baseWhere, args),
             _ => throw new InvalidOperationException($"unknown mode \"{def.Mode}\""),
@@ -74,8 +62,7 @@ public sealed class ReportExecutor
         var rawLabels = new List<string>();
         var labels = new List<string>();
         var values = new List<long>();
-        foreach (var row in rows)
-        {
+        foreach (var row in rows) {
             var rawLabel = AsString(row[0]);
             var count = AsLong(row[1]);
             rawLabels.Add(rawLabel);
@@ -83,40 +70,32 @@ public sealed class ReportExecutor
             values.Add(count);
         }
 
-        if (def.Mode == "time_series" && rawLabels.Count > 0)
-        {
+        if (def.Mode == "time_series" && rawLabels.Count > 0) {
             (rawLabels, values) = TimeFill.FillTimeSeriesGaps(def.TimeBucket, def.CustomBucketUnit, rawLabels, values);
             labels = new List<string>(rawLabels.Count);
-            foreach (var rl in rawLabels)
-            {
+            foreach (var rl in rawLabels) {
                 labels.Add(Labels.FormatLabel(def.GroupBy, rl));
             }
         }
 
-        if (def.NormalizeBy != "" && def.NormalizeBy != "none" && def.Mode == "aggregate")
-        {
+        if (def.NormalizeBy != "" && def.NormalizeBy != "none" && def.Mode == "aggregate") {
             var groupCol = QueryBuilder.GroupByColumn(def.GroupBy);
-            if (groupCol == "" || groupCol.StartsWith("d.", StringComparison.Ordinal))
-            {
+            if (groupCol == "" || groupCol.StartsWith("d.", StringComparison.Ordinal)) {
                 return new ReportResult { Labels = labels, Values = values, Weight = def.Weight };
             }
             var denomMap = Denom1D(groupCol, def.NormalizeBy, baseWhere, baseArgs);
 
             var floatValues = new List<double>(values.Count);
-            for (var i = 0; i < values.Count; i++)
-            {
+            for (var i = 0; i < values.Count; i++) {
                 floatValues.Add(0);
             }
-            for (var i = 0; i < rawLabels.Count; i++)
-            {
+            for (var i = 0; i < rawLabels.Count; i++) {
                 denomMap.TryGetValue(rawLabels[i], out var denom);
-                if (denom > 0)
-                {
+                if (denom > 0) {
                     floatValues[i] = values[i] / denom;
                 }
             }
-            return new ReportResult
-            {
+            return new ReportResult {
                 Labels = labels,
                 FloatValues = floatValues,
                 IsFloat = true,
@@ -127,15 +106,13 @@ public sealed class ReportExecutor
         return new ReportResult { Labels = labels, Values = values, Weight = def.Weight };
     }
 
-    private ReportResult ExecutePivotReport(ReportDefinition def, string baseWhere, List<object?> args, List<object?> baseArgs)
-    {
+    private ReportResult ExecutePivotReport(ReportDefinition def, string baseWhere, List<object?> args, List<object?> baseArgs) {
         var (query, queryArgs) = QueryBuilder.BuildPivotQuery(def, baseWhere, args);
 
         var rows = _db.Query(query, queryArgs);
 
         var accum = new PivotAccum();
-        foreach (var row in rows)
-        {
+        foreach (var row in rows) {
             var rawRow = AsString(row[0]);
             var rawCol = AsString(row[1]);
             var count = AsLong(row[2]);
@@ -148,25 +125,18 @@ public sealed class ReportExecutor
         var matrixValues = f.Matrix;
 
         var pctMode = def.NormalizeBy;
-        if (pctMode is "row_pct" or "col_pct" or "global_pct")
-        {
+        if (pctMode is "row_pct" or "col_pct" or "global_pct") {
             Matrix.Apply2DPctNormalization(matrixValues, f.RowLabels.Count, f.ColLabels.Count, pctMode);
-        }
-        else if (pctMode is not "" and not "none")
-        {
+        } else if (pctMode is not "" and not "none") {
             var col1 = QueryBuilder.GroupByColumn(def.GroupBy);
             var col2 = QueryBuilder.GroupByColumn(def.SecondaryGroupBy);
             if (col1 != "" && !col1.StartsWith("d.", StringComparison.Ordinal)
-                && col2 != "" && !col2.StartsWith("d.", StringComparison.Ordinal))
-            {
+                && col2 != "" && !col2.StartsWith("d.", StringComparison.Ordinal)) {
                 var denomMap = Denom2D(def, col1, col2, pctMode, baseWhere, baseArgs);
                 var nC = f.ColLabels.Count;
-                for (var r = 0; r < f.RowLabels.Count; r++)
-                {
-                    for (var c = 0; c < nC; c++)
-                    {
-                        if (TryDenom(denomMap, f.RowLabels[r], f.ColLabels[c], out var d) && d > 0)
-                        {
+                for (var r = 0; r < f.RowLabels.Count; r++) {
+                    for (var c = 0; c < nC; c++) {
+                        if (TryDenom(denomMap, f.RowLabels[r], f.ColLabels[c], out var d) && d > 0) {
                             matrixValues[(r * nC) + c] /= d;
                         }
                     }
@@ -174,8 +144,7 @@ public sealed class ReportExecutor
             }
         }
 
-        return new ReportResult
-        {
+        return new ReportResult {
             RowLabels = f.RowLabels,
             ColLabels = f.ColLabels,
             MatrixValues = [.. matrixValues],
@@ -186,15 +155,13 @@ public sealed class ReportExecutor
         };
     }
 
-    private ReportResult ExecuteTimePivotReport(ReportDefinition def, string baseWhere, List<object?> args)
-    {
+    private ReportResult ExecuteTimePivotReport(ReportDefinition def, string baseWhere, List<object?> args) {
         var (query, queryArgs) = QueryBuilder.BuildTimePivotQuery(def, baseWhere, args);
 
         var rows = _db.Query(query, queryArgs);
 
         var accum = new PivotAccum();
-        foreach (var row in rows)
-        {
+        foreach (var row in rows) {
             var rawBucket = AsString(row[0]);
             var rawGrp = AsString(row[1]);
             var count = AsLong(row[2]);
@@ -207,20 +174,17 @@ public sealed class ReportExecutor
         var matrixValues = f.Matrix;
         var nC = f.ColLabels.Count;
 
-        if (bucketLabels.Count > 0)
-        {
+        if (bucketLabels.Count > 0) {
             (bucketLabels, matrixValues) = TimeFill.FillTimePivotGaps(def.TimeBucket, def.CustomBucketUnit, bucketLabels, nC, matrixValues);
         }
         var nR = bucketLabels.Count;
 
         var pctMode = def.NormalizeBy;
-        if (pctMode is "row_pct" or "col_pct" or "global_pct")
-        {
+        if (pctMode is "row_pct" or "col_pct" or "global_pct") {
             Matrix.Apply2DPctNormalization(matrixValues, nR, nC, pctMode);
         }
 
-        return new ReportResult
-        {
+        return new ReportResult {
             RowLabels = bucketLabels,
             ColLabels = f.ColLabels,
             MatrixValues = [.. matrixValues],
@@ -231,8 +195,7 @@ public sealed class ReportExecutor
         };
     }
 
-    private ReportResult ExecuteWeightedAggregate(ReportDefinition def, string baseWhere, List<object?> args, List<object?> baseArgs, string fwClause, IReadOnlyList<object?> fwArgs)
-    {
+    private ReportResult ExecuteWeightedAggregate(ReportDefinition def, string baseWhere, List<object?> args, List<object?> baseArgs, string fwClause, IReadOnlyList<object?> fwArgs) {
         var (query, queryArgs) = QueryBuilder.BuildWeightedAggregateQuery(def, baseWhere, args, fwClause, fwArgs);
         var rows = _db.Query(query, queryArgs);
 
@@ -240,15 +203,13 @@ public sealed class ReportExecutor
         var rawOrder = new List<string>();
         var seen = new HashSet<string>(StringComparer.Ordinal);
 
-        foreach (var row in rows)
-        {
+        foreach (var row in rows) {
             var rawLabel = AsString(row[0]);
             var artifactId = AsLong(row[1]);
             var level = AsLong(row[2]);
             var capWeight = AsDouble(row[3]);
             var w = _weights.CraftingWeight(artifactId, level);
-            if (seen.Add(rawLabel))
-            {
+            if (seen.Add(rawLabel)) {
                 rawOrder.Add(rawLabel);
             }
             accum.TryGetValue(rawLabel, out var cur);
@@ -257,22 +218,17 @@ public sealed class ReportExecutor
 
         var labels = new List<string>(rawOrder.Count);
         var floatValues = new List<double>(rawOrder.Count);
-        foreach (var raw in rawOrder)
-        {
+        foreach (var raw in rawOrder) {
             labels.Add(Labels.FormatLabel(def.GroupBy, raw));
             floatValues.Add(accum[raw]);
         }
 
-        if (def.NormalizeBy != "" && def.NormalizeBy != "none" && def.Mode == "aggregate")
-        {
+        if (def.NormalizeBy != "" && def.NormalizeBy != "none" && def.Mode == "aggregate") {
             var groupCol = QueryBuilder.GroupByColumn(def.GroupBy);
-            if (groupCol != "" && !groupCol.StartsWith("d.", StringComparison.Ordinal))
-            {
+            if (groupCol != "" && !groupCol.StartsWith("d.", StringComparison.Ordinal)) {
                 var denomMap = Denom1D(groupCol, def.NormalizeBy, baseWhere, baseArgs);
-                for (var i = 0; i < rawOrder.Count; i++)
-                {
-                    if (denomMap.TryGetValue(rawOrder[i], out var d) && d > 0)
-                    {
+                for (var i = 0; i < rawOrder.Count; i++) {
+                    if (denomMap.TryGetValue(rawOrder[i], out var d) && d > 0) {
                         floatValues[i] /= d;
                     }
                 }
@@ -282,13 +238,11 @@ public sealed class ReportExecutor
         // Mirrors Go sort.SliceStable on floatValues only: values reorder, labels are
         // rebuilt from rawOrder (which is NOT reordered).
         StableSortFloatDescending(floatValues);
-        for (var i = 0; i < rawOrder.Count; i++)
-        {
+        for (var i = 0; i < rawOrder.Count; i++) {
             labels[i] = Labels.FormatLabel(def.GroupBy, rawOrder[i]);
         }
 
-        return new ReportResult
-        {
+        return new ReportResult {
             Labels = labels,
             FloatValues = floatValues,
             IsFloat = true,
@@ -296,15 +250,13 @@ public sealed class ReportExecutor
         };
     }
 
-    private ReportResult ExecuteWeightedPivot(ReportDefinition def, string baseWhere, List<object?> args, List<object?> baseArgs, string fwClause, IReadOnlyList<object?> fwArgs)
-    {
+    private ReportResult ExecuteWeightedPivot(ReportDefinition def, string baseWhere, List<object?> args, List<object?> baseArgs, string fwClause, IReadOnlyList<object?> fwArgs) {
         var (query, queryArgs) = QueryBuilder.BuildWeightedPivotQuery(def, baseWhere, args, fwClause, fwArgs);
 
         var rows = _db.Query(query, queryArgs);
 
         var accum = new PivotAccum();
-        foreach (var row in rows)
-        {
+        foreach (var row in rows) {
             var rawRow = AsString(row[0]);
             var rawCol = AsString(row[1]);
             var artifactId = AsLong(row[2]);
@@ -326,22 +278,19 @@ public sealed class ReportExecutor
         var col2mc = QueryBuilder.GroupByColumn(def.SecondaryGroupBy);
         var mcMap = new Dictionary<string, Dictionary<string, double>>(StringComparer.Ordinal);
         if (col1mc != "" && !col1mc.StartsWith("d.", StringComparison.Ordinal)
-            && col2mc != "" && !col2mc.StartsWith("d.", StringComparison.Ordinal))
-        {
+            && col2mc != "" && !col2mc.StartsWith("d.", StringComparison.Ordinal)) {
             var mcQuery = string.Format(
                 CultureInfo.InvariantCulture,
                 "SELECT CAST({0} AS TEXT), CAST({1} AS TEXT), COUNT(*) FROM mission m WHERE {2} GROUP BY {0}, {1}",
                 col1mc, col2mc, baseWhere);
             var mcRows = _db.Query(mcQuery, baseArgs);
-            foreach (var row in mcRows)
-            {
+            foreach (var row in mcRows) {
                 var rawKey1 = AsString(row[0]);
                 var rawKey2 = AsString(row[1]);
                 var cnt = AsDouble(row[2]);
                 var k1 = Labels.FormatLabel(def.GroupBy, rawKey1);
                 var k2 = Labels.FormatLabel(def.SecondaryGroupBy, rawKey2);
-                if (!mcMap.TryGetValue(k1, out var inner))
-                {
+                if (!mcMap.TryGetValue(k1, out var inner)) {
                     inner = new Dictionary<string, double>(StringComparer.Ordinal);
                     mcMap[k1] = inner;
                 }
@@ -350,39 +299,29 @@ public sealed class ReportExecutor
         }
 
         var missionCountMatrix = new List<long>(rowLabels.Count * colLabels.Count);
-        for (var r = 0; r < rowLabels.Count; r++)
-        {
-            for (var c = 0; c < colLabels.Count; c++)
-            {
+        for (var r = 0; r < rowLabels.Count; r++) {
+            for (var c = 0; c < colLabels.Count; c++) {
                 missionCountMatrix.Add((long)Denom(mcMap, rowLabels[r], colLabels[c]));
             }
         }
 
         var pctMode = def.NormalizeBy;
         List<double>? rawPerMissionValues = null;
-        if (pctMode is "row_pct" or "col_pct" or "global_pct")
-        {
+        if (pctMode is "row_pct" or "col_pct" or "global_pct") {
             Matrix.Apply2DPctNormalization(matrixValues, rowLabels.Count, colLabels.Count, pctMode);
-        }
-        else if (pctMode is not "" and not "none")
-        {
+        } else if (pctMode is not "" and not "none") {
             var col1 = QueryBuilder.GroupByColumn(def.GroupBy);
             var col2 = QueryBuilder.GroupByColumn(def.SecondaryGroupBy);
             if (col1 != "" && !col1.StartsWith("d.", StringComparison.Ordinal)
-                && col2 != "" && !col2.StartsWith("d.", StringComparison.Ordinal))
-            {
+                && col2 != "" && !col2.StartsWith("d.", StringComparison.Ordinal)) {
                 var nC = colLabels.Count;
-                if (pctMode == "airtime")
-                {
+                if (pctMode == "airtime") {
                     var rpm = new double[rowLabels.Count * nC];
                     Array.Copy(matrixValues, rpm, matrixValues.Length);
-                    for (var r = 0; r < rowLabels.Count; r++)
-                    {
-                        for (var c = 0; c < nC; c++)
-                        {
+                    for (var r = 0; r < rowLabels.Count; r++) {
+                        for (var c = 0; c < nC; c++) {
                             var d = Denom(mcMap, rowLabels[r], colLabels[c]);
-                            if (d > 0)
-                            {
+                            if (d > 0) {
                                 rpm[(r * nC) + c] /= d;
                             }
                         }
@@ -391,12 +330,9 @@ public sealed class ReportExecutor
                 }
 
                 var denomMap = Denom2D(def, col1, col2, pctMode, baseWhere, baseArgs);
-                for (var r = 0; r < rowLabels.Count; r++)
-                {
-                    for (var c = 0; c < nC; c++)
-                    {
-                        if (TryDenom(denomMap, rowLabels[r], colLabels[c], out var d) && d > 0)
-                        {
+                for (var r = 0; r < rowLabels.Count; r++) {
+                    for (var c = 0; c < nC; c++) {
+                        if (TryDenom(denomMap, rowLabels[r], colLabels[c], out var d) && d > 0) {
                             matrixValues[(r * nC) + c] /= d;
                         }
                     }
@@ -404,8 +340,7 @@ public sealed class ReportExecutor
             }
         }
 
-        return new ReportResult
-        {
+        return new ReportResult {
             RowLabels = rowLabels,
             ColLabels = colLabels,
             MatrixValues = [.. matrixValues],
@@ -418,8 +353,7 @@ public sealed class ReportExecutor
         };
     }
 
-    private ReportResult ExecuteWeightedTimeSeries(ReportDefinition def, string baseWhere, List<object?> args, string fwClause, IReadOnlyList<object?> fwArgs)
-    {
+    private ReportResult ExecuteWeightedTimeSeries(ReportDefinition def, string baseWhere, List<object?> args, string fwClause, IReadOnlyList<object?> fwArgs) {
         var (query, queryArgs) = QueryBuilder.BuildWeightedTimeSeriesQuery(def, baseWhere, args, fwClause, fwArgs);
         var rows = _db.Query(query, queryArgs);
 
@@ -427,15 +361,13 @@ public sealed class ReportExecutor
         var buckets = new List<string>();
         var seen = new HashSet<string>(StringComparer.Ordinal);
 
-        foreach (var row in rows)
-        {
+        foreach (var row in rows) {
             var rawBucket = AsString(row[0]);
             var artifactId = AsLong(row[1]);
             var level = AsLong(row[2]);
             var capWeight = AsDouble(row[3]);
             var w = _weights.CraftingWeight(artifactId, level);
-            if (seen.Add(rawBucket))
-            {
+            if (seen.Add(rawBucket)) {
                 buckets.Add(rawBucket);
             }
             accum.TryGetValue(rawBucket, out var cur);
@@ -443,15 +375,13 @@ public sealed class ReportExecutor
         }
 
         var floatValues = new List<double>(buckets.Count);
-        foreach (var b in buckets)
-        {
+        foreach (var b in buckets) {
             floatValues.Add(accum[b]);
         }
 
         (buckets, floatValues) = TimeFill.FillTimeSeriesGapsFloat(def.TimeBucket, def.CustomBucketUnit, buckets, floatValues);
 
-        return new ReportResult
-        {
+        return new ReportResult {
             Labels = buckets,
             FloatValues = floatValues,
             IsFloat = true,
@@ -459,15 +389,13 @@ public sealed class ReportExecutor
         };
     }
 
-    private ReportResult ExecuteWeightedTimePivot(ReportDefinition def, string baseWhere, List<object?> args, string fwClause, IReadOnlyList<object?> fwArgs)
-    {
+    private ReportResult ExecuteWeightedTimePivot(ReportDefinition def, string baseWhere, List<object?> args, string fwClause, IReadOnlyList<object?> fwArgs) {
         var (query, queryArgs) = QueryBuilder.BuildWeightedTimePivotQuery(def, baseWhere, args, fwClause, fwArgs);
 
         var rows = _db.Query(query, queryArgs);
 
         var accum = new PivotAccum();
-        foreach (var row in rows)
-        {
+        foreach (var row in rows) {
             var rawBucket = AsString(row[0]);
             var rawGrp = AsString(row[1]);
             var artifactId = AsLong(row[2]);
@@ -483,20 +411,17 @@ public sealed class ReportExecutor
         var matrixValues = f.Matrix;
         var nC = f.ColLabels.Count;
 
-        if (bucketLabels.Count > 0)
-        {
+        if (bucketLabels.Count > 0) {
             (bucketLabels, matrixValues) = TimeFill.FillTimePivotGaps(def.TimeBucket, def.CustomBucketUnit, bucketLabels, nC, matrixValues);
         }
         var nR = bucketLabels.Count;
 
         var pctMode = def.NormalizeBy;
-        if (pctMode is "row_pct" or "col_pct" or "global_pct")
-        {
+        if (pctMode is "row_pct" or "col_pct" or "global_pct") {
             Matrix.Apply2DPctNormalization(matrixValues, nR, nC, pctMode);
         }
 
-        return new ReportResult
-        {
+        return new ReportResult {
             RowLabels = bucketLabels,
             ColLabels = f.ColLabels,
             MatrixValues = [.. matrixValues],
@@ -508,18 +433,14 @@ public sealed class ReportExecutor
     }
 
     /// <summary>Port of Go denom1D. Keyed by raw group value.</summary>
-    private Dictionary<string, double> Denom1D(string groupCol, string mode, string baseWhere, IReadOnlyList<object?> baseArgs)
-    {
+    private Dictionary<string, double> Denom1D(string groupCol, string mode, string baseWhere, IReadOnlyList<object?> baseArgs) {
         string denomQuery;
-        if (mode == "airtime")
-        {
+        if (mode == "airtime") {
             denomQuery = string.Format(
                 CultureInfo.InvariantCulture,
                 "SELECT CAST({0} AS TEXT), SUM(CAST(m.return_timestamp - m.start_timestamp AS REAL) / 3600.0) FROM mission m WHERE {1} GROUP BY {0}",
                 groupCol, baseWhere);
-        }
-        else
-        {
+        } else {
             denomQuery = string.Format(
                 CultureInfo.InvariantCulture,
                 "SELECT CAST({0} AS TEXT), COUNT(*) FROM mission m WHERE {1} GROUP BY {0}",
@@ -527,26 +448,21 @@ public sealed class ReportExecutor
         }
         var rows = _db.Query(denomQuery, baseArgs);
         var denomMap = new Dictionary<string, double>(StringComparer.Ordinal);
-        foreach (var row in rows)
-        {
+        foreach (var row in rows) {
             denomMap[AsString(row[0])] = AsDouble(row[1]);
         }
         return denomMap;
     }
 
     /// <summary>Port of Go denom2D. Keyed by FormatLabel-resolved [row][col].</summary>
-    private Dictionary<string, Dictionary<string, double>> Denom2D(ReportDefinition def, string col1, string col2, string mode, string baseWhere, IReadOnlyList<object?> baseArgs)
-    {
+    private Dictionary<string, Dictionary<string, double>> Denom2D(ReportDefinition def, string col1, string col2, string mode, string baseWhere, IReadOnlyList<object?> baseArgs) {
         string denomQuery;
-        if (mode == "airtime")
-        {
+        if (mode == "airtime") {
             denomQuery = string.Format(
                 CultureInfo.InvariantCulture,
                 "SELECT CAST({0} AS TEXT), CAST({1} AS TEXT), SUM(CAST(m.return_timestamp - m.start_timestamp AS REAL) / 3600.0) FROM mission m WHERE {2} GROUP BY {0}, {1}",
                 col1, col2, baseWhere);
-        }
-        else
-        {
+        } else {
             denomQuery = string.Format(
                 CultureInfo.InvariantCulture,
                 "SELECT CAST({0} AS TEXT), CAST({1} AS TEXT), COUNT(*) FROM mission m WHERE {2} GROUP BY {0}, {1}",
@@ -554,15 +470,13 @@ public sealed class ReportExecutor
         }
         var rows = _db.Query(denomQuery, baseArgs);
         var denomMap = new Dictionary<string, Dictionary<string, double>>(StringComparer.Ordinal);
-        foreach (var row in rows)
-        {
+        foreach (var row in rows) {
             var rawKey1 = AsString(row[0]);
             var rawKey2 = AsString(row[1]);
             var denom = AsDouble(row[2]);
             var k1 = Labels.FormatLabel(def.GroupBy, rawKey1);
             var k2 = Labels.FormatLabel(def.SecondaryGroupBy, rawKey2);
-            if (!denomMap.TryGetValue(k1, out var inner))
-            {
+            if (!denomMap.TryGetValue(k1, out var inner)) {
                 inner = new Dictionary<string, double>(StringComparer.Ordinal);
                 denomMap[k1] = inner;
             }
@@ -574,37 +488,32 @@ public sealed class ReportExecutor
     private static double Denom(Dictionary<string, Dictionary<string, double>> m, string k1, string k2) =>
         m.TryGetValue(k1, out var inner) && inner.TryGetValue(k2, out var v) ? v : 0;
 
-    private static bool TryDenom(Dictionary<string, Dictionary<string, double>> m, string k1, string k2, out double v)
-    {
+    private static bool TryDenom(Dictionary<string, Dictionary<string, double>> m, string k1, string k2, out double v) {
         v = Denom(m, k1, k2);
         return true;
     }
 
     // Stable descending sort of values in-place, mirroring Go sort.SliceStable on
     // a float slice. Equal values keep insertion order.
-    private static void StableSortFloatDescending(List<double> values)
-    {
+    private static void StableSortFloatDescending(List<double> values) {
         var ordered = values
             .Select((v, i) => (v, i))
             .OrderByDescending(x => x.v)
             .ThenBy(x => x.i)
             .Select(x => x.v)
             .ToList();
-        for (var i = 0; i < values.Count; i++)
-        {
+        for (var i = 0; i < values.Count; i++) {
             values[i] = ordered[i];
         }
     }
 
-    private static string AsString(object? v) => v switch
-    {
+    private static string AsString(object? v) => v switch {
         null => "",
         string s => s,
         _ => Convert.ToString(v, CultureInfo.InvariantCulture) ?? "",
     };
 
-    private static long AsLong(object? v) => v switch
-    {
+    private static long AsLong(object? v) => v switch {
         null => 0,
         long l => l,
         int i => i,
@@ -613,8 +522,7 @@ public sealed class ReportExecutor
         _ => Convert.ToInt64(v, CultureInfo.InvariantCulture),
     };
 
-    private static double AsDouble(object? v) => v switch
-    {
+    private static double AsDouble(object? v) => v switch {
         null => 0,
         double d => d,
         long l => l,

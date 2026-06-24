@@ -13,8 +13,7 @@ public readonly record struct YTick(double Y, string Label);
 /// Geometry for the line-family charts. Port of ReportLineChart.vue / ReportMultiLineChart.vue
 /// math; SVG padding constants match the Vue components exactly.
 /// </summary>
-public static partial class ChartGeometry
-{
+public static partial class ChartGeometry {
     public const double PadLeft = 36;
     public const double PadRight = 8;
     public const double PadTop = 10;
@@ -37,18 +36,15 @@ public static partial class ChartGeometry
     /// Scales values to plotted points across the chart width; empty when fewer than
     /// 2 values (Vue guard). Port of ReportLineChart points.
     /// </summary>
-    public static List<ChartPoint> Points(IReadOnlyList<double> values, IReadOnlyList<string> labels, double w, double h)
-    {
-        if (values.Count < 2)
-        {
+    public static List<ChartPoint> Points(IReadOnlyList<double> values, IReadOnlyList<string> labels, double w, double h) {
+        if (values.Count < 2) {
             return [];
         }
         double max = Math.Max(values.Max(), 1);
         double xStep = (w - PadLeft - PadRight) / (values.Count - 1);
         double yRange = h - PadTop - PadBottom;
         var points = new List<ChartPoint>(values.Count);
-        for (int i = 0; i < values.Count; i++)
-        {
+        for (int i = 0; i < values.Count; i++) {
             double v = values[i];
             points.Add(new ChartPoint(
                 PadLeft + i * xStep,
@@ -67,10 +63,8 @@ public static partial class ChartGeometry
     /// Closed area path from the polyline down to the baseline; empty when fewer than 2 points.
     /// Port of ReportLineChart areaPath.
     /// </summary>
-    public static string AreaPath(IReadOnlyList<ChartPoint> points, double h)
-    {
-        if (points.Count < 2)
-        {
+    public static string AreaPath(IReadOnlyList<ChartPoint> points, double h) {
+        if (points.Count < 2) {
             return "";
         }
         double baseline = PadTop + (h - PadTop - PadBottom);
@@ -81,18 +75,14 @@ public static partial class ChartGeometry
     }
 
     /// <summary>Thins point labels to at most <see cref="MaxLabels"/>, always keeping the last. Port of ReportLineChart labeledPoints.</summary>
-    public static List<ChartPoint> ThinLabels(IReadOnlyList<ChartPoint> points)
-    {
-        if (points.Count <= MaxLabels)
-        {
+    public static List<ChartPoint> ThinLabels(IReadOnlyList<ChartPoint> points) {
+        if (points.Count <= MaxLabels) {
             return [.. points];
         }
         int step = (int)Math.Ceiling((double)points.Count / MaxLabels);
         var result = new List<ChartPoint>();
-        for (int i = 0; i < points.Count; i++)
-        {
-            if (i % step == 0 || i == points.Count - 1)
-            {
+        for (int i = 0; i < points.Count; i++) {
+            if (i % step == 0 || i == points.Count - 1) {
                 result.Add(points[i]);
             }
         }
@@ -100,17 +90,14 @@ public static partial class ChartGeometry
     }
 
     /// <summary>Three y-axis ticks at 33/67/100% of max; empty when max is zero. Port of ReportLineChart yTicks.</summary>
-    public static List<YTick> YTicks(double max, double h, bool isFloat)
-    {
-        if (max == 0)
-        {
+    public static List<YTick> YTicks(double max, double h, bool isFloat) {
+        if (max == 0) {
             return [];
         }
         double yRange = h - PadTop - PadBottom;
         var fracs = new[] { 0.33, 0.67, 1.0 };
         var ticks = new List<YTick>(3);
-        foreach (var frac in fracs)
-        {
+        foreach (var frac in fracs) {
             double val = max * frac;
             double y = PadTop + yRange * (1 - frac);
             string label = isFloat
@@ -125,22 +112,18 @@ public static partial class ChartGeometry
     /// Formats an x-axis label: "yyyy-MM" to "Mon 'yy" (or "Www 'yy" for week > 12),
     /// "yyyy-MM-dd" to "d Mon", else truncated. Port of ReportLineChart formatXLabel.
     /// </summary>
-    public static string FormatXLabel(string s)
-    {
+    public static string FormatXLabel(string s) {
         var ym = YearMonthRegex().Match(s);
-        if (ym.Success)
-        {
+        if (ym.Success) {
             int n = int.Parse(ym.Groups[2].Value, CultureInfo.InvariantCulture);
             string yr = ym.Groups[1].Value[2..];
-            if (n is >= 1 and <= 12)
-            {
+            if (n is >= 1 and <= 12) {
                 return $"{Months[n - 1]} '{yr}";
             }
             return $"W{ym.Groups[2].Value} '{yr}";
         }
         var ymd = YearMonthDayRegex().Match(s);
-        if (ymd.Success)
-        {
+        if (ymd.Success) {
             int m = int.Parse(ymd.Groups[2].Value, CultureInfo.InvariantCulture);
             int d = int.Parse(ymd.Groups[3].Value, CultureInfo.InvariantCulture);
             return $"{d} {Months[m - 1]}";
@@ -168,11 +151,9 @@ public static partial class ChartGeometry
         string baseColor,
         IReadOnlyDictionary<string, string> labelColors,
         int hueDenominator,
-        (string Label, string Color)? otherSentinel)
-    {
+        (string Label, string Color)? otherSentinel) {
         int n = colLabels.Count;
-        if (n == 0)
-        {
+        if (n == 0) {
             return [];
         }
         string baseHex = baseColor.StartsWith('#') && baseColor.Length == 7 ? baseColor : "#6366f1";
@@ -181,16 +162,13 @@ public static partial class ChartGeometry
         double sPct = s * 100;
         double denom = hueDenominator <= 0 ? n : hueDenominator;
         var result = new List<string>(n);
-        for (int i = 0; i < n; i++)
-        {
+        for (int i = 0; i < n; i++) {
             string label = colLabels[i];
-            if (otherSentinel is { } sentinel && label == sentinel.Label)
-            {
+            if (otherSentinel is { } sentinel && label == sentinel.Label) {
                 result.Add(sentinel.Color);
                 continue;
             }
-            if (labelColors.TryGetValue(label, out var c) && !string.IsNullOrEmpty(c))
-            {
+            if (labelColors.TryGetValue(label, out var c) && !string.IsNullOrEmpty(c)) {
                 result.Add(c);
                 continue;
             }
@@ -208,11 +186,9 @@ public static partial class ChartGeometry
     /// Extracts one series' values from a row-major matrix (rows = buckets, cols = series).
     /// Port of ReportMultiLineChart allSeriesData.
     /// </summary>
-    public static List<double> SeriesValues(IReadOnlyList<double> matrix, int rowCount, int colCount, int seriesIdx)
-    {
+    public static List<double> SeriesValues(IReadOnlyList<double> matrix, int rowCount, int colCount, int seriesIdx) {
         var result = new List<double>(rowCount);
-        for (int r = 0; r < rowCount; r++)
-        {
+        for (int r = 0; r < rowCount; r++) {
             int flat = r * colCount + seriesIdx;
             result.Add(flat < matrix.Count ? matrix[flat] : 0);
         }

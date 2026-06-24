@@ -5,10 +5,8 @@ using EggLedger.Web.Tests.Data;
 
 namespace EggLedger.Web.Tests.State;
 
-public sealed class AccountLoaderTests
-{
-    private static (AccountLoader loader, IndexedDbAccountStore store, AppStateService app, ActiveAccount active) Make()
-    {
+public sealed class AccountLoaderTests {
+    private static (AccountLoader loader, IndexedDbAccountStore store, AppStateService app, ActiveAccount active) Make() {
         var db = new FakeIndexedDb();
         var store = new IndexedDbAccountStore(new IndexedDbSettings(db));
         var app = new AppStateService();
@@ -20,8 +18,7 @@ public sealed class AccountLoaderTests
         new() { Id = id, Nickname = nick };
 
     [Fact]
-    public async Task EnsureLoadedPopulatesAppStateKnownAccounts()
-    {
+    public async Task EnsureLoadedPopulatesAppStateKnownAccounts() {
         var (loader, store, app, _) = Make();
         await store.AddKnownAccountAsync(Acct("EI1", "Alice"));
 
@@ -33,8 +30,7 @@ public sealed class AccountLoaderTests
     }
 
     [Fact]
-    public async Task EnsureLoadedRestoresPersistedActiveAccount()
-    {
+    public async Task EnsureLoadedRestoresPersistedActiveAccount() {
         var (loader, store, _, active) = Make();
         await store.AddKnownAccountAsync(Acct("EI1"));
         await store.SetActiveAccountIdAsync("EI1");
@@ -45,8 +41,7 @@ public sealed class AccountLoaderTests
     }
 
     [Fact]
-    public async Task ActiveChangePersistsToStore()
-    {
+    public async Task ActiveChangePersistsToStore() {
         var (loader, store, _, active) = Make();
         await loader.EnsureLoadedAsync();
 
@@ -58,8 +53,7 @@ public sealed class AccountLoaderTests
     }
 
     [Fact]
-    public async Task RestoringActiveDoesNotRePersistInLoop()
-    {
+    public async Task RestoringActiveDoesNotRePersistInLoop() {
         var (loader, store, _, active) = Make();
         await store.AddKnownAccountAsync(Acct("EI1"));
         await store.SetActiveAccountIdAsync("EI1");
@@ -73,8 +67,7 @@ public sealed class AccountLoaderTests
     }
 
     [Fact]
-    public async Task RefreshPicksUpNewlyAddedAccount()
-    {
+    public async Task RefreshPicksUpNewlyAddedAccount() {
         var (loader, store, app, _) = Make();
         await loader.EnsureLoadedAsync();
         Assert.Empty(app.KnownAccounts);

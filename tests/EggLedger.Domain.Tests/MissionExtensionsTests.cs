@@ -3,39 +3,33 @@ using Ei;
 
 namespace EggLedger.Domain.Tests;
 
-public class MissionExtensionsTests
-{
+public class MissionExtensionsTests {
     [Fact]
-    public void GetDurationString_Zero()
-    {
+    public void GetDurationString_Zero() {
         var m = new MissionInfo { DurationSeconds = 0 };
         Assert.Equal("0m", m.GetDurationString());
     }
 
     [Fact]
-    public void GetDurationString_Seconds()
-    {
+    public void GetDurationString_Seconds() {
         var m = new MissionInfo { DurationSeconds = 30 };
         Assert.Equal("30s", m.GetDurationString());
     }
 
     [Fact]
-    public void GetDurationString_Minutes()
-    {
+    public void GetDurationString_Minutes() {
         var m = new MissionInfo { DurationSeconds = 90 };
         Assert.Equal("1m", m.GetDurationString());
     }
 
     [Fact]
-    public void GetDurationString_HoursAndMinutes()
-    {
+    public void GetDurationString_HoursAndMinutes() {
         var m = new MissionInfo { DurationSeconds = (3 * 3600) + (45 * 60) };
         Assert.Equal("3h45m", m.GetDurationString());
     }
 
     [Fact]
-    public void GetDurationString_DaysHoursMinutes()
-    {
+    public void GetDurationString_DaysHoursMinutes() {
         var m = new MissionInfo { DurationSeconds = (2 * 86400) + (3 * 3600) + (15 * 60) };
         Assert.Equal("2d3h15m", m.GetDurationString());
     }
@@ -45,22 +39,19 @@ public class MissionExtensionsTests
     [InlineData(MissionInfo.DurationType.Short, "Short")]
     [InlineData(MissionInfo.DurationType.Long, "Standard")]
     [InlineData(MissionInfo.DurationType.Epic, "Extended")]
-    public void DurationTypeDisplay(MissionInfo.DurationType d, string want)
-    {
+    public void DurationTypeDisplay(MissionInfo.DurationType d, string want) {
         Assert.Equal(want, d.Display());
     }
 
     [Theory]
     [InlineData(MissionInfo.MissionType.Standard, "Home")]
     [InlineData(MissionInfo.MissionType.Virtue, "Virtue")]
-    public void MissionTypeDisplay(MissionInfo.MissionType m, string want)
-    {
+    public void MissionTypeDisplay(MissionInfo.MissionType m, string want) {
         Assert.Equal(want, m.Display());
     }
 
     [Fact]
-    public void GetCompletedMissions_Deduplication()
-    {
+    public void GetCompletedMissions_Deduplication() {
         const string id = "mission-abc";
         var m1 = new MissionInfo { Identifier = id, status = MissionInfo.Status.Complete };
         var m2 = new MissionInfo { Identifier = id, status = MissionInfo.Status.Complete };
@@ -74,8 +65,7 @@ public class MissionExtensionsTests
     }
 
     [Fact]
-    public void GetCompletedMissions_FiltersNonCompleted()
-    {
+    public void GetCompletedMissions_FiltersNonCompleted() {
         const string id1 = "m-complete";
         const string id2 = "m-exploring";
 
@@ -91,8 +81,7 @@ public class MissionExtensionsTests
     }
 
     [Fact]
-    public void GetCompletedMissions_SortedByStartTime()
-    {
+    public void GetCompletedMissions_SortedByStartTime() {
         const string id1 = "m-later";
         const string id2 = "m-earlier";
 
@@ -108,14 +97,12 @@ public class MissionExtensionsTests
     }
 
     [Fact]
-    public void SpaceshipName_KnownShip()
-    {
+    public void SpaceshipName_KnownShip() {
         Assert.Equal("Chicken One", MissionInfo.Spaceship.ChickenOne.Name());
     }
 
     [Fact]
-    public void SpaceshipName_UnknownShip()
-    {
+    public void SpaceshipName_UnknownShip() {
         var unknown = (MissionInfo.Spaceship)9999;
         Assert.False(string.IsNullOrEmpty(unknown.Name()));
     }

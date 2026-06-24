@@ -4,8 +4,7 @@ using System.Text.RegularExpressions;
 namespace EggLedger.Domain.Export;
 
 /// <summary>One timestamp group (csv + xlsx) for one EID. Port of Go FilePair.</summary>
-public sealed class FilePair
-{
+public sealed class FilePair {
     public string Timestamp { get; set; } = "";
     public string DisplayDate { get; set; } = "";
     public string CsvPath { get; set; } = "";
@@ -15,8 +14,7 @@ public sealed class FilePair
 }
 
 /// <summary>All timestamp groups for one EID, newest-first. Port of Go Group.</summary>
-public sealed class ExportGroup
-{
+public sealed class ExportGroup {
     public string Eid { get; set; } = "";
     public string Nickname { get; set; } = "";
     public string AccountColor { get; set; } = "";
@@ -30,8 +28,7 @@ public readonly record struct ExportFileEntry(string Name, long Size);
 /// Minimal filesystem surface used by export management. Tests supply an
 /// in-memory double; production uses <see cref="PhysicalExportFileSystem"/>.
 /// </summary>
-public interface IExportFileSystem
-{
+public interface IExportFileSystem {
     /// <summary>
     /// Lists files (not directories) directly under <paramref name="dir"/>.
     /// Returns null when the directory does not exist.
@@ -46,17 +43,13 @@ public interface IExportFileSystem
 }
 
 /// <summary>Disk-backed <see cref="IExportFileSystem"/>.</summary>
-public sealed class PhysicalExportFileSystem : IExportFileSystem
-{
-    public IReadOnlyList<ExportFileEntry>? ListFiles(string dir)
-    {
-        if (!Directory.Exists(dir))
-        {
+public sealed class PhysicalExportFileSystem : IExportFileSystem {
+    public IReadOnlyList<ExportFileEntry>? ListFiles(string dir) {
+        if (!Directory.Exists(dir)) {
             return null;
         }
         var entries = new List<ExportFileEntry>();
-        foreach (var path in Directory.EnumerateFiles(dir))
-        {
+        foreach (var path in Directory.EnumerateFiles(dir)) {
             var info = new FileInfo(path);
             entries.Add(new ExportFileEntry(info.Name, info.Length));
         }
@@ -65,10 +58,8 @@ public sealed class PhysicalExportFileSystem : IExportFileSystem
 
     public long? Size(string path) => File.Exists(path) ? new FileInfo(path).Length : null;
 
-    public void Delete(string path)
-    {
-        if (File.Exists(path))
-        {
+    public void Delete(string path) {
+        if (File.Exists(path)) {
             File.Delete(path);
         }
     }
@@ -78,8 +69,7 @@ public sealed class PhysicalExportFileSystem : IExportFileSystem
 /// Lists and prunes export file groups. Pure logic over an
 /// <see cref="IExportFileSystem"/>. Port of Go export_management.go.
 /// </summary>
-public static class ExportManagement
-{
+public static class ExportManagement {
     private static readonly Regex ExportFileRe =
         new(@"^(EI\d+)\.(\d{8}_\d{6})\.(csv|xlsx)$", RegexOptions.Compiled);
 
@@ -87,40 +77,33 @@ public static class ExportManagement
     /// Reads {exportsDir}/missions/ and groups files by EID+timestamp. Returns
     /// an empty list when the directory does not exist.
     /// </summary>
-    public static List<ExportGroup> ListGroups(string exportsDir, IExportFileSystem? fs = null)
-    {
+    public static List<ExportGroup> ListGroups(string exportsDir, IExportFileSystem? fs = null) {
         fs ??= new PhysicalExportFileSystem();
         string missionsDir = Path.Combine(exportsDir, "missions");
         var entries = fs.ListFiles(missionsDir);
-        if (entries == null)
-        {
+        if (entries == null) {
             return [];
         }
 
         var pairsByEid = new Dictionary<string, Dictionary<string, FilePair>>(StringComparer.Ordinal);
         var eidOrder = new List<string>();
 
-        foreach (var entry in entries)
-        {
+        foreach (var entry in entries) {
             var m = ExportFileRe.Match(entry.Name);
-            if (!m.Success)
-            {
+            if (!m.Success) {
                 continue;
             }
             string eid = m.Groups[1].Value;
             string ts = m.Groups[2].Value;
             string ext = m.Groups[3].Value;
 
-            if (!pairsByEid.TryGetValue(eid, out var byTs))
-            {
+            if (!pairsByEid.TryGetValue(eid, out var byTs)) {
                 byTs = new Dictionary<string, FilePair>(StringComparer.Ordinal);
                 pairsByEid[eid] = byTs;
                 eidOrder.Add(eid);
             }
-            if (!byTs.TryGetValue(ts, out var pair))
-            {
-                pair = new FilePair
-                {
+            if (!byTs.TryGetValue(ts, out var pair)) {
+                pair = new FilePair {
                     Timestamp = ts,
                     DisplayDate = FormatExportTimestamp(ts),
                 };
@@ -128,8 +111,7 @@ public static class ExportManagement
             }
 
             string fullPath = Path.Combine(missionsDir, entry.Name);
-            switch (ext)
-            {
+            switch (ext) {
                 case "csv":
                     pair.CsvPath = fullPath;
                     pair.CsvSize = entry.Size;
@@ -142,8 +124,7 @@ public static class ExportManagement
         }
 
         var groups = new List<ExportGroup>(eidOrder.Count);
-        foreach (var eid in eidOrder)
-        {
+        foreach (var eid in eidOrder) {
             var pairs = pairsByEid[eid].Values.ToList();
             // Newest first by timestamp string (lexicographic == chronological).
             pairs.Sort((a, b) => string.CompareOrdinal(b.Timestamp, a.Timestamp));
@@ -152,15 +133,13 @@ public static class ExportManagement
         return groups;
     }
 
-    private static string FormatExportTimestamp(string ts)
-    {
+    private static string FormatExportTimestamp(string ts) {
         if (DateTime.TryParseExact(
                 ts,
                 "yyyyMMdd_HHmmss",
                 CultureInfo.InvariantCulture,
                 DateTimeStyles.None,
-                out var t))
-        {
+                out var t)) {
             return t.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
         }
         return ts;
@@ -174,42 +153,33 @@ public static class ExportManagement
         string exportsDir,
         string playerId,
         int keepCount,
-        IExportFileSystem? fs = null)
-    {
+        IExportFileSystem? fs = null) {
         fs ??= new PhysicalExportFileSystem();
-        if (keepCount <= 0)
-        {
+        if (keepCount <= 0) {
             return (0, 0);
         }
         var groups = ListGroups(exportsDir, fs);
         List<FilePair> playerPairs = [];
-        foreach (var g in groups)
-        {
-            if (g.Eid == playerId)
-            {
+        foreach (var g in groups) {
+            if (g.Eid == playerId) {
                 playerPairs = g.Pairs;
                 break;
             }
         }
-        if (playerPairs.Count <= keepCount)
-        {
+        if (playerPairs.Count <= keepCount) {
             return (0, 0);
         }
 
         int deletedCount = 0;
         long freedBytes = 0;
         var toDelete = playerPairs.GetRange(keepCount, playerPairs.Count - keepCount);
-        foreach (var pair in toDelete)
-        {
-            foreach (var path in new[] { pair.CsvPath, pair.XlsxPath })
-            {
-                if (string.IsNullOrEmpty(path))
-                {
+        foreach (var pair in toDelete) {
+            foreach (var path in new[] { pair.CsvPath, pair.XlsxPath }) {
+                if (string.IsNullOrEmpty(path)) {
                     continue;
                 }
                 var size = fs.Size(path);
-                if (size.HasValue)
-                {
+                if (size.HasValue) {
                     freedBytes += size.Value;
                 }
                 fs.Delete(path);

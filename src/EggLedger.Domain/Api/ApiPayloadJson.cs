@@ -9,10 +9,8 @@ namespace EggLedger.Domain.Api;
 /// STJ silently leaves every repeated field empty. Do NOT add IncludeFields (the __pbn__ backing
 /// fields only bloat the payload).
 /// </summary>
-public static class ApiPayloadJson
-{
-    public static JsonSerializerOptions Options { get; } = new()
-    {
+public static class ApiPayloadJson {
+    public static JsonSerializerOptions Options { get; } = new() {
         PreferredObjectCreationHandling = JsonObjectCreationHandling.Populate,
     };
 }

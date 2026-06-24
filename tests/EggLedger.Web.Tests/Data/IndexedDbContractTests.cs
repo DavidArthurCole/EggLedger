@@ -2,25 +2,21 @@ using EggLedger.Web.Data;
 
 namespace EggLedger.Web.Tests.Data;
 
-public sealed class IndexedDbContractTests
-{
-    private static (IndexedDb Db, FakeJsObjectReference Module) Make()
-    {
+public sealed class IndexedDbContractTests {
+    private static (IndexedDb Db, FakeJsObjectReference Module) Make() {
         var module = new FakeJsObjectReference();
         var runtime = new FakeJsRuntime(module);
         return (new IndexedDb(runtime), module);
     }
 
-    private static (IndexedDb Db, FakeJsObjectReference Module, FakeJsRuntime Runtime) MakeWithRuntime()
-    {
+    private static (IndexedDb Db, FakeJsObjectReference Module, FakeJsRuntime Runtime) MakeWithRuntime() {
         var module = new FakeJsObjectReference();
         var runtime = new FakeJsRuntime(module);
         return (new IndexedDb(runtime), module, runtime);
     }
 
     [Fact]
-    public async Task PutAsync_forwards_put_with_store_and_value()
-    {
+    public async Task PutAsync_forwards_put_with_store_and_value() {
         var (db, module) = Make();
         var row = new { player_id = "p1", mission_id = "m1" };
 
@@ -33,8 +29,7 @@ public sealed class IndexedDbContractTests
     }
 
     [Fact]
-    public async Task PutManyAsync_forwards_putMany_and_returns_count()
-    {
+    public async Task PutManyAsync_forwards_putMany_and_returns_count() {
         var (db, module) = Make();
         var values = new object[] { new { id = 1 }, new { id = 2 } };
         module.Enqueue("putMany", 2);
@@ -49,8 +44,7 @@ public sealed class IndexedDbContractTests
     }
 
     [Fact]
-    public async Task GetAsync_forwards_get_with_key_and_returns_value()
-    {
+    public async Task GetAsync_forwards_get_with_key_and_returns_value() {
         var (db, module) = Make();
         module.Enqueue("get", "hit");
 
@@ -64,8 +58,7 @@ public sealed class IndexedDbContractTests
     }
 
     [Fact]
-    public async Task GetAllAsync_forwards_getAll()
-    {
+    public async Task GetAllAsync_forwards_getAll() {
         var (db, module) = Make();
         module.Enqueue("getAll", new[] { "a", "b" });
 
@@ -78,8 +71,7 @@ public sealed class IndexedDbContractTests
     }
 
     [Fact]
-    public async Task GetAllByIndexAsync_forwards_index_name_and_value()
-    {
+    public async Task GetAllByIndexAsync_forwards_index_name_and_value() {
         var (db, module) = Make();
         module.Enqueue("getAllByIndex", new[] { "x" });
 
@@ -94,8 +86,7 @@ public sealed class IndexedDbContractTests
     }
 
     [Fact]
-    public async Task DeleteAsync_forwards_del()
-    {
+    public async Task DeleteAsync_forwards_del() {
         var (db, module) = Make();
 
         await db.DeleteAsync("settings", "theme");
@@ -107,8 +98,7 @@ public sealed class IndexedDbContractTests
     }
 
     [Fact]
-    public async Task ClearAsync_forwards_clear()
-    {
+    public async Task ClearAsync_forwards_clear() {
         var (db, module) = Make();
 
         await db.ClearAsync("mission");
@@ -119,8 +109,7 @@ public sealed class IndexedDbContractTests
     }
 
     [Fact]
-    public async Task CountAsync_forwards_count_and_returns_int()
-    {
+    public async Task CountAsync_forwards_count_and_returns_int() {
         var (db, module) = Make();
         module.Enqueue("count", 7);
 
@@ -133,8 +122,7 @@ public sealed class IndexedDbContractTests
     }
 
     [Fact]
-    public async Task Module_imported_once_across_calls()
-    {
+    public async Task Module_imported_once_across_calls() {
         var (db, _, runtime) = MakeWithRuntime();
 
         await db.CountAsync("mission");
@@ -144,8 +132,7 @@ public sealed class IndexedDbContractTests
     }
 
     [Fact]
-    public async Task DisposeAsync_disposes_module_when_loaded()
-    {
+    public async Task DisposeAsync_disposes_module_when_loaded() {
         var (db, module) = Make();
         await db.CountAsync("mission");
 

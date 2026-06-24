@@ -10,60 +10,49 @@ namespace EggLedger.Web.Data;
 /// selection under <c>active_account_id</c> in the existing <c>settings</c> store
 /// (no IndexedDB schema bump). Upsert by id keeps one row per account.
 /// </summary>
-public sealed class IndexedDbAccountStore
-{
+public sealed class IndexedDbAccountStore {
     internal const string KnownAccountsKey = "known_accounts";
     internal const string ActiveAccountKey = "active_account_id";
 
     private readonly IndexedDbSettings _settings;
 
-    public IndexedDbAccountStore(IndexedDbSettings settings)
-    {
+    public IndexedDbAccountStore(IndexedDbSettings settings) {
         _settings = settings;
     }
 
     /// <summary>All known accounts, in insertion order. Empty when none stored.</summary>
-    public async Task<List<AccountInfo>> GetKnownAccountsAsync()
-    {
+    public async Task<List<AccountInfo>> GetKnownAccountsAsync() {
         var all = await _settings.GetAllSettingsAsync();
         return Deserialize(all);
     }
 
     /// <summary>Upserts an account by id, then persists the list. Mirrors Go AddKnownAccount.</summary>
-    public async Task AddKnownAccountAsync(AccountInfo account)
-    {
+    public async Task AddKnownAccountAsync(AccountInfo account) {
         var all = await _settings.GetAllSettingsAsync();
         var list = Deserialize(all);
         int i = list.FindIndex(a => a.Id == account.Id);
-        if (i >= 0)
-        {
+        if (i >= 0) {
             list[i] = account;
-        }
-        else
-        {
+        } else {
             list.Add(account);
         }
         await _settings.SetSettingAsync(KnownAccountsKey, Serialize(list));
     }
 
     /// <summary>Removes the account with the given id, if present.</summary>
-    public async Task RemoveKnownAccountAsync(string id)
-    {
+    public async Task RemoveKnownAccountAsync(string id) {
         var all = await _settings.GetAllSettingsAsync();
         var list = Deserialize(all);
         int removed = list.RemoveAll(a => a.Id == id);
-        if (removed > 0)
-        {
+        if (removed > 0) {
             await _settings.SetSettingAsync(KnownAccountsKey, Serialize(list));
         }
     }
 
     /// <summary>Persisted active account id, or null when unset/blank.</summary>
-    public async Task<string?> GetActiveAccountIdAsync()
-    {
+    public async Task<string?> GetActiveAccountIdAsync() {
         var all = await _settings.GetAllSettingsAsync();
-        if (all.TryGetValue(ActiveAccountKey, out var id) && !string.IsNullOrEmpty(id))
-        {
+        if (all.TryGetValue(ActiveAccountKey, out var id) && !string.IsNullOrEmpty(id)) {
             return id;
         }
         return null;
@@ -73,28 +62,22 @@ public sealed class IndexedDbAccountStore
     public async Task SetActiveAccountIdAsync(string id) =>
         await _settings.SetSettingAsync(ActiveAccountKey, id ?? "");
 
-    private static List<AccountInfo> Deserialize(Dictionary<string, string> settings)
-    {
-        if (!settings.TryGetValue(KnownAccountsKey, out var raw) || string.IsNullOrEmpty(raw))
-        {
+    private static List<AccountInfo> Deserialize(Dictionary<string, string> settings) {
+        if (!settings.TryGetValue(KnownAccountsKey, out var raw) || string.IsNullOrEmpty(raw)) {
             return [];
         }
-        try
-        {
+        try {
             var rows = JsonSerializer.Deserialize<List<AccountInfoRow>>(raw, Rows.JsonOptions);
             return rows is null
                 ? []
                 : rows.ConvertAll(AccountInfoRow.ToAccount);
-        }
-        catch (JsonException)
-        {
+        } catch (JsonException) {
             // Corrupt blob: start clean rather than wedge the Ledger tab.
             return [];
         }
     }
 
-    private static string Serialize(List<AccountInfo> list)
-    {
+    private static string Serialize(List<AccountInfo> list) {
         var rows = list.ConvertAll(AccountInfoRow.FromAccount);
         return JsonSerializer.Serialize(rows, Rows.JsonOptions);
     }
@@ -105,8 +88,7 @@ public sealed class IndexedDbAccountStore
 /// <see cref="JsonPropertyNameAttribute"/> names decouple the stored blob from
 /// Domain <see cref="AccountInfo"/> property names, so a rename cannot break round-trip.
 /// </summary>
-public sealed record AccountInfoRow
-{
+public sealed record AccountInfoRow {
     [JsonPropertyName("id")]
     public string Id { get; init; } = "";
 
@@ -128,8 +110,7 @@ public sealed record AccountInfoRow
     [JsonPropertyName("te_count")]
     public int TeCount { get; init; }
 
-    public static AccountInfoRow FromAccount(AccountInfo a) => new()
-    {
+    public static AccountInfoRow FromAccount(AccountInfo a) => new() {
         Id = a.Id,
         Nickname = a.Nickname,
         EBString = a.EBString,
@@ -139,8 +120,7 @@ public sealed record AccountInfoRow
         TeCount = a.TeCount,
     };
 
-    public static AccountInfo ToAccount(AccountInfoRow r) => new()
-    {
+    public static AccountInfo ToAccount(AccountInfoRow r) => new() {
         Id = r.Id,
         Nickname = r.Nickname,
         EBString = r.EBString,

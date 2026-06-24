@@ -8,13 +8,11 @@ namespace EggLedger.Web.Data;
 /// and the <see cref="ReportDefinition"/> the report engine and builder use.
 /// Port of Go reportdb/converters. All methods are pure.
 /// </summary>
-public static class ReportMapping
-{
+public static class ReportMapping {
     private static readonly JsonSerializerOptions FilterOptions = new(JsonSerializerDefaults.Web);
 
     /// <summary>Builds a <see cref="ReportDefinition"/> from a row, parsing filters JSON. Blank/invalid yields empty AND/OR groups.</summary>
-    public static ReportDefinition ToDefinition(ReportRow r) => new()
-    {
+    public static ReportDefinition ToDefinition(ReportRow r) => new() {
         Id = r.Id,
         AccountId = r.AccountId,
         Name = r.Name,
@@ -51,8 +49,7 @@ public static class ReportMapping
     };
 
     /// <summary>Builds a row from a definition, serializing filters to compact JSON. Timestamps are left for the store to stamp.</summary>
-    public static ReportRow ToRow(ReportDefinition d) => new()
-    {
+    public static ReportRow ToRow(ReportDefinition d) => new() {
         Id = d.Id,
         AccountId = d.AccountId,
         Name = d.Name,
@@ -89,18 +86,13 @@ public static class ReportMapping
     };
 
     /// <summary>Parses filters JSON into structured groups, tolerating blank/invalid input.</summary>
-    public static ReportFilters ParseFilters(string? json)
-    {
-        if (string.IsNullOrWhiteSpace(json))
-        {
+    public static ReportFilters ParseFilters(string? json) {
+        if (string.IsNullOrWhiteSpace(json)) {
             return new ReportFilters();
         }
-        try
-        {
+        try {
             return JsonSerializer.Deserialize<ReportFilters>(json, FilterOptions) ?? new ReportFilters();
-        }
-        catch (JsonException)
-        {
+        } catch (JsonException) {
             return new ReportFilters();
         }
     }

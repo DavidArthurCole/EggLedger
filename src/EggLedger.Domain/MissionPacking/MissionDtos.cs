@@ -1,8 +1,7 @@
 namespace EggLedger.Domain.MissionPacking;
 
 /// <summary>Precomputed indexed filter-column values. Go port of db.MissionFilterCols.</summary>
-public struct MissionFilterCols
-{
+public struct MissionFilterCols {
     public int Ship { get; set; }
     public int DurationType { get; set; }
     public int Level { get; set; }
@@ -15,8 +14,7 @@ public struct MissionFilterCols
 }
 
 /// <summary>Lightweight mission record built purely from DB columns. Go port of db.MissionMeta.</summary>
-public struct MissionMeta
-{
+public struct MissionMeta {
     public string MissionId { get; set; }
     public double StartTimestamp { get; set; }
     public double ReturnTimestamp { get; set; }

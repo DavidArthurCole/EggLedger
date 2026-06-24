@@ -3,8 +3,7 @@ using System.Text.Json.Serialization;
 namespace EggLedger.Domain.Reports;
 
 /// <summary>Mirrors the frontend FilterCondition structure. Port of Go reports.FilterCondition.</summary>
-public sealed class FilterCondition
-{
+public sealed class FilterCondition {
     [JsonPropertyName("topLevel")]
     public string TopLevel { get; set; } = "";
 
@@ -16,8 +15,7 @@ public sealed class FilterCondition
 }
 
 /// <summary>Holds the AND and OR filter groups for a report. Port of Go reports.ReportFilters.</summary>
-public sealed class ReportFilters
-{
+public sealed class ReportFilters {
     [JsonPropertyName("and")]
     public List<FilterCondition> And { get; set; } = [];
 
@@ -26,8 +24,7 @@ public sealed class ReportFilters
 }
 
 /// <summary>Full configuration for a single report. Port of Go reports.ReportDefinition.</summary>
-public sealed class ReportDefinition
-{
+public sealed class ReportDefinition {
     [JsonPropertyName("id")]
     public string Id { get; set; } = "";
 
@@ -129,8 +126,7 @@ public sealed class ReportDefinition
 }
 
 /// <summary>Computed output of executing a report. Port of Go reports.ReportResult.</summary>
-public sealed class ReportResult : IEquatable<ReportResult>
-{
+public sealed class ReportResult : IEquatable<ReportResult> {
     [JsonPropertyName("labels")]
     public List<string> Labels { get; set; } = [];
 
@@ -177,14 +173,11 @@ public sealed class ReportResult : IEquatable<ReportResult>
     /// Value equality across all fields (in-memory vs SQL parity tests). Null and empty
     /// lists differ only for the nullable optional fields, matching how each path leaves them.
     /// </summary>
-    public bool Equals(ReportResult? other)
-    {
-        if (other is null)
-        {
+    public bool Equals(ReportResult? other) {
+        if (other is null) {
             return false;
         }
-        if (ReferenceEquals(this, other))
-        {
+        if (ReferenceEquals(this, other)) {
             return true;
         }
         return IsFloat == other.IsFloat
@@ -206,8 +199,7 @@ public sealed class ReportResult : IEquatable<ReportResult>
     public override bool Equals(object? obj) => Equals(obj as ReportResult);
 
     // Coarse (counts only): consistent with Equals but not a good dictionary key.
-    public override int GetHashCode()
-    {
+    public override int GetHashCode() {
         var h = new HashCode();
         h.Add(IsFloat);
         h.Add(Is2D);
@@ -222,14 +214,11 @@ public sealed class ReportResult : IEquatable<ReportResult>
     private static bool SeqEqual<T>(List<T> a, List<T> b) =>
         a.Count == b.Count && a.SequenceEqual(b);
 
-    private static bool NullableSeqEqual<T>(List<T>? a, List<T>? b)
-    {
-        if (a is null)
-        {
+    private static bool NullableSeqEqual<T>(List<T>? a, List<T>? b) {
+        if (a is null) {
             return b is null;
         }
-        if (b is null)
-        {
+        if (b is null) {
             return false;
         }
         return a.Count == b.Count && a.SequenceEqual(b);
@@ -237,11 +226,9 @@ public sealed class ReportResult : IEquatable<ReportResult>
 }
 
 /// <summary>Static report helpers that do not need DB access.</summary>
-public static class Report
-{
+public static class Report {
     /// <summary>True if the groupBy can be matched against Menno community data. Port of Go reports.MennoComparableGroupBy.</summary>
-    public static bool MennoComparableGroupBy(string groupBy) => groupBy switch
-    {
+    public static bool MennoComparableGroupBy(string groupBy) => groupBy switch {
         "ship_type" or "duration_type" or "level" or "mission_target"
             or "artifact_name" or "rarity" or "tier" => true,
         _ => false,

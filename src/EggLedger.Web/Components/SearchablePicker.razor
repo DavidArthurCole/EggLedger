@@ -1,65 +1,57 @@
 @using EggLedger.Web.Missions
 @using EggLedger.Web.State
-@inject IJSRuntime Js
-@implements IAsyncDisposable
 
-@* Searchable option picker with image thumbnails and keyboard nav. Drops show a
-   rarity ring, targets show the target icon. *@
+@* Centered modal picker with search + image thumbnails. Port of the Vue
+   SearchOverSelector: a readonly trigger field opens a full-screen overlay with a
+   dark backdrop; the inner dialog has a close button, a search box, and a
+   scrollable option list. Drops show a rarity ring, targets the target icon. *@
 
-<div class="searchable-picker relative inline-block">
-    <button type="button" class="filter-select border-gray-300 text-gray-400 flex items-center gap-1.5 text-left"
-            @onclick="ToggleAsync">
-        @if (Selected is { } sel)
-        {
-            @if (!string.IsNullOrEmpty(sel.ImagePath))
-            {
-                <img class="max-w-5 @RingClass(sel)" loading="lazy" decoding="async" alt="@sel.Text" src="@ImageSrc(sel)" />
-            }
-            <span class="@(sel.StyleClass ?? "text-gray-400")">@sel.Text</span>
-        }
-        else
-        {
-            <span class="text-gray-500">@Placeholder</span>
-        }
-    </button>
+<input type="text" readonly placeholder="Click to select"
+       class="filter-select w-auto border-gray-300 text-gray-400 cursor-pointer"
+       value="@(Selected?.Text ?? "")"
+       @onclick="Open" />
 
-    @if (_open)
-    {
-        <div class="searchable-picker-pop absolute z-50 mt-1 w-72 max-h-80 overflow-auto rounded-md border border-gray-600 bg-darkest shadow-2xl">
-            <input @ref="_searchInput" type="text" class="w-full box-border px-2 py-1 text-sm bg-darkest border-b border-gray-600 text-gray-300 focus:outline-none"
-                   placeholder="Search..." @bind="_query" @bind:event="oninput"
-                   @onkeydown="OnSearchKeyDown" />
-            <div>
+@if (_open)
+{
+    <div class="popup-selector-main overlay-@OverlayKind" @onclick="Close">
+        <div class="popup-selector-inner" @onclick:stopPropagation="true">
+            <button type="button" class="close-button" @onclick="Close" aria-label="Close">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+            <input @ref="_searchInput" type="text" class="input-search" placeholder="Search..."
+                   @bind="_query" @bind:event="oninput" @onkeydown="OnSearchKeyDown" />
+            <div class="popup-opt-container">
                 @{ var filtered = Filtered(); }
                 @if (filtered.Count == 0)
                 {
-                    <div class="px-2 py-1.5 text-sm text-gray-500">No results found.</div>
+                    <span class="text-gray-400">No results found.</span>
                 }
                 else
                 {
                     @for (var i = 0; i < filtered.Count; i++)
                     {
-                        var idx = i;
-                        var opt = filtered[idx];
-                        <button type="button"
-                                class="w-full flex items-center gap-2 px-2 py-1 text-sm text-left hover:bg-darker @(idx == _activeIndex ? "bg-darker" : "")"
-                                @onclick="() => Choose(opt)">
+                        var opt = filtered[i];
+                        <div class="popup-opt @(i == _activeIndex ? "selected-popup-opt" : "")"
+                             @onclick="() => Choose(opt)">
                             @if (!string.IsNullOrEmpty(opt.ImagePath))
                             {
-                                <img class="max-w-6 @RingClass(opt)" loading="lazy" decoding="async" alt="@opt.Text" src="@ImageSrc(opt)" />
+                                <img class="max-w-7 mr-1rem @RingClass(opt)" loading="lazy" decoding="async"
+                                     alt="@opt.Text" src="@ImageSrc(opt)" />
                             }
                             <span class="@(opt.StyleClass ?? "text-gray-400")">@opt.Text</span>
-                        </button>
+                        </div>
                     }
                 }
             </div>
             @if (Footer is not null)
             {
-                <div class="border-t border-gray-600 px-2 py-1">@Footer</div>
+                <div class="flex items-center gap-1.5 px-1 pt-1 pb-0.5 text-xs text-gray-400 border-t border-gray-600 mr-1rem">@Footer</div>
             }
         </div>
-    }
-</div>
+    </div>
+}
 
 @code {
     [Parameter] public IReadOnlyList<FilterOption> Options { get; set; } = [];
@@ -67,6 +59,7 @@
     [Parameter] public string Placeholder { get; set; } = "Select...";
     [Parameter] public string ImageBasePath { get; set; } = "images/";
     [Parameter] public bool RarityRing { get; set; }
+    [Parameter] public string OverlayKind { get; set; } = "drop";
     [Parameter] public EventCallback<FilterOption> OnSelect { get; set; }
     [Parameter] public RenderFragment? Footer { get; set; }
 
@@ -74,35 +67,30 @@
     private string _query = "";
     private int _activeIndex = -1;
     private ElementReference _searchInput;
-    private IJSObjectReference? _dismiss;
 
     private FilterOption? Selected =>
         SelectedValue is null ? null : Options.FirstOrDefault(o => o.Value == SelectedValue);
 
-    private List<FilterOption> Filtered()
-    {
-        if (string.IsNullOrWhiteSpace(_query))
-            return [.. Options];
-        return [.. Options.Where(o => o.Text.Contains(_query, StringComparison.OrdinalIgnoreCase))];
-    }
+    private List<FilterOption> Filtered() =>
+        string.IsNullOrWhiteSpace(_query)
+            ? [.. Options]
+            : [.. Options.Where(o => o.Text.Contains(_query, StringComparison.OrdinalIgnoreCase))];
 
     private string ImageSrc(FilterOption o) => ContentPaths.Asset(ImageBasePath + o.ImagePath);
 
     private string RingClass(FilterOption o) =>
-        RarityRing && o.Rarity is > 0 ? $"rounded-full bg-r-{o.Rarity}" : "";
+        RarityRing && o.Rarity is { } r ? $"rounded-full bg-r-{r}" : "";
 
-    private async Task ToggleAsync()
+    private async Task Open()
     {
-        _open = !_open;
-        if (_open)
-        {
-            _query = "";
-            _activeIndex = -1;
-            await EnsureDismissAsync();
-            await Task.Yield();
-            await _searchInput.FocusAsync();
-        }
+        _open = true;
+        _query = "";
+        _activeIndex = -1;
+        await Task.Yield();
+        await _searchInput.FocusAsync();
     }
+
+    private void Close() => _open = false;
 
     private void OnSearchKeyDown(KeyboardEventArgs e)
     {
@@ -119,7 +107,7 @@
                 _ = Choose(filtered[_activeIndex]);
                 break;
             case "Escape":
-                _open = false;
+                Close();
                 break;
         }
     }
@@ -128,27 +116,5 @@
     {
         _open = false;
         await OnSelect.InvokeAsync(opt);
-    }
-
-    [JSInvokable]
-    public void CloseFromOutside()
-    {
-        if (!_open)
-            return;
-        _open = false;
-        StateHasChanged();
-    }
-
-    private async Task EnsureDismissAsync()
-    {
-        _dismiss ??= await Js.InvokeAsync<IJSObjectReference>(
-            "import", "./_content/EggLedger.Web/js/clickaway.js");
-        await _dismiss.InvokeVoidAsync("register", DotNetObjectReference.Create(this), "searchable-picker");
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        if (_dismiss is not null)
-            await _dismiss.DisposeAsync();
     }
 }

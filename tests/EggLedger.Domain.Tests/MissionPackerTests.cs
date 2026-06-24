@@ -8,15 +8,13 @@ namespace EggLedger.Domain.Tests;
 /// the Go reference. Uses the embedded eiafx-config.bin via
 /// EmbeddedMissionConfigSource (same data the Go tests load via eiafx.LoadConfig).
 /// </summary>
-public class MissionPackerTests
-{
+public class MissionPackerTests {
     private static readonly MissionPacker Packer = new(new EmbeddedMissionConfigSource());
 
     private static CompleteMissionResponse MakeTimestampMission(double startTimeDerived) =>
         new() { Info = new MissionInfo { StartTimeDerived = startTimeDerived } };
 
-    private static float Nominal(MissionInfo.Spaceship ship, MissionInfo.DurationType dur, int level)
-    {
+    private static float Nominal(MissionInfo.Spaceship ship, MissionInfo.DurationType dur, int level) {
         Assert.True(Packer.TryGetShipCapacities(ship, dur, out var caps));
         return caps[level];
     }
@@ -24,32 +22,27 @@ public class MissionPackerTests
     // isBuggedCap
 
     [Fact]
-    public void IsBuggedCap_InsideRange()
-    {
+    public void IsBuggedCap_InsideRange() {
         Assert.True(Packer.IsBuggedCap(MakeTimestampMission(1712900000)));
     }
 
     [Fact]
-    public void IsBuggedCap_BeforeRange()
-    {
+    public void IsBuggedCap_BeforeRange() {
         Assert.False(Packer.IsBuggedCap(MakeTimestampMission(1712721599)));
     }
 
     [Fact]
-    public void IsBuggedCap_AfterRange()
-    {
+    public void IsBuggedCap_AfterRange() {
         Assert.False(Packer.IsBuggedCap(MakeTimestampMission(1713286801)));
     }
 
     [Fact]
-    public void IsBuggedCap_AtLowerBound()
-    {
+    public void IsBuggedCap_AtLowerBound() {
         Assert.False(Packer.IsBuggedCap(MakeTimestampMission(1712721600)));
     }
 
     [Fact]
-    public void IsBuggedCap_AtUpperBound()
-    {
+    public void IsBuggedCap_AtUpperBound() {
         Assert.False(Packer.IsBuggedCap(MakeTimestampMission(1713286800)));
     }
 
@@ -57,10 +50,8 @@ public class MissionPackerTests
 
     private static CompleteMissionResponse MakeDubCapMission(
         MissionInfo.Spaceship ship, MissionInfo.DurationType dur, uint level, uint capacity) =>
-        new()
-        {
-            Info = new MissionInfo
-            {
+        new() {
+            Info = new MissionInfo {
                 Ship = ship,
                 duration_type = dur,
                 Level = level,
@@ -69,8 +60,7 @@ public class MissionPackerTests
         };
 
     [Fact]
-    public void IsDubCap_Normal()
-    {
+    public void IsDubCap_Normal() {
         var ship = MissionInfo.Spaceship.ChickenOne;
         var dur = MissionInfo.DurationType.Short;
         var nominal = Nominal(ship, dur, 0);
@@ -78,8 +68,7 @@ public class MissionPackerTests
     }
 
     [Fact]
-    public void IsDubCap_AboveThreshold()
-    {
+    public void IsDubCap_AboveThreshold() {
         var ship = MissionInfo.Spaceship.ChickenOne;
         var dur = MissionInfo.DurationType.Short;
         var nominal = Nominal(ship, dur, 0);
@@ -87,8 +76,7 @@ public class MissionPackerTests
     }
 
     [Fact]
-    public void IsDubCap_BelowThreshold()
-    {
+    public void IsDubCap_BelowThreshold() {
         var ship = MissionInfo.Spaceship.ChickenOne;
         var dur = MissionInfo.DurationType.Short;
         var nominal = Nominal(ship, dur, 0);
@@ -96,8 +84,7 @@ public class MissionPackerTests
     }
 
     [Fact]
-    public void IsDubCap_AtThreshold()
-    {
+    public void IsDubCap_AtThreshold() {
         var ship = MissionInfo.Spaceship.ChickenOne;
         var dur = MissionInfo.DurationType.Short;
         var nominal = Nominal(ship, dur, 0);
@@ -112,8 +99,7 @@ public class MissionPackerTests
     [InlineData(90, "1m")]
     [InlineData((3 * 3600) + (30 * 60), "3h30m")]
     [InlineData((2 * 86400) + (6 * 3600) + (45 * 60), "2d6h45m")]
-    public void DurationStringFromSecs(double secs, string want)
-    {
+    public void DurationStringFromSecs(double secs, string want) {
         Assert.Equal(want, MissionPacker.DurationStringFromSecs(secs));
     }
 
@@ -121,11 +107,9 @@ public class MissionPackerTests
 
     private static CompleteMissionResponse MakeFullMissionResponse(
         MissionInfo.Spaceship ship, MissionInfo.DurationType dur, uint level, uint capacity, double durSecs) =>
-        new()
-        {
+        new() {
             Success = true,
-            Info = new MissionInfo
-            {
+            Info = new MissionInfo {
                 Ship = ship,
                 duration_type = dur,
                 Level = level,
@@ -135,14 +119,12 @@ public class MissionPackerTests
         };
 
     [Fact]
-    public void ComputeMissionFilterCols_NilInfo()
-    {
+    public void ComputeMissionFilterCols_NilInfo() {
         Assert.False(Packer.TryComputeMissionFilterCols(1000000, new CompleteMissionResponse(), out _));
     }
 
     [Fact]
-    public void ComputeMissionFilterCols_Normal()
-    {
+    public void ComputeMissionFilterCols_Normal() {
         var ship = MissionInfo.Spaceship.ChickenOne;
         var dur = MissionInfo.DurationType.Short;
         var nominal = Nominal(ship, dur, 0);
@@ -163,8 +145,7 @@ public class MissionPackerTests
     }
 
     [Fact]
-    public void ComputeMissionFilterCols_DubCap()
-    {
+    public void ComputeMissionFilterCols_DubCap() {
         var ship = MissionInfo.Spaceship.ChickenOne;
         var dur = MissionInfo.DurationType.Short;
         var nominal = Nominal(ship, dur, 0);
@@ -176,8 +157,7 @@ public class MissionPackerTests
     }
 
     [Fact]
-    public void ComputeMissionFilterCols_BuggedCap()
-    {
+    public void ComputeMissionFilterCols_BuggedCap() {
         var ship = MissionInfo.Spaceship.ChickenOne;
         var dur = MissionInfo.DurationType.Short;
         const double startTs = 1712900000;
@@ -188,8 +168,7 @@ public class MissionPackerTests
     }
 
     [Fact]
-    public void ComputeMissionFilterCols_WithTarget()
-    {
+    public void ComputeMissionFilterCols_WithTarget() {
         var ship = MissionInfo.Spaceship.ChickenOne;
         var dur = MissionInfo.DurationType.Short;
         var targetArtifact = ArtifactSpec.Name.BookOfBasan;
@@ -204,10 +183,8 @@ public class MissionPackerTests
     // MissionMetaToDBMission
 
     [Fact]
-    public void MissionMetaToDBMission_Basic()
-    {
-        var meta = new MissionMeta
-        {
+    public void MissionMetaToDBMission_Basic() {
+        var meta = new MissionMeta {
             MissionId = "m1",
             StartTimestamp = 1000000,
             ReturnTimestamp = 1000300,
@@ -238,11 +215,9 @@ public class MissionPackerTests
     }
 
     [Fact]
-    public void MissionMetaToDBMission_WithTarget()
-    {
+    public void MissionMetaToDBMission_WithTarget() {
         int target = (int)ArtifactSpec.Name.BookOfBasan;
-        var meta = new MissionMeta
-        {
+        var meta = new MissionMeta {
             MissionId = "m2",
             StartTimestamp = 1000000,
             ReturnTimestamp = 1000300,
@@ -261,10 +236,8 @@ public class MissionPackerTests
     }
 
     [Fact]
-    public void MissionMetaToDBMission_VirtueMissionType()
-    {
-        var meta = new MissionMeta
-        {
+    public void MissionMetaToDBMission_VirtueMissionType() {
+        var meta = new MissionMeta {
             MissionId = "m3",
             StartTimestamp = 1000000,
             ReturnTimestamp = 1000300,
@@ -283,12 +256,9 @@ public class MissionPackerTests
     // CompileMissionInformation
 
     [Fact]
-    public void CompileMissionInformation_NoMissionTypeField()
-    {
-        var resp = new CompleteMissionResponse
-        {
-            Info = new MissionInfo
-            {
+    public void CompileMissionInformation_NoMissionTypeField() {
+        var resp = new CompleteMissionResponse {
+            Info = new MissionInfo {
                 Ship = MissionInfo.Spaceship.ChickenOne,
                 duration_type = MissionInfo.DurationType.Short,
                 Level = 0,
@@ -305,8 +275,7 @@ public class MissionPackerTests
     }
 
     [Fact]
-    public void CompileMissionInformation_NilInfo()
-    {
+    public void CompileMissionInformation_NilInfo() {
         var dm = Packer.CompileMissionInformation(new CompleteMissionResponse());
         Assert.Equal("", dm.MissiondId);
         Assert.Null(dm.Ship);

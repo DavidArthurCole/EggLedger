@@ -5,13 +5,10 @@ using EggLedger.Domain.Export.Xlsx;
 namespace EggLedger.Domain.Tests.Export;
 
 /// <summary>Port of Go xlsxwriter/xlsxwriter_test.go.</summary>
-public class XlsxWriterTests
-{
-    private static byte[] BuildXlsx()
-    {
+public class XlsxWriterTests {
+    private static byte[] BuildXlsx() {
         using var ms = new MemoryStream();
-        using (var w = XlsxWriter.New(ms))
-        {
+        using (var w = XlsxWriter.New(ms)) {
             w.SetColWidths(new[] { 20.0, 22.0, 15.0 });
             w.WriteRow(new[]
             {
@@ -31,13 +28,11 @@ public class XlsxWriterTests
         return ms.ToArray();
     }
 
-    private static Dictionary<string, string> OpenXlsx(byte[] data)
-    {
+    private static Dictionary<string, string> OpenXlsx(byte[] data) {
         var contents = new Dictionary<string, string>(StringComparer.Ordinal);
         using var ms = new MemoryStream(data);
         using var zip = new ZipArchive(ms, ZipArchiveMode.Read);
-        foreach (var entry in zip.Entries)
-        {
+        foreach (var entry in zip.Entries) {
             using var s = entry.Open();
             using var r = new StreamReader(s, Encoding.UTF8);
             contents[entry.FullName] = r.ReadToEnd();
@@ -46,8 +41,7 @@ public class XlsxWriterTests
     }
 
     [Fact]
-    public void Writer_ZipEntries()
-    {
+    public void Writer_ZipEntries() {
         var contents = OpenXlsx(BuildXlsx());
         string[] required =
         [
@@ -58,15 +52,13 @@ public class XlsxWriterTests
             "xl/styles.xml",
             "xl/worksheets/sheet1.xml",
         ];
-        foreach (var name in required)
-        {
+        foreach (var name in required) {
             Assert.True(contents.ContainsKey(name), "missing required ZIP entry: " + name);
         }
     }
 
     [Fact]
-    public void Writer_SheetStructure()
-    {
+    public void Writer_SheetStructure() {
         var sheet = OpenXlsx(BuildXlsx())["xl/worksheets/sheet1.xml"];
         string[] wants =
         [
@@ -78,57 +70,49 @@ public class XlsxWriterTests
             "r=\"A1\"",
             "r=\"B2\"",
         ];
-        foreach (var w in wants)
-        {
+        foreach (var w in wants) {
             Assert.Contains(w, sheet, StringComparison.Ordinal);
         }
     }
 
     [Fact]
-    public void Writer_StringCell()
-    {
+    public void Writer_StringCell() {
         var sheet = OpenXlsx(BuildXlsx())["xl/worksheets/sheet1.xml"];
         Assert.Contains("t=\"inlineStr\"", sheet, StringComparison.Ordinal);
         Assert.Contains("<t>ID</t>", sheet, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void Writer_XmlEscaping()
-    {
+    public void Writer_XmlEscaping() {
         var sheet = OpenXlsx(BuildXlsx())["xl/worksheets/sheet1.xml"];
         Assert.DoesNotContain("abc<>&123", sheet, StringComparison.Ordinal);
         Assert.Contains("abc&lt;&gt;&amp;123", sheet, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void Writer_DatetimeCell()
-    {
+    public void Writer_DatetimeCell() {
         var sheet = OpenXlsx(BuildXlsx())["xl/worksheets/sheet1.xml"];
         Assert.Contains("s=\"1\"", sheet, StringComparison.Ordinal);
         Assert.Contains("45061", sheet, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void Writer_NumberCell()
-    {
+    public void Writer_NumberCell() {
         var sheet = OpenXlsx(BuildXlsx())["xl/worksheets/sheet1.xml"];
         Assert.Contains("<v>0.25</v>", sheet, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void Writer_Styles()
-    {
+    public void Writer_Styles() {
         var styles = OpenXlsx(BuildXlsx())["xl/styles.xml"];
         Assert.Contains("Consolas", styles, StringComparison.Ordinal);
         Assert.Contains("yyyy-mm-dd hh:mm:ss", styles, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void Writer_EmptySheet()
-    {
+    public void Writer_EmptySheet() {
         using var ms = new MemoryStream();
-        using (var w = XlsxWriter.New(ms))
-        {
+        using (var w = XlsxWriter.New(ms)) {
             w.Close();
         }
         var bytes = ms.ToArray();
@@ -142,8 +126,7 @@ public class XlsxWriterTests
     [InlineData(0.25, "0.25")]
     [InlineData(7.0, "7")]
     [InlineData(45061.604166666664, "45061.604166666664")]
-    public void GoFloat_FormatF_Matches(double v, string want)
-    {
+    public void GoFloat_FormatF_Matches(double v, string want) {
         Assert.Equal(want, EggLedger.Domain.Export.GoFloat.FormatF(v));
     }
 }

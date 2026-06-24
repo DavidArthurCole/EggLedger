@@ -10,18 +10,15 @@ namespace EggLedger.Domain.Tests.Reports;
 //     oracle here (independent of InMemoryMissionDb's internal grouping).
 //   - In-memory path: InMemoryReportRunner over the same typed rows.
 // The two ReportResults must be equal.
-public class InMemoryReportRunnerTests
-{
+public class InMemoryReportRunnerTests {
     private const string Eid = "EI1";
 
-    private sealed class NoWeights : IWeightData
-    {
+    private sealed class NoWeights : IWeightData {
         public double CraftingWeight(long artifactId, long level) => 1;
         public IReadOnlyList<int> FamilyAfxIds(string familyId) => Array.Empty<int>();
     }
 
-    private sealed class FixedFamily : IWeightData
-    {
+    private sealed class FixedFamily : IWeightData {
         private readonly int[] _ids;
         public FixedFamily(params int[] ids) => _ids = ids;
         public double CraftingWeight(long artifactId, long level) => 1;
@@ -30,22 +27,17 @@ public class InMemoryReportRunnerTests
 
     // FakeDb that matches a query by a unique substring and serves canned rows,
     // mirroring the A7 ExecuteTests double.
-    private sealed class FakeDb : IMissionDb
-    {
+    private sealed class FakeDb : IMissionDb {
         private readonly List<(string Key, IReadOnlyList<object?[]> Rows)> _byKey = [];
 
-        public FakeDb On(string contains, IReadOnlyList<object?[]> rows)
-        {
+        public FakeDb On(string contains, IReadOnlyList<object?[]> rows) {
             _byKey.Add((contains, rows));
             return this;
         }
 
-        public IReadOnlyList<object?[]> Query(string sql, IReadOnlyList<object?> args)
-        {
-            foreach (var (key, rows) in _byKey)
-            {
-                if (sql.Contains(key, StringComparison.Ordinal))
-                {
+        public IReadOnlyList<object?[]> Query(string sql, IReadOnlyList<object?> args) {
+            foreach (var (key, rows) in _byKey) {
+                if (sql.Contains(key, StringComparison.Ordinal)) {
                     return rows;
                 }
             }
@@ -56,8 +48,7 @@ public class InMemoryReportRunnerTests
     private static MissionRowData M(
         string id, int ship, int duration, long start, long ret,
         int cap = 1, int nominal = 1, int target = 0, int type = 0,
-        int level = 0, bool dub = false, bool bugged = false) => new()
-        {
+        int level = 0, bool dub = false, bool bugged = false) => new() {
             PlayerId = Eid,
             MissionId = id,
             Ship = ship,
@@ -75,8 +66,7 @@ public class InMemoryReportRunnerTests
 
     private static ArtifactDropRowData D(
         string mission, int artifactId, int rarity, int tier,
-        int dropIndex = 0, double quality = 0, string spec = "Artifact") => new()
-        {
+        int dropIndex = 0, double quality = 0, string spec = "Artifact") => new() {
             PlayerId = Eid,
             MissionId = mission,
             DropIndex = dropIndex,
@@ -88,15 +78,12 @@ public class InMemoryReportRunnerTests
         };
 
     // 1D count over a mission column, descending by count, first-seen tiebreak.
-    private static object?[][] Group1D(IEnumerable<MissionRowData> rows, Func<MissionRowData, string> key)
-    {
+    private static object?[][] Group1D(IEnumerable<MissionRowData> rows, Func<MissionRowData, string> key) {
         var counts = new Dictionary<string, long>(StringComparer.Ordinal);
         var order = new List<string>();
-        foreach (var r in rows)
-        {
+        foreach (var r in rows) {
             var k = key(r);
-            if (!counts.ContainsKey(k))
-            {
+            if (!counts.ContainsKey(k)) {
                 order.Add(k);
             }
             counts.TryGetValue(k, out var cur);
@@ -111,11 +98,9 @@ public class InMemoryReportRunnerTests
 
     // 2D count over two mission columns, ascending by raw1 then raw2 (numeric).
     private static object?[][] Group2D(
-        IEnumerable<MissionRowData> rows, Func<MissionRowData, string> k1, Func<MissionRowData, string> k2)
-    {
+        IEnumerable<MissionRowData> rows, Func<MissionRowData, string> k1, Func<MissionRowData, string> k2) {
         var counts = new Dictionary<(string, string), long>();
-        foreach (var r in rows)
-        {
+        foreach (var r in rows) {
             var key = (k1(r), k2(r));
             counts.TryGetValue(key, out var cur);
             counts[key] = cur + 1;
@@ -130,8 +115,7 @@ public class InMemoryReportRunnerTests
     private static string Dur(MissionRowData m) => m.DurationType.ToString(CultureInfo.InvariantCulture);
 
     [Fact]
-    public void Parity_AggregateByShip()
-    {
+    public void Parity_AggregateByShip() {
         var missions = new List<MissionRowData>
         {
             M("a", ship: 9, duration: 0, start: 1_700_000_000, ret: 1_700_003_600),
@@ -150,8 +134,7 @@ public class InMemoryReportRunnerTests
     }
 
     [Fact]
-    public void Parity_AggregateByShip_WithFilter()
-    {
+    public void Parity_AggregateByShip_WithFilter() {
         // Mission-scope filter: duration_type = 0 keeps a and c.
         var missions = new List<MissionRowData>
         {
@@ -159,14 +142,12 @@ public class InMemoryReportRunnerTests
             M("b", ship: 9, duration: 1, start: 1_700_100_000, ret: 1_700_103_600),
             M("c", ship: 3, duration: 0, start: 1_700_200_000, ret: 1_700_203_600),
         };
-        var def = new ReportDefinition
-        {
+        var def = new ReportDefinition {
             Mode = "aggregate",
             GroupBy = "ship_type",
             Subject = "missions",
             AccountId = Eid,
-            Filters = new ReportFilters
-            {
+            Filters = new ReportFilters {
                 And = [new FilterCondition { TopLevel = "duration", Op = "=", Val = "0" }],
             },
         };
@@ -182,8 +163,7 @@ public class InMemoryReportRunnerTests
     }
 
     [Fact]
-    public void Parity_PivotShipByDuration()
-    {
+    public void Parity_PivotShipByDuration() {
         var missions = new List<MissionRowData>
         {
             M("a", ship: 3, duration: 1, start: 1, ret: 2),
@@ -191,8 +171,7 @@ public class InMemoryReportRunnerTests
             M("c", ship: 9, duration: 1, start: 1, ret: 2),
             M("d", ship: 9, duration: 1, start: 1, ret: 2),
         };
-        var def = new ReportDefinition
-        {
+        var def = new ReportDefinition {
             Mode = "aggregate",
             GroupBy = "ship_type",
             SecondaryGroupBy = "duration_type",
@@ -213,8 +192,7 @@ public class InMemoryReportRunnerTests
     }
 
     [Fact]
-    public void Parity_DropBasedAggregateByRarity()
-    {
+    public void Parity_DropBasedAggregateByRarity() {
         // artifacts subject: count drops grouped by rarity (drop_index >= 0).
         var missions = new List<MissionRowData>
         {
@@ -244,8 +222,7 @@ public class InMemoryReportRunnerTests
     }
 
     [Fact]
-    public void Parity_DropFilterContains()
-    {
+    public void Parity_DropFilterContains() {
         // Mission aggregate with a drops "contains" filter (rarity 3 exists).
         var missions = new List<MissionRowData>
         {
@@ -257,14 +234,12 @@ public class InMemoryReportRunnerTests
             D("a", artifactId: 12, rarity: 3, tier: 2),
             D("b", artifactId: 14, rarity: 1, tier: 0),
         };
-        var def = new ReportDefinition
-        {
+        var def = new ReportDefinition {
             Mode = "aggregate",
             GroupBy = "ship_type",
             Subject = "missions",
             AccountId = Eid,
-            Filters = new ReportFilters
-            {
+            Filters = new ReportFilters {
                 And = [new FilterCondition { TopLevel = "drops", Op = "c", Val = "%_%_3_%" }],
             },
         };
@@ -280,8 +255,7 @@ public class InMemoryReportRunnerTests
     }
 
     [Fact]
-    public void Parity_TimeSeriesByMonth()
-    {
+    public void Parity_TimeSeriesByMonth() {
         // Two months, one with two missions. UTC epochs:
         // 1700000000 -> 2023-11, 1704067200 -> 2024-01.
         var missions = new List<MissionRowData>
@@ -290,8 +264,7 @@ public class InMemoryReportRunnerTests
             M("b", ship: 9, duration: 0, start: 1_700_500_000, ret: 1_700_503_600),
             M("c", ship: 3, duration: 0, start: 1_704_067_200, ret: 1_704_070_800),
         };
-        var def = new ReportDefinition
-        {
+        var def = new ReportDefinition {
             Mode = "time_series",
             GroupBy = "time_bucket",
             TimeBucket = "month",
@@ -315,8 +288,7 @@ public class InMemoryReportRunnerTests
     }
 
     [Fact]
-    public void Parity_NormalizedAggregate_Launches()
-    {
+    public void Parity_NormalizedAggregate_Launches() {
         // launches normalization divides each group's count by the per-group
         // mission count -> all ones here (denominator == numerator).
         var missions = new List<MissionRowData>
@@ -325,8 +297,7 @@ public class InMemoryReportRunnerTests
             M("b", ship: 9, duration: 1, start: 1, ret: 2),
             M("c", ship: 3, duration: 0, start: 1, ret: 2),
         };
-        var def = new ReportDefinition
-        {
+        var def = new ReportDefinition {
             Mode = "aggregate",
             GroupBy = "ship_type",
             Subject = "missions",
@@ -347,8 +318,7 @@ public class InMemoryReportRunnerTests
     }
 
     [Fact]
-    public void Parity_FamilyWeightedAggregate()
-    {
+    public void Parity_FamilyWeightedAggregate() {
         // Family weight restricts to artifact ids {12, 13}; cap_weight = nominal/cap.
         var missions = new List<MissionRowData>
         {
@@ -362,8 +332,7 @@ public class InMemoryReportRunnerTests
             D("b", artifactId: 99, rarity: 0, tier: 0), // outside family, excluded
         };
         var weights = new FixedFamily(12, 13);
-        var def = new ReportDefinition
-        {
+        var def = new ReportDefinition {
             Subject = "artifacts",
             Mode = "aggregate",
             GroupBy = "ship_type",
@@ -386,8 +355,7 @@ public class InMemoryReportRunnerTests
     }
 
     [Fact]
-    public void Parity_FamilyWeightedPivot_MissionCountCountsMissionsNotDrops()
-    {
+    public void Parity_FamilyWeightedPivot_MissionCountCountsMissionsNotDrops() {
         // Family-weighted PIVOT over mission-scope dimensions (ship x duration).
         // Mission "a" carries TWO in-family drops. The mission-count matrix query is
         // FROM mission m with NO drops join, so it must count mission "a" ONCE, not
@@ -405,8 +373,7 @@ public class InMemoryReportRunnerTests
             D("b", artifactId: 12, rarity: 0, tier: 0, dropIndex: 0),
         };
         var weights = new FixedFamily(12, 13);
-        var def = new ReportDefinition
-        {
+        var def = new ReportDefinition {
             Subject = "artifacts",
             Mode = "aggregate",
             GroupBy = "ship_type",
@@ -446,14 +413,11 @@ public class InMemoryReportRunnerTests
     }
 
     // 1D count over arbitrary raw key strings, desc by count, first-seen tiebreak.
-    private static object?[][] Group1DRaw(IEnumerable<string> keys)
-    {
+    private static object?[][] Group1DRaw(IEnumerable<string> keys) {
         var counts = new Dictionary<string, long>(StringComparer.Ordinal);
         var order = new List<string>();
-        foreach (var k in keys)
-        {
-            if (!counts.ContainsKey(k))
-            {
+        foreach (var k in keys) {
+            if (!counts.ContainsKey(k)) {
                 order.Add(k);
             }
             counts.TryGetValue(k, out var cur);
@@ -466,8 +430,7 @@ public class InMemoryReportRunnerTests
             .Select(x => new object?[] { x.k, x.c })];
     }
 
-    private static string TimeBucketLabel(long unix)
-    {
+    private static string TimeBucketLabel(long unix) {
         var t = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddSeconds(unix);
         return t.ToString("yyyy-MM", CultureInfo.InvariantCulture);
     }

@@ -10,23 +10,20 @@ namespace EggLedger.Web.Tests.Settings;
 /// session round-trips through the Go cloud_* setting keys, disconnect clears
 /// creds, timestamps and the auto-sync flag persist.
 /// </summary>
-public sealed class CloudSessionStoreTests
-{
+public sealed class CloudSessionStoreTests {
     private static CloudSessionStore Make() => new(new IndexedDbSettings(new FakeIndexedDb()));
 
     private static CloudSession Session() =>
         new("tok-1", "user#1", "https://cdn/a.png", "deadbeef");
 
     [Fact]
-    public async Task GetSession_WhenNothingStored_ReturnsNull()
-    {
+    public async Task GetSession_WhenNothingStored_ReturnsNull() {
         var store = Make();
         Assert.Null(await store.GetSessionAsync());
     }
 
     [Fact]
-    public async Task SaveThenGetSession_RoundTrips()
-    {
+    public async Task SaveThenGetSession_RoundTrips() {
         var store = Make();
         await store.SaveSessionAsync(Session());
 
@@ -39,8 +36,7 @@ public sealed class CloudSessionStoreTests
     }
 
     [Fact]
-    public async Task UsesGoSettingKeys()
-    {
+    public async Task UsesGoSettingKeys() {
         var settings = new IndexedDbSettings(new FakeIndexedDb());
         var store = new CloudSessionStore(settings);
         await store.SaveSessionAsync(Session());
@@ -55,8 +51,7 @@ public sealed class CloudSessionStoreTests
     }
 
     [Fact]
-    public async Task ClearSession_RemovesCreds()
-    {
+    public async Task ClearSession_RemovesCreds() {
         var store = Make();
         await store.SaveSessionAsync(Session());
         await store.ClearSessionAsync();
@@ -65,8 +60,7 @@ public sealed class CloudSessionStoreTests
     }
 
     [Fact]
-    public async Task Timestamps_PersistAndDefaultToZero()
-    {
+    public async Task Timestamps_PersistAndDefaultToZero() {
         var store = Make();
         Assert.Equal(0, await store.GetLastPushAtAsync());
         Assert.Equal(0, await store.GetLastPullAtAsync());
@@ -79,8 +73,7 @@ public sealed class CloudSessionStoreTests
     }
 
     [Fact]
-    public async Task PendingAuthState_PersistsAndClears()
-    {
+    public async Task PendingAuthState_PersistsAndClears() {
         var store = Make();
         Assert.Null(await store.GetPendingAuthStateAsync());
 
@@ -92,8 +85,7 @@ public sealed class CloudSessionStoreTests
     }
 
     [Fact]
-    public async Task AutoSync_PersistsAndDefaultsFalse()
-    {
+    public async Task AutoSync_PersistsAndDefaultsFalse() {
         var store = Make();
         Assert.False(await store.GetAutoSyncAsync());
 

@@ -7,8 +7,7 @@ namespace EggLedger.Desktop.Update;
 /// cleanup. The download + new-instance launch + cross-process handoff live in
 /// <see cref="UpdateService"/>; this holds only the testable file moves.
 /// </summary>
-public sealed class BinaryReplacement(IProcessProbe probe)
-{
+public sealed class BinaryReplacement(IProcessProbe probe) {
     /// <summary>Lock file name (in the exe dir). Matches Go updateLockFileName.</summary>
     public const string LockFileName = ".egg-update.lock";
 
@@ -18,18 +17,13 @@ public sealed class BinaryReplacement(IProcessProbe probe)
     /// Rename src to dst, retrying to tolerate brief Windows file locks (antivirus,
     /// indexer) just after a process exits. Returns true on success.
     /// </summary>
-    public static bool RenameWithRetry(string src, string dst, int attempts, TimeSpan delay)
-    {
-        for (var i = 0; i < attempts; i++)
-        {
-            try
-            {
+    public static bool RenameWithRetry(string src, string dst, int attempts, TimeSpan delay) {
+        for (var i = 0; i < attempts; i++) {
+            try {
                 // File.Move overwrite=true matches os.Rename's replace semantics.
                 File.Move(src, dst, overwrite: true);
                 return true;
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-            {
+            } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) {
                 Thread.Sleep(delay);
             }
         }
@@ -41,53 +35,40 @@ public sealed class BinaryReplacement(IProcessProbe probe)
     /// action and true on success. A live-PID lock returns (null, false); a stale
     /// (dead-PID) lock is reclaimed.
     /// </summary>
-    public (Action? Release, bool Acquired) AcquireLock(string lockPath)
-    {
-        FileStream? TryCreate()
-        {
-            try
-            {
+    public (Action? Release, bool Acquired) AcquireLock(string lockPath) {
+        FileStream? TryCreate() {
+            try {
                 return new FileStream(lockPath, FileMode.CreateNew, FileAccess.Write, FileShare.None);
-            }
-            catch (IOException)
-            {
+            } catch (IOException) {
                 return null;
-            }
-            catch (UnauthorizedAccessException)
-            {
+            } catch (UnauthorizedAccessException) {
                 return null;
             }
         }
 
         var f = TryCreate();
-        if (f is null)
-        {
+        if (f is null) {
             // Lock exists; check whether its owner is still alive.
-            if (TryReadPid(lockPath, out var pid) && _probe.Exists(pid))
-            {
+            if (TryReadPid(lockPath, out var pid) && _probe.Exists(pid)) {
                 return (null, false);
             }
             // Stale or unreadable lock; reclaim it.
             TryDelete(lockPath);
             f = TryCreate();
-            if (f is null)
-            {
+            if (f is null) {
                 return (null, false);
             }
         }
 
-        using (f)
-        {
+        using (f) {
             var pidBytes = System.Text.Encoding.UTF8.GetBytes(
                 Environment.ProcessId.ToString(CultureInfo.InvariantCulture));
             f.Write(pidBytes, 0, pidBytes.Length);
         }
 
         var released = false;
-        void Release()
-        {
-            if (released)
-            {
+        void Release() {
+            if (released) {
                 return;
             }
             released = true;
@@ -101,24 +82,17 @@ public sealed class BinaryReplacement(IProcessProbe probe)
     /// exeDir. Never deletes selfPath: a freshly launched _new instance matches the
     /// glob but still needs to rename itself.
     /// </summary>
-    public void CleanStaleBinaries(string exeDir, string selfPath)
-    {
+    public void CleanStaleBinaries(string exeDir, string selfPath) {
         string[] patterns = ["EggLedger*_new", "EggLedger*_new.exe"];
-        foreach (var pattern in patterns)
-        {
+        foreach (var pattern in patterns) {
             string[] matches;
-            try
-            {
+            try {
                 matches = Directory.GetFiles(exeDir, pattern);
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or DirectoryNotFoundException)
-            {
+            } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or DirectoryNotFoundException) {
                 continue;
             }
-            foreach (var match in matches)
-            {
-                if (SameFile(match, selfPath))
-                {
+            foreach (var match in matches) {
+                if (SameFile(match, selfPath)) {
                     continue;
                 }
                 TryDelete(match);
@@ -126,15 +100,11 @@ public sealed class BinaryReplacement(IProcessProbe probe)
         }
 
         var lockPath = Path.Combine(exeDir, LockFileName);
-        if (TryReadPid(lockPath, out var pid))
-        {
-            if (!_probe.Exists(pid))
-            {
+        if (TryReadPid(lockPath, out var pid)) {
+            if (!_probe.Exists(pid)) {
                 TryDelete(lockPath);
             }
-        }
-        else if (File.Exists(lockPath))
-        {
+        } else if (File.Exists(lockPath)) {
             // Unparseable lock contents; remove (Go's else branch).
             TryDelete(lockPath);
         }
@@ -144,62 +114,46 @@ public sealed class BinaryReplacement(IProcessProbe probe)
     /// True when a and b resolve to the same on-disk file (falls back to abs-path
     /// compare on stat failure). Case-insensitive on Windows.
     /// </summary>
-    public static bool SameFile(string a, string b)
-    {
-        try
-        {
+    public static bool SameFile(string a, string b) {
+        try {
             var fa = new FileInfo(a);
             var fb = new FileInfo(b);
-            if (fa.Exists && fb.Exists)
-            {
+            if (fa.Exists && fb.Exists) {
                 var comparison = OperatingSystem.IsWindows()
                     ? StringComparison.OrdinalIgnoreCase
                     : StringComparison.Ordinal;
                 return string.Equals(fa.FullName, fb.FullName, comparison);
             }
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
-        {
+        } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException) {
             // Fall through to abs-path compare.
         }
 
-        try
-        {
+        try {
             var ra = Path.GetFullPath(a);
             var rb = Path.GetFullPath(b);
             var comparison = OperatingSystem.IsWindows()
                 ? StringComparison.OrdinalIgnoreCase
                 : StringComparison.Ordinal;
             return string.Equals(ra, rb, comparison);
-        }
-        catch (Exception ex) when (ex is ArgumentException or IOException)
-        {
+        } catch (Exception ex) when (ex is ArgumentException or IOException) {
             return false;
         }
     }
 
-    private static bool TryReadPid(string lockPath, out int pid)
-    {
+    private static bool TryReadPid(string lockPath, out int pid) {
         pid = 0;
-        try
-        {
+        try {
             var data = File.ReadAllText(lockPath).Trim();
             return int.TryParse(data, NumberStyles.Integer, CultureInfo.InvariantCulture, out pid);
-        }
-        catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException or IOException or UnauthorizedAccessException)
-        {
+        } catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException or IOException or UnauthorizedAccessException) {
             return false;
         }
     }
 
-    private static void TryDelete(string path)
-    {
-        try
-        {
+    private static void TryDelete(string path) {
+        try {
             File.Delete(path);
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
+        } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) {
             // Best-effort, matching Go's ignored os.Remove errors.
         }
     }

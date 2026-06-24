@@ -9,8 +9,7 @@ namespace EggLedger.Desktop.Update;
 /// are raw (no extraction); linux .tar.gz and mac .zip need the binary extracted and
 /// given the executable bit on unix before it can launch as EggLedger_new.
 /// </summary>
-public static class ArchiveExtraction
-{
+public static class ArchiveExtraction {
     /// <summary>Executable file mode Go applies to the extracted binary (0755 / rwxr-xr-x).</summary>
     private const UnixFileMode ExecutableMode =
         UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute
@@ -32,18 +31,12 @@ public static class ArchiveExtraction
     /// suffix the same way Go's extractBinaryFromArchive does. Ports
     /// extractBinaryFromArchive + the os.Chmod(tempPath, 0755) that follows it.
     /// </summary>
-    public static void Extract(string archivePath, string destPath)
-    {
-        if (archivePath.EndsWith(".tar.gz", StringComparison.Ordinal))
-        {
+    public static void Extract(string archivePath, string destPath) {
+        if (archivePath.EndsWith(".tar.gz", StringComparison.Ordinal)) {
             ExtractFromTarGz(archivePath, destPath);
-        }
-        else if (archivePath.EndsWith(".zip", StringComparison.Ordinal))
-        {
+        } else if (archivePath.EndsWith(".zip", StringComparison.Ordinal)) {
             ExtractFromZip(archivePath, destPath);
-        }
-        else
-        {
+        } else {
             throw new InvalidOperationException($"unsupported archive format: {Path.GetFileName(archivePath)}");
         }
 
@@ -54,21 +47,17 @@ public static class ArchiveExtraction
     /// Extract the first regular, non-empty file from a .tar.gz to
     /// <paramref name="destPath"/>. Ports extractFromTarGz.
     /// </summary>
-    private static void ExtractFromTarGz(string archivePath, string destPath)
-    {
+    private static void ExtractFromTarGz(string archivePath, string destPath) {
         using var file = File.OpenRead(archivePath);
         using var gz = new GZipStream(file, CompressionMode.Decompress);
         using var tar = new TarReader(gz);
 
         TarEntry? entry;
-        while ((entry = tar.GetNextEntry()) is not null)
-        {
-            if (entry.EntryType is not (TarEntryType.RegularFile or TarEntryType.V7RegularFile))
-            {
+        while ((entry = tar.GetNextEntry()) is not null) {
+            if (entry.EntryType is not (TarEntryType.RegularFile or TarEntryType.V7RegularFile)) {
                 continue;
             }
-            if (entry.Length <= 0 || entry.DataStream is null)
-            {
+            if (entry.Length <= 0 || entry.DataStream is null) {
                 continue;
             }
             using var dst = new FileStream(destPath, FileMode.Create, FileAccess.Write, FileShare.None);
@@ -84,42 +73,33 @@ public static class ArchiveExtraction
     /// (macOS app-bundle layout), then falls back to the first extensionless file.
     /// Ports extractFromZip.
     /// </summary>
-    private static void ExtractFromZip(string archivePath, string destPath)
-    {
+    private static void ExtractFromZip(string archivePath, string destPath) {
         using var zip = ZipFile.OpenRead(archivePath);
 
         ZipArchiveEntry? target = null;
-        foreach (var entry in zip.Entries)
-        {
-            if (IsDirectoryEntry(entry))
-            {
+        foreach (var entry in zip.Entries) {
+            if (IsDirectoryEntry(entry)) {
                 continue;
             }
-            if (entry.FullName.Contains("/MacOS/", StringComparison.Ordinal))
-            {
+            if (entry.FullName.Contains("/MacOS/", StringComparison.Ordinal)) {
                 target = entry;
                 break;
             }
         }
 
-        if (target is null)
-        {
-            foreach (var entry in zip.Entries)
-            {
-                if (IsDirectoryEntry(entry))
-                {
+        if (target is null) {
+            foreach (var entry in zip.Entries) {
+                if (IsDirectoryEntry(entry)) {
                     continue;
                 }
-                if (Path.GetExtension(entry.FullName).Length == 0)
-                {
+                if (Path.GetExtension(entry.FullName).Length == 0) {
                     target = entry;
                     break;
                 }
             }
         }
 
-        if (target is null)
-        {
+        if (target is null) {
             throw new InvalidOperationException("no suitable binary found in zip archive");
         }
 
@@ -136,10 +116,8 @@ public static class ArchiveExtraction
     /// Set the 0755 executable bit on unix. No-op on Windows, where File.SetUnixFileMode
     /// is unsupported and throws. Matches Go's os.Chmod(tempPath, 0755) after extraction.
     /// </summary>
-    private static void SetExecutableBit(string path)
-    {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
+    private static void SetExecutableBit(string path) {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
             return;
         }
         File.SetUnixFileMode(path, ExecutableMode);

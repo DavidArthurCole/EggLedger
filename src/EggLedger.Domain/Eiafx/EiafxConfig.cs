@@ -6,8 +6,7 @@ namespace EggLedger.Domain.Eiafx;
 /// Static accessor for the active eiafx config (Go's read-only eiafx.Config global). Defaults to the
 /// embedded .bin source; a host may swap it once at startup via <see cref="SetSource"/>.
 /// </summary>
-public static class EiafxConfig
-{
+public static class EiafxConfig {
     private static IEiafxConfigSource _source = EmbeddedEiafxConfigSource.Instance;
 
     /// <summary>The active artifacts configuration (read-only at runtime).</summary>
@@ -17,8 +16,7 @@ public static class EiafxConfig
     /// Overrides the config source. Intended for host wiring at startup, before
     /// first access. Resets the cached base-quality map.
     /// </summary>
-    public static void SetSource(IEiafxConfigSource source)
-    {
+    public static void SetSource(IEiafxConfigSource source) {
         _source = source ?? throw new ArgumentNullException(nameof(source));
         Quality.ResetCache();
     }

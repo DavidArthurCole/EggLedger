@@ -1,8 +1,7 @@
 namespace EggLedger.Web.Platform;
 
 /// <summary>Capability seam over platform-specific shell features. The browser build implements these as downloads/no-ops; desktop-only UI gates on <see cref="IsDesktop"/>.</summary>
-public interface IPlatformCapabilities
-{
+public interface IPlatformCapabilities {
     /// <summary>True when running in a desktop shell with real OS file access.</summary>
     bool IsDesktop { get; }
 

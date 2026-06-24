@@ -5,8 +5,7 @@ namespace EggLedger.Domain.Reports;
 /// Query returns rows as positional column arrays in SELECT order (Go rows.Scan order);
 /// numeric columns boxed as long or double, text as string.
 /// </summary>
-public interface IMissionDb
-{
+public interface IMissionDb {
     /// <summary>
     /// Executes a parameterized query, returning rows as column arrays matching the
     /// SELECT list. Args are the ordered "?" parameter bindings.
@@ -18,8 +17,7 @@ public interface IMissionDb
 /// Supplies eiafx-derived weighting data for family-weighted reports: per-(artifactId, level)
 /// crafting weights and per-family artifact id sets. Mirrors Go eiafx.CraftingWeights / FamilyAFXIds.
 /// </summary>
-public interface IWeightData
-{
+public interface IWeightData {
     /// <summary>
     /// Per-tier crafting weight for an artifact (id, level). Returns 1 for the cycle
     /// sentinel (weight 0) so the row is not dropped. Port of Go craftingWeight.

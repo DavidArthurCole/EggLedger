@@ -12,8 +12,7 @@ namespace EggLedger.Web.Data;
 /// gzip(raw API response): gunzip, decode as an AuthenticatedMessage, then restore
 /// StartTimeDerived from the row's start_timestamp.
 /// </summary>
-public sealed class IndexedDbMissionStore : IMissionStore
-{
+public sealed class IndexedDbMissionStore : IMissionStore {
     private const string MissionStore = "mission";
     private const string BackupStore = "backup";
     private const string ArtifactDropsStore = "artifact_drops";
@@ -28,8 +27,7 @@ public sealed class IndexedDbMissionStore : IMissionStore
     /// <param name="decoder">Payload decoder. Desktop uses in-process protobuf-net; WASM delegates to the sync server (browser cannot emit).</param>
     /// <param name="packer">Mission compiler. When null, built from the canonical eiafx config via <see cref="EiafxMissionConfigSource.Instance"/>.</param>
     /// <param name="accounts">Known-account store. When null, <see cref="GetKnownAccountsAsync"/> returns empty (mission/backup schema has no account rows).</param>
-    public IndexedDbMissionStore(IIndexedDb db, IApiPayloadDecoder decoder, MissionPacker? packer = null, IndexedDbAccountStore? accounts = null)
-    {
+    public IndexedDbMissionStore(IIndexedDb db, IApiPayloadDecoder decoder, MissionPacker? packer = null, IndexedDbAccountStore? accounts = null) {
         _db = db;
         _decoder = decoder;
         _packer = packer ?? new MissionPacker(EiafxMissionConfigSource.Instance);
@@ -37,8 +35,7 @@ public sealed class IndexedDbMissionStore : IMissionStore
     }
 
     /// <summary>Mission ids for the player, ordered by start_timestamp.</summary>
-    public async Task<IReadOnlyList<string>?> GetCompleteMissionIdsAsync(string playerId)
-    {
+    public async Task<IReadOnlyList<string>?> GetCompleteMissionIdsAsync(string playerId) {
         var rows = await PlayerRowsAsync(playerId);
         return rows.OrderBy(r => r.StartTimestamp)
             .Select(r => r.MissionId)
@@ -46,10 +43,8 @@ public sealed class IndexedDbMissionStore : IMissionStore
     }
 
     /// <summary>Known accounts from the injected <see cref="IndexedDbAccountStore"/>; empty when no account store is wired.</summary>
-    public async Task<IReadOnlyList<KnownAccount>> GetKnownAccountsAsync()
-    {
-        if (_accounts is null)
-        {
+    public async Task<IReadOnlyList<KnownAccount>> GetKnownAccountsAsync() {
+        if (_accounts is null) {
             return [];
         }
         var accounts = await _accounts.GetKnownAccountsAsync().ConfigureAwait(false);
@@ -57,27 +52,21 @@ public sealed class IndexedDbMissionStore : IMissionStore
     }
 
     /// <summary>Mission count and max return_timestamp for the player. Mirrors Go RetrievePlayerMissionStats.</summary>
-    public async Task<PlayerMissionStats?> GetPlayerMissionStatsAsync(string playerId)
-    {
+    public async Task<PlayerMissionStats?> GetPlayerMissionStatsAsync(string playerId) {
         var rows = await PlayerRowsAsync(playerId);
         double max = rows.Count == 0 ? 0 : rows.Max(r => r.ReturnTimestamp);
         return new PlayerMissionStats(rows.Count, max);
     }
 
     /// <summary>Streams every decoded mission for the player, ordered by start_timestamp. Returns false on a decode error (mirrors Go).</summary>
-    public async Task<bool> StreamPlayerCompleteMissionsAsync(string playerId, Action<CompleteMissionResponse> onMission)
-    {
+    public async Task<bool> StreamPlayerCompleteMissionsAsync(string playerId, Action<CompleteMissionResponse> onMission) {
         var rows = await PlayerRowsAsync(playerId);
-        foreach (var row in rows.OrderBy(r => r.StartTimestamp))
-        {
+        foreach (var row in rows.OrderBy(r => r.StartTimestamp)) {
             CompleteMissionResponse cm;
             // Only a decode failure is a store error; let consumer-callback bugs surface.
-            try
-            {
+            try {
                 cm = await DecodeAsync(row).ConfigureAwait(false);
-            }
-            catch
-            {
+            } catch {
                 return false;
             }
             onMission(cm);
@@ -86,57 +75,44 @@ public sealed class IndexedDbMissionStore : IMissionStore
     }
 
     /// <summary>One decoded mission for (player, mission). Null on cache miss or decode error (Go returns nil for both).</summary>
-    public async Task<CompleteMissionResponse?> GetCompleteMissionAsync(string playerId, string missionId)
-    {
+    public async Task<CompleteMissionResponse?> GetCompleteMissionAsync(string playerId, string missionId) {
         var rows = await PlayerRowsAsync(playerId);
         var row = rows.FirstOrDefault(r => r.MissionId == missionId);
-        if (row is null)
-        {
+        if (row is null) {
             return null;
         }
-        try
-        {
+        try {
             return await DecodeAsync(row).ConfigureAwait(false);
-        }
-        catch
-        {
+        } catch {
             return null;
         }
     }
 
     /// <summary>Count of player missions missing migration-6 filter columns (ship == -1). Mirrors Go CountPendingFilterCols.</summary>
-    public async Task<int?> CountPendingFilterColsAsync(string eid)
-    {
+    public async Task<int?> CountPendingFilterColsAsync(string eid) {
         var rows = await PlayerRowsAsync(eid);
         return rows.Count(r => r.Ship == -1);
     }
 
     /// <summary>Fast path: display rows from stored filter columns only (ship != -1), ordered by start_timestamp.</summary>
-    public async Task<IReadOnlyList<IMissionRow>?> GetPlayerMissionMetaAsync(string eid)
-    {
+    public async Task<IReadOnlyList<IMissionRow>?> GetPlayerMissionMetaAsync(string eid) {
         var rows = await PlayerRowsAsync(eid);
         var result = new List<IMissionRow>();
-        foreach (var row in rows.Where(r => r.Ship != -1).OrderBy(r => r.StartTimestamp))
-        {
+        foreach (var row in rows.Where(r => r.Ship != -1).OrderBy(r => r.StartTimestamp)) {
             result.Add(_packer.MissionMetaToDBMission(ToMeta(row)));
         }
         return result;
     }
 
     /// <summary>Slow path: every decoded mission for the player, ordered by start_timestamp. Null on a decode error.</summary>
-    public async Task<IReadOnlyList<CompleteMissionResponse>?> GetPlayerCompleteMissionsAsync(string eid)
-    {
+    public async Task<IReadOnlyList<CompleteMissionResponse>?> GetPlayerCompleteMissionsAsync(string eid) {
         var rows = await PlayerRowsAsync(eid);
         var result = new List<CompleteMissionResponse>(rows.Count);
-        try
-        {
-            foreach (var row in rows.OrderBy(r => r.StartTimestamp))
-            {
+        try {
+            foreach (var row in rows.OrderBy(r => r.StartTimestamp)) {
                 result.Add(await DecodeAsync(row).ConfigureAwait(false));
             }
-        }
-        catch
-        {
+        } catch {
             return null;
         }
         return result;
@@ -146,10 +122,44 @@ public sealed class IndexedDbMissionStore : IMissionStore
     public IMissionRow CompileMissionInformation(CompleteMissionResponse mission) =>
         _packer.CompileMissionInformation(mission);
 
-    /// <summary>No-op: no background backfill in the browser yet. The fast path rebuilds from stored columns on next view.</summary>
-    public void QueueFilterColBackfill(string eid)
-    {
+    private readonly HashSet<string> _backfilling = [];
+
+    // Decode each column-less mission once, compute + persist its filter columns,
+    // so subsequent views use the no-decode fast path. Without this every Mission
+    // Data view re-decodes the whole history (one server round-trip per mission).
+    public void QueueFilterColBackfill(string eid) {
+        if (_backfilling.Add(eid))
+            _ = BackfillFilterColsAsync(eid);
     }
+
+    private async Task BackfillFilterColsAsync(string eid) {
+        try {
+            foreach (var row in await PlayerRowsAsync(eid).ConfigureAwait(false)) {
+                if (row.Ship != -1)
+                    continue;
+
+                CompleteMissionResponse decoded;
+                try { decoded = await DecodeAsync(row).ConfigureAwait(false); } catch { continue; }
+
+                if (_packer.TryComputeMissionFilterCols(row.StartTimestamp, decoded, out var cols))
+                    await _db.PutAsync(MissionStore, WithCols(row, cols)).ConfigureAwait(false);
+            }
+        } finally {
+            _backfilling.Remove(eid);
+        }
+    }
+
+    private static MissionRow WithCols(MissionRow row, MissionFilterCols cols) => row with {
+        Ship = cols.Ship,
+        DurationType = cols.DurationType,
+        Level = cols.Level,
+        Capacity = cols.Capacity,
+        NominalCapacity = cols.NominalCapacity,
+        IsDubCap = cols.IsDubCap,
+        IsBuggedCap = cols.IsBuggedCap,
+        Target = cols.Target,
+        ReturnTimestamp = cols.ReturnTimestamp,
+    };
 
     /// <summary>
     /// Inserts the first-contact backup (Go db.InsertBackup): raw payload gzipped.
@@ -157,23 +167,18 @@ public sealed class IndexedDbMissionStore : IMissionStore
     /// newer than that gap, the write is skipped (the 12h dedup). The browser
     /// <c>backup</c> store keys on <c>player_id</c> alone, so there is one row per player.
     /// </summary>
-    public async Task InsertBackupAsync(string playerId, double timestamp, byte[] rawPayload, TimeSpan minimumGap)
-    {
-        if (minimumGap > TimeSpan.Zero)
-        {
+    public async Task InsertBackupAsync(string playerId, double timestamp, byte[] rawPayload, TimeSpan minimumGap) {
+        if (minimumGap > TimeSpan.Zero) {
             var existing = await _db.GetAsync<BackupRow>(BackupStore, playerId);
-            if (existing is not null)
-            {
+            if (existing is not null) {
                 double gapSeconds = timestamp - existing.RecordedAt;
-                if (gapSeconds < minimumGap.TotalSeconds)
-                {
+                if (gapSeconds < minimumGap.TotalSeconds) {
                     return;
                 }
             }
         }
 
-        var row = new BackupRow
-        {
+        var row = new BackupRow {
             PlayerId = playerId,
             RecordedAt = timestamp,
             Payload = Gzip(rawPayload),
@@ -193,10 +198,8 @@ public sealed class IndexedDbMissionStore : IMissionStore
         byte[] rawPayload,
         int missionType,
         MissionFilterCols cols,
-        CompleteMissionResponse decoded)
-    {
-        var row = new MissionRow
-        {
+        CompleteMissionResponse decoded) {
+        var row = new MissionRow {
             PlayerId = playerId,
             MissionId = missionId,
             StartTimestamp = startTimestamp,
@@ -215,10 +218,8 @@ public sealed class IndexedDbMissionStore : IMissionStore
         await _db.PutAsync(MissionStore, row);
 
         var drops = ArtifactDrops.Build(decoded);
-        if (drops.Count > 0)
-        {
-            var rows = drops.Select(d => (object)new ArtifactDropRow
-            {
+        if (drops.Count > 0) {
+            var rows = drops.Select(d => (object)new ArtifactDropRow {
                 MissionId = missionId,
                 PlayerId = playerId,
                 DropIndex = d.DropIndex,
@@ -233,36 +234,40 @@ public sealed class IndexedDbMissionStore : IMissionStore
     }
 
     /// <summary>Gzips bytes (Go db.compress); inverse of <see cref="Gunzip"/>.</summary>
-    private static byte[] Gzip(byte[] data)
-    {
+    private static byte[] Gzip(byte[] data) {
         using var output = new MemoryStream();
-        using (var gzip = new GZipStream(output, CompressionMode.Compress, leaveOpen: true))
-        {
+        using (var gzip = new GZipStream(output, CompressionMode.Compress, leaveOpen: true)) {
             gzip.Write(data, 0, data.Length);
         }
         return output.ToArray();
     }
 
-    private async Task<List<MissionRow>> PlayerRowsAsync(string playerId)
-    {
+    private async Task<List<MissionRow>> PlayerRowsAsync(string playerId) {
         var rows = await _db.GetAllByIndexAsync<MissionRow>(MissionStore, PlayerIdIndex, playerId);
         return [.. rows];
+    }
+
+    public async Task<IReadOnlyList<StoredDrop>?> GetStoredPlayerDropsAsync(string playerId) {
+        try {
+            var rows = await _db.GetAllByIndexAsync<ArtifactDropRow>(ArtifactDropsStore, PlayerIdIndex, playerId);
+            return [.. rows.Select(r => new StoredDrop(r.MissionId, r.ArtifactId, r.Level, r.Rarity))];
+        } catch {
+            return null;
+        }
     }
 
     /// <summary>
     /// Gunzips the stored payload, decodes it as an AuthenticatedMessage wrapping a
     /// CompleteMissionResponse, then restores StartTimeDerived from the row's start_timestamp.
     /// </summary>
-    private async Task<CompleteMissionResponse> DecodeAsync(MissionRow row)
-    {
+    private async Task<CompleteMissionResponse> DecodeAsync(MissionRow row) {
         byte[] raw = Gunzip(row.CompletePayload);
         var resp = await _decoder.DecodeCompleteMissionAsync(raw).ConfigureAwait(false);
         resp.Info?.StartTimeDerived = row.StartTimestamp;
         return resp;
     }
 
-    private static byte[] Gunzip(byte[] data)
-    {
+    private static byte[] Gunzip(byte[] data) {
         using var input = new MemoryStream(data, writable: false);
         using var gzip = new GZipStream(input, CompressionMode.Decompress);
         using var output = new MemoryStream();
@@ -270,8 +275,7 @@ public sealed class IndexedDbMissionStore : IMissionStore
         return output.ToArray();
     }
 
-    private static MissionMeta ToMeta(MissionRow row) => new()
-    {
+    private static MissionMeta ToMeta(MissionRow row) => new() {
         MissionId = row.MissionId,
         StartTimestamp = row.StartTimestamp,
         ReturnTimestamp = row.ReturnTimestamp,

@@ -3,46 +3,38 @@ using Ei;
 
 namespace EggLedger.Domain.Tests;
 
-public class BackupExtensionsTests
-{
+public class BackupExtensionsTests {
     [Fact]
-    public void Sum_Ints()
-    {
+    public void Sum_Ints() {
         var got = BackupExtensions.Sum(new[] { 1, 2, 3, 4 }, v => (double)v);
         Assert.Equal(10.0, got);
     }
 
     [Fact]
-    public void Sum_Empty()
-    {
+    public void Sum_Empty() {
         var got = BackupExtensions.Sum(Array.Empty<int>(), v => (double)v);
         Assert.Equal(0.0, got);
     }
 
     [Fact]
-    public void Validate_ErrorCode()
-    {
+    public void Validate_ErrorCode() {
         var fc = new EggIncFirstContactResponse { ErrorCode = 1 };
         Assert.NotNull(fc.Validate());
     }
 
     [Fact]
-    public void Validate_NilBackup()
-    {
+    public void Validate_NilBackup() {
         var fc = new EggIncFirstContactResponse { ErrorCode = 0 };
         Assert.NotNull(fc.Validate());
     }
 
     [Fact]
-    public void Validate_Valid()
-    {
+    public void Validate_Valid() {
         var game = new Backup.Game();
         game.EpicResearchs.Add(new Backup.ResearchItem { Id = "soul_eggs", Level = 140 });
-        var fc = new EggIncFirstContactResponse
-        {
+        var fc = new EggIncFirstContactResponse {
             ErrorCode = 0,
-            Backup = new Backup
-            {
+            Backup = new Backup {
                 game = game,
                 settings = new Backup.Settings(),
                 ArtifactsDb = new ArtifactsDB(),
@@ -52,10 +44,8 @@ public class BackupExtensionsTests
     }
 
     [Fact]
-    public void GetEarningsBonus_BaseCase()
-    {
-        var b = new Backup
-        {
+    public void GetEarningsBonus_BaseCase() {
+        var b = new Backup {
             game = new Backup.Game { SoulEggsD = 0, EggsOfProphecy = 0 },
             virtue = new Backup.Virtue(),
         };
@@ -63,10 +53,8 @@ public class BackupExtensionsTests
     }
 
     [Fact]
-    public void GetEarningsBonus_SoulEggsOnly()
-    {
-        var b = new Backup
-        {
+    public void GetEarningsBonus_SoulEggsOnly() {
+        var b = new Backup {
             game = new Backup.Game { SoulEggsD = 1000, EggsOfProphecy = 0 },
             virtue = new Backup.Virtue(),
         };
@@ -74,8 +62,7 @@ public class BackupExtensionsTests
     }
 
     [Fact]
-    public void GetEarningsBonus_WithEpicResearch()
-    {
+    public void GetEarningsBonus_WithEpicResearch() {
         var game = new Backup.Game { SoulEggsD = 1000, EggsOfProphecy = 0 };
         game.EpicResearchs.Add(new Backup.ResearchItem { Id = "soul_eggs", Level = 140 });
         var b = new Backup { game = game, virtue = new Backup.Virtue() };
@@ -83,8 +70,7 @@ public class BackupExtensionsTests
     }
 
     [Fact]
-    public void GetEarningsBonus_ProphecyEggs()
-    {
+    public void GetEarningsBonus_ProphecyEggs() {
         var game = new Backup.Game { SoulEggsD = 1000, EggsOfProphecy = 10 };
         game.EpicResearchs.Add(new Backup.ResearchItem { Id = "soul_eggs", Level = 140 });
         var b = new Backup { game = game, virtue = new Backup.Virtue() };
@@ -93,12 +79,10 @@ public class BackupExtensionsTests
     }
 
     [Fact]
-    public void GetEarningsBonus_WithTE()
-    {
+    public void GetEarningsBonus_WithTE() {
         var game = new Backup.Game { SoulEggsD = 1000, EggsOfProphecy = 0 };
         game.EpicResearchs.Add(new Backup.ResearchItem { Id = "soul_eggs", Level = 140 });
-        var b = new Backup
-        {
+        var b = new Backup {
             game = game,
             virtue = new Backup.Virtue { EovEarneds = [100] },
         };

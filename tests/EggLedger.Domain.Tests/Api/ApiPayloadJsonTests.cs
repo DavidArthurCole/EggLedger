@@ -6,16 +6,12 @@ using Xunit;
 
 namespace EggLedger.Domain.Tests.Api;
 
-public class ApiPayloadJsonTests
-{
+public class ApiPayloadJsonTests {
     [Fact]
-    public void FirstContact_JsonRoundTrips_ViaSharedOptions()
-    {
-        var fc = new EggIncFirstContactResponse
-        {
+    public void FirstContact_JsonRoundTrips_ViaSharedOptions() {
+        var fc = new EggIncFirstContactResponse {
             EiUserId = "EI1234567890123456",
-            Backup = new Backup
-            {
+            Backup = new Backup {
                 artifacts = new Backup.Artifacts { LastFueledShip = MissionInfo.Spaceship.Henerprise },
                 game = new Backup.Game { SoulEggsD = 1234.5, EggsOfProphecy = 7 },
             },
@@ -31,10 +27,8 @@ public class ApiPayloadJsonTests
     }
 
     [Fact]
-    public void CompleteMission_JsonRoundTrips_ViaSharedOptions()
-    {
-        var resp = new CompleteMissionResponse
-        {
+    public void CompleteMission_JsonRoundTrips_ViaSharedOptions() {
+        var resp = new CompleteMissionResponse {
             Success = true,
             EiUserId = "EI999",
             Info = new MissionInfo { Identifier = "m-1", Ship = MissionInfo.Spaceship.Henerprise },
@@ -51,8 +45,7 @@ public class ApiPayloadJsonTests
     // Regression guard: get-only collection properties must survive the round-trip.
     // Without PreferredObjectCreationHandling.Populate, STJ leaves them empty.
     [Fact]
-    public void GetOnlyCollections_SurviveRoundTrip()
-    {
+    public void GetOnlyCollections_SurviveRoundTrip() {
         var resp = new CompleteMissionResponse { Success = true };
         resp.Artifacts.Add(new CompleteMissionResponse.SecureArtifactSpec());
         resp.Artifacts.Add(new CompleteMissionResponse.SecureArtifactSpec());

@@ -7,8 +7,7 @@ namespace EggLedger.Domain.MissionPacking;
 /// Compiled, display-ready mission record. Go port of missionpacking.DatabaseMission.
 /// Ship/DurationType are null when Info was absent (Go pointer fields).
 /// </summary>
-public sealed class DatabaseMission : IMissionRow
-{
+public sealed class DatabaseMission : IMissionRow {
     /// <summary>Launch Unix timestamp (seconds).</summary>
     public long LaunchDT { get; set; }
 

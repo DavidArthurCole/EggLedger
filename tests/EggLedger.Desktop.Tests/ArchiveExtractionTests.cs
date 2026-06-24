@@ -12,12 +12,10 @@ namespace EggLedger.Desktop.Tests;
 /// executable bit is asserted; on Windows that assertion is skipped (SetUnixFileMode
 /// is a no-op there).
 /// </summary>
-public sealed class ArchiveExtractionTests
-{
+public sealed class ArchiveExtractionTests {
     private static readonly byte[] Payload = Encoding.ASCII.GetBytes("#!/bin/sh\nfake-egg-binary\n");
 
-    private sealed class TempDir : IDisposable
-    {
+    private sealed class TempDir : IDisposable {
         public string Path { get; } =
             System.IO.Path.Combine(System.IO.Path.GetTempPath(), "egg-arc-" + Guid.NewGuid().ToString("N"));
 
@@ -25,49 +23,38 @@ public sealed class ArchiveExtractionTests
 
         public string File(string name) => System.IO.Path.Combine(Path, name);
 
-        public void Dispose()
-        {
-            try
-            {
+        public void Dispose() {
+            try {
                 Directory.Delete(Path, recursive: true);
-            }
-            catch (IOException)
-            {
+            } catch (IOException) {
             }
         }
     }
 
-    private static void WriteTarGz(string path, params (string Name, byte[] Data)[] entries)
-    {
+    private static void WriteTarGz(string path, params (string Name, byte[] Data)[] entries) {
         using var file = System.IO.File.Create(path);
         using var gz = new GZipStream(file, CompressionLevel.Fastest);
         using var tar = new TarWriter(gz, TarEntryFormat.Pax);
-        foreach (var (name, data) in entries)
-        {
-            var entry = new PaxTarEntry(TarEntryType.RegularFile, name)
-            {
+        foreach (var (name, data) in entries) {
+            var entry = new PaxTarEntry(TarEntryType.RegularFile, name) {
                 DataStream = new MemoryStream(data),
             };
             tar.WriteEntry(entry);
         }
     }
 
-    private static void WriteZip(string path, params (string Name, byte[] Data)[] entries)
-    {
+    private static void WriteZip(string path, params (string Name, byte[] Data)[] entries) {
         using var file = System.IO.File.Create(path);
         using var zip = new ZipArchive(file, ZipArchiveMode.Create);
-        foreach (var (name, data) in entries)
-        {
+        foreach (var (name, data) in entries) {
             var e = zip.CreateEntry(name);
             using var s = e.Open();
             s.Write(data);
         }
     }
 
-    private static void AssertExecutableOnUnix(string path)
-    {
-        if (OperatingSystem.IsWindows())
-        {
+    private static void AssertExecutableOnUnix(string path) {
+        if (OperatingSystem.IsWindows()) {
             return;
         }
         var mode = System.IO.File.GetUnixFileMode(path);
@@ -75,8 +62,7 @@ public sealed class ArchiveExtractionTests
     }
 
     [Fact]
-    public void Extract_TarGz_PicksFirstRegularFile()
-    {
+    public void Extract_TarGz_PicksFirstRegularFile() {
         using var dir = new TempDir();
         var archive = dir.File("EggLedger-linux.tar.gz");
         var dest = dir.File("EggLedger_new");
@@ -89,8 +75,7 @@ public sealed class ArchiveExtractionTests
     }
 
     [Fact]
-    public void Extract_TarGz_SkipsEmptyEntries()
-    {
+    public void Extract_TarGz_SkipsEmptyEntries() {
         using var dir = new TempDir();
         var archive = dir.File("EggLedger-linux.tar.gz");
         var dest = dir.File("EggLedger_new");
@@ -102,8 +87,7 @@ public sealed class ArchiveExtractionTests
     }
 
     [Fact]
-    public void Extract_TarGz_NoRegularFile_Throws()
-    {
+    public void Extract_TarGz_NoRegularFile_Throws() {
         using var dir = new TempDir();
         var archive = dir.File("EggLedger-linux.tar.gz");
         var dest = dir.File("EggLedger_new");
@@ -113,8 +97,7 @@ public sealed class ArchiveExtractionTests
     }
 
     [Fact]
-    public void Extract_Zip_PrefersMacOsBundleEntry()
-    {
+    public void Extract_Zip_PrefersMacOsBundleEntry() {
         using var dir = new TempDir();
         var archive = dir.File("EggLedger-mac.zip");
         var dest = dir.File("EggLedger_new");
@@ -130,8 +113,7 @@ public sealed class ArchiveExtractionTests
     }
 
     [Fact]
-    public void Extract_Zip_FallsBackToFirstExtensionlessFile()
-    {
+    public void Extract_Zip_FallsBackToFirstExtensionlessFile() {
         using var dir = new TempDir();
         var archive = dir.File("EggLedger-mac.zip");
         var dest = dir.File("EggLedger_new");
@@ -146,8 +128,7 @@ public sealed class ArchiveExtractionTests
     }
 
     [Fact]
-    public void Extract_Zip_NoSuitableEntry_Throws()
-    {
+    public void Extract_Zip_NoSuitableEntry_Throws() {
         using var dir = new TempDir();
         var archive = dir.File("EggLedger-mac.zip");
         var dest = dir.File("EggLedger_new");
@@ -157,8 +138,7 @@ public sealed class ArchiveExtractionTests
     }
 
     [Fact]
-    public void Extract_UnsupportedSuffix_Throws()
-    {
+    public void Extract_UnsupportedSuffix_Throws() {
         using var dir = new TempDir();
         var archive = dir.File("EggLedger.rar");
         System.IO.File.WriteAllBytes(archive, [0, 1, 2]);

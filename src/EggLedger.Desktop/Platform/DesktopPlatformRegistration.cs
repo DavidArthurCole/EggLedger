@@ -9,8 +9,7 @@ namespace EggLedger.Desktop.Platform;
 /// Registers the native desktop <see cref="IPlatformCapabilities"/>, replacing the
 /// browser no-op stub. Call AFTER AddEggLedgerWeb so this override wins.
 /// </summary>
-public static class DesktopPlatformRegistration
-{
+public static class DesktopPlatformRegistration {
     /// <summary>
     /// Swaps in the native impl over <paramref name="window"/>, registering the
     /// process runner and window wrapper as singletons.
@@ -21,8 +20,7 @@ public static class DesktopPlatformRegistration
 
     /// <summary>Registers the native capabilities over explicit seams (used by tests with fakes).</summary>
     public static IServiceCollection AddDesktopPlatformCapabilities(
-        this IServiceCollection services, IProcessRunner processRunner, IDesktopWindow window)
-    {
+        this IServiceCollection services, IProcessRunner processRunner, IDesktopWindow window) {
         services.AddSingleton(processRunner);
         services.AddSingleton(window);
 

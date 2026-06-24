@@ -8,16 +8,14 @@ namespace EggLedger.Domain.MissionPacking;
 /// Mission compilation + nominal-capacity logic. Go port of package missionpacking
 /// (capacity.go + missionpacking.go), including the mission_type = -1 ("not yet determined") sentinel.
 /// </summary>
-public sealed class MissionPacker
-{
+public sealed class MissionPacker {
     private const long BuggedCapLower = 1712721600;
     private const long BuggedCapUpper = 1713286800;
 
     private readonly IMissionConfigSource _configSource;
     private readonly Lazy<Dictionary<MissionInfo.Spaceship, Dictionary<MissionInfo.DurationType, float[]>>> _caps;
 
-    public MissionPacker(IMissionConfigSource configSource)
-    {
+    public MissionPacker(IMissionConfigSource configSource) {
         _configSource = configSource;
         _caps = new(BuildNominalShipCapacities);
     }
@@ -26,28 +24,21 @@ public sealed class MissionPacker
     /// Builds the nominal-capacity table from the eiafx config: per-level slice is
     /// capacity + (levelCapacityBump * level). Mirrors Go initNominalShipCapacities.
     /// </summary>
-    private Dictionary<MissionInfo.Spaceship, Dictionary<MissionInfo.DurationType, float[]>> BuildNominalShipCapacities()
-    {
+    private Dictionary<MissionInfo.Spaceship, Dictionary<MissionInfo.DurationType, float[]>> BuildNominalShipCapacities() {
         var table = new Dictionary<MissionInfo.Spaceship, Dictionary<MissionInfo.DurationType, float[]>>();
-        foreach (var mission in _configSource.Config.mission_parameters)
-        {
+        foreach (var mission in _configSource.Config.mission_parameters) {
             var byDuration = new Dictionary<MissionInfo.DurationType, float[]>();
             table[mission.Ship] = byDuration;
 
             int levelCount = mission.LevelMissionRequirements?.Length ?? 0;
-            foreach (var duration in mission.Durations)
-            {
+            foreach (var duration in mission.Durations) {
                 float capacity = duration.Capacity;
-                if (levelCount == 0)
-                {
+                if (levelCount == 0) {
                     byDuration[duration.DurationType] = [capacity];
-                }
-                else
-                {
+                } else {
                     var levels = new float[levelCount + 1];
                     float bump = duration.LevelCapacityBump;
-                    for (int level = 0; level <= levelCount; level++)
-                    {
+                    for (int level = 0; level <= levelCount; level++) {
                         levels[level] = capacity + (bump * level);
                     }
                     byDuration[duration.DurationType] = levels;
@@ -61,11 +52,9 @@ public sealed class MissionPacker
     /// Nominal-capacity slice for a ship+duration; false when ship/duration absent.
     /// Mirrors Go ShipCapacities.
     /// </summary>
-    public bool TryGetShipCapacities(MissionInfo.Spaceship ship, MissionInfo.DurationType dur, out float[] caps)
-    {
+    public bool TryGetShipCapacities(MissionInfo.Spaceship ship, MissionInfo.DurationType dur, out float[] caps) {
         if (_caps.Value.TryGetValue(ship, out var byDuration)
-            && byDuration.TryGetValue(dur, out var found))
-        {
+            && byDuration.TryGetValue(dur, out var found)) {
             caps = found;
             return true;
         }
@@ -78,22 +67,17 @@ public sealed class MissionPacker
         name is null ? "" : EnumNames.ProtoName(name.Value);
 
     /// <summary>Compact human-readable duration string. Mirrors Go durationStringFromSecs.</summary>
-    public static string DurationStringFromSecs(double seconds)
-    {
-        if (seconds == 0)
-        {
+    public static string DurationStringFromSecs(double seconds) {
+        if (seconds == 0) {
             return "0m";
         }
-        if (seconds < 60)
-        {
+        if (seconds < 60) {
             return $"{(int)seconds}s";
         }
-        if (seconds < 3600)
-        {
+        if (seconds < 3600) {
             return $"{(int)(seconds / 60)}m";
         }
-        if (seconds < 86400)
-        {
+        if (seconds < 86400) {
             return string.Format(
                 CultureInfo.InvariantCulture,
                 "{0}h{1}m",
@@ -112,11 +96,9 @@ public sealed class MissionPacker
     /// Extracts migration-6 filter columns from a decoded mission; false when Info is null.
     /// Mirrors Go ComputeMissionFilterCols.
     /// </summary>
-    public bool TryComputeMissionFilterCols(double startTimestamp, CompleteMissionResponse resp, out MissionFilterCols cols)
-    {
+    public bool TryComputeMissionFilterCols(double startTimestamp, CompleteMissionResponse resp, out MissionFilterCols cols) {
         var info = resp.Info;
-        if (info is null)
-        {
+        if (info is null) {
             cols = default;
             return false;
         }
@@ -129,21 +111,18 @@ public sealed class MissionPacker
         double returnTimestamp = startTimestamp + durationSeconds;
 
         int target = -1;
-        if (info.ShouldSerializeTargetArtifact())
-        {
+        if (info.ShouldSerializeTargetArtifact()) {
             target = (int)info.TargetArtifact;
         }
 
         float nominalCap = 0;
-        if (TryGetShipCapacities(ship, durationType, out var caps) && level < caps.Length)
-        {
+        if (TryGetShipCapacities(ship, durationType, out var caps) && level < caps.Length) {
             nominalCap = caps[level];
         }
         bool isDubCap = nominalCap > 0 && (float)capacity >= nominalCap * 1.7f;
         bool isBuggedCap = startTimestamp is > BuggedCapLower and < BuggedCapUpper;
 
-        cols = new MissionFilterCols
-        {
+        cols = new MissionFilterCols {
             Ship = (int)ship,
             DurationType = (int)durationType,
             Level = level,
@@ -158,21 +137,18 @@ public sealed class MissionPacker
     }
 
     /// <summary>Builds a DatabaseMission from a MissionMeta row. Mirrors Go MissionMetaToDBMission.</summary>
-    public DatabaseMission MissionMetaToDBMission(MissionMeta meta)
-    {
+    public DatabaseMission MissionMetaToDBMission(MissionMeta meta) {
         var ship = (MissionInfo.Spaceship)meta.Ship;
         var durationType = (MissionInfo.DurationType)meta.DurationType;
 
         float nominalCap = 0;
-        if (TryGetShipCapacities(ship, durationType, out var caps) && meta.Level < caps.Length)
-        {
+        if (TryGetShipCapacities(ship, durationType, out var caps) && meta.Level < caps.Length) {
             nominalCap = caps[meta.Level];
         }
 
         string target = "";
         int targetInt = -1;
-        if (meta.Target >= 0)
-        {
+        if (meta.Target >= 0) {
             var targetName = (ArtifactSpec.Name)meta.Target;
             target = ProperTargetName(targetName);
             targetInt = meta.Target;
@@ -181,8 +157,7 @@ public sealed class MissionPacker
         var missionType = (MissionInfo.MissionType)meta.MissionType;
         double durationSecs = meta.ReturnTimestamp - meta.StartTimestamp;
 
-        return new DatabaseMission
-        {
+        return new DatabaseMission {
             LaunchDT = (long)meta.StartTimestamp,
             ReturnDT = (long)meta.ReturnTimestamp,
             MissiondId = meta.MissionId,
@@ -207,14 +182,11 @@ public sealed class MissionPacker
     /// Resolves mission-type, falling back to the proto payload when the stored value
     /// is the -1 sentinel. Mirrors Go resolveMissionType.
     /// </summary>
-    private static int ResolveMissionType(int dbMissionType, CompleteMissionResponse mission)
-    {
+    private static int ResolveMissionType(int dbMissionType, CompleteMissionResponse mission) {
         int missionType = dbMissionType;
-        if (missionType == -1)
-        {
+        if (missionType == -1) {
             var info = mission.Info;
-            if (info is not null)
-            {
+            if (info is not null) {
                 missionType = (int)info.Type;
             }
         }
@@ -225,11 +197,9 @@ public sealed class MissionPacker
     /// Compiles a full DatabaseMission from a decoded mission; empty record when Info is null.
     /// Mirrors Go CompileMissionInformation.
     /// </summary>
-    public DatabaseMission CompileMissionInformation(CompleteMissionResponse completeMissionResponse)
-    {
+    public DatabaseMission CompileMissionInformation(CompleteMissionResponse completeMissionResponse) {
         var info = completeMissionResponse.Info;
-        if (info is null)
-        {
+        if (info is null) {
             return new DatabaseMission();
         }
 
@@ -238,14 +208,12 @@ public sealed class MissionPacker
         long returnDt = launch + (long)Math.Floor(info.DurationSeconds);
 
         float nominalCap = 0;
-        if (TryGetShipCapacities(info.Ship, info.duration_type, out var caps) && (int)info.Level < caps.Length)
-        {
+        if (TryGetShipCapacities(info.Ship, info.duration_type, out var caps) && (int)info.Level < caps.Length) {
             nominalCap = caps[(int)info.Level];
         }
         int mType = ResolveMissionType(-1, completeMissionResponse);
 
-        var mission = new DatabaseMission
-        {
+        var mission = new DatabaseMission {
             LaunchDT = launch,
             ReturnDT = returnDt,
             DurationString = info.GetDurationString(),
@@ -263,12 +231,9 @@ public sealed class MissionPacker
             MissionTypeString = ((MissionInfo.MissionType)mType).Display(),
             ShipEnumString = EnumNames.ProtoName(info.Ship),
         };
-        if (mission.Target.Length == 0)
-        {
+        if (mission.Target.Length == 0) {
             mission.TargetInt = -1;
-        }
-        else
-        {
+        } else {
             mission.TargetInt = (int)info.TargetArtifact;
         }
 
@@ -279,12 +244,10 @@ public sealed class MissionPacker
     /// True when capacity is at least 1.7x nominal; false when ship/duration/level unknown.
     /// Mirrors Go isDubCap.
     /// </summary>
-    public bool IsDubCap(CompleteMissionResponse mission)
-    {
+    public bool IsDubCap(CompleteMissionResponse mission) {
         var info = mission.Info!;
         int level = (int)info.Level;
-        if (!TryGetShipCapacities(info.Ship, info.duration_type, out var caps) || level >= caps.Length)
-        {
+        if (!TryGetShipCapacities(info.Ship, info.duration_type, out var caps) || level >= caps.Length) {
             return false;
         }
         float nominalCapacity = caps[level];

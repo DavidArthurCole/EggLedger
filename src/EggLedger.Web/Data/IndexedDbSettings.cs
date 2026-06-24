@@ -8,14 +8,12 @@ namespace EggLedger.Web.Data;
 /// upserts: IndexedDB <c>put</c> on a keyPath store replaces by key, matching
 /// Go's INSERT ... ON CONFLICT(key) DO UPDATE.
 /// </summary>
-public sealed class IndexedDbSettings
-{
+public sealed class IndexedDbSettings {
     private const string SettingsStore = "settings";
 
     private readonly IIndexedDb _db;
 
-    public IndexedDbSettings(IIndexedDb db)
-    {
+    public IndexedDbSettings(IIndexedDb db) {
         _db = db ?? throw new ArgumentNullException(nameof(db));
     }
 
@@ -23,12 +21,10 @@ public sealed class IndexedDbSettings
     /// All settings as a key-value map. Mirrors Go <c>GetAllSettings</c>: reads
     /// every row and folds it into a dictionary keyed by <c>key</c>.
     /// </summary>
-    public async Task<Dictionary<string, string>> GetAllSettingsAsync()
-    {
+    public async Task<Dictionary<string, string>> GetAllSettingsAsync() {
         var rows = await _db.GetAllAsync<SettingRow>(SettingsStore);
         var result = new Dictionary<string, string>(rows.Length);
-        foreach (var row in rows)
-        {
+        foreach (var row in rows) {
             result[row.Key] = row.Value;
         }
         return result;
@@ -44,8 +40,7 @@ public sealed class IndexedDbSettings
     /// Upserts multiple settings in one batch. Mirrors Go <c>SetSettings</c>
     /// (single-transaction batch upsert).
     /// </summary>
-    public async Task SetSettingsAsync(IReadOnlyDictionary<string, string> settings)
-    {
+    public async Task SetSettingsAsync(IReadOnlyDictionary<string, string> settings) {
         var rows = settings.Select(kv => (object)new SettingRow { Key = kv.Key, Value = kv.Value });
         await _db.PutManyAsync(SettingsStore, rows);
     }

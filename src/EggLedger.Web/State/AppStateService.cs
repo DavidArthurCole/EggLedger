@@ -4,32 +4,27 @@ using EggLedger.Web.Services;
 namespace EggLedger.Web.State;
 
 /// <summary>Broad app/UI state. Named distinctly from the fetch pipeline enum <see cref="EggLedger.Web.Services.AppState"/> to avoid the clash.</summary>
-public sealed class AppStateService
-{
+public sealed class AppStateService {
     /// <summary>Compiled app version string.</summary>
-    public string AppVersion
-    {
+    public string AppVersion {
         get;
         set => Set(ref field, value);
     } = "";
 
     /// <summary>Known accounts loaded from the mission store.</summary>
-    public IReadOnlyList<KnownAccount> KnownAccounts
-    {
+    public IReadOnlyList<KnownAccount> KnownAccounts {
         get;
         set => Set(ref field, value);
     } = [];
 
     /// <summary>Active tab label (matches the tab bar labels).</summary>
-    public string ActiveTab
-    {
+    public string ActiveTab {
         get;
         set => Set(ref field, value);
     } = "Ledger";
 
     /// <summary>Current fetch pipeline state, or null before the first fetch.</summary>
-    public AppState? PipelineState
-    {
+    public AppState? PipelineState {
         get;
         set => Set(ref field, value);
     }
@@ -37,10 +32,8 @@ public sealed class AppStateService
     /// <summary>Raised whenever any tracked field changes.</summary>
     public event Action? Changed;
 
-    private void Set<T>(ref T field, T value)
-    {
-        if (EqualityComparer<T>.Default.Equals(field, value))
-        {
+    private void Set<T>(ref T field, T value) {
+        if (EqualityComparer<T>.Default.Equals(field, value)) {
             return;
         }
 

@@ -8,12 +8,10 @@ namespace EggLedger.Web.Tests.Missions;
 /// www/src/composables/useMissionListGrouping.ts: year/month/day descending
 /// grouping, per-day reverse, collapse state, and the all-visible flag.
 /// </summary>
-public sealed class MissionGrouperTests
-{
+public sealed class MissionGrouperTests {
     // Deterministic ledgerDate that treats LaunchDT as already-encoded yyyymmdd
     // so tests do not depend on the local time zone.
-    private static DateTime FakeLedgerDate(long encoded)
-    {
+    private static DateTime FakeLedgerDate(long encoded) {
         int y = (int)(encoded / 10000);
         int mo = (int)(encoded / 100 % 100);
         int d = (int)(encoded % 100);
@@ -24,24 +22,21 @@ public sealed class MissionGrouperTests
         new() { LaunchDT = encoded, MissiondId = id };
 
     [Fact]
-    public void EmptyInput_ReturnsAllVisibleEmpty()
-    {
+    public void EmptyInput_ReturnsAllVisibleEmpty() {
         var g = MissionGrouper.Group(Array.Empty<DatabaseMission>(), FakeLedgerDate, collapseOlderSections: false);
         Assert.Empty(g.Missions);
         Assert.True(g.AllVisible);
     }
 
     [Fact]
-    public void Null_ReturnsAllVisibleEmpty()
-    {
+    public void Null_ReturnsAllVisibleEmpty() {
         var g = MissionGrouper.Group(null, FakeLedgerDate, collapseOlderSections: false);
         Assert.Empty(g.Missions);
         Assert.True(g.AllVisible);
     }
 
     [Fact]
-    public void YearsSortedDescending()
-    {
+    public void YearsSortedDescending() {
         var missions = new[]
         {
             M(20220101, "a"),
@@ -53,8 +48,7 @@ public sealed class MissionGrouperTests
     }
 
     [Fact]
-    public void MonthsAndDaysSortedDescending()
-    {
+    public void MonthsAndDaysSortedDescending() {
         var missions = new[]
         {
             M(20240101, "a"),
@@ -68,8 +62,7 @@ public sealed class MissionGrouperTests
     }
 
     [Fact]
-    public void SameDayMissions_AreReversed()
-    {
+    public void SameDayMissions_AreReversed() {
         var missions = new[]
         {
             M(20240101, "first"),
@@ -82,8 +75,7 @@ public sealed class MissionGrouperTests
     }
 
     [Fact]
-    public void Collapse_EnablesOnlyNewestYear()
-    {
+    public void Collapse_EnablesOnlyNewestYear() {
         var missions = new[]
         {
             M(20240101, "a"),
@@ -98,8 +90,7 @@ public sealed class MissionGrouperTests
     }
 
     [Fact]
-    public void Collapse_SingleYear_StillAllVisible()
-    {
+    public void Collapse_SingleYear_StillAllVisible() {
         var missions = new[] { M(20240101, "a"), M(20240202, "b") };
         var g = MissionGrouper.Group(missions, FakeLedgerDate, collapseOlderSections: true);
         Assert.True(g.AllVisible);
@@ -107,8 +98,7 @@ public sealed class MissionGrouperTests
     }
 
     [Fact]
-    public void NoCollapse_EverythingEnabled()
-    {
+    public void NoCollapse_EverythingEnabled() {
         var missions = new[] { M(20240101, "a"), M(20230101, "b") };
         var g = MissionGrouper.Group(missions, FakeLedgerDate, collapseOlderSections: false);
         Assert.True(g.Arrays.Year.All(y => y.Enabled));

@@ -7,20 +7,16 @@ namespace EggLedger.Desktop.Platform;
 /// relaunch). Side-effect free so all three platform branches are unit-testable by
 /// passing the target <see cref="OSPlatform"/>. Ports Go platform/platform*.go.
 /// </summary>
-public static class DesktopCommandBuilder
-{
+public static class DesktopCommandBuilder {
     /// <summary>
     /// Command to open <paramref name="path"/> with the OS default handler.
     /// Windows: explorer &lt;path&gt;. macOS: open &lt;path&gt;. Linux: xdg-open &lt;path&gt;.
     /// </summary>
-    public static (string Exe, string[] Args) BuildOpenCommand(OSPlatform platform, string path)
-    {
-        if (platform == OSPlatform.Windows)
-        {
+    public static (string Exe, string[] Args) BuildOpenCommand(OSPlatform platform, string path) {
+        if (platform == OSPlatform.Windows) {
             return ("explorer.exe", [path]);
         }
-        if (platform == OSPlatform.OSX)
-        {
+        if (platform == OSPlatform.OSX) {
             return ("open", [path]);
         }
         return ("xdg-open", [path]);
@@ -31,14 +27,11 @@ public static class DesktopCommandBuilder
     /// (single combined arg). macOS: open -R. Linux: xdg-open on the containing dir
     /// (file selection is file-manager specific).
     /// </summary>
-    public static (string Exe, string[] Args) BuildOpenInFolderCommand(OSPlatform platform, string path)
-    {
-        if (platform == OSPlatform.Windows)
-        {
+    public static (string Exe, string[] Args) BuildOpenInFolderCommand(OSPlatform platform, string path) {
+        if (platform == OSPlatform.Windows) {
             return ("explorer.exe", ["/select," + path]);
         }
-        if (platform == OSPlatform.OSX)
-        {
+        if (platform == OSPlatform.OSX) {
             return ("open", ["-R", path]);
         }
         var dir = Path.GetDirectoryName(path) ?? path;

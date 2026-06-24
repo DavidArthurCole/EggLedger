@@ -1,8 +1,7 @@
 namespace EggLedger.Web.Missions;
 
 /// <summary>Lifetime drop sort method.</summary>
-public enum LifetimeSortMethod
-{
+public enum LifetimeSortMethod {
     Default,
     Iv,
     Count,
@@ -10,11 +9,9 @@ public enum LifetimeSortMethod
 }
 
 /// <summary>Sort/ordering for aggregated lifetime drops. Reuses DropSorter for shared comparators and adds the count comparator and random shuffle unique to the Lifetime tab.</summary>
-public static class LifetimeSorter
-{
+public static class LifetimeSorter {
     /// <summary>Parses the persisted sort-method string; unknown values fall back to Default.</summary>
-    public static LifetimeSortMethod ParseMethod(string? value) => value switch
-    {
+    public static LifetimeSortMethod ParseMethod(string? value) => value switch {
         "iv" => LifetimeSortMethod.Iv,
         "count" => LifetimeSortMethod.Count,
         "random" => LifetimeSortMethod.Random,
@@ -22,8 +19,7 @@ public static class LifetimeSorter
     };
 
     /// <summary>Serializes a method back to the persisted string.</summary>
-    public static string MethodString(LifetimeSortMethod method) => method switch
-    {
+    public static string MethodString(LifetimeSortMethod method) => method switch {
         LifetimeSortMethod.Iv => "iv",
         LifetimeSortMethod.Count => "count",
         LifetimeSortMethod.Random => "random",
@@ -31,16 +27,14 @@ public static class LifetimeSorter
     };
 
     /// <summary>Re-sorts every spec-type list per the active method. Random uses the supplied RNG so callers can seed it for tests.</summary>
-    public static void Sort(LifetimeData data, LifetimeSortMethod method, Random? rng = null)
-    {
+    public static void Sort(LifetimeData data, LifetimeSortMethod method, Random? rng = null) {
         data.Artifacts = SortList(data.Artifacts, method, rng);
         data.Stones = SortList(data.Stones, method, rng);
         data.StoneFragments = SortList(data.StoneFragments, method, rng);
         data.Ingredients = SortList(data.Ingredients, method, rng);
     }
 
-    private static List<DropLike> SortList(IReadOnlyList<DropLike> list, LifetimeSortMethod method, Random? rng) => method switch
-    {
+    private static List<DropLike> SortList(IReadOnlyList<DropLike> list, LifetimeSortMethod method, Random? rng) => method switch {
         LifetimeSortMethod.Iv => DropSorter.InventoryVisualizerSort(list),
         LifetimeSortMethod.Count => SortGroupByCount(list),
         LifetimeSortMethod.Random => Shuffle(list, rng ?? Random.Shared),
@@ -48,58 +42,46 @@ public static class LifetimeSorter
     };
 
     /// <summary>Count desc, then level/rarity/id desc, quality asc. No reverse (unlike sortGroupAlreadyCombed).</summary>
-    public static List<DropLike> SortGroupByCount(IEnumerable<DropLike> collection)
-    {
+    public static List<DropLike> SortGroupByCount(IEnumerable<DropLike> collection) {
         var indexed = new List<(DropLike Item, int Index)>();
         int i = 0;
-        foreach (var item in collection)
-        {
+        foreach (var item in collection) {
             indexed.Add((item, i++));
         }
-        indexed.Sort((a, b) =>
-        {
+        indexed.Sort((a, b) => {
             int c = CountComparer(a.Item, b.Item);
             return c != 0 ? c : a.Index.CompareTo(b.Index);
         });
         var result = new List<DropLike>(indexed.Count);
-        foreach (var (item, _) in indexed)
-        {
+        foreach (var (item, _) in indexed) {
             result.Add(item);
         }
         return result;
     }
 
-    private static int CountComparer(DropLike a, DropLike b)
-    {
-        if (a.Count != b.Count)
-        {
+    private static int CountComparer(DropLike a, DropLike b) {
+        if (a.Count != b.Count) {
             return a.Count > b.Count ? -1 : 1;
         }
-        if (a.Level != b.Level)
-        {
+        if (a.Level != b.Level) {
             return a.Level > b.Level ? -1 : 1;
         }
-        if (a.Rarity != b.Rarity)
-        {
+        if (a.Rarity != b.Rarity) {
             return a.Rarity > b.Rarity ? -1 : 1;
         }
-        if (a.Id != b.Id)
-        {
+        if (a.Id != b.Id) {
             return a.Id > b.Id ? -1 : 1;
         }
-        if (a.Quality != b.Quality)
-        {
+        if (a.Quality != b.Quality) {
             return a.Quality < b.Quality ? -1 : 1;
         }
         return 0;
     }
 
     /// <summary>Fisher-Yates shuffle.</summary>
-    public static List<DropLike> Shuffle(IEnumerable<DropLike> collection, Random rng)
-    {
+    public static List<DropLike> Shuffle(IEnumerable<DropLike> collection, Random rng) {
         var list = new List<DropLike>(collection);
-        for (int i = list.Count - 1; i > 0; i--)
-        {
+        for (int i = list.Count - 1; i > 0; i--) {
             int j = rng.Next(i + 1);
             (list[i], list[j]) = (list[j], list[i]);
         }

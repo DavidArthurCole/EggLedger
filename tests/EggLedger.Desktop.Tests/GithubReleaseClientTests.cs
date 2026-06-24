@@ -7,11 +7,9 @@ namespace EggLedger.Desktop.Tests;
 /// (EggLedger/update/version.go). Assert the right URL is hit, the JSON is parsed,
 /// and the bytes are written. No real GitHub call.
 /// </summary>
-public sealed class GithubReleaseClientTests
-{
+public sealed class GithubReleaseClientTests {
     [Fact]
-    public async Task GetLatestTag_ParsesTagAndBodyFromExpectedUrl()
-    {
+    public async Task GetLatestTag_ParsesTagAndBodyFromExpectedUrl() {
         var stub = new StubHttpMessageHandler(_ =>
             StubHttpMessageHandler.Json("""{"tag_name":"2.2.0","body":"notes here"}"""));
         var client = new GithubReleaseClient(new HttpClient(stub));
@@ -25,16 +23,14 @@ public sealed class GithubReleaseClientTests
     }
 
     [Fact]
-    public async Task GetLatestTag_NullOnEmptyTag()
-    {
+    public async Task GetLatestTag_NullOnEmptyTag() {
         var stub = new StubHttpMessageHandler(_ => StubHttpMessageHandler.Json("""{"tag_name":"","body":""}"""));
         var client = new GithubReleaseClient(new HttpClient(stub));
         Assert.Null(await client.GetLatestTagAsync());
     }
 
     [Fact]
-    public async Task GetLatestTagIncludingPreReleases_PicksHighestNonDraft()
-    {
+    public async Task GetLatestTagIncludingPreReleases_PicksHighestNonDraft() {
         var json = """
         [
           {"tag_name":"2.2.0-rc.1","body":"rc","draft":false},
@@ -54,8 +50,7 @@ public sealed class GithubReleaseClientTests
     }
 
     [Fact]
-    public async Task GetUpdateAssetUrl_ReturnsMatchingPlatformAsset()
-    {
+    public async Task GetUpdateAssetUrl_ReturnsMatchingPlatformAsset() {
         var want = GithubReleaseClient.ExpectedAssetName();
         var json = $$"""
         {"assets":[
@@ -73,8 +68,7 @@ public sealed class GithubReleaseClientTests
     }
 
     [Fact]
-    public async Task GetUpdateAssetUrl_NullWhenNoMatch()
-    {
+    public async Task GetUpdateAssetUrl_NullWhenNoMatch() {
         var json = """{"assets":[{"name":"nope.zip","browser_download_url":"https://x/nope.zip"}]}""";
         var stub = new StubHttpMessageHandler(_ => StubHttpMessageHandler.Json(json));
         var client = new GithubReleaseClient(new HttpClient(stub));
@@ -82,19 +76,16 @@ public sealed class GithubReleaseClientTests
     }
 
     [Fact]
-    public async Task Download_WritesBytesAndReportsProgress()
-    {
+    public async Task Download_WritesBytesAndReportsProgress() {
         var payload = new byte[200 * 1024];
-        for (var i = 0; i < payload.Length; i++)
-        {
+        for (var i = 0; i < payload.Length; i++) {
             payload[i] = (byte)(i % 251);
         }
         var stub = new StubHttpMessageHandler(_ => StubHttpMessageHandler.Bytes(payload));
         var client = new GithubReleaseClient(new HttpClient(stub));
 
         var dest = Path.Combine(Path.GetTempPath(), "egg-dl-" + Guid.NewGuid().ToString("N") + ".bin");
-        try
-        {
+        try {
             long lastReported = 0;
             await client.DownloadAsync("https://x/EggLedger.exe", dest, (d, _) => lastReported = d);
 
@@ -104,31 +95,24 @@ public sealed class GithubReleaseClientTests
             Assert.Equal(payload, written);
             Assert.Equal(payload.Length, lastReported);
             Assert.Contains("https://x/EggLedger.exe", stub.RequestedUrls[0]);
-        }
-        finally
-        {
+        } finally {
             File.Delete(dest);
         }
     }
 
     [Fact]
-    public async Task Download_ThrowsOnTruncatedContent()
-    {
+    public async Task Download_ThrowsOnTruncatedContent() {
         // Content-Length claims more than the body delivers.
-        var stub = new StubHttpMessageHandler(_ =>
-        {
+        var stub = new StubHttpMessageHandler(_ => {
             var content = new ByteArrayContent([1, 2, 3]);
             content.Headers.ContentLength = 999;
             return new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = content };
         });
         var client = new GithubReleaseClient(new HttpClient(stub));
         var dest = Path.Combine(Path.GetTempPath(), "egg-trunc-" + Guid.NewGuid().ToString("N") + ".bin");
-        try
-        {
+        try {
             await Assert.ThrowsAsync<IOException>(() => client.DownloadAsync("https://x/a", dest, null));
-        }
-        finally
-        {
+        } finally {
             File.Delete(dest);
         }
     }

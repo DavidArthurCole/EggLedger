@@ -8,13 +8,11 @@ namespace EggLedger.Web.Tests.Missions;
 /// www/src/composables/useMissionViewOptions.ts: defaults, mission-type tab
 /// filtering, hasBothMissionTypes, and settings (de)serialization.
 /// </summary>
-public sealed class MissionViewOptionsTests
-{
+public sealed class MissionViewOptionsTests {
     private static DatabaseMission M(int type, string id) => new() { MissionType = type, MissiondId = id };
 
     [Fact]
-    public void Defaults_MatchVue()
-    {
+    public void Defaults_MatchVue() {
         var o = new MissionViewOptions();
         Assert.False(o.ViewByDate);
         Assert.True(o.ViewMissionTimes);
@@ -27,8 +25,7 @@ public sealed class MissionViewOptionsTests
     }
 
     [Fact]
-    public void HasBothMissionTypes_NeedsBothHomeAndVirtue()
-    {
+    public void HasBothMissionTypes_NeedsBothHomeAndVirtue() {
         Assert.False(MissionViewOptions.HasBothMissionTypes(null));
         Assert.False(MissionViewOptions.HasBothMissionTypes(Array.Empty<DatabaseMission>()));
         Assert.False(MissionViewOptions.HasBothMissionTypes(new[] { M(0, "a"), M(0, "b") }));
@@ -37,15 +34,13 @@ public sealed class MissionViewOptionsTests
     }
 
     [Fact]
-    public void TabFilteredMissions_NullTabPassesThrough()
-    {
+    public void TabFilteredMissions_NullTabPassesThrough() {
         var missions = new[] { M(0, "a"), M(1, "b") };
         Assert.Same(missions, MissionViewOptions.TabFilteredMissions(missions, null));
     }
 
     [Fact]
-    public void TabFilteredMissions_FiltersByType()
-    {
+    public void TabFilteredMissions_FiltersByType() {
         var missions = new[] { M(0, "a"), M(1, "b"), M(0, "c") };
         var home = MissionViewOptions.TabFilteredMissions(missions, 0)!;
         Assert.Equal(new[] { "a", "c" }, home.Select(m => m.MissiondId).ToArray());
@@ -55,8 +50,7 @@ public sealed class MissionViewOptionsTests
     }
 
     [Fact]
-    public void TabFilteredMissions_NullInputReturnsNull()
-    {
+    public void TabFilteredMissions_NullInputReturnsNull() {
         Assert.Null(MissionViewOptions.TabFilteredMissions(null, 0));
     }
 
@@ -84,11 +78,9 @@ public sealed class MissionViewOptionsTests
         Assert.Equal(expected, MissionViewOptions.ParseSortMethod(raw));
 
     [Fact]
-    public void LoadFrom_HydratesFromSettingsMap()
-    {
+    public void LoadFrom_HydratesFromSettingsMap() {
         var o = new MissionViewOptions();
-        o.LoadFrom(new Dictionary<string, string>
-        {
+        o.LoadFrom(new Dictionary<string, string> {
             [MissionViewOptions.KeyViewByDate] = "true",
             [MissionViewOptions.KeyViewTimes] = "false",
             [MissionViewOptions.KeyRecolorDc] = "true",
@@ -105,8 +97,7 @@ public sealed class MissionViewOptionsTests
     }
 
     [Fact]
-    public void LoadFrom_MissingKeysKeepDefaults()
-    {
+    public void LoadFrom_MissingKeysKeepDefaults() {
         var o = new MissionViewOptions();
         o.LoadFrom(new Dictionary<string, string>());
         Assert.False(o.ViewByDate);

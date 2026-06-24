@@ -6,8 +6,7 @@ using EggLedger.Web.Services;
 
 namespace EggLedger.Web.Tests.Services;
 
-public sealed class CloudSyncServiceTests
-{
+public sealed class CloudSyncServiceTests {
     // 64-char hex = 32-byte AES-256 key, the per-user encryptionKey shape.
     private const string HexKey = "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
     private const string Token = "session-token-abc";
@@ -19,16 +18,14 @@ public sealed class CloudSyncServiceTests
     private static CloudSession Session() => new(Token, "user#1", "https://cdn/avatar.png", HexKey);
 
     // Records the last URL it was sent to; never actually navigates.
-    private sealed class FakeNavigation : INavigation
-    {
+    private sealed class FakeNavigation : INavigation {
         public string? LastUrl { get; private set; }
         public void NavigateTo(string url) => LastUrl = url;
     }
 
     // A minimal in-memory stand-in for the frozen server: blob store keyed by
     // name, the auth start/poll endpoints, and the authed-route bearer check.
-    private sealed class FakeServer : HttpMessageHandler
-    {
+    private sealed class FakeServer : HttpMessageHandler {
         private readonly Dictionary<string, string> _blobs = [];
 
         public string? PendingState;
@@ -41,75 +38,62 @@ public sealed class CloudSyncServiceTests
         public IReadOnlyDictionary<string, string> Blobs => _blobs;
 
         protected override async Task<HttpResponseMessage> SendAsync(
-            HttpRequestMessage request, CancellationToken cancellationToken)
-        {
+            HttpRequestMessage request, CancellationToken cancellationToken) {
             var path = request.RequestUri!.AbsolutePath;
             var method = request.Method;
 
             // Public: auth start.
-            if (method == HttpMethod.Get && path == "/api/v1/auth/discord")
-            {
+            if (method == HttpMethod.Get && path == "/api/v1/auth/discord") {
                 PendingState = "state-xyz";
                 return Json200(new AuthInitResponse("https://discord/oauth?state=state-xyz", PendingState));
             }
 
             // Public: auth poll.
-            if (method == HttpMethod.Get && path == "/api/v1/auth/poll")
-            {
-                if (PollPayload is null)
-                {
+            if (method == HttpMethod.Get && path == "/api/v1/auth/poll") {
+                if (PollPayload is null) {
                     return new HttpResponseMessage(HttpStatusCode.Accepted);
                 }
                 return Json200(PollPayload);
             }
 
             // Public: logout.
-            if (method == HttpMethod.Delete && path == "/api/v1/auth/session")
-            {
+            if (method == HttpMethod.Delete && path == "/api/v1/auth/session") {
                 return new HttpResponseMessage(HttpStatusCode.NoContent);
             }
 
             // Everything below is authed: enforce the bearer the way RequireAuth does.
             var auth = request.Headers.Authorization;
-            if (RejectAuth || auth is null || auth.Scheme != "Bearer" || auth.Parameter != ExpectedBearer)
-            {
+            if (RejectAuth || auth is null || auth.Scheme != "Bearer" || auth.Parameter != ExpectedBearer) {
                 return new HttpResponseMessage(HttpStatusCode.Unauthorized);
             }
 
-            if (path == "/api/v1/blobs")
-            {
+            if (path == "/api/v1/blobs") {
                 var list = _blobs.Keys.Select(k => new BlobListEntry(k, 123)).ToList();
                 return Json200(list);
             }
 
-            if (path.StartsWith("/api/v1/blobs/", StringComparison.Ordinal))
-            {
+            if (path.StartsWith("/api/v1/blobs/", StringComparison.Ordinal)) {
                 var name = Uri.UnescapeDataString(path["/api/v1/blobs/".Length..]);
-                if (method == HttpMethod.Put)
-                {
+                if (method == HttpMethod.Put) {
                     PutHits++;
                     var body = await request.Content!.ReadFromJsonAsync<PutBlobRequest>(Json, cancellationToken);
                     _blobs[name] = body!.Ciphertext;
                     return new HttpResponseMessage(HttpStatusCode.NoContent);
                 }
-                if (method == HttpMethod.Get)
-                {
+                if (method == HttpMethod.Get) {
                     GetHits++;
-                    if (!_blobs.TryGetValue(name, out var ct))
-                    {
+                    if (!_blobs.TryGetValue(name, out var ct)) {
                         return new HttpResponseMessage(HttpStatusCode.NotFound);
                     }
                     return Json200(new GetBlobResponse(ct, 123));
                 }
-                if (method == HttpMethod.Delete)
-                {
+                if (method == HttpMethod.Delete) {
                     _blobs.Remove(name);
                     return new HttpResponseMessage(HttpStatusCode.NoContent);
                 }
             }
 
-            if (method == HttpMethod.Delete && path == "/api/v1/user")
-            {
+            if (method == HttpMethod.Delete && path == "/api/v1/user") {
                 _blobs.Clear();
                 return new HttpResponseMessage(HttpStatusCode.NoContent);
             }
@@ -117,14 +101,12 @@ public sealed class CloudSyncServiceTests
             return new HttpResponseMessage(HttpStatusCode.NotFound);
         }
 
-        private static HttpResponseMessage Json200<T>(T value) => new(HttpStatusCode.OK)
-        {
+        private static HttpResponseMessage Json200<T>(T value) => new(HttpStatusCode.OK) {
             Content = JsonContent.Create(value, options: Json),
         };
     }
 
-    private static CloudSyncService Make(HttpMessageHandler server, INavigation? nav = null)
-    {
+    private static CloudSyncService Make(HttpMessageHandler server, INavigation? nav = null) {
         var http = new HttpClient(server) { BaseAddress = Origin };
         return new CloudSyncService(http, nav ?? new FakeNavigation(), new LocalBlobCipher());
     }
@@ -132,8 +114,7 @@ public sealed class CloudSyncServiceTests
     // ----- Step 1: blob round-trip -----
 
     [Fact]
-    public async Task PutThenGet_RoundTripsThroughBlobCrypto()
-    {
+    public async Task PutThenGet_RoundTripsThroughBlobCrypto() {
         var server = new FakeServer();
         var svc = Make(server);
         var session = Session();
@@ -155,8 +136,7 @@ public sealed class CloudSyncServiceTests
     }
 
     [Fact]
-    public async Task GetBlob_MissingName_ThrowsLoudly()
-    {
+    public async Task GetBlob_MissingName_ThrowsLoudly() {
         var svc = Make(new FakeServer());
         var ex = await Assert.ThrowsAsync<CloudSyncException>(
             () => svc.GetBlobAsync<KnownAccount[]>(Session(), "settings"));
@@ -164,8 +144,7 @@ public sealed class CloudSyncServiceTests
     }
 
     [Fact]
-    public async Task PutBlob_Unauthorized_ThrowsReconnect()
-    {
+    public async Task PutBlob_Unauthorized_ThrowsReconnect() {
         var server = new FakeServer { RejectAuth = true };
         var svc = Make(server);
         var ex = await Assert.ThrowsAsync<CloudSyncException>(
@@ -174,8 +153,7 @@ public sealed class CloudSyncServiceTests
     }
 
     [Fact]
-    public async Task GetBlob_Unauthorized_ThrowsReconnect()
-    {
+    public async Task GetBlob_Unauthorized_ThrowsReconnect() {
         var server = new FakeServer { RejectAuth = true };
         var svc = Make(server);
         var ex = await Assert.ThrowsAsync<CloudSyncException>(
@@ -184,8 +162,7 @@ public sealed class CloudSyncServiceTests
     }
 
     [Fact]
-    public async Task ListBlobs_AfterTwoPuts_ReturnsBothNames()
-    {
+    public async Task ListBlobs_AfterTwoPuts_ReturnsBothNames() {
         var server = new FakeServer();
         var svc = Make(server);
         var session = Session();
@@ -197,8 +174,7 @@ public sealed class CloudSyncServiceTests
     }
 
     [Fact]
-    public async Task DeleteBlob_RemovesIt()
-    {
+    public async Task DeleteBlob_RemovesIt() {
         var server = new FakeServer();
         var svc = Make(server);
         var session = Session();
@@ -209,8 +185,7 @@ public sealed class CloudSyncServiceTests
     }
 
     [Fact]
-    public async Task DeleteAccount_ClearsAllBlobs()
-    {
+    public async Task DeleteAccount_ClearsAllBlobs() {
         var server = new FakeServer();
         var svc = Make(server);
         var session = Session();
@@ -224,8 +199,7 @@ public sealed class CloudSyncServiceTests
     // ----- Step 2: auth poll state machine + redirect -----
 
     [Fact]
-    public async Task BeginAuth_RedirectsBrowserAndReturnsState()
-    {
+    public async Task BeginAuth_RedirectsBrowserAndReturnsState() {
         var server = new FakeServer();
         var nav = new FakeNavigation();
         var svc = Make(server, nav);
@@ -237,8 +211,7 @@ public sealed class CloudSyncServiceTests
     }
 
     [Fact]
-    public async Task PollOnce_Pending_StaysPending()
-    {
+    public async Task PollOnce_Pending_StaysPending() {
         var server = new FakeServer { PollPayload = null };
         var svc = Make(server);
 
@@ -249,8 +222,7 @@ public sealed class CloudSyncServiceTests
     }
 
     [Fact]
-    public async Task PollOnce_NotFound_TreatedAsPending()
-    {
+    public async Task PollOnce_NotFound_TreatedAsPending() {
         // 404 means the pending row is not yet written; Go keeps polling.
         var server = new NotFoundPollServer();
         var svc = Make(server);
@@ -261,10 +233,8 @@ public sealed class CloudSyncServiceTests
     }
 
     [Fact]
-    public async Task PollOnce_Done_ReturnsSessionWithKey()
-    {
-        var server = new FakeServer
-        {
+    public async Task PollOnce_Done_ReturnsSessionWithKey() {
+        var server = new FakeServer {
             PollPayload = new PollResponse(Token, "user#1", "https://cdn/a.png", HexKey),
         };
         var svc = Make(server);
@@ -279,8 +249,7 @@ public sealed class CloudSyncServiceTests
     }
 
     [Fact]
-    public async Task FullFlow_PendingThenDone_ThenBlobUsesPolledKey()
-    {
+    public async Task FullFlow_PendingThenDone_ThenBlobUsesPolledKey() {
         // The state machine end to end: begin -> poll pending -> poll done ->
         // the returned session encrypts a blob that round-trips.
         var server = new FakeServer();
@@ -304,15 +273,13 @@ public sealed class CloudSyncServiceTests
     }
 
     [Fact]
-    public async Task BeginAuth_ServerError_ThrowsLoudly()
-    {
+    public async Task BeginAuth_ServerError_ThrowsLoudly() {
         var svc = Make(new ErrorDiscordServer());
         await Assert.ThrowsAsync<CloudSyncException>(() => svc.BeginAuthAsync());
     }
 
     [Fact]
-    public async Task Disconnect_SendsBearerAndDoesNotThrow()
-    {
+    public async Task Disconnect_SendsBearerAndDoesNotThrow() {
         var server = new BearerCapturingServer();
         var svc = Make(server);
         await svc.DisconnectAsync(Token);
@@ -322,65 +289,55 @@ public sealed class CloudSyncServiceTests
     // ----- Reachability probe (/verify) -----
 
     [Fact]
-    public async Task CheckReachable_Ok_ReturnsTrue()
-    {
+    public async Task CheckReachable_Ok_ReturnsTrue() {
         var svc = Make(new VerifyServer(HttpStatusCode.OK));
         Assert.True(await svc.CheckReachableAsync());
     }
 
     [Fact]
-    public async Task CheckReachable_NonOk_ReturnsFalse()
-    {
+    public async Task CheckReachable_NonOk_ReturnsFalse() {
         var svc = Make(new VerifyServer(HttpStatusCode.ServiceUnavailable));
         Assert.False(await svc.CheckReachableAsync());
     }
 
     [Fact]
-    public async Task CheckReachable_TransportError_ReturnsFalse()
-    {
+    public async Task CheckReachable_TransportError_ReturnsFalse() {
         var svc = Make(new ThrowingServer());
         Assert.False(await svc.CheckReachableAsync());
     }
 
-    private sealed class VerifyServer : HttpMessageHandler
-    {
+    private sealed class VerifyServer : HttpMessageHandler {
         private readonly HttpStatusCode _code;
         public VerifyServer(HttpStatusCode code) => _code = code;
         protected override Task<HttpResponseMessage> SendAsync(
-            HttpRequestMessage request, CancellationToken cancellationToken)
-        {
+            HttpRequestMessage request, CancellationToken cancellationToken) {
             Assert.Equal("/api/v1/verify", request.RequestUri!.AbsolutePath);
             return Task.FromResult(new HttpResponseMessage(_code));
         }
     }
 
-    private sealed class ThrowingServer : HttpMessageHandler
-    {
+    private sealed class ThrowingServer : HttpMessageHandler {
         protected override Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request, CancellationToken cancellationToken) =>
             throw new HttpRequestException("boom");
     }
 
-    private sealed class NotFoundPollServer : HttpMessageHandler
-    {
+    private sealed class NotFoundPollServer : HttpMessageHandler {
         protected override Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request, CancellationToken cancellationToken) =>
             Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
     }
 
-    private sealed class ErrorDiscordServer : HttpMessageHandler
-    {
+    private sealed class ErrorDiscordServer : HttpMessageHandler {
         protected override Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request, CancellationToken cancellationToken) =>
             Task.FromResult(new HttpResponseMessage(HttpStatusCode.InternalServerError));
     }
 
-    private sealed class BearerCapturingServer : HttpMessageHandler
-    {
+    private sealed class BearerCapturingServer : HttpMessageHandler {
         public string? LastAuth;
         protected override Task<HttpResponseMessage> SendAsync(
-            HttpRequestMessage request, CancellationToken cancellationToken)
-        {
+            HttpRequestMessage request, CancellationToken cancellationToken) {
             LastAuth = request.Headers.Authorization?.ToString();
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NoContent));
         }

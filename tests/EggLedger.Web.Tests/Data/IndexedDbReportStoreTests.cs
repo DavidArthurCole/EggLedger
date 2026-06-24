@@ -2,16 +2,13 @@ using EggLedger.Web.Data;
 
 namespace EggLedger.Web.Tests.Data;
 
-public sealed class IndexedDbReportStoreTests
-{
-    private static (IndexedDbReportStore Store, FakeIndexedDb Db) Make(long now = 1000)
-    {
+public sealed class IndexedDbReportStoreTests {
+    private static (IndexedDbReportStore Store, FakeIndexedDb Db) Make(long now = 1000) {
         var db = new FakeIndexedDb();
         return (new IndexedDbReportStore(db, () => now), db);
     }
 
-    private static ReportRow Report(string id, string accountId, int sortOrder = 0, string filters = "") => new()
-    {
+    private static ReportRow Report(string id, string accountId, int sortOrder = 0, string filters = "") => new() {
         Id = id,
         AccountId = accountId,
         Name = "n",
@@ -20,11 +17,9 @@ public sealed class IndexedDbReportStoreTests
     };
 
     [Fact]
-    public async Task InsertReport_RoundTripsAllFields()
-    {
+    public async Task InsertReport_RoundTripsAllFields() {
         var (store, _) = Make(now: 4242);
-        var r = new ReportRow
-        {
+        var r = new ReportRow {
             Id = "r1",
             AccountId = "EI1",
             Name = "My report",
@@ -98,8 +93,7 @@ public sealed class IndexedDbReportStoreTests
     }
 
     [Fact]
-    public async Task InsertReport_EmptyFilters_GetsDefault()
-    {
+    public async Task InsertReport_EmptyFilters_GetsDefault() {
         var (store, _) = Make();
         await store.InsertReportAsync(Report("r1", "EI1", filters: "   "));
         var got = await store.RetrieveReportAsync("r1");
@@ -107,8 +101,7 @@ public sealed class IndexedDbReportStoreTests
     }
 
     [Fact]
-    public async Task InsertReport_ValidFilters_Compacted()
-    {
+    public async Task InsertReport_ValidFilters_Compacted() {
         var (store, _) = Make();
         await store.InsertReportAsync(Report("r1", "EI1", filters: "{ \"and\" : [ ] , \"or\" : [ ] }"));
         var got = await store.RetrieveReportAsync("r1");
@@ -116,8 +109,7 @@ public sealed class IndexedDbReportStoreTests
     }
 
     [Fact]
-    public async Task InsertReport_EmptyNormalizeBy_GetsNone()
-    {
+    public async Task InsertReport_EmptyNormalizeBy_GetsNone() {
         var (store, _) = Make();
         await store.InsertReportAsync(new ReportRow { Id = "r1", AccountId = "EI1", NormalizeBy = "" });
         var got = await store.RetrieveReportAsync("r1");
@@ -125,8 +117,7 @@ public sealed class IndexedDbReportStoreTests
     }
 
     [Fact]
-    public async Task UpdateReport_ChangesFieldsAndUpdatedAt_KeepsCreatedAt()
-    {
+    public async Task UpdateReport_ChangesFieldsAndUpdatedAt_KeepsCreatedAt() {
         long t = 100;
         long Now() => t;
         var fake = new FakeIndexedDb();
@@ -143,8 +134,7 @@ public sealed class IndexedDbReportStoreTests
     }
 
     [Fact]
-    public async Task DeleteReport_Removes()
-    {
+    public async Task DeleteReport_Removes() {
         var (store, _) = Make();
         await store.InsertReportAsync(Report("r1", "EI1"));
         await store.DeleteReportAsync("r1");
@@ -152,8 +142,7 @@ public sealed class IndexedDbReportStoreTests
     }
 
     [Fact]
-    public async Task RetrieveAccountReports_OnlyAccountAndGlobal_OrderedBySortThenCreated()
-    {
+    public async Task RetrieveAccountReports_OnlyAccountAndGlobal_OrderedBySortThenCreated() {
         long t = 0;
         var fake = new FakeIndexedDb();
         var store = new IndexedDbReportStore(fake, () => t);
@@ -175,8 +164,7 @@ public sealed class IndexedDbReportStoreTests
     }
 
     [Fact]
-    public async Task ReorderReports_SetsSortOrderToIndex()
-    {
+    public async Task ReorderReports_SetsSortOrderToIndex() {
         var (store, _) = Make();
         await store.InsertReportAsync(Report("r1", "EI1", sortOrder: 9));
         await store.InsertReportAsync(Report("r2", "EI1", sortOrder: 9));
@@ -190,8 +178,7 @@ public sealed class IndexedDbReportStoreTests
     }
 
     [Fact]
-    public async Task InsertReportGroup_GeneratesIdWhenEmpty_AndRetrieveFindsIt()
-    {
+    public async Task InsertReportGroup_GeneratesIdWhenEmpty_AndRetrieveFindsIt() {
         var (store, _) = Make(now: 777);
         var id = await store.InsertReportGroupAsync(new ReportGroupRow { AccountId = "EI1", Name = "G", SortOrder = 2 });
 
@@ -206,8 +193,7 @@ public sealed class IndexedDbReportStoreTests
     }
 
     [Fact]
-    public async Task InsertReportGroup_HonorsSuppliedId()
-    {
+    public async Task InsertReportGroup_HonorsSuppliedId() {
         var (store, _) = Make();
         var id = await store.InsertReportGroupAsync(new ReportGroupRow { Id = "fixed", AccountId = "EI1", Name = "G" });
         Assert.Equal("fixed", id);
@@ -215,8 +201,7 @@ public sealed class IndexedDbReportStoreTests
     }
 
     [Fact]
-    public async Task UpdateReportGroup_ChangesNameAndSort()
-    {
+    public async Task UpdateReportGroup_ChangesNameAndSort() {
         var (store, _) = Make();
         var id = await store.InsertReportGroupAsync(new ReportGroupRow { Id = "g1", AccountId = "EI1", Name = "old", SortOrder = 0 });
         await store.UpdateReportGroupAsync(new ReportGroupRow { Id = id, AccountId = "EI1", Name = "new", SortOrder = 5 });
@@ -226,8 +211,7 @@ public sealed class IndexedDbReportStoreTests
     }
 
     [Fact]
-    public async Task RetrieveAccountGroups_OnlyAccount_OrderedBySortThenCreated()
-    {
+    public async Task RetrieveAccountGroups_OnlyAccount_OrderedBySortThenCreated() {
         long t = 0;
         var fake = new FakeIndexedDb();
         var store = new IndexedDbReportStore(fake, () => t);
@@ -244,8 +228,7 @@ public sealed class IndexedDbReportStoreTests
     }
 
     [Fact]
-    public async Task DeleteReportGroup_RemovesGroup_AndClearsMemberGroupId()
-    {
+    public async Task DeleteReportGroup_RemovesGroup_AndClearsMemberGroupId() {
         var (store, _) = Make();
         await store.InsertReportGroupAsync(new ReportGroupRow { Id = "g1", AccountId = "EI1", Name = "G" });
         await store.InsertReportAsync(Report("r1", "EI1") with { GroupId = "g1" });
@@ -257,8 +240,7 @@ public sealed class IndexedDbReportStoreTests
     }
 
     [Fact]
-    public async Task SetReportGroup_AndRetrieveReportsByGroup()
-    {
+    public async Task SetReportGroup_AndRetrieveReportsByGroup() {
         var (store, _) = Make();
         await store.InsertReportGroupAsync(new ReportGroupRow { Id = "g1", AccountId = "EI1", Name = "G" });
         await store.InsertReportAsync(Report("r1", "EI1"));
@@ -271,8 +253,7 @@ public sealed class IndexedDbReportStoreTests
     }
 
     [Fact]
-    public async Task RetrieveReportsByGroup_OrderedBySortThenCreated()
-    {
+    public async Task RetrieveReportsByGroup_OrderedBySortThenCreated() {
         long t = 0;
         var fake = new FakeIndexedDb();
         var store = new IndexedDbReportStore(fake, () => t);

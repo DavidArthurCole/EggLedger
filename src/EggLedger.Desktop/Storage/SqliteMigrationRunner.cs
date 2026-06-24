@@ -12,8 +12,7 @@ namespace EggLedger.Desktop.Storage;
 /// <c>EggLedger.Desktop.Storage.Migrations.&lt;Set&gt;.&lt;N&gt;_&lt;name&gt;.up.sql</c>;
 /// each file runs in one transaction so a partial failure rolls back.
 /// </summary>
-public static class SqliteMigrationRunner
-{
+public static class SqliteMigrationRunner {
     /// <summary>Mission DB target schema version (Go db._schemaVersion = 9).</summary>
     public const int MissionTargetVersion = 9;
 
@@ -35,15 +34,12 @@ public static class SqliteMigrationRunner
     /// Runs the named set, applying only files numbered above the current
     /// user_version and up to targetVersion, in ascending order.
     /// </summary>
-    public static void Migrate(SqliteConnection connection, string set, int targetVersion)
-    {
+    public static void Migrate(SqliteConnection connection, string set, int targetVersion) {
         var migrations = LoadMigrations(set);
         int current = GetUserVersion(connection);
 
-        foreach (var (version, sql) in migrations)
-        {
-            if (version <= current || version > targetVersion)
-            {
+        foreach (var (version, sql) in migrations) {
+            if (version <= current || version > targetVersion) {
                 continue;
             }
             ApplyOne(connection, version, sql);
@@ -51,19 +47,16 @@ public static class SqliteMigrationRunner
         }
     }
 
-    private static void ApplyOne(SqliteConnection connection, int version, string sql)
-    {
+    private static void ApplyOne(SqliteConnection connection, int version, string sql) {
         using var tx = connection.BeginTransaction();
-        using (var cmd = connection.CreateCommand())
-        {
+        using (var cmd = connection.CreateCommand()) {
             cmd.Transaction = tx;
             cmd.CommandText = sql;
             cmd.ExecuteNonQuery();
         }
         // user_version is a PRAGMA; it cannot be parameterized and is set after the
         // migration body so a failed body rolls the whole step back.
-        using (var setVersion = connection.CreateCommand())
-        {
+        using (var setVersion = connection.CreateCommand()) {
             setVersion.Transaction = tx;
             setVersion.CommandText = string.Format(
                 CultureInfo.InvariantCulture, "PRAGMA user_version = {0};", version);
@@ -72,29 +65,24 @@ public static class SqliteMigrationRunner
         tx.Commit();
     }
 
-    private static int GetUserVersion(SqliteConnection connection)
-    {
+    private static int GetUserVersion(SqliteConnection connection) {
         using var cmd = connection.CreateCommand();
         cmd.CommandText = "PRAGMA user_version;";
         var result = cmd.ExecuteScalar();
         return result is null ? 0 : Convert.ToInt32(result, CultureInfo.InvariantCulture);
     }
 
-    private static List<(int Version, string Sql)> LoadMigrations(string set)
-    {
+    private static List<(int Version, string Sql)> LoadMigrations(string set) {
         var assembly = typeof(SqliteMigrationRunner).Assembly;
         var prefix = $".Migrations.{set}.";
         var result = new List<(int, string)>();
 
-        foreach (var name in assembly.GetManifestResourceNames())
-        {
-            if (!name.Contains(prefix, StringComparison.Ordinal) || !name.EndsWith(".up.sql", StringComparison.Ordinal))
-            {
+        foreach (var name in assembly.GetManifestResourceNames()) {
+            if (!name.Contains(prefix, StringComparison.Ordinal) || !name.EndsWith(".up.sql", StringComparison.Ordinal)) {
                 continue;
             }
             var match = FileNamePattern.Match(name);
-            if (!match.Success || !string.Equals(match.Groups["set"].Value, set, StringComparison.Ordinal))
-            {
+            if (!match.Success || !string.Equals(match.Groups["set"].Value, set, StringComparison.Ordinal)) {
                 continue;
             }
             int version = int.Parse(match.Groups["num"].Value, CultureInfo.InvariantCulture);
@@ -105,8 +93,7 @@ public static class SqliteMigrationRunner
         return result;
     }
 
-    private static string ReadResource(Assembly assembly, string name)
-    {
+    private static string ReadResource(Assembly assembly, string name) {
         using var stream = assembly.GetManifestResourceStream(name)
             ?? throw new InvalidOperationException($"missing embedded migration {name}");
         using var reader = new StreamReader(stream);

@@ -8,10 +8,8 @@ namespace EggLedger.Desktop.Platform;
 /// host is built, but DI is wired before build. MANUAL-VERIFY: the save dialog and
 /// exit cannot be exercised headlessly.
 /// </summary>
-public sealed class PhotinoDesktopWindow : IDesktopWindow
-{
-    public PhotinoDesktopWindow()
-    {
+public sealed class PhotinoDesktopWindow : IDesktopWindow {
+    public PhotinoDesktopWindow() {
     }
 
     public PhotinoDesktopWindow(PhotinoWindow window) => Window = window;
@@ -19,8 +17,7 @@ public sealed class PhotinoDesktopWindow : IDesktopWindow
     /// <summary>Bind the Photino window once the host has built it.</summary>
     public void Attach(PhotinoWindow window) => Window = window;
 
-    public (int Width, int Height) GetSize()
-    {
+    public (int Width, int Height) GetSize() {
         var w = Window;
         return (w.Width, w.Height);
     }
@@ -28,8 +25,7 @@ public sealed class PhotinoDesktopWindow : IDesktopWindow
     /// <summary>
     /// MANUAL-VERIFY: Photino native save dialog filtered to JSON. Returns null on cancel.
     /// </summary>
-    public string? ShowSaveFileDialog(string defaultName)
-    {
+    public string? ShowSaveFileDialog(string defaultName) {
         var filters = new (string Name, string[] Extensions)[]
         {
             ("JSON files", ["json"]),

@@ -5,8 +5,7 @@ using EggLedger.Web.Services;
 namespace EggLedger.Web.Settings;
 
 /// <summary>Persists the cloud-sync session + sync timestamps in <see cref="IndexedDbSettings"/>, using the Go cloud_* setting keys (storage.go).</summary>
-public sealed class CloudSessionStore
-{
+public sealed class CloudSessionStore {
     public const string KeyToken = "cloud_session_token";
     public const string KeyEncryptionKey = "cloud_encryption_key";
     public const string KeyUsername = "cloud_discord_username";
@@ -20,17 +19,14 @@ public sealed class CloudSessionStore
 
     private readonly IndexedDbSettings _settings;
 
-    public CloudSessionStore(IndexedDbSettings settings)
-    {
+    public CloudSessionStore(IndexedDbSettings settings) {
         _settings = settings;
     }
 
     /// <summary>The persisted session, or null when no token is stored (disconnected).</summary>
-    public async Task<CloudSession?> GetSessionAsync()
-    {
+    public async Task<CloudSession?> GetSessionAsync() {
         var all = await _settings.GetAllSettingsAsync();
-        if (!all.TryGetValue(KeyToken, out var token) || string.IsNullOrEmpty(token))
-        {
+        if (!all.TryGetValue(KeyToken, out var token) || string.IsNullOrEmpty(token)) {
             return null;
         }
         return new CloudSession(
@@ -41,10 +37,8 @@ public sealed class CloudSessionStore
     }
 
     /// <summary>Persists a freshly authed session (token + identity + key).</summary>
-    public async Task SaveSessionAsync(CloudSession session)
-    {
-        await _settings.SetSettingsAsync(new Dictionary<string, string>
-        {
+    public async Task SaveSessionAsync(CloudSession session) {
+        await _settings.SetSettingsAsync(new Dictionary<string, string> {
             [KeyToken] = session.Token,
             [KeyEncryptionKey] = session.EncryptionKey,
             [KeyUsername] = session.Username,
@@ -53,10 +47,8 @@ public sealed class CloudSessionStore
     }
 
     /// <summary>Clears the session creds (disconnect). Timestamps are left as-is.</summary>
-    public async Task ClearSessionAsync()
-    {
-        await _settings.SetSettingsAsync(new Dictionary<string, string>
-        {
+    public async Task ClearSessionAsync() {
+        await _settings.SetSettingsAsync(new Dictionary<string, string> {
             [KeyToken] = "",
             [KeyEncryptionKey] = "",
             [KeyUsername] = "",
@@ -77,8 +69,7 @@ public sealed class CloudSessionStore
         await _settings.SetSettingAsync(KeyLastPullAt, unixSeconds.ToString(CultureInfo.InvariantCulture));
 
     /// <summary>Whether settings changes auto-trigger a sync. Default false.</summary>
-    public async Task<bool> GetAutoSyncAsync()
-    {
+    public async Task<bool> GetAutoSyncAsync() {
         var all = await _settings.GetAllSettingsAsync();
         return all.TryGetValue(KeyAutoSync, out var raw) && bool.TryParse(raw, out var v) && v;
     }
@@ -87,8 +78,7 @@ public sealed class CloudSessionStore
         await _settings.SetSettingAsync(KeyAutoSync, SettingsModel.FormatBool(enabled));
 
     /// <summary>The pending auth state to resume polling, or null when none is set.</summary>
-    public async Task<string?> GetPendingAuthStateAsync()
-    {
+    public async Task<string?> GetPendingAuthStateAsync() {
         var all = await _settings.GetAllSettingsAsync();
         return all.TryGetValue(KeyPendingAuthState, out var s) && !string.IsNullOrEmpty(s) ? s : null;
     }
@@ -99,8 +89,7 @@ public sealed class CloudSessionStore
     public async Task ClearPendingAuthStateAsync() =>
         await _settings.SetSettingAsync(KeyPendingAuthState, "");
 
-    private async Task<long> GetUnixAsync(string key)
-    {
+    private async Task<long> GetUnixAsync(string key) {
         var all = await _settings.GetAllSettingsAsync();
         return all.TryGetValue(key, out var raw)
             && long.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var v)

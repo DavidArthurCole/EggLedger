@@ -4,23 +4,19 @@ namespace EggLedger.Domain.Reports;
 /// Shared 2D pivot collection machinery. Port of Go reports/pivot.go. Cells accumulate
 /// with +=; with a GROUP BY guaranteeing one row per (row, col) this equals plain assignment.
 /// </summary>
-internal sealed class PivotAccum
-{
+internal sealed class PivotAccum {
     private readonly PivotAxis _rows = new();
     private readonly PivotAxis _cols = new();
     private readonly Dictionary<string, Dictionary<string, double>> _cells = new(StringComparer.Ordinal);
 
     private readonly record struct LabelEntry(string Display, string RawVal);
 
-    private sealed class PivotAxis
-    {
+    private sealed class PivotAxis {
         private readonly HashSet<string> _seen = new(StringComparer.Ordinal);
         public List<LabelEntry> Entries { get; } = [];
 
-        public void Add(string display, string rawVal)
-        {
-            if (!_seen.Add(display))
-            {
+        public void Add(string display, string rawVal) {
+            if (!_seen.Add(display)) {
                 return;
             }
             Entries.Add(new LabelEntry(display, rawVal));
@@ -28,12 +24,10 @@ internal sealed class PivotAccum
     }
 
     /// <summary>Registers row/col labels and accumulates val into the cell at their intersection (keyed by display).</summary>
-    public void Add(string rowDisplay, string rowRaw, string colDisplay, string colRaw, double val)
-    {
+    public void Add(string rowDisplay, string rowRaw, string colDisplay, string colRaw, double val) {
         _rows.Add(rowDisplay, rowRaw);
         _cols.Add(colDisplay, colRaw);
-        if (!_cells.TryGetValue(rowDisplay, out var rowCells))
-        {
+        if (!_cells.TryGetValue(rowDisplay, out var rowCells)) {
             rowCells = new Dictionary<string, double>(StringComparer.Ordinal);
             _cells[rowDisplay] = rowCells;
         }
@@ -52,17 +46,14 @@ internal sealed class PivotAccum
     /// Sorts requested axes (LabelSortLess on raw values) and flattens cells into a
     /// row-major matrix (r*nC+c); unsorted axes stay in insertion order. Port of Go pivotAccum.finalize.
     /// </summary>
-    public Finalized Finalize(bool sortRows, bool sortCols, string rowGroupBy, string colGroupBy)
-    {
+    public Finalized Finalize(bool sortRows, bool sortCols, string rowGroupBy, string colGroupBy) {
         var rowEntries = _rows.Entries;
         var colEntries = _cols.Entries;
 
-        if (sortRows)
-        {
+        if (sortRows) {
             StableSort(rowEntries, rowGroupBy);
         }
-        if (sortCols)
-        {
+        if (sortCols) {
             StableSort(colEntries, colGroupBy);
         }
 
@@ -70,28 +61,23 @@ internal sealed class PivotAccum
         var nC = colEntries.Count;
         var rowLabels = new List<string>(nR);
         var rawRowLabels = new List<string>(nR);
-        foreach (var e in rowEntries)
-        {
+        foreach (var e in rowEntries) {
             rowLabels.Add(e.Display);
             rawRowLabels.Add(e.RawVal);
         }
         var colLabels = new List<string>(nC);
         var rawColLabels = new List<string>(nC);
-        foreach (var e in colEntries)
-        {
+        foreach (var e in colEntries) {
             colLabels.Add(e.Display);
             rawColLabels.Add(e.RawVal);
         }
 
         var matrix = new double[nR * nC];
-        for (var r = 0; r < nR; r++)
-        {
-            if (!_cells.TryGetValue(rowLabels[r], out var cellRow))
-            {
+        for (var r = 0; r < nR; r++) {
+            if (!_cells.TryGetValue(rowLabels[r], out var cellRow)) {
                 continue;
             }
-            for (var c = 0; c < nC; c++)
-            {
+            for (var c = 0; c < nC; c++) {
                 cellRow.TryGetValue(colLabels[c], out var v);
                 matrix[(r * nC) + c] = v;
             }
@@ -100,18 +86,14 @@ internal sealed class PivotAccum
     }
 
     // Stable sort matching Go's sort.SliceStable with the LabelSortLess comparator.
-    private static void StableSort(List<LabelEntry> entries, string groupBy)
-    {
+    private static void StableSort(List<LabelEntry> entries, string groupBy) {
         var ordered = entries
             .Select((e, i) => (e, i))
-            .OrderBy(x => x, Comparer<(LabelEntry e, int i)>.Create((a, b) =>
-            {
-                if (Labels.LabelSortLess(groupBy, a.e.RawVal, b.e.RawVal))
-                {
+            .OrderBy(x => x, Comparer<(LabelEntry e, int i)>.Create((a, b) => {
+                if (Labels.LabelSortLess(groupBy, a.e.RawVal, b.e.RawVal)) {
                     return -1;
                 }
-                if (Labels.LabelSortLess(groupBy, b.e.RawVal, a.e.RawVal))
-                {
+                if (Labels.LabelSortLess(groupBy, b.e.RawVal, a.e.RawVal)) {
                     return 1;
                 }
                 return a.i.CompareTo(b.i);

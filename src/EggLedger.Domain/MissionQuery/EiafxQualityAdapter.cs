@@ -7,8 +7,7 @@ namespace EggLedger.Domain.MissionQuery;
 /// Canonical <see cref="IArtifactQuality"/> backed by the shared eiafx config;
 /// delegates to <see cref="Quality.BaseQualityFor"/>.
 /// </summary>
-public sealed class EiafxQualityAdapter : IArtifactQuality
-{
+public sealed class EiafxQualityAdapter : IArtifactQuality {
     public static readonly EiafxQualityAdapter Instance = new();
 
     public double BaseQualityFor(ArtifactSpec spec) => Quality.BaseQualityFor(spec);

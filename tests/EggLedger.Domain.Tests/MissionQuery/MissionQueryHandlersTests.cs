@@ -4,20 +4,16 @@ using Ei;
 
 namespace EggLedger.Domain.Tests.MissionQuery;
 
-public class MissionQueryHandlersTests
-{
-    private static (MissionQueryHandlers h, FakeMissionStore store, FakeQuality q) NewSut()
-    {
+public class MissionQueryHandlersTests {
+    private static (MissionQueryHandlers h, FakeMissionStore store, FakeQuality q) NewSut() {
         var store = new FakeMissionStore();
         var quality = new FakeQuality();
         return (new MissionQueryHandlers(store, quality), store, quality);
     }
 
-    private static CompleteMissionResponse Mission(string id, params ArtifactSpec[] specs)
-    {
+    private static CompleteMissionResponse Mission(string id, params ArtifactSpec[] specs) {
         var cm = new CompleteMissionResponse { Info = new MissionInfo { Identifier = id } };
-        foreach (var s in specs)
-        {
+        foreach (var s in specs) {
             cm.Artifacts.Add(new CompleteMissionResponse.SecureArtifactSpec { Spec = s });
         }
         return cm;
@@ -26,16 +22,14 @@ public class MissionQueryHandlersTests
     // GetMissionIds
 
     [Fact]
-    public async Task GetMissionIds_ReturnsStoreValue()
-    {
+    public async Task GetMissionIds_ReturnsStoreValue() {
         var (h, store, _) = NewSut();
         store.CompleteMissionIds = new[] { "a", "b" };
         Assert.Equal(new[] { "a", "b" }, await h.GetMissionIdsAsync("p"));
     }
 
     [Fact]
-    public async Task GetMissionIds_NullOnError()
-    {
+    public async Task GetMissionIds_NullOnError() {
         var (h, store, _) = NewSut();
         store.CompleteMissionIds = null;
         Assert.Null(await h.GetMissionIdsAsync("p"));
@@ -44,8 +38,7 @@ public class MissionQueryHandlersTests
     // GetExistingData
 
     [Fact]
-    public async Task GetExistingData_DropsZeroCountAndErrors()
-    {
+    public async Task GetExistingData_DropsZeroCountAndErrors() {
         var (h, store, _) = NewSut();
         store.KnownAccounts.Add(new KnownAccount { Id = "a", Nickname = "A", EBString = "eb", AccountColor = "#fff" });
         store.KnownAccounts.Add(new KnownAccount { Id = "b", Nickname = "B" });
@@ -66,8 +59,7 @@ public class MissionQueryHandlersTests
     }
 
     [Fact]
-    public async Task GetExistingData_PreservesOrder()
-    {
+    public async Task GetExistingData_PreservesOrder() {
         var (h, store, _) = NewSut();
         store.KnownAccounts.Add(new KnownAccount { Id = "x" });
         store.KnownAccounts.Add(new KnownAccount { Id = "y" });
@@ -82,8 +74,7 @@ public class MissionQueryHandlersTests
     // ViewMissionsOfEid fast/slow path
 
     [Fact]
-    public async Task ViewMissionsOfEid_FastPath_WhenNoPending()
-    {
+    public async Task ViewMissionsOfEid_FastPath_WhenNoPending() {
         var (h, store, _) = NewSut();
         var rows = new IMissionRow[] { new FakeMissionRow("m1") };
         store.PendingFilterCols["eid"] = 0;
@@ -98,8 +89,7 @@ public class MissionQueryHandlersTests
     }
 
     [Fact]
-    public async Task ViewMissionsOfEid_SlowPath_CompilesAndQueuesBackfill()
-    {
+    public async Task ViewMissionsOfEid_SlowPath_CompilesAndQueuesBackfill() {
         var (h, store, _) = NewSut();
         store.PendingFilterCols["eid"] = 2;
         store.PlayerCompleteMissions["eid"] = new[] { Mission("m1"), Mission("m2") };
@@ -113,8 +103,7 @@ public class MissionQueryHandlersTests
     }
 
     [Fact]
-    public async Task ViewMissionsOfEid_SlowPath_NullCountSuppressesBackfill()
-    {
+    public async Task ViewMissionsOfEid_SlowPath_NullCountSuppressesBackfill() {
         var (h, store, _) = NewSut();
         // null count = Go countErr != nil: slow path, no backfill kick.
         store.PendingFilterCols["eid"] = null;
@@ -128,8 +117,7 @@ public class MissionQueryHandlersTests
     }
 
     [Fact]
-    public async Task ViewMissionsOfEid_SlowPath_NullOnStoreError()
-    {
+    public async Task ViewMissionsOfEid_SlowPath_NullOnStoreError() {
         var (h, store, _) = NewSut();
         store.PendingFilterCols["eid"] = 1;
         store.PlayerCompleteMissions["eid"] = null; // store error
@@ -141,15 +129,12 @@ public class MissionQueryHandlersTests
     // GetDurationConfigs
 
     [Fact]
-    public void GetDurationConfigs_ShapesShipsAndDurations()
-    {
-        var mp = new ArtifactsConfigurationResponse.MissionParameters
-        {
+    public void GetDurationConfigs_ShapesShipsAndDurations() {
+        var mp = new ArtifactsConfigurationResponse.MissionParameters {
             Ship = MissionInfo.Spaceship.Atreggies,
             LevelMissionRequirements = [0, 10, 20, 30],
         };
-        mp.Durations.Add(new ArtifactsConfigurationResponse.MissionParameters.Duration
-        {
+        mp.Durations.Add(new ArtifactsConfigurationResponse.MissionParameters.Duration {
             DurationType = MissionInfo.DurationType.Long,
             MinQuality = 1.5f,
             MaxQuality = 4.0f,
@@ -170,14 +155,11 @@ public class MissionQueryHandlersTests
     }
 
     [Fact]
-    public void GetDurationConfigs_NullLevelReqsGivesZeroMaxLevels()
-    {
-        var mp = new ArtifactsConfigurationResponse.MissionParameters
-        {
+    public void GetDurationConfigs_NullLevelReqsGivesZeroMaxLevels() {
+        var mp = new ArtifactsConfigurationResponse.MissionParameters {
             Ship = MissionInfo.Spaceship.ChickenOne,
         };
-        mp.Durations.Add(new ArtifactsConfigurationResponse.MissionParameters.Duration
-        {
+        mp.Durations.Add(new ArtifactsConfigurationResponse.MissionParameters.Duration {
             DurationType = MissionInfo.DurationType.Short,
         });
 
@@ -189,19 +171,16 @@ public class MissionQueryHandlersTests
     // GetShipDrops + drop shaping
 
     [Fact]
-    public async Task GetShipDrops_NullOnCacheMiss()
-    {
+    public async Task GetShipDrops_NullOnCacheMiss() {
         var (h, _, _) = NewSut();
         // no entry => GetCompleteMission returns null
         Assert.Null(await h.GetShipDropsAsync("p", "m"));
     }
 
     [Fact]
-    public async Task GetShipDrops_ClassifiesAllSpecTypes()
-    {
+    public async Task GetShipDrops_ClassifiesAllSpecTypes() {
         var (h, store, q) = NewSut();
-        var artifact = new ArtifactSpec
-        {
+        var artifact = new ArtifactSpec {
             name = ArtifactSpec.Name.TachyonDeflector,
             level = ArtifactSpec.Level.Greater,
             rarity = ArtifactSpec.Rarity.Legendary,
@@ -246,11 +225,9 @@ public class MissionQueryHandlersTests
     }
 
     [Fact]
-    public async Task GetShipDrops_GameNameMatchesCasedName()
-    {
+    public async Task GetShipDrops_GameNameMatchesCasedName() {
         var (h, store, _) = NewSut();
-        var spec = new ArtifactSpec
-        {
+        var spec = new ArtifactSpec {
             name = ArtifactSpec.Name.TachyonDeflector,
             level = ArtifactSpec.Level.Greater,
             rarity = ArtifactSpec.Rarity.Legendary,
@@ -265,15 +242,16 @@ public class MissionQueryHandlersTests
     // GetAllPlayerDrops
 
     [Fact]
-    public async Task GetAllPlayerDrops_MapsMissionIdsToDrops()
-    {
+    public async Task GetAllPlayerDrops_MapsMissionIdsToDrops() {
         var (h, store, _) = NewSut();
-        var a = new ArtifactSpec { name = ArtifactSpec.Name.TachyonStoneFragment };
-        var b = new ArtifactSpec { name = ArtifactSpec.Name.GoldMeteorite, level = ArtifactSpec.Level.Normal };
-        store.Streamable["p"] =
+        // Stored drop rows (no decode): mission m1 = a fragment; m2 = gold + fragment.
+        int frag = (int)ArtifactSpec.Name.TachyonStoneFragment;
+        int gold = (int)ArtifactSpec.Name.GoldMeteorite;
+        store.StoredDrops["p"] =
         [
-            Mission("m1", a),
-            Mission("m2", b, a),
+            new StoredDrop("m1", frag, 0, 0),
+            new StoredDrop("m2", gold, 0, 0),
+            new StoredDrop("m2", frag, 0, 0),
         ];
 
         var got = await h.GetAllPlayerDropsAsync("p");
@@ -288,22 +266,20 @@ public class MissionQueryHandlersTests
     }
 
     [Fact]
-    public async Task GetAllPlayerDrops_EmptyMissionGivesEmptyList()
-    {
+    public async Task GetAllPlayerDrops_NoStoredDropsGivesEmptyMap() {
         var (h, store, _) = NewSut();
-        store.Streamable["p"] = [Mission("m1")];
+        store.StoredDrops["p"] = [];
 
         var got = await h.GetAllPlayerDropsAsync("p");
 
         Assert.NotNull(got);
-        Assert.Empty(got!["m1"]);
+        Assert.Empty(got!);
     }
 
     [Fact]
-    public async Task GetAllPlayerDrops_NullOnStreamError()
-    {
-        var (h, store, _) = NewSut();
-        store.StreamSucceeds = false;
+    public async Task GetAllPlayerDrops_NullOnStoreError() {
+        var (h, _, _) = NewSut();
+        // No StoredDrops entry for "p" -> fake returns null -> handler returns null.
         Assert.Null(await h.GetAllPlayerDropsAsync("p"));
     }
 }

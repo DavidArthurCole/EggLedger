@@ -8,8 +8,7 @@ namespace EggLedger.Domain.Reports;
 /// Contract: never emit a literal <c>?</c> in SQL text. <c>?</c> is the positional bind
 /// placeholder and its count must equal the args-list length, else the SQLite adapter's binding corrupts.
 /// </summary>
-public static class QueryBuilder
-{
+public static class QueryBuilder {
     private static bool IsInt(string s) =>
         long.TryParse(s, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out _);
 
@@ -20,55 +19,45 @@ public static class QueryBuilder
     /// Converts ReportFilters into a parameterized SQL fragment (no leading WHERE).
     /// Mission conditions reference m.*, artifact conditions d.*. Port of Go BuildWhereClause.
     /// </summary>
-    public static (string clause, List<object?> args) BuildWhereClause(ReportFilters filters)
-    {
+    public static (string clause, List<object?> args) BuildWhereClause(ReportFilters filters) {
         var clauses = new List<string>();
         var args = new List<object?>();
 
-        void AddCond(FilterCondition c)
-        {
+        void AddCond(FilterCondition c) {
             var (clause, cargs) = ConditionToSql(c);
-            if (clause == "")
-            {
+            if (clause == "") {
                 return;
             }
             clauses.Add(clause);
             args.AddRange(cargs);
         }
 
-        foreach (var c in filters.And)
-        {
+        foreach (var c in filters.And) {
             AddCond(c);
         }
 
-        foreach (var group in filters.Or)
-        {
+        foreach (var group in filters.Or) {
             var orParts = new List<string>();
-            foreach (var c in group)
-            {
+            foreach (var c in group) {
                 var (clause, cargs) = ConditionToSql(c);
-                if (clause == "")
-                {
+                if (clause == "") {
                     continue;
                 }
                 orParts.Add(clause);
                 args.AddRange(cargs);
             }
-            if (orParts.Count > 0)
-            {
+            if (orParts.Count > 0) {
                 clauses.Add("(" + string.Join(" OR ", orParts) + ")");
             }
         }
 
-        if (clauses.Count == 0)
-        {
+        if (clauses.Count == 0) {
             return ("", new List<object?>());
         }
         return (string.Join(" AND ", clauses), args);
     }
 
-    private static readonly Dictionary<string, string> MissionFieldToColumn = new()
-    {
+    private static readonly Dictionary<string, string> MissionFieldToColumn = new() {
         ["ship"] = "m.ship",
         ["duration"] = "m.duration_type",
         ["level"] = "m.level",
@@ -78,8 +67,7 @@ public static class QueryBuilder
         ["returnDT"] = "m.return_timestamp",
     };
 
-    private static readonly Dictionary<string, string> ArtifactFieldToColumn = new()
-    {
+    private static readonly Dictionary<string, string> ArtifactFieldToColumn = new() {
         ["artifact_rarity"] = "d.rarity",
         ["artifact_spec_type"] = "d.spec_type",
         ["artifact_name"] = "d.artifact_id",
@@ -88,10 +76,8 @@ public static class QueryBuilder
     };
 
     /// <summary>Port of Go conditionToSQL. Returns ("", empty) for no-op conditions.</summary>
-    public static (string clause, List<object?> args) ConditionToSql(FilterCondition c)
-    {
-        switch (c.TopLevel)
-        {
+    public static (string clause, List<object?> args) ConditionToSql(FilterCondition c) {
+        switch (c.TopLevel) {
             case "dubcap":
                 return c.Op == "true"
                     ? ("m.is_dub_cap = 1", [])
@@ -101,12 +87,10 @@ public static class QueryBuilder
                     ? ("m.is_bugged_cap = 1", [])
                     : ("m.is_bugged_cap = 0", []);
             case "drops":
-                if (c.Op is not "c" and not "dnc")
-                {
+                if (c.Op is not "c" and not "dnc") {
                     return ("", new List<object?>());
                 }
-                if (c.Val == "")
-                {
+                if (c.Val == "") {
                     return ("", new List<object?>());
                 }
                 var parts = c.Val.Split('_');
@@ -114,43 +98,35 @@ public static class QueryBuilder
                 var cols = new[] { "artifact_id", "level", "rarity" };
                 var preds = new List<string>();
                 var qargs = new List<object?>();
-                for (var i = 0; i < cols.Length; i++)
-                {
-                    if (i >= parts.Length || parts[i] == "%" || parts[i] == "")
-                    {
+                for (var i = 0; i < cols.Length; i++) {
+                    if (i >= parts.Length || parts[i] == "%" || parts[i] == "") {
                         continue;
                     }
                     preds.Add("AND " + cols[i] + " = ?");
                     qargs.Add(parts[i]);
                 }
                 var inner = "SELECT 1 FROM artifact_drops WHERE mission_id = m.mission_id AND player_id = m.player_id";
-                foreach (var p in preds)
-                {
+                foreach (var p in preds) {
                     inner += " " + p;
                 }
                 var exists = "EXISTS (" + inner + ")";
-                if (c.Op == "dnc")
-                {
+                if (c.Op == "dnc") {
                     exists = "NOT " + exists;
                 }
                 return (exists, qargs);
         }
 
-        if (c.TopLevel is "launchDT" or "returnDT")
-        {
+        if (c.TopLevel is "launchDT" or "returnDT") {
             var col = MissionFieldToColumn[c.TopLevel];
-            return c.Op switch
-            {
+            return c.Op switch {
                 ">" or "<" or ">=" or "<=" => ($"{col} {c.Op} strftime('%s', ?)", [c.Val]),
                 "=" or "d=" => ($"{col} = strftime('%s', ?)", [c.Val]),
                 _ => ("", []),
             };
         }
 
-        if (MissionFieldToColumn.TryGetValue(c.TopLevel, out var mcol))
-        {
-            switch (c.Op)
-            {
+        if (MissionFieldToColumn.TryGetValue(c.TopLevel, out var mcol)) {
+            switch (c.Op) {
                 case "=":
                 case "!=":
                 case ">":
@@ -159,8 +135,7 @@ public static class QueryBuilder
                 case "<=":
                     // Remaining mission fields are integer columns. Reject non-numeric
                     // values so a malformed value is a no-op, not a silent zero-match.
-                    if (!IsInt(c.Val))
-                    {
+                    if (!IsInt(c.Val)) {
                         return ("", new List<object?>());
                     }
                     return ($"{mcol} {c.Op} ?", new List<object?> { c.Val });
@@ -168,32 +143,27 @@ public static class QueryBuilder
             return ("", new List<object?>());
         }
 
-        if (ArtifactFieldToColumn.TryGetValue(c.TopLevel, out var acol))
-        {
+        if (ArtifactFieldToColumn.TryGetValue(c.TopLevel, out var acol)) {
             // artifact_spec_type is TEXT (enum String() form), so not numerically
             // validated; artifact_quality is REAL, the rest integers.
-            switch (c.Op)
-            {
+            switch (c.Op) {
                 case "=":
                 case "!=":
                 case ">":
                 case "<":
                 case ">=":
                 case "<=":
-                    switch (c.TopLevel)
-                    {
+                    switch (c.TopLevel) {
                         case "artifact_spec_type":
                             // text column, no numeric validation
                             break;
                         case "artifact_quality":
-                            if (!IsFloat(c.Val))
-                            {
+                            if (!IsFloat(c.Val)) {
                                 return ("", new List<object?>());
                             }
                             break;
                         default:
-                            if (!IsInt(c.Val))
-                            {
+                            if (!IsInt(c.Val)) {
                                 return ("", new List<object?>());
                             }
                             break;
@@ -207,8 +177,7 @@ public static class QueryBuilder
     }
 
     /// <summary>Maps a groupBy dimension to its SQL column expression. Port of Go GroupByColumn.</summary>
-    public static string GroupByColumn(string groupBy) => groupBy switch
-    {
+    public static string GroupByColumn(string groupBy) => groupBy switch {
         "ship_type" => "m.ship",
         "duration_type" => "m.duration_type",
         "level" => "m.level",
@@ -222,16 +191,13 @@ public static class QueryBuilder
     };
 
     /// <summary>Returns the strftime format string for a time bucket type. Port of Go TimeBucketFormat.</summary>
-    public static string TimeBucketFormat(string timeBucket, string customUnit)
-    {
-        return timeBucket switch
-        {
+    public static string TimeBucketFormat(string timeBucket, string customUnit) {
+        return timeBucket switch {
             "day" => "%Y-%m-%d",
             "week" => "%Y-%W",
             "month" => "%Y-%m",
             "year" => "%Y",
-            "custom" => customUnit switch
-            {
+            "custom" => customUnit switch {
                 "week" => "%Y-%W",
                 "month" => "%Y-%m",
                 _ => "%Y-%m-%d",
@@ -244,15 +210,12 @@ public static class QueryBuilder
     /// SQL condition for the "last N units" window of custom time buckets; ("", null)
     /// if not applicable. Port of Go CustomWindowCondition.
     /// </summary>
-    public static (string cond, object? modifier) CustomWindowCondition(int n, string unit)
-    {
-        if (n <= 0)
-        {
+    public static (string cond, object? modifier) CustomWindowCondition(int n, string unit) {
+        if (n <= 0) {
             return ("", null);
         }
         string modifier;
-        switch (unit)
-        {
+        switch (unit) {
             case "day":
                 modifier = $"-{n} days";
                 break;
@@ -272,8 +235,7 @@ public static class QueryBuilder
     /// Assembles the SELECT/FROM/WHERE/GROUP BY/ORDER BY skeleton shared by every query.
     /// Port of Go queryBuilder; Build only concatenates pre-formatted fragments, preserving exact whitespace.
     /// </summary>
-    internal struct QueryBuilderSpec
-    {
+    internal struct QueryBuilderSpec {
         public string Indent;
         public string SelectCols;
         public bool ArtifactSrc;
@@ -282,25 +244,20 @@ public static class QueryBuilder
         public string GroupBy;
         public string OrderBy;
 
-        public readonly string Build()
-        {
+        public readonly string Build() {
             var in_ = Indent;
 
             var from = "mission m";
-            if (ArtifactSrc)
-            {
+            if (ArtifactSrc) {
                 from = "artifact_drops d\n" + in_ + "JOIN mission m ON d.mission_id = m.mission_id AND d.player_id = m.player_id";
             }
 
             var where = Where;
-            if (ArtifactSrc)
-            {
+            if (ArtifactSrc) {
                 where += " AND d.drop_index >= 0";
             }
-            if (ExtraWhere != null)
-            {
-                foreach (var c in ExtraWhere)
-                {
+            if (ExtraWhere != null) {
+                foreach (var c in ExtraWhere) {
                     where += " AND " + c;
                 }
             }
@@ -320,12 +277,10 @@ public static class QueryBuilder
 
     /// <summary>Port of Go buildAggregateQuery.</summary>
     public static (string query, List<object?> args) BuildAggregateQuery(
-        ReportDefinition def, string baseWhere, IReadOnlyList<object?> baseArgs)
-    {
+        ReportDefinition def, string baseWhere, IReadOnlyList<object?> baseArgs) {
         var args = new List<object?>(baseArgs);
         var groupCol = GroupByColumn(def.GroupBy);
-        var query = new QueryBuilderSpec
-        {
+        var query = new QueryBuilderSpec {
             Indent = "            ",
             SelectCols = $"CAST({groupCol} AS TEXT), COUNT(*) AS count",
             ArtifactSrc = def.Subject == "artifacts",
@@ -338,25 +293,21 @@ public static class QueryBuilder
 
     /// <summary>Port of Go buildTimeSeriesQuery.</summary>
     public static (string query, List<object?> args) BuildTimeSeriesQuery(
-        ReportDefinition def, string baseWhere, IReadOnlyList<object?> baseArgs)
-    {
+        ReportDefinition def, string baseWhere, IReadOnlyList<object?> baseArgs) {
         var args = new List<object?>(baseArgs);
         var format = TimeBucketFormat(def.TimeBucket, def.CustomBucketUnit);
         var bucketExpr = "strftime('" + format + "', datetime(m.start_timestamp, 'unixepoch'))";
 
         List<string>? extraWhere = null;
-        if (def.TimeBucket == "custom")
-        {
+        if (def.TimeBucket == "custom") {
             var (cond, modifier) = CustomWindowCondition(def.CustomBucketN, def.CustomBucketUnit);
-            if (cond != "")
-            {
+            if (cond != "") {
                 extraWhere = [cond];
                 args.Add(modifier);
             }
         }
 
-        var query = new QueryBuilderSpec
-        {
+        var query = new QueryBuilderSpec {
             Indent = "            ",
             SelectCols = $"{bucketExpr} AS bucket, COUNT(*) AS count",
             ArtifactSrc = def.Subject == "artifacts",
@@ -370,27 +321,22 @@ public static class QueryBuilder
 
     /// <summary>Port of Go buildPivotQuery. Throws InvalidOperationException on invalid dimensions.</summary>
     public static (string query, List<object?> args) BuildPivotQuery(
-        ReportDefinition def, string baseWhere, IReadOnlyList<object?> args)
-    {
-        if (def.TimeBucket != "" && def.Mode == "time_series")
-        {
+        ReportDefinition def, string baseWhere, IReadOnlyList<object?> args) {
+        if (def.TimeBucket != "" && def.Mode == "time_series") {
             throw new InvalidOperationException(
                 "time-series pivot is not supported; clear the time bucket or remove the secondary group-by");
         }
         var col1 = GroupByColumn(def.GroupBy);
         var col2 = GroupByColumn(def.SecondaryGroupBy);
-        if (col1 == "")
-        {
+        if (col1 == "") {
             throw new InvalidOperationException($"unsupported group-by dimension \"{def.GroupBy}\"");
         }
-        if (col2 == "")
-        {
+        if (col2 == "") {
             throw new InvalidOperationException($"unsupported secondary group-by dimension \"{def.SecondaryGroupBy}\"");
         }
         var outArgs = new List<object?>(args);
         var needsArtifactJoin = col1.StartsWith("d.", StringComparison.Ordinal) || col2.StartsWith("d.", StringComparison.Ordinal);
-        var query = new QueryBuilderSpec
-        {
+        var query = new QueryBuilderSpec {
             Indent = "            ",
             SelectCols = $"CAST({col1} AS TEXT), CAST({col2} AS TEXT), COUNT(*) AS count",
             ArtifactSrc = needsArtifactJoin,
@@ -406,11 +352,9 @@ public static class QueryBuilder
     /// Port of Go BuildTimePivotQuery. Throws on invalid secondary dimension.
     /// </summary>
     public static (string query, List<object?> args) BuildTimePivotQuery(
-        ReportDefinition def, string baseWhere, IReadOnlyList<object?> args)
-    {
+        ReportDefinition def, string baseWhere, IReadOnlyList<object?> args) {
         var col2 = GroupByColumn(def.SecondaryGroupBy);
-        if (col2 == "")
-        {
+        if (col2 == "") {
             throw new InvalidOperationException($"unsupported secondary group-by dimension \"{def.SecondaryGroupBy}\"");
         }
 
@@ -421,18 +365,15 @@ public static class QueryBuilder
         var outArgs = new List<object?>(args);
 
         List<string>? extraWhere = null;
-        if (def.TimeBucket == "custom")
-        {
+        if (def.TimeBucket == "custom") {
             var (cond, modifier) = CustomWindowCondition(def.CustomBucketN, def.CustomBucketUnit);
-            if (cond != "")
-            {
+            if (cond != "") {
                 extraWhere = [cond];
                 outArgs.Add(modifier);
             }
         }
 
-        var query = new QueryBuilderSpec
-        {
+        var query = new QueryBuilderSpec {
             Indent = "            ",
             SelectCols = $"{bucketExpr} AS bucket, CAST({col2} AS TEXT) AS grp, COUNT(*) AS count",
             ArtifactSrc = needsArtifactJoin,
@@ -448,16 +389,13 @@ public static class QueryBuilder
     /// Builds a SQL fragment filtering artifact_drops to a set of afx_ids. Returns
     /// ("", empty) if ids is empty. Port of Go FamilyWeightClause.
     /// </summary>
-    public static (string clause, List<object?> args) FamilyWeightClause(IReadOnlyList<int> ids)
-    {
-        if (ids.Count == 0)
-        {
+    public static (string clause, List<object?> args) FamilyWeightClause(IReadOnlyList<int> ids) {
+        if (ids.Count == 0) {
             return ("", new List<object?>());
         }
         var placeholders = new string[ids.Count];
         var args = new List<object?>(ids.Count);
-        for (var i = 0; i < ids.Count; i++)
-        {
+        for (var i = 0; i < ids.Count; i++) {
             placeholders[i] = "?";
             args.Add(ids[i]);
         }
@@ -467,16 +405,14 @@ public static class QueryBuilder
     /// <summary>Port of Go BuildWeightedAggregateQuery.</summary>
     public static (string query, List<object?> args) BuildWeightedAggregateQuery(
         ReportDefinition def, string baseWhere, IReadOnlyList<object?> baseArgs,
-        string fwClause, IReadOnlyList<object?> fwArgs)
-    {
+        string fwClause, IReadOnlyList<object?> fwArgs) {
         var args = new List<object?>(baseArgs);
         args.AddRange(fwArgs);
 
         var groupCol = GroupByColumn(def.GroupBy);
         var where = baseWhere + " AND " + fwClause;
 
-        var query = new QueryBuilderSpec
-        {
+        var query = new QueryBuilderSpec {
             Indent = "        ",
             SelectCols = $"CAST({groupCol} AS TEXT), CAST(d.artifact_id AS INTEGER), CAST(d.level AS INTEGER),\n               {WeightedCapWeightSelect}",
             ArtifactSrc = true,
@@ -491,16 +427,13 @@ public static class QueryBuilder
     /// <summary>Port of Go BuildWeightedPivotQuery. Throws on invalid dimensions.</summary>
     public static (string query, List<object?> args) BuildWeightedPivotQuery(
         ReportDefinition def, string baseWhere, IReadOnlyList<object?> baseArgs,
-        string fwClause, IReadOnlyList<object?> fwArgs)
-    {
+        string fwClause, IReadOnlyList<object?> fwArgs) {
         var col1 = GroupByColumn(def.GroupBy);
         var col2 = GroupByColumn(def.SecondaryGroupBy);
-        if (col1 == "")
-        {
+        if (col1 == "") {
             throw new InvalidOperationException($"unsupported group-by dimension \"{def.GroupBy}\"");
         }
-        if (col2 == "")
-        {
+        if (col2 == "") {
             throw new InvalidOperationException($"unsupported secondary group-by dimension \"{def.SecondaryGroupBy}\"");
         }
 
@@ -508,8 +441,7 @@ public static class QueryBuilder
         args.AddRange(fwArgs);
 
         var where = baseWhere + " AND " + fwClause;
-        var query = new QueryBuilderSpec
-        {
+        var query = new QueryBuilderSpec {
             Indent = "        ",
             SelectCols = $"CAST({col1} AS TEXT), CAST({col2} AS TEXT), CAST(d.artifact_id AS INTEGER), CAST(d.level AS INTEGER),\n               {WeightedCapWeightSelect}",
             ArtifactSrc = true,
@@ -524,8 +456,7 @@ public static class QueryBuilder
     /// <summary>Port of Go BuildWeightedTimeSeriesQuery.</summary>
     public static (string query, List<object?> args) BuildWeightedTimeSeriesQuery(
         ReportDefinition def, string baseWhere, IReadOnlyList<object?> baseArgs,
-        string fwClause, IReadOnlyList<object?> fwArgs)
-    {
+        string fwClause, IReadOnlyList<object?> fwArgs) {
         var args = new List<object?>(baseArgs);
         args.AddRange(fwArgs);
 
@@ -534,18 +465,15 @@ public static class QueryBuilder
         var where = baseWhere + " AND " + fwClause;
 
         List<string>? extraWhere = null;
-        if (def.TimeBucket == "custom")
-        {
+        if (def.TimeBucket == "custom") {
             var (cond, modifier) = CustomWindowCondition(def.CustomBucketN, def.CustomBucketUnit);
-            if (cond != "")
-            {
+            if (cond != "") {
                 extraWhere = [cond];
                 args.Add(modifier);
             }
         }
 
-        var query = new QueryBuilderSpec
-        {
+        var query = new QueryBuilderSpec {
             Indent = "        ",
             SelectCols = $"{bucketExpr} AS bucket, CAST(d.artifact_id AS INTEGER), CAST(d.level AS INTEGER),\n               {WeightedCapWeightSelect}",
             ArtifactSrc = true,
@@ -561,11 +489,9 @@ public static class QueryBuilder
     /// <summary>Port of Go BuildWeightedTimePivotQuery. Throws on invalid secondary dimension.</summary>
     public static (string query, List<object?> args) BuildWeightedTimePivotQuery(
         ReportDefinition def, string baseWhere, IReadOnlyList<object?> baseArgs,
-        string fwClause, IReadOnlyList<object?> fwArgs)
-    {
+        string fwClause, IReadOnlyList<object?> fwArgs) {
         var col2 = GroupByColumn(def.SecondaryGroupBy);
-        if (col2 == "")
-        {
+        if (col2 == "") {
             throw new InvalidOperationException($"unsupported secondary group-by dimension \"{def.SecondaryGroupBy}\"");
         }
 
@@ -577,18 +503,15 @@ public static class QueryBuilder
         var where = baseWhere + " AND " + fwClause;
 
         List<string>? extraWhere = null;
-        if (def.TimeBucket == "custom")
-        {
+        if (def.TimeBucket == "custom") {
             var (cond, modifier) = CustomWindowCondition(def.CustomBucketN, def.CustomBucketUnit);
-            if (cond != "")
-            {
+            if (cond != "") {
                 extraWhere = [cond];
                 args.Add(modifier);
             }
         }
 
-        var query = new QueryBuilderSpec
-        {
+        var query = new QueryBuilderSpec {
             Indent = "        ",
             SelectCols = $"{bucketExpr} AS bucket, CAST({col2} AS TEXT) AS grp, CAST(d.artifact_id AS INTEGER), CAST(d.level AS INTEGER),\n               {WeightedCapWeightSelect}",
             ArtifactSrc = true,

@@ -14,6 +14,12 @@ indent_size = 4
 # Modern C# style, enforced at build (EnforceCodeStyleInBuild). Warnings are
 # errors repo-wide (Directory.Build.props), so these IDE rules fail the build.
 
+# K&R braces: open brace on the same line, not its own. Condense vertical space.
+csharp_new_line_before_open_brace = none
+csharp_new_line_before_else = false
+csharp_new_line_before_catch = false
+csharp_new_line_before_finally = false
+
 # Namespaces, usings, var
 csharp_style_namespace_declarations = file_scoped:error
 dotnet_sort_system_directives_first = true
@@ -53,8 +59,9 @@ dotnet_style_null_propagation = true:warning
 csharp_style_prefer_null_check_over_type_check = true:warning
 csharp_style_conditional_expression_over_assignment = true:suggestion
 
-# Braces / blocks: allow brace-free single statements (less bloat)
-csharp_prefer_braces = when_multiline:suggestion
+# Braces / blocks: REMOVE braces on single-line bodies (condense; less bloat).
+# when_multiline keeps braces only when the body spans multiple lines.
+csharp_prefer_braces = when_multiline:warning
 csharp_prefer_simple_using_statement = true:warning
 csharp_style_prefer_method_group_conversion = true:silent
 

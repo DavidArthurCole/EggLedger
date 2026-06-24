@@ -7,8 +7,7 @@ namespace EggLedger.Domain.LedgerData;
 /// Loads and holds the active ledger display data. Go port of ledgerdata, embedded
 /// path only (no file caching, no download); embedded JSON is the source of truth.
 /// </summary>
-public static class LedgerData
-{
+public static class LedgerData {
     private const string ResourceName = "EggLedger.Domain.Resources.ledger-display-data-min.json";
 
     private static readonly Lazy<LedgerDisplayData> _config = new(LoadEmbedded);
@@ -16,8 +15,7 @@ public static class LedgerData
     /// <summary>The active display data, loaded lazily from the embedded resource.</summary>
     public static LedgerDisplayData Config => _config.Value;
 
-    private static LedgerDisplayData LoadEmbedded()
-    {
+    private static LedgerDisplayData LoadEmbedded() {
         var asm = typeof(LedgerData).Assembly;
         using var stream = asm.GetManifestResourceStream(ResourceName)
             ?? throw new InvalidOperationException(

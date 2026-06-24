@@ -4,8 +4,7 @@ using EggLedger.Domain.MissionQuery;
 namespace EggLedger.Web.Missions;
 
 /// <summary>Pure filter value-option builders, golden-matched to filterOptions.ts (option order, value encoding, dedup and sort rules). MissionFilterMatcher validates against these.</summary>
-public static class FilterOptions
-{
+public static class FilterOptions {
     private static readonly string[] ShipNames =
     [
         "Chicken One", "Chicken Nine", "Chicken Heavy",
@@ -15,23 +14,18 @@ public static class FilterOptions
 
     private static readonly string[] DurationNames = ["Short", "Standard", "Extended", "Tutorial"];
 
-    public static List<FilterOption> GetShipFilterOptions()
-    {
+    public static List<FilterOption> GetShipFilterOptions() {
         var result = new List<FilterOption>(ShipNames.Length);
-        for (int i = 0; i < ShipNames.Length; i++)
-        {
+        for (int i = 0; i < ShipNames.Length; i++) {
             result.Add(new FilterOption { Text = ShipNames[i], Value = i.ToString(CultureInfo.InvariantCulture) });
         }
         return result;
     }
 
-    public static List<FilterOption> GetDurationFilterOptions()
-    {
+    public static List<FilterOption> GetDurationFilterOptions() {
         var result = new List<FilterOption>(DurationNames.Length);
-        for (int i = 0; i < DurationNames.Length; i++)
-        {
-            result.Add(new FilterOption
-            {
+        for (int i = 0; i < DurationNames.Length; i++) {
+            result.Add(new FilterOption {
                 Text = DurationNames[i],
                 Value = i.ToString(CultureInfo.InvariantCulture),
                 StyleClass = "text-duration-" + i,
@@ -40,11 +34,9 @@ public static class FilterOptions
         return result;
     }
 
-    public static List<FilterOption> GetLevelFilterOptions()
-    {
+    public static List<FilterOption> GetLevelFilterOptions() {
         var result = new List<FilterOption>(9);
-        for (int i = 0; i < 9; i++)
-        {
+        for (int i = 0; i < 9; i++) {
             result.Add(new FilterOption { Text = i + "★", Value = i.ToString(CultureInfo.InvariantCulture) });
         }
         return result;
@@ -69,13 +61,10 @@ public static class FilterOptions
         new FilterOption { Text = "False", Value = "false" },
     ];
 
-    public static List<FilterOption> GetTargetFilterOptions(IEnumerable<PossibleTarget> possibleTargets)
-    {
+    public static List<FilterOption> GetTargetFilterOptions(IEnumerable<PossibleTarget> possibleTargets) {
         var result = new List<FilterOption>();
-        foreach (var t in possibleTargets)
-        {
-            result.Add(new FilterOption
-            {
+        foreach (var t in possibleTargets) {
+            result.Add(new FilterOption {
                 Text = t.DisplayName,
                 Value = t.Id.ToString(CultureInfo.InvariantCulture),
                 ImagePath = t.ImageString,
@@ -101,8 +90,7 @@ public static class FilterOptions
     ];
 
     /// <summary>Value options for a mission filter field. Returns [] for target (caller supplies targets) and drops (caller has its own modal).</summary>
-    public static List<FilterOption> GetMissionFilterValueOptions(string topLevel) => topLevel switch
-    {
+    public static List<FilterOption> GetMissionFilterValueOptions(string topLevel) => topLevel switch {
         "ship" => GetShipFilterOptions(),
         "farm" => GetFarmFilterOptions(),
         "duration" => GetDurationFilterOptions(),
@@ -113,18 +101,14 @@ public static class FilterOptions
     };
 
     /// <summary>One option per distinct artifact level: dedup by level, sort ascending, value is the raw level int.</summary>
-    public static List<FilterOption> GetArtifactTierFilterOptions(IEnumerable<PossibleArtifact> artifactConfigs)
-    {
+    public static List<FilterOption> GetArtifactTierFilterOptions(IEnumerable<PossibleArtifact> artifactConfigs) {
         var levels = new SortedSet<int>();
-        foreach (var a in artifactConfigs)
-        {
+        foreach (var a in artifactConfigs) {
             levels.Add(a.Level);
         }
         var result = new List<FilterOption>();
-        foreach (var level in levels)
-        {
-            result.Add(new FilterOption
-            {
+        foreach (var level in levels) {
+            result.Add(new FilterOption {
                 Text = "Tier " + (level + 1),
                 Value = level.ToString(CultureInfo.InvariantCulture),
             });
@@ -133,21 +117,16 @@ public static class FilterOptions
     }
 
     /// <summary>One option per artifact family: pick the lowest-level entry per name enum, value is the name enum, sort alphabetically by text.</summary>
-    public static List<FilterOption> GetArtifactNameFilterOptions(IReadOnlyList<PossibleArtifact> artifactConfigs)
-    {
+    public static List<FilterOption> GetArtifactNameFilterOptions(IReadOnlyList<PossibleArtifact> artifactConfigs) {
         var representatives = new Dictionary<int, PossibleArtifact>();
-        foreach (var a in artifactConfigs)
-        {
-            if (!representatives.TryGetValue(a.Name, out var existing) || a.Level < existing.Level)
-            {
+        foreach (var a in artifactConfigs) {
+            if (!representatives.TryGetValue(a.Name, out var existing) || a.Level < existing.Level) {
                 representatives[a.Name] = a;
             }
         }
         var result = new List<FilterOption>();
-        foreach (var a in representatives.Values)
-        {
-            result.Add(new FilterOption
-            {
+        foreach (var a in representatives.Values) {
+            result.Add(new FilterOption {
                 Text = a.DisplayName,
                 Value = a.Name.ToString(CultureInfo.InvariantCulture),
                 ImagePath = DropPath(a),
@@ -158,8 +137,7 @@ public static class FilterOptions
         return result;
     }
 
-    private static string ArtifactDisplayText(PossibleArtifact artifact)
-    {
+    private static string ArtifactDisplayText(PossibleArtifact artifact) {
         string displayName = artifact.DisplayName;
         int level = artifact.Level;
         string displayText = displayName;
@@ -170,8 +148,7 @@ public static class FilterOptions
         return displayText;
     }
 
-    private static string DropPath(PossibleArtifact drop)
-    {
+    private static string DropPath(PossibleArtifact drop) {
         int addendum = drop.ProtoName.Contains("_STONE", StringComparison.Ordinal) ? 1 : 0;
         string fixedName = drop.ProtoName
             .Replace("_FRAGMENT", "", StringComparison.Ordinal)
@@ -180,8 +157,7 @@ public static class FilterOptions
         return "artifacts/" + fixedName + "/" + fixedName + "_" + (drop.Level + 1 + addendum) + ".png";
     }
 
-    private static string DropRarityPath(PossibleArtifact drop) => drop.Rarity switch
-    {
+    private static string DropRarityPath(PossibleArtifact drop) => drop.Rarity switch {
         1 => "images/rare.gif",
         2 => "images/epic.gif",
         3 => "images/legendary.gif",
@@ -192,13 +168,10 @@ public static class FilterOptions
     public static List<FilterOption> GetDropFilterOptions(
         IReadOnlyList<PossibleArtifact> artifactConfigs,
         double maxQuality,
-        bool advanced)
-    {
+        bool advanced) {
         var artifactList = new List<PossibleArtifact>();
-        foreach (var a in artifactConfigs)
-        {
-            if (a.BaseQuality <= maxQuality)
-            {
+        foreach (var a in artifactConfigs) {
+            if (a.BaseQuality <= maxQuality) {
                 artifactList.Add(a);
             }
         }
@@ -213,33 +186,27 @@ public static class FilterOptions
         // Insertion-ordered family -> tier -> artifacts grouping (mirrors JS Map order).
         var byFamily = new Dictionary<int, Dictionary<int, List<PossibleArtifact>>>();
         var familyOrder = new List<int>();
-        foreach (var a in artifactList)
-        {
-            if (!byFamily.TryGetValue(a.Name, out var byTier))
-            {
+        foreach (var a in artifactList) {
+            if (!byFamily.TryGetValue(a.Name, out var byTier)) {
                 byTier = [];
                 byFamily[a.Name] = byTier;
                 familyOrder.Add(a.Name);
             }
-            if (!byTier.TryGetValue(a.Level, out var rarities))
-            {
+            if (!byTier.TryGetValue(a.Level, out var rarities)) {
                 rarities = [];
                 byTier[a.Level] = rarities;
             }
             rarities.Add(a);
         }
 
-        foreach (var familyId in familyOrder)
-        {
+        foreach (var familyId in familyOrder) {
             var tierMap = byFamily[familyId];
             // Preserve tier first-seen order (JS Map iteration order).
             var tierOrder = TierOrder(artifactList, familyId);
 
-            if (advanced)
-            {
+            if (advanced) {
                 var firstArtifact = tierMap[tierOrder[0]][0];
-                result.Add(new FilterOption
-                {
+                result.Add(new FilterOption {
                     Text = firstArtifact.DisplayName + " (Any)",
                     Value = familyId + "_%_%_%",
                     Rarity = 0,
@@ -247,24 +214,19 @@ public static class FilterOptions
                 });
             }
 
-            foreach (var tierLevel in tierOrder)
-            {
+            foreach (var tierLevel in tierOrder) {
                 var rarities = tierMap[tierLevel];
-                if (advanced && rarities.Exists(a => a.Rarity > 0))
-                {
+                if (advanced && rarities.Exists(a => a.Rarity > 0)) {
                     var tierRep = rarities.Find(a => a.Rarity == 0) ?? rarities[0];
-                    result.Add(new FilterOption
-                    {
+                    result.Add(new FilterOption {
                         Text = ArtifactDisplayText(rarities[0]) + " (Any Rarity)",
                         Value = familyId + "_" + tierLevel + "_%_%",
                         Rarity = 0,
                         ImagePath = DropPath(tierRep),
                     });
                 }
-                foreach (var a in rarities)
-                {
-                    result.Add(new FilterOption
-                    {
+                foreach (var a in rarities) {
+                    result.Add(new FilterOption {
                         Text = ArtifactDisplayText(a),
                         Value = a.Name + "_" + a.Level + "_" + a.Rarity + "_" + a.BaseQuality.ToString(CultureInfo.InvariantCulture),
                         Rarity = a.Rarity,
@@ -279,14 +241,11 @@ public static class FilterOptions
     }
 
     // First-seen tier order for a family (JS Map insertion order).
-    private static List<int> TierOrder(IReadOnlyList<PossibleArtifact> artifactList, int familyId)
-    {
+    private static List<int> TierOrder(IReadOnlyList<PossibleArtifact> artifactList, int familyId) {
         var seen = new HashSet<int>();
         var order = new List<int>();
-        foreach (var a in artifactList)
-        {
-            if (a.Name == familyId && seen.Add(a.Level))
-            {
+        foreach (var a in artifactList) {
+            if (a.Name == familyId && seen.Add(a.Level)) {
                 order.Add(a.Level);
             }
         }

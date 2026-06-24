@@ -6,8 +6,7 @@ namespace EggLedger.Domain.Api;
 /// Port of Go api/api.go. The two endpoints used: unauthenticated first-contact and
 /// authenticated complete-mission.
 /// </summary>
-public sealed partial class ApiClient
-{
+public sealed partial class ApiClient {
     /// <summary>Unauthenticated endpoint returning the player backup.</summary>
     public const string FirstContactEndpoint = "/ei/bot_first_contact";
 
@@ -20,10 +19,8 @@ public sealed partial class ApiClient
     /// </summary>
     public Task<byte[]> RequestFirstContactRawPayloadAsync(
         string playerId,
-        CancellationToken cancellationToken = default)
-    {
-        var req = new EggIncFirstContactRequest
-        {
+        CancellationToken cancellationToken = default) {
+        var req = new EggIncFirstContactRequest {
             Rinfo = NewBasicRequestInfo(playerId),
             EiUserId = playerId,
             DeviceId = "EggLedger",
@@ -45,10 +42,8 @@ public sealed partial class ApiClient
     public Task<byte[]> RequestCompleteMissionRawPayloadAsync(
         string playerId,
         string missionId,
-        CancellationToken cancellationToken = default)
-    {
-        var req = new MissionRequest
-        {
+        CancellationToken cancellationToken = default) {
+        var req = new MissionRequest {
             Rinfo = NewBasicRequestInfo(playerId),
             EiUserId = playerId,
             Info = new MissionInfo { Identifier = missionId },

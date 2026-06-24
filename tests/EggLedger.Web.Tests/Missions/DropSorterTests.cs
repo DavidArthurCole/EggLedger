@@ -8,14 +8,12 @@ namespace EggLedger.Web.Tests.Missions;
 /// comparator orderings (including the trailing reverse in
 /// sortGroupAlreadyCombed).
 /// </summary>
-public sealed class DropSorterTests
-{
+public sealed class DropSorterTests {
     private static DropLike D(int id, string name, int level, int rarity, double quality = 0, int iv = 0, string spec = "Artifact") =>
         new() { Id = id, Name = name, Level = level, Rarity = rarity, Quality = quality, IvOrder = iv, SpecType = spec };
 
     [Fact]
-    public void GroupedSpecType_CombinesIdenticalAndCounts()
-    {
+    public void GroupedSpecType_CombinesIdenticalAndCounts() {
         var input = new[]
         {
             D(1, "A", 0, 0),
@@ -29,8 +27,7 @@ public sealed class DropSorterTests
     }
 
     [Fact]
-    public void GroupedSpecType_KeyIncludesSpecType()
-    {
+    public void GroupedSpecType_KeyIncludesSpecType() {
         var input = new[]
         {
             D(1, "A", 0, 0, spec: "Artifact"),
@@ -41,8 +38,7 @@ public sealed class DropSorterTests
     }
 
     [Fact]
-    public void SortGroupAlreadyCombed_OrdersLevelAscRarityAsc()
-    {
+    public void SortGroupAlreadyCombed_OrdersLevelAscRarityAsc() {
         // Comparator: level desc, rarity desc, id desc, quality asc; then reverse.
         // Net effect: level asc, rarity asc, id asc, quality desc.
         var input = new[]
@@ -61,8 +57,7 @@ public sealed class DropSorterTests
     }
 
     [Fact]
-    public void SortGroupAlreadyCombed_QualityDescendingWithinTie()
-    {
+    public void SortGroupAlreadyCombed_QualityDescendingWithinTie() {
         var input = new[]
         {
             D(1, "A", 0, 0, quality: 1),
@@ -74,8 +69,7 @@ public sealed class DropSorterTests
     }
 
     [Fact]
-    public void InventoryVisualizerSort_RarityDescIvDescLevelDesc()
-    {
+    public void InventoryVisualizerSort_RarityDescIvDescLevelDesc() {
         var input = new[]
         {
             D(1, "A", 0, 1, iv: 1),

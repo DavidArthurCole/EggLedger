@@ -3,63 +3,48 @@ using Ei;
 namespace EggLedger.Domain.Ei;
 
 /// <summary>Port of Go ei/backup.go. Preserves exact arithmetic.</summary>
-public static class BackupExtensions
-{
+public static class BackupExtensions {
     /// <summary>
     /// Maps each element to a double and accumulates (Go's generic Sum). Returns 0 for empty/null.
     /// </summary>
-    public static double Sum<T>(IEnumerable<T>? slice, Func<T, double> toFloat)
-    {
+    public static double Sum<T>(IEnumerable<T>? slice, Func<T, double> toFloat) {
         double total = 0;
-        if (slice != null)
-        {
-            foreach (var v in slice)
-            {
+        if (slice != null) {
+            foreach (var v in slice) {
                 total += toFloat(v);
             }
         }
         return total;
     }
 
-    public static Exception? Validate(this EggIncFirstContactResponse fc)
-    {
-        if (fc.ErrorCode > 0)
-        {
+    public static Exception? Validate(this EggIncFirstContactResponse fc) {
+        if (fc.ErrorCode > 0) {
             return new InvalidOperationException(
                 $"/ei/first_contact: error_code {fc.ErrorCode}");
         }
-        if (fc.Backup == null || fc.Backup.game == null)
-        {
+        if (fc.Backup == null || fc.Backup.game == null) {
             return new InvalidOperationException("backup is empty");
         }
-        if (fc.Backup.settings == null)
-        {
+        if (fc.Backup.settings == null) {
             return new InvalidOperationException("backup settings is empty");
         }
-        if (fc.Backup.ArtifactsDb == null)
-        {
+        if (fc.Backup.ArtifactsDb == null) {
             return new InvalidOperationException("backup has empty artifacts database");
         }
         return null;
     }
 
-    public static double GetEarningsBonus(this Backup b)
-    {
+    public static double GetEarningsBonus(this Backup b) {
         var virtue = b.virtue;
         var game = b.game;
 
         double soulEggBonus = 10.0;
         double prophecyEggBonus = 1.05;
-        if (game != null)
-        {
-            foreach (var er in game.EpicResearchs)
-            {
-                if (string.Equals(er.Id, "soul_eggs", StringComparison.OrdinalIgnoreCase))
-                {
+        if (game != null) {
+            foreach (var er in game.EpicResearchs) {
+                if (string.Equals(er.Id, "soul_eggs", StringComparison.OrdinalIgnoreCase)) {
                     soulEggBonus = er.Level + 10;
-                }
-                else if (string.Equals(er.Id, "prophecy_bonus", StringComparison.OrdinalIgnoreCase))
-                {
+                } else if (string.Equals(er.Id, "prophecy_bonus", StringComparison.OrdinalIgnoreCase)) {
                     prophecyEggBonus = (er.Level + 5) / 100.0 + 1;
                 }
             }

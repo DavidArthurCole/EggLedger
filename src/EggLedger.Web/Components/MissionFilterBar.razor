@@ -89,6 +89,7 @@
                                               Placeholder="@($"Select {def.Label}...")"
                                               ImageBasePath="@(isDrop ? "images/" : "images/targets/")"
                                               RarityRing="isDrop"
+                                              OverlayKind="@(isDrop ? "drop" : "target")"
                                               OnSelect="opt => OnValChanged(groupIndex, rowIndex, opt.Value)"
                                               Footer="@(isDrop ? DropAdvancedFooter : null)" />
                         }

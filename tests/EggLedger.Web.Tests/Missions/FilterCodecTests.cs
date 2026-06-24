@@ -5,16 +5,13 @@ using ReportFilters = EggLedger.Domain.Reports.ReportFilters;
 
 namespace EggLedger.Web.Tests.Missions;
 
-public class FilterCodecTests
-{
+public class FilterCodecTests {
     private static ReportCondition R(string topLevel, string op, string val) =>
         new() { TopLevel = topLevel, Op = op, Val = val };
 
     [Fact]
-    public void Roundtrip_SingleAndGroup_IsLossless()
-    {
-        var legacy = new ReportFilters
-        {
+    public void Roundtrip_SingleAndGroup_IsLossless() {
+        var legacy = new ReportFilters {
             And =
             [
                 R("ship", "=", "2"),
@@ -42,10 +39,8 @@ public class FilterCodecTests
     }
 
     [Fact]
-    public void Roundtrip_OrGroups_PreserveExtraGroups()
-    {
-        var legacy = new ReportFilters
-        {
+    public void Roundtrip_OrGroups_PreserveExtraGroups() {
+        var legacy = new ReportFilters {
             And = [R("ship", "=", "2")],
             Or = [[R("level", ">", "5")]],
         };
@@ -61,8 +56,7 @@ public class FilterCodecTests
     }
 
     [Fact]
-    public void DropGlob_Roundtrip_Wildcards()
-    {
+    public void DropGlob_Roundtrip_Wildcards() {
         var m = FilterCodec.DecodeDropGlob("%_%_3_%");
         Assert.Null(m.Name);
         Assert.Null(m.Level);
@@ -72,8 +66,7 @@ public class FilterCodecTests
     }
 
     [Fact]
-    public void DropGlob_Roundtrip_Exact()
-    {
+    public void DropGlob_Roundtrip_Exact() {
         var m = FilterCodec.DecodeDropGlob("40_2_1_9");
         Assert.Equal(40, m.Name);
         Assert.Equal(2, m.Level);
@@ -83,10 +76,8 @@ public class FilterCodecTests
     }
 
     [Fact]
-    public void IncompleteOrUnknown_AreDropped()
-    {
-        var legacy = new ReportFilters
-        {
+    public void IncompleteOrUnknown_AreDropped() {
+        var legacy = new ReportFilters {
             And =
             [
                 R("", "=", "1"),          // no field

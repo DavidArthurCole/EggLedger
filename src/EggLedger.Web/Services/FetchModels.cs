@@ -1,8 +1,7 @@
 namespace EggLedger.Web.Services;
 
 /// <summary>Pipeline lifecycle states reached by the browser fetch pipeline. The desktop-only RESOLVING_MISSION_TYPES state is absent: the browser store backfills filter columns lazily on read.</summary>
-public enum AppState
-{
+public enum AppState {
     AwaitingInput,
     FetchingSave,
     FetchingMissions,
@@ -13,8 +12,7 @@ public enum AppState
 }
 
 /// <summary>Per-mission segment status fed to the segmented progress UI. The four segments are Cache, Fetch, Decode, Store.</summary>
-public enum SegmentStatus
-{
+public enum SegmentStatus {
     Active,
     Done,
     Failed,
@@ -22,8 +20,7 @@ public enum SegmentStatus
 }
 
 /// <summary>One progress event: an overall state transition, a mission counter snapshot, or a per-mission segment update, collapsed into a single <see cref="System.IProgress{T}"/> channel.</summary>
-public sealed record FetchProgress
-{
+public sealed record FetchProgress {
     public required AppState State { get; init; }
 
     public int Total { get; init; }

@@ -7,8 +7,7 @@ namespace EggLedger.Domain.Tests.MissionQuery;
 /// In-memory IMissionStore double. Holds known data; records the backfill kick.
 /// Null-typed fields simulate Go store errors.
 /// </summary>
-internal sealed class FakeMissionStore : IMissionStore
-{
+internal sealed class FakeMissionStore : IMissionStore {
     public IReadOnlyList<string>? CompleteMissionIds { get; set; }
     public List<KnownAccount> KnownAccounts { get; } = [];
     public Dictionary<string, PlayerMissionStats?> Stats { get; } = [];
@@ -18,6 +17,7 @@ internal sealed class FakeMissionStore : IMissionStore
     public Dictionary<string, int?> PendingFilterCols { get; } = [];
     public Dictionary<string, IReadOnlyList<IMissionRow>?> MissionMeta { get; } = [];
     public Dictionary<string, IReadOnlyList<CompleteMissionResponse>?> PlayerCompleteMissions { get; } = [];
+    public Dictionary<string, IReadOnlyList<StoredDrop>?> StoredDrops { get; } = [];
     public List<string> BackfillsQueued { get; } = [];
 
     public Task<IReadOnlyList<string>?> GetCompleteMissionIdsAsync(string playerId) =>
@@ -29,16 +29,12 @@ internal sealed class FakeMissionStore : IMissionStore
     public Task<PlayerMissionStats?> GetPlayerMissionStatsAsync(string playerId) =>
         Task.FromResult(Stats.TryGetValue(playerId, out var s) ? s : null);
 
-    public Task<bool> StreamPlayerCompleteMissionsAsync(string playerId, Action<CompleteMissionResponse> onMission)
-    {
-        if (!StreamSucceeds)
-        {
+    public Task<bool> StreamPlayerCompleteMissionsAsync(string playerId, Action<CompleteMissionResponse> onMission) {
+        if (!StreamSucceeds) {
             return Task.FromResult(false);
         }
-        if (Streamable.TryGetValue(playerId, out var list))
-        {
-            foreach (var cm in list)
-            {
+        if (Streamable.TryGetValue(playerId, out var list)) {
+            foreach (var cm in list) {
                 onMission(cm);
             }
         }
@@ -57,6 +53,9 @@ internal sealed class FakeMissionStore : IMissionStore
     public Task<IReadOnlyList<CompleteMissionResponse>?> GetPlayerCompleteMissionsAsync(string eid) =>
         Task.FromResult(PlayerCompleteMissions.TryGetValue(eid, out var m) ? m : null);
 
+    public Task<IReadOnlyList<StoredDrop>?> GetStoredPlayerDropsAsync(string playerId) =>
+        Task.FromResult(StoredDrops.TryGetValue(playerId, out var d) ? d : null);
+
     public IMissionRow CompileMissionInformation(CompleteMissionResponse mission) =>
         new FakeMissionRow(mission.Info?.Identifier ?? "");
 
@@ -66,8 +65,7 @@ internal sealed class FakeMissionStore : IMissionStore
 internal sealed record FakeMissionRow(string Id) : IMissionRow;
 
 /// <summary>Quality stub: fixed value per (name,level,rarity) tuple, else 0.</summary>
-internal sealed class FakeQuality : IArtifactQuality
-{
+internal sealed class FakeQuality : IArtifactQuality {
     public Dictionary<(ArtifactSpec.Name, ArtifactSpec.Level, ArtifactSpec.Rarity), double> Map { get; } = [];
 
     public double BaseQualityFor(ArtifactSpec spec) =>

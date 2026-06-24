@@ -6,8 +6,7 @@ namespace EggLedger.Domain.LedgerData;
 /// All game display strings extracted from source. Mirrors Go ledgerdata.LedgerDisplayData
 /// struct and JSON field names exactly.
 /// </summary>
-public sealed class LedgerDisplayData
-{
+public sealed class LedgerDisplayData {
     /// <summary>Maps proto enum name to a [level][rarity] string matrix of effect substitution values.</summary>
     [JsonPropertyName("artifactEffects")]
     public Dictionary<string, string[][]> ArtifactEffects { get; set; } = [];
@@ -38,8 +37,7 @@ public sealed class LedgerDisplayData
 }
 
 /// <summary>Maps an EB order-of-magnitude bucket to a display tier.</summary>
-public sealed class FarmerRole
-{
+public sealed class FarmerRole {
     [JsonPropertyName("oom")]
     public int Oom { get; set; }
 
@@ -51,8 +49,7 @@ public sealed class FarmerRole
 }
 
 /// <summary>A filterable mission target entry with display metadata.</summary>
-public sealed class ArtifactTarget
-{
+public sealed class ArtifactTarget {
     [JsonPropertyName("name")]
     public string Name { get; set; } = "";
 

@@ -6,8 +6,7 @@ namespace EggLedger.Domain.Tests.Reports;
 /// Golden tests for the grid packing math, mirroring the Vue
 /// utils/reportGridLayout.ts behavior (CSS grid auto-placement, row direction).
 /// </summary>
-public class ReportGridLayoutTests
-{
+public class ReportGridLayoutTests {
     private static ReportDefinition Def(int w, int h) => new() { GridW = w, GridH = h };
 
     [Theory]
@@ -15,16 +14,14 @@ public class ReportGridLayoutTests
     [InlineData(3, 4, 3, 4)]
     [InlineData(99, 99, 8, 8)]
     [InlineData(-2, -5, 1, 1)]
-    public void ClampDims_ClampsToRange(int w, int h, int ew, int eh)
-    {
+    public void ClampDims_ClampsToRange(int w, int h, int ew, int eh) {
         var (cw, ch) = ReportGridLayout.ClampDims(w, h);
         Assert.Equal(ew, cw);
         Assert.Equal(eh, ch);
     }
 
     [Fact]
-    public void BuildOccupancy_PacksRowMajorWrappingAtEightCols()
-    {
+    public void BuildOccupancy_PacksRowMajorWrappingAtEightCols() {
         // Three 4-wide cards: two fit on row 1 (cols 1 and 5), third wraps to row 2.
         var defs = new[] { Def(4, 2), Def(4, 2), Def(4, 2) };
         var (positions, _) = ReportGridLayout.BuildOccupancyFromLayout(defs);
@@ -35,8 +32,7 @@ public class ReportGridLayoutTests
     }
 
     [Fact]
-    public void BuildOccupancy_FillsGapLeftByTallNeighbor()
-    {
+    public void BuildOccupancy_FillsGapLeftByTallNeighbor() {
         // A 2x2 then a 2x1: card 0 occupies cols 1-2 rows 1-2, card 1 lands at col 3 row 1.
         var defs = new[] { Def(2, 2), Def(2, 1) };
         var (positions, occupied) = ReportGridLayout.BuildOccupancyFromLayout(defs);
@@ -50,8 +46,7 @@ public class ReportGridLayoutTests
     }
 
     [Fact]
-    public void CellsFit_DetectsOverlap()
-    {
+    public void CellsFit_DetectsOverlap() {
         var occupied = new HashSet<(int, int)>();
         ReportGridLayout.MarkOccupied(occupied, 1, 1, 2, 2);
         Assert.False(ReportGridLayout.CellsFit(occupied, 2, 2, 2, 2));
@@ -59,8 +54,7 @@ public class ReportGridLayoutTests
     }
 
     [Fact]
-    public void FindPlacement_WrapsToNextRowWhenOverflowing()
-    {
+    public void FindPlacement_WrapsToNextRowWhenOverflowing() {
         var occupied = new HashSet<(int, int)>();
         // Want a 6-wide card starting at col 5: cannot fit (5+6-1=10 > 8), wraps to row 2 col 1.
         var pos = ReportGridLayout.FindPlacement(occupied, 6, 1, 5, 1);
@@ -68,8 +62,7 @@ public class ReportGridLayoutTests
     }
 
     [Fact]
-    public void ComputeEmptyZones_FindsTrailingGapOnLastRow()
-    {
+    public void ComputeEmptyZones_FindsTrailingGapOnLastRow() {
         // One 4-wide card on row 1 leaves cols 5-8 empty.
         var defs = new[] { Def(4, 1) };
         var zones = ReportGridLayout.ComputeEmptyZones(defs);
@@ -82,14 +75,12 @@ public class ReportGridLayoutTests
     }
 
     [Fact]
-    public void ComputeEmptyZones_EmptyForNoDefs()
-    {
+    public void ComputeEmptyZones_EmptyForNoDefs() {
         Assert.Empty(ReportGridLayout.ComputeEmptyZones(Array.Empty<ReportDefinition>()));
     }
 
     [Fact]
-    public void FindInsertIndexForZone_PlacesDraggedCardIntoTrailingGap()
-    {
+    public void FindInsertIndexForZone_PlacesDraggedCardIntoTrailingGap() {
         // Layout: [3-wide][3-wide][2-wide]. Removing the 2-wide (idx 2) leaves a
         // trailing gap at cols 7-8 on row 1. Resolving the drag for that zone
         // should map back to an in-range insert position.

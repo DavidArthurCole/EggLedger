@@ -1,8 +1,7 @@
 namespace EggLedger.Web.Platform;
 
 /// <summary>Phase of the desktop self-update flow the About overlay binds to. The browser build has no updater and stays permanently <see cref="UpToDate"/>.</summary>
-public enum UpdatePhase
-{
+public enum UpdatePhase {
     /// <summary>No update found / current build is latest (also the browser default).</summary>
     UpToDate,
 
@@ -23,8 +22,7 @@ public enum UpdatePhase
 }
 
 /// <summary>Read-only update-status surface the About overlay binds to. Browser registers a no-op; consumers gate display on <see cref="IPlatformCapabilities.IsDesktop"/>.</summary>
-public interface IUpdateStatusProvider
-{
+public interface IUpdateStatusProvider {
     /// <summary>Current update phase.</summary>
     UpdatePhase Phase { get; }
 
@@ -54,8 +52,7 @@ public interface IUpdateStatusProvider
 }
 
 /// <summary>Browser no-op update-status provider: stays permanently <see cref="UpdatePhase.UpToDate"/> with no-op actions.</summary>
-public sealed class NoOpUpdateStatusProvider : IUpdateStatusProvider
-{
+public sealed class NoOpUpdateStatusProvider : IUpdateStatusProvider {
     public UpdatePhase Phase => UpdatePhase.UpToDate;
     public string? AvailableVersion => null;
     public string? ReleaseNotes => null;
@@ -63,8 +60,7 @@ public sealed class NoOpUpdateStatusProvider : IUpdateStatusProvider
     public long TotalBytes => 0;
     public string? Message => null;
 
-    public event Action? Changed
-    {
+    public event Action? Changed {
         add { }
         remove { }
     }

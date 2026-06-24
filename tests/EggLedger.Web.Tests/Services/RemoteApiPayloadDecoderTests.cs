@@ -9,29 +9,24 @@ using Xunit;
 
 namespace EggLedger.Web.Tests.Services;
 
-public class RemoteApiPayloadDecoderTests
-{
-    private sealed class StubHandler : HttpMessageHandler
-    {
+public class RemoteApiPayloadDecoderTests {
+    private sealed class StubHandler : HttpMessageHandler {
         private readonly string _json;
         public string? LastPath;
         public byte[]? LastBody;
         public StubHandler(string json) => _json = json;
 
-        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
-        {
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct) {
             LastPath = request.RequestUri!.AbsolutePath;
             LastBody = request.Content is null ? null : await request.Content.ReadAsByteArrayAsync(ct);
-            return new HttpResponseMessage(HttpStatusCode.OK)
-            {
+            return new HttpResponseMessage(HttpStatusCode.OK) {
                 Content = new StringContent(_json, Encoding.UTF8, "application/json"),
             };
         }
     }
 
     [Fact]
-    public async Task DecodeFirstContact_PostsBytes_ParsesJson()
-    {
+    public async Task DecodeFirstContact_PostsBytes_ParsesJson() {
         var expected = new EggIncFirstContactResponse { EiUserId = "EI42" };
         string json = JsonSerializer.Serialize(expected, ApiPayloadJson.Options);
         var handler = new StubHandler(json);
@@ -46,8 +41,7 @@ public class RemoteApiPayloadDecoderTests
     }
 
     [Fact]
-    public async Task DecodeCompleteMission_PostsBytes_ParsesJson()
-    {
+    public async Task DecodeCompleteMission_PostsBytes_ParsesJson() {
         var expected = new CompleteMissionResponse { Success = true, EiUserId = "EI99" };
         string json = JsonSerializer.Serialize(expected, ApiPayloadJson.Options);
         var handler = new StubHandler(json);

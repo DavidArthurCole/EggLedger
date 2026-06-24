@@ -7,8 +7,7 @@ namespace EggLedger.Domain.Crypto;
 /// base64(12-byte nonce || ciphertext || 16-byte tag). Go appends the tag to the ciphertext while
 /// .NET <see cref="AesGcm"/> takes it separately, so decrypt splits the trailing 16 bytes off.
 /// </summary>
-public static class BlobCrypto
-{
+public static class BlobCrypto {
     private const int NonceSize = 12;
     private const int TagSize = 16;
     private const int KeySize = 32;
@@ -17,8 +16,7 @@ public static class BlobCrypto
     /// Encrypts <paramref name="plaintext"/> with AES-256-GCM under the 64-char
     /// hex key. Returns base64(nonce || ciphertext || tag). Port of Go encryptBlob.
     /// </summary>
-    public static string Encrypt(string hexKey, byte[] plaintext)
-    {
+    public static string Encrypt(string hexKey, byte[] plaintext) {
         ArgumentNullException.ThrowIfNull(plaintext);
         var key = DecodeKey(hexKey);
 
@@ -27,8 +25,7 @@ public static class BlobCrypto
 
         var ciphertext = new byte[plaintext.Length];
         var tag = new byte[TagSize];
-        using (var gcm = new AesGcm(key, TagSize))
-        {
+        using (var gcm = new AesGcm(key, TagSize)) {
             gcm.Encrypt(nonce, plaintext, ciphertext, tag);
         }
 
@@ -44,14 +41,12 @@ public static class BlobCrypto
     /// Decrypts a base64(nonce || ciphertext || tag) blob produced by
     /// <see cref="Encrypt"/> or Go encryptBlob. Port of Go decryptBlob.
     /// </summary>
-    public static byte[] Decrypt(string hexKey, string b64)
-    {
+    public static byte[] Decrypt(string hexKey, string b64) {
         ArgumentNullException.ThrowIfNull(b64);
         var key = DecodeKey(hexKey);
 
         var data = Convert.FromBase64String(b64);
-        if (data.Length < NonceSize + TagSize)
-        {
+        if (data.Length < NonceSize + TagSize) {
             throw new CryptographicException("blob too short");
         }
 
@@ -66,19 +61,16 @@ public static class BlobCrypto
         Buffer.BlockCopy(data, NonceSize + bodyLen, tag, 0, TagSize);
 
         var plaintext = new byte[bodyLen];
-        using (var gcm = new AesGcm(key, TagSize))
-        {
+        using (var gcm = new AesGcm(key, TagSize)) {
             gcm.Decrypt(nonce, ciphertext, tag, plaintext);
         }
         return plaintext;
     }
 
-    private static byte[] DecodeKey(string hexKey)
-    {
+    private static byte[] DecodeKey(string hexKey) {
         ArgumentNullException.ThrowIfNull(hexKey);
         var key = Convert.FromHexString(hexKey);
-        if (key.Length != KeySize)
-        {
+        if (key.Length != KeySize) {
             throw new CryptographicException(
                 $"AES-256 key must be {KeySize} bytes ({KeySize * 2} hex chars), got {key.Length}");
         }

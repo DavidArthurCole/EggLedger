@@ -8,8 +8,7 @@ namespace EggLedger.Domain.Api;
 /// decode (Reflection.Emit forbidden), so it delegates to the sync server; desktop and tests use the
 /// local protobuf-net path.
 /// </summary>
-public interface IApiPayloadDecoder
-{
+public interface IApiPayloadDecoder {
     Task<EggIncFirstContactResponse> DecodeFirstContactAsync(byte[] rawPayload, CancellationToken ct = default);
 
     Task<CompleteMissionResponse> DecodeCompleteMissionAsync(byte[] rawPayload, CancellationToken ct = default);

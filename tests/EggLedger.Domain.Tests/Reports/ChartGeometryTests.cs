@@ -6,18 +6,15 @@ namespace EggLedger.Domain.Tests.Reports;
 /// Golden tests for the shared line-family geometry, mirroring
 /// ReportLineChart.vue / ReportMultiLineChart.vue. Reference values from Node.
 /// </summary>
-public class ChartGeometryTests
-{
+public class ChartGeometryTests {
     [Fact]
-    public void Values_SelectsFloatOrIntSeries()
-    {
+    public void Values_SelectsFloatOrIntSeries() {
         Assert.Equal(new[] { 1.0, 2.0 }, ChartGeometry.Values(new long[] { 1, 2 }, new double[] { 9 }, isFloat: false));
         Assert.Equal(new[] { 9.5 }, ChartGeometry.Values(new long[] { 1 }, new double[] { 9.5 }, isFloat: true));
     }
 
     [Fact]
-    public void Points_ScalesAcrossWidth_MatchesVue()
-    {
+    public void Points_ScalesAcrossWidth_MatchesVue() {
         var pts = ChartGeometry.Points(new double[] { 0, 5, 10 }, new[] { "a", "b", "c" }, 300, 130);
         Assert.Equal(3, pts.Count);
         Assert.Equal(36, pts[0].X, 5);
@@ -29,14 +26,12 @@ public class ChartGeometryTests
     }
 
     [Fact]
-    public void Points_EmptyWhenFewerThanTwo()
-    {
+    public void Points_EmptyWhenFewerThanTwo() {
         Assert.Empty(ChartGeometry.Points(new double[] { 5 }, new[] { "a" }, 300, 130));
     }
 
     [Fact]
-    public void AreaPath_ClosesToBaseline()
-    {
+    public void AreaPath_ClosesToBaseline() {
         var pts = ChartGeometry.Points(new double[] { 0, 10 }, new[] { "a", "b" }, 300, 130);
         var path = ChartGeometry.AreaPath(pts, 130);
         Assert.StartsWith("M36,70", path);
@@ -54,8 +49,7 @@ public class ChartGeometryTests
         Assert.Equal(expected, ChartGeometry.FormatXLabel(input));
 
     [Fact]
-    public void YTicks_ThreeTicks_MatchesVue()
-    {
+    public void YTicks_ThreeTicks_MatchesVue() {
         var ticks = ChartGeometry.YTicks(10, 130, isFloat: false);
         Assert.Equal(3, ticks.Count);
         Assert.Equal(50.2, ticks[0].Y, 4);
@@ -69,15 +63,13 @@ public class ChartGeometryTests
         Assert.Empty(ChartGeometry.YTicks(0, 130, false));
 
     [Fact]
-    public void ThinLabels_KeepsAllUnderLimit()
-    {
+    public void ThinLabels_KeepsAllUnderLimit() {
         var pts = ChartGeometry.Points(new double[] { 1, 2, 3 }, new[] { "a", "b", "c" }, 300, 130);
         Assert.Equal(3, ChartGeometry.ThinLabels(pts).Count);
     }
 
     [Fact]
-    public void ThinLabels_ThinsAndKeepsLastOverLimit()
-    {
+    public void ThinLabels_ThinsAndKeepsLastOverLimit() {
         var vals = Enumerable.Range(0, 25).Select(i => (double)i).ToArray();
         var labels = vals.Select((_, i) => "x" + i).ToArray();
         var pts = ChartGeometry.Points(vals, labels, 300, 130);
@@ -87,16 +79,14 @@ public class ChartGeometryTests
     }
 
     [Fact]
-    public void SeriesValues_ReadsColumnFromRowMajorMatrix()
-    {
+    public void SeriesValues_ReadsColumnFromRowMajorMatrix() {
         // 2 rows x 3 cols: row-major [r0c0,r0c1,r0c2, r1c0,r1c1,r1c2].
         var matrix = new double[] { 1, 2, 3, 4, 5, 6 };
         Assert.Equal(new[] { 2.0, 5.0 }, ChartGeometry.SeriesValues(matrix, 2, 3, 1));
     }
 
     [Fact]
-    public void SeriesColors_SpreadsHueAndHonorsOverrides()
-    {
+    public void SeriesColors_SpreadsHueAndHonorsOverrides() {
         var cols = new[] { "A", "B" };
         var colors = ChartGeometry.SeriesColors(cols, "#6366f1", new Dictionary<string, string>());
         Assert.Equal(2, colors.Count);
@@ -108,8 +98,7 @@ public class ChartGeometryTests
     }
 
     [Fact]
-    public void SeriesColors_GroupedBarOverload_MatchesInlineGeometry()
-    {
+    public void SeriesColors_GroupedBarOverload_MatchesInlineGeometry() {
         // Golden for the grouped-bar consolidation: display columns spread over the
         // RAW column count (denominator 4, not the 3 display columns) and "Other"
         // paints the fixed gray. Reference values come from the prior inline

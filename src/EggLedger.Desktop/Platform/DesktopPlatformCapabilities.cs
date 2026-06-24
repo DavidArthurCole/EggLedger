@@ -9,22 +9,19 @@ namespace EggLedger.Desktop.Platform;
 /// <see cref="DesktopCommandBuilder"/>; save dialog and window size come from the
 /// Photino window. <see cref="IsDesktop"/> is true to enable desktop-only UI.
 /// </summary>
-public sealed class DesktopPlatformCapabilities(IProcessRunner processRunner, IDesktopWindow window) : IPlatformCapabilities
-{
+public sealed class DesktopPlatformCapabilities(IProcessRunner processRunner, IDesktopWindow window) : IPlatformCapabilities {
     private readonly IProcessRunner _processRunner = processRunner;
     private readonly IDesktopWindow _window = window;
 
     public bool IsDesktop => true;
 
-    public Task OpenFileAsync(string path)
-    {
+    public Task OpenFileAsync(string path) {
         // Absolutize here (the command builder stays pure), matching Go filepath.Abs.
         var (exe, args) = DesktopCommandBuilder.BuildOpenCommand(CurrentPlatform(), Path.GetFullPath(path));
         return _processRunner.RunAsync(exe, args);
     }
 
-    public Task OpenFileInFolderAsync(string path)
-    {
+    public Task OpenFileInFolderAsync(string path) {
         var (exe, args) = DesktopCommandBuilder.BuildOpenInFolderCommand(CurrentPlatform(), Path.GetFullPath(path));
         return _processRunner.RunAsync(exe, args);
     }
@@ -39,31 +36,25 @@ public sealed class DesktopPlatformCapabilities(IProcessRunner processRunner, ID
     /// <summary>
     /// Relaunch the current exe then exit. MANUAL-VERIFY: the exit is not unit-tested.
     /// </summary>
-    public async Task RestartAppAsync()
-    {
+    public async Task RestartAppAsync() {
         var exePath = Environment.ProcessPath;
-        if (!string.IsNullOrEmpty(exePath))
-        {
+        if (!string.IsNullOrEmpty(exePath)) {
             var (exe, args) = DesktopCommandBuilder.BuildRestartCommand(exePath);
             await _processRunner.RunAsync(exe, args);
         }
         _window.ExitProcess();
     }
 
-    public Task<(int w, int h)> GetWindowSizeAsync()
-    {
+    public Task<(int w, int h)> GetWindowSizeAsync() {
         var (width, height) = _window.GetSize();
         return Task.FromResult((width, height));
     }
 
-    private static OSPlatform CurrentPlatform()
-    {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
+    private static OSPlatform CurrentPlatform() {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
             return OSPlatform.Windows;
         }
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-        {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
             return OSPlatform.OSX;
         }
         return OSPlatform.Linux;

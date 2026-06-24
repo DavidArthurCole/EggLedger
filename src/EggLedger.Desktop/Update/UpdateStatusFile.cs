@@ -8,8 +8,7 @@ namespace EggLedger.Desktop.Update;
 /// relaunched process reads once on startup. Lives in the exe dir (not the data
 /// root) so both processes agree on the path with no init dependency.
 /// </summary>
-public sealed class UpdateStatus
-{
+public sealed class UpdateStatus {
     [JsonPropertyName("success")]
     public bool Success { get; init; }
 
@@ -30,21 +29,18 @@ public sealed class UpdateStatus
 /// Reads/writes the on-disk update-status handoff file. Pure file IO over an
 /// injected directory, so it is unit-testable with a temp dir.
 /// </summary>
-public static class UpdateStatusFile
-{
+public static class UpdateStatusFile {
     /// <summary>File name written next to the exe. Matches Go.</summary>
     public const string FileName = ".egg-update-status.json";
 
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
+    private static readonly JsonSerializerOptions JsonOptions = new() {
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault,
     };
 
     private static string PathFor(string dir) => Path.Combine(dir, FileName);
 
     /// <summary>Write the status JSON into <paramref name="dir"/>.</summary>
-    public static void Write(string dir, UpdateStatus status)
-    {
+    public static void Write(string dir, UpdateStatus status) {
         var data = JsonSerializer.Serialize(status, JsonOptions);
         File.WriteAllText(PathFor(dir), data);
     }
@@ -54,34 +50,24 @@ public static class UpdateStatusFile
     /// (matching the Go (nil, false) contract). The file is removed before parse
     /// so a malformed file is not re-read.
     /// </summary>
-    public static UpdateStatus? ReadAndClear(string dir)
-    {
+    public static UpdateStatus? ReadAndClear(string dir) {
         var path = PathFor(dir);
         string data;
-        try
-        {
+        try {
             data = File.ReadAllText(path);
-        }
-        catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException or IOException or UnauthorizedAccessException)
-        {
+        } catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException or IOException or UnauthorizedAccessException) {
             return null;
         }
 
-        try
-        {
+        try {
             File.Delete(path);
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
+        } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) {
             // Best-effort delete, matching Go's ignored os.Remove error.
         }
 
-        try
-        {
+        try {
             return JsonSerializer.Deserialize<UpdateStatus>(data, JsonOptions);
-        }
-        catch (JsonException)
-        {
+        } catch (JsonException) {
             return null;
         }
     }

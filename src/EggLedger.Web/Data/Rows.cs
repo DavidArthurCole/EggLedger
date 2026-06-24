@@ -8,16 +8,14 @@ namespace EggLedger.Web.Data;
 /// <see cref="JsonPropertyNameAttribute"/> fixes wire names to the snake_case
 /// keyPaths the JS shim expects; web defaults only affect read-side casing tolerance.
 /// </summary>
-public static class Rows
-{
+public static class Rows {
     public static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 }
 
 /// <summary>
 /// Mirrors the IndexedDB <c>mission</c> store (keyPath <c>["player_id","mission_id"]</c>).
 /// </summary>
-public sealed record MissionRow
-{
+public sealed record MissionRow {
     [JsonPropertyName("player_id")]
     public string PlayerId { get; init; } = "";
 
@@ -67,8 +65,7 @@ public sealed record MissionRow
 /// The timestamp serializes to <c>backed_up_at</c> to line up with the desktop SQLite schema;
 /// the extra SQLite columns (surrogate id, payload_authenticated) are ignored here.
 /// </summary>
-public sealed record BackupRow
-{
+public sealed record BackupRow {
     [JsonPropertyName("player_id")]
     public string PlayerId { get; init; } = "";
 
@@ -82,8 +79,7 @@ public sealed record BackupRow
 /// <summary>
 /// Mirrors the IndexedDB <c>artifact_drops</c> store (keyPath <c>id</c>, autoIncrement).
 /// </summary>
-public sealed record ArtifactDropRow
-{
+public sealed record ArtifactDropRow {
     /// <summary>Auto-incremented PK. Left null on insert so IndexedDB assigns it; ignore-when-null keeps it off the wire.</summary>
     [JsonPropertyName("id")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -117,8 +113,7 @@ public sealed record ArtifactDropRow
 /// <summary>
 /// Mirrors the IndexedDB <c>settings</c> store (keyPath <c>key</c>).
 /// </summary>
-public sealed record SettingRow
-{
+public sealed record SettingRow {
     [JsonPropertyName("key")]
     public string Key { get; init; } = "";
 
@@ -129,8 +124,7 @@ public sealed record SettingRow
 /// <summary>
 /// Mirrors the IndexedDB <c>reports</c> store (keyPath <c>id</c>, index <c>account_id</c>).
 /// </summary>
-public sealed record ReportRow
-{
+public sealed record ReportRow {
     [JsonPropertyName("id")]
     public string Id { get; init; } = "";
 
@@ -234,8 +228,7 @@ public sealed record ReportRow
 /// <summary>
 /// Mirrors the IndexedDB <c>report_groups</c> store (keyPath <c>id</c>, index <c>account_id</c>).
 /// </summary>
-public sealed record ReportGroupRow
-{
+public sealed record ReportGroupRow {
     [JsonPropertyName("id")]
     public string Id { get; init; } = "";
 

@@ -11,40 +11,32 @@ namespace EggLedger.Desktop.Tests;
 /// The bytes are compared against the Domain producers (not re-derived). The native
 /// dialog and the OS reveal are faked; the real ones are MANUAL-VERIFY (D5 Step 3).
 /// </summary>
-public sealed class DesktopDownloadServiceTests : IDisposable
-{
+public sealed class DesktopDownloadServiceTests : IDisposable {
     private readonly string _tempDir =
         Path.Combine(Path.GetTempPath(), "egglg-dl-" + Guid.NewGuid().ToString("N"));
 
     public DesktopDownloadServiceTests() => Directory.CreateDirectory(_tempDir);
 
-    public void Dispose()
-    {
-        try
-        {
+    public void Dispose() {
+        try {
             Directory.Delete(_tempDir, recursive: true);
-        }
-        catch (DirectoryNotFoundException)
-        {
+        } catch (DirectoryNotFoundException) {
         }
     }
 
-    private sealed class FakePlatform(string? saveResult) : IPlatformCapabilities
-    {
+    private sealed class FakePlatform(string? saveResult) : IPlatformCapabilities {
         public string? SaveResult { get; } = saveResult;
         public string? LastDefaultName { get; private set; }
         public List<string> Revealed { get; } = [];
 
         public bool IsDesktop => true;
 
-        public Task<string?> ChooseSaveFilePathAsync(string defaultName)
-        {
+        public Task<string?> ChooseSaveFilePathAsync(string defaultName) {
             LastDefaultName = defaultName;
             return Task.FromResult(SaveResult);
         }
 
-        public Task OpenFileInFolderAsync(string path)
-        {
+        public Task OpenFileInFolderAsync(string path) {
             Revealed.Add(path);
             return Task.CompletedTask;
         }
@@ -57,8 +49,7 @@ public sealed class DesktopDownloadServiceTests : IDisposable
     private static IReadOnlyList<Mission> SampleMissions() => [];
 
     [Fact]
-    public async Task DownloadCsvAsync_WritesDomainBytesToChosenPath_AndReveals()
-    {
+    public async Task DownloadCsvAsync_WritesDomainBytesToChosenPath_AndReveals() {
         var missions = SampleMissions();
         var path = Path.Combine(_tempDir, "out.csv");
         var platform = new FakePlatform(path);
@@ -73,8 +64,7 @@ public sealed class DesktopDownloadServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task DownloadXlsxAsync_WritesDomainBytesToChosenPath_AndReveals()
-    {
+    public async Task DownloadXlsxAsync_WritesDomainBytesToChosenPath_AndReveals() {
         var missions = SampleMissions();
         var path = Path.Combine(_tempDir, "out.xlsx");
         var platform = new FakePlatform(path);
@@ -88,8 +78,7 @@ public sealed class DesktopDownloadServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task DownloadCsvAsync_Cancelled_WritesNothing_AndDoesNotReveal()
-    {
+    public async Task DownloadCsvAsync_Cancelled_WritesNothing_AndDoesNotReveal() {
         var platform = new FakePlatform(saveResult: null);
         var sink = new DesktopDownloadService(platform);
 
@@ -100,8 +89,7 @@ public sealed class DesktopDownloadServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task DownloadXlsxAsync_Cancelled_WritesNothing_AndDoesNotReveal()
-    {
+    public async Task DownloadXlsxAsync_Cancelled_WritesNothing_AndDoesNotReveal() {
         var platform = new FakePlatform(saveResult: null);
         var sink = new DesktopDownloadService(platform);
 

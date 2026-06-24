@@ -7,8 +7,7 @@ namespace EggLedger.Web.Tests.Settings;
 /// www/src/components/ColorPicker.vue: hex validation, normalize-to-hex, the
 /// preset palette, and the wheel/dot coordinate math.
 /// </summary>
-public sealed class ColorPickerMathTests
-{
+public sealed class ColorPickerMathTests {
     [Theory]
     [InlineData("#6366f1", true)]
     [InlineData("#FFFFFF", true)]
@@ -22,21 +21,18 @@ public sealed class ColorPickerMathTests
         Assert.Equal(expected, ColorPickerMath.IsValidHex(input));
 
     [Fact]
-    public void NormalizeToHex_LowersValidHex()
-    {
+    public void NormalizeToHex_LowersValidHex() {
         Assert.Equal("#abcdef", ColorPickerMath.NormalizeToHex("#ABCDEF"));
     }
 
     [Fact]
-    public void NormalizeToHex_BadInput_ReturnsFallback()
-    {
+    public void NormalizeToHex_BadInput_ReturnsFallback() {
         Assert.Equal(ColorPickerMath.Fallback, ColorPickerMath.NormalizeToHex("not-a-color"));
         Assert.Equal(ColorPickerMath.Fallback, ColorPickerMath.NormalizeToHex(null));
     }
 
     [Fact]
-    public void NormalizeToHex_ParsesHslString()
-    {
+    public void NormalizeToHex_ParsesHslString() {
         // hsl(0, 100%, 50%) is pure red.
         Assert.Equal("#ff0000", ColorPickerMath.NormalizeToHex("hsl(0, 100%, 50%)"));
         // hsl(120, 100%, 50%) is pure green.
@@ -44,8 +40,7 @@ public sealed class ColorPickerMathTests
     }
 
     [Fact]
-    public void Presets_AreTwentyFourValidHexInVueOrder()
-    {
+    public void Presets_AreTwentyFourValidHexInVueOrder() {
         Assert.Equal(24, ColorPickerMath.PresetColors.Count);
         Assert.All(ColorPickerMath.PresetColors, c => Assert.True(ColorPickerMath.IsValidHex(c)));
         Assert.Equal("#f43f5e", ColorPickerMath.PresetColors[0]);
@@ -53,8 +48,7 @@ public sealed class ColorPickerMathTests
     }
 
     [Fact]
-    public void HslToHex_RoundTripsThroughHexToHslInt()
-    {
+    public void HslToHex_RoundTripsThroughHexToHslInt() {
         // Pure red at full saturation/half lightness round-trips.
         var hsl = ColorPickerMath.HexToHslInt("#ff0000");
         Assert.Equal(0, hsl.H);
@@ -64,23 +58,20 @@ public sealed class ColorPickerMathTests
     }
 
     [Fact]
-    public void HexToHslInt_GreyHasZeroSaturation()
-    {
+    public void HexToHslInt_GreyHasZeroSaturation() {
         var hsl = ColorPickerMath.HexToHslInt("#808080");
         Assert.Equal(0, hsl.S);
         Assert.Equal(50, hsl.L);
     }
 
     [Fact]
-    public void WheelHueSaturation_CentreIsZeroSaturation()
-    {
+    public void WheelHueSaturation_CentreIsZeroSaturation() {
         var (_, s) = ColorPickerMath.WheelHueSaturation(0, 0, 70);
         Assert.Equal(0, s);
     }
 
     [Fact]
-    public void WheelHueSaturation_EdgeIsFullSaturationAndWrapsHue()
-    {
+    public void WheelHueSaturation_EdgeIsFullSaturationAndWrapsHue() {
         // Straight up from centre (dy negative) maps to hue 0 (atan2 + 90 wrap).
         var (h, s) = ColorPickerMath.WheelHueSaturation(0, -70, 70);
         Assert.Equal(100, s);
@@ -88,16 +79,14 @@ public sealed class ColorPickerMathTests
     }
 
     [Fact]
-    public void DotPosition_CentreForZeroSaturation()
-    {
+    public void DotPosition_CentreForZeroSaturation() {
         var (left, top) = ColorPickerMath.DotPosition(220, 0);
         Assert.Equal(50, left, 3);
         Assert.Equal(50, top, 3);
     }
 
     [Fact]
-    public void DotPosition_OffsetForSaturation()
-    {
+    public void DotPosition_OffsetForSaturation() {
         // Hue 90 places the dot to the right ((h-90) shift puts the angle at 0).
         var (left, top) = ColorPickerMath.DotPosition(90, 100);
         Assert.Equal(95, left, 3); // 50 + 45

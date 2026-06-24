@@ -11,8 +11,7 @@ namespace EggLedger.Web.Tests.Missions;
 /// date reference-equality quirk, the dub/bugged-cap operator-as-value path, the
 /// drops contains / does-not-contain logic, and the AND/OR and-only semantics.
 /// </summary>
-public sealed class MissionFilterMatcherTests
-{
+public sealed class MissionFilterMatcherTests {
     private static DatabaseMission Mission(
         MissionInfo.Spaceship? ship = MissionInfo.Spaceship.ChickenOne,
         MissionInfo.DurationType? duration = MissionInfo.DurationType.Short,
@@ -23,8 +22,7 @@ public sealed class MissionFilterMatcherTests
         bool buggedCap = false,
         long launchDT = 0,
         long returnDT = 0,
-        string id = "m1") => new()
-        {
+        string id = "m1") => new() {
             Ship = ship,
             DurationType = duration,
             Level = level,
@@ -58,8 +56,7 @@ public sealed class MissionFilterMatcherTests
     [InlineData(MissionInfo.Spaceship.ChickenOne, ">", "1", false)]
     [InlineData(MissionInfo.Spaceship.ChickenOne, "<", "1", true)]
     [InlineData(MissionInfo.Spaceship.ChickenHeavy, "<", "1", false)]
-    public async Task ShipField(MissionInfo.Spaceship ship, string op, string val, bool expected)
-    {
+    public async Task ShipField(MissionInfo.Spaceship ship, string op, string val, bool expected) {
         var m = Mission(ship: ship);
         Assert.Equal(expected, await Matcher().TestMissionAgainstFilterAsync(m, C("ship", op, val)));
     }
@@ -69,8 +66,7 @@ public sealed class MissionFilterMatcherTests
     [InlineData(3, "!=", "3", false)]
     [InlineData(5, ">", "3", true)]
     [InlineData(2, "<", "3", true)]
-    public async Task LevelField(int level, string op, string val, bool expected)
-    {
+    public async Task LevelField(int level, string op, string val, bool expected) {
         var m = Mission(level: level);
         Assert.Equal(expected, await Matcher().TestMissionAgainstFilterAsync(m, C("level", op, val)));
     }
@@ -79,8 +75,7 @@ public sealed class MissionFilterMatcherTests
     [InlineData(0, "=", "0", true)]
     [InlineData(1, "=", "0", false)]
     [InlineData(-1, "=", "-1", true)]
-    public async Task TypeField(int missionType, string op, string val, bool expected)
-    {
+    public async Task TypeField(int missionType, string op, string val, bool expected) {
         var m = Mission(missionType: missionType);
         Assert.Equal(expected, await Matcher().TestMissionAgainstFilterAsync(m, C("type", op, val)));
     }
@@ -89,8 +84,7 @@ public sealed class MissionFilterMatcherTests
     [InlineData(40, "=", "40", true)]
     [InlineData(-1, "=", "-1", true)]
     [InlineData(40, "!=", "41", true)]
-    public async Task TargetField(int target, string op, string val, bool expected)
-    {
+    public async Task TargetField(int target, string op, string val, bool expected) {
         var m = Mission(targetInt: target);
         Assert.Equal(expected, await Matcher().TestMissionAgainstFilterAsync(m, C("target", op, val)));
     }
@@ -102,8 +96,7 @@ public sealed class MissionFilterMatcherTests
     [InlineData(false, "true", false)]
     [InlineData(true, "false", false)]
     [InlineData(false, "false", true)]
-    public async Task DubCapField(bool dub, string val, bool expected)
-    {
+    public async Task DubCapField(bool dub, string val, bool expected) {
         var m = Mission(dubCap: dub);
         // The operator slot ("=") is ignored; the value drives commonFilterLogic.
         Assert.Equal(expected, await Matcher().TestMissionAgainstFilterAsync(m, C("dubcap", "=", val)));
@@ -113,8 +106,7 @@ public sealed class MissionFilterMatcherTests
     [InlineData(true, "true", true)]
     [InlineData(false, "false", true)]
     [InlineData(true, "false", false)]
-    public async Task BuggedCapField(bool bugged, string val, bool expected)
-    {
+    public async Task BuggedCapField(bool bugged, string val, bool expected) {
         var m = Mission(buggedCap: bugged);
         Assert.Equal(expected, await Matcher().TestMissionAgainstFilterAsync(m, C("buggedcap", "=", val)));
     }
@@ -122,15 +114,13 @@ public sealed class MissionFilterMatcherTests
     // Date fields. JS quirks: "=" never matches (distinct Date objects);
     // "<"/">" coerce to ms; "<="/">=" fall through to the no-op default (pass).
 
-    private static long Unix(int y, int mo, int d)
-    {
+    private static long Unix(int y, int mo, int d) {
         var dt = new DateTime(y, mo, d, 12, 0, 0, DateTimeKind.Local);
         return ((DateTimeOffset)dt).ToUnixTimeSeconds();
     }
 
     [Fact]
-    public async Task LaunchDate_EqualsMatchesSameDay()
-    {
+    public async Task LaunchDate_EqualsMatchesSameDay() {
         // The Mission Data bar emits "d=" (same-day); the redesigned matcher now
         // compares calendar days correctly instead of the old never-match bug.
         var m = Mission(launchDT: Unix(2024, 6, 1));
@@ -140,8 +130,7 @@ public sealed class MissionFilterMatcherTests
     }
 
     [Fact]
-    public async Task LaunchDate_AfterMatchesLaterMission()
-    {
+    public async Task LaunchDate_AfterMatchesLaterMission() {
         var m = Mission(launchDT: Unix(2024, 6, 2));
         // mission ms > filter midnight -> ">" passes.
         Assert.True(await Matcher().TestMissionAgainstFilterAsync(m, C("launchDT", ">", "2024-06-01")));
@@ -150,15 +139,13 @@ public sealed class MissionFilterMatcherTests
     }
 
     [Fact]
-    public async Task LaunchDate_BeforeMatchesEarlierMission()
-    {
+    public async Task LaunchDate_BeforeMatchesEarlierMission() {
         var m = Mission(launchDT: Unix(2024, 5, 31));
         Assert.True(await Matcher().TestMissionAgainstFilterAsync(m, C("launchDT", "<", "2024-06-01")));
     }
 
     [Fact]
-    public async Task LaunchDate_OnOrBefore_IsInclusive()
-    {
+    public async Task LaunchDate_OnOrBefore_IsInclusive() {
         // "<=" now compares inclusively (fixed from the old no-op-always-pass bug).
         var after = Mission(launchDT: Unix(2024, 12, 31));
         Assert.False(await Matcher().TestMissionAgainstFilterAsync(after, C("launchDT", "<=", "2024-01-01")));
@@ -169,15 +156,13 @@ public sealed class MissionFilterMatcherTests
     }
 
     [Fact]
-    public async Task UnknownField_PassesThrough()
-    {
+    public async Task UnknownField_PassesThrough() {
         var m = Mission();
         Assert.True(await Matcher().TestMissionAgainstFilterAsync(m, C("nonsense", "=", "1")));
     }
 
     [Fact]
-    public async Task IncompleteCondition_ReturnsFalse()
-    {
+    public async Task IncompleteCondition_ReturnsFalse() {
         var m = Mission();
         Assert.False(await Matcher().TestMissionAgainstFilterAsync(m, C("", "=", "1")));
         Assert.False(await Matcher().TestMissionAgainstFilterAsync(m, C("ship", "", "1")));
@@ -201,8 +186,7 @@ public sealed class MissionFilterMatcherTests
         new() { Id = id, Level = level, Rarity = rarity };
 
     [Fact]
-    public async Task Drops_Contains_FindsMatchingDrop()
-    {
+    public async Task Drops_Contains_FindsMatchingDrop() {
         var drops = new List<MissionDrop> { Drop(40, 2, 1) };
         var matcher = Matcher(
             (_, _) => Task.FromResult<IReadOnlyList<MissionDrop>?>(drops),
@@ -214,8 +198,7 @@ public sealed class MissionFilterMatcherTests
     }
 
     [Fact]
-    public async Task Drops_Contains_AnyRarityWildcard()
-    {
+    public async Task Drops_Contains_AnyRarityWildcard() {
         var drops = new List<MissionDrop> { Drop(40, 2, 1) };
         var matcher = Matcher((_, _) => Task.FromResult<IReadOnlyList<MissionDrop>?>(drops), DropConfigs());
         var m = Mission();
@@ -224,8 +207,7 @@ public sealed class MissionFilterMatcherTests
     }
 
     [Fact]
-    public async Task Drops_DoesNotContain()
-    {
+    public async Task Drops_DoesNotContain() {
         var drops = new List<MissionDrop> { Drop(40, 2, 1) };
         var matcher = Matcher((_, _) => Task.FromResult<IReadOnlyList<MissionDrop>?>(drops), DropConfigs());
         var m = Mission();
@@ -234,23 +216,20 @@ public sealed class MissionFilterMatcherTests
     }
 
     [Fact]
-    public async Task Drops_NullFetch_Fails()
-    {
+    public async Task Drops_NullFetch_Fails() {
         var matcher = Matcher((_, _) => Task.FromResult<IReadOnlyList<MissionDrop>?>(null), DropConfigs());
         Assert.False(await matcher.TestMissionAgainstFilterAsync(Mission(), C("drops", "c", "40_2_1_3")));
     }
 
     [Fact]
-    public async Task Drops_MissingShipConfig_Fails()
-    {
+    public async Task Drops_MissingShipConfig_Fails() {
         var matcher = Matcher((_, _) => Task.FromResult<IReadOnlyList<MissionDrop>?>(new List<MissionDrop>()),
             Array.Empty<PossibleMission>());
         Assert.False(await matcher.TestMissionAgainstFilterAsync(Mission(), C("drops", "c", "40_2_1_3")));
     }
 
     [Fact]
-    public async Task Drops_QualityOutOfRange_Fails()
-    {
+    public async Task Drops_QualityOutOfRange_Fails() {
         var drops = new List<MissionDrop> { Drop(40, 2, 1) };
         // level 0 -> maxQual = 5; filter quality 9 > 5 -> filterPassed false.
         var matcher = Matcher((_, _) => Task.FromResult<IReadOnlyList<MissionDrop>?>(drops), DropConfigs());
@@ -260,8 +239,7 @@ public sealed class MissionFilterMatcherTests
     // AND / OR (and-only) semantics.
 
     [Fact]
-    public async Task MissionMatches_AllAndConditionsMustPass()
-    {
+    public async Task MissionMatches_AllAndConditionsMustPass() {
         var m = Mission(ship: MissionInfo.Spaceship.ChickenOne, level: 3);
         var filters = new[] { C("ship", "=", "0"), C("level", "=", "3") };
         Assert.True(await Matcher().MissionMatchesFilterAsync(m, filters, NoOr()));
@@ -271,8 +249,7 @@ public sealed class MissionFilterMatcherTests
     }
 
     [Fact]
-    public async Task MissionMatches_OrSiblingRescuesFailingAnd()
-    {
+    public async Task MissionMatches_OrSiblingRescuesFailingAnd() {
         var m = Mission(ship: MissionInfo.Spaceship.ChickenOne, level: 3);
         var filters = new[] { C("level", "=", "4") }; // fails
         var or = new IReadOnlyList<FilterCondition>?[]
@@ -283,8 +260,7 @@ public sealed class MissionFilterMatcherTests
     }
 
     [Fact]
-    public async Task MissionMatches_OrSiblingAllFail_StillFails()
-    {
+    public async Task MissionMatches_OrSiblingAllFail_StillFails() {
         var m = Mission(level: 3);
         var filters = new[] { C("level", "=", "4") };
         var or = new IReadOnlyList<FilterCondition>?[]
@@ -295,8 +271,7 @@ public sealed class MissionFilterMatcherTests
     }
 
     [Fact]
-    public async Task MissionMatches_EmptyFilters_AlwaysPasses()
-    {
+    public async Task MissionMatches_EmptyFilters_AlwaysPasses() {
         Assert.True(await Matcher().MissionMatchesFilterAsync(Mission(), Array.Empty<FilterCondition>(), NoOr()));
     }
 }

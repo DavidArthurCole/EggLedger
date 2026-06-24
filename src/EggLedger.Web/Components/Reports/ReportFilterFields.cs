@@ -7,8 +7,7 @@ public readonly record struct FilterOp(string Value, string Label);
 public sealed record ReportFilterField(string Key, string Label, string Scope, IReadOnlyList<FilterOp> Ops);
 
 /// <summary>Static report filter field table.</summary>
-public static class ReportFilterFields
-{
+public static class ReportFilterFields {
     private static readonly IReadOnlyList<FilterOp> EqualityOps = new[]
     {
         new FilterOp("=", "is"),

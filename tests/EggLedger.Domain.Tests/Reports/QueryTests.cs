@@ -4,13 +4,10 @@ namespace EggLedger.Domain.Tests.Reports;
 
 // Port of Go reports/query_test.go: where-clause building, numeric validation,
 // time-pivot generation, family-weight clause, weighted-builder shape checks.
-public class QueryTests
-{
+public class QueryTests {
     [Fact]
-    public void BuildWhereClause_MissionScope()
-    {
-        var filters = new ReportFilters
-        {
+    public void BuildWhereClause_MissionScope() {
+        var filters = new ReportFilters {
             And =
             [
                 new FilterCondition { TopLevel = "ship", Op = "=", Val = "3" },
@@ -24,10 +21,8 @@ public class QueryTests
     }
 
     [Fact]
-    public void BuildWhereClause_ArtifactScope()
-    {
-        var filters = new ReportFilters
-        {
+    public void BuildWhereClause_ArtifactScope() {
+        var filters = new ReportFilters {
             And =
             [
                 new FilterCondition { TopLevel = "artifact_rarity", Op = ">=", Val = "2" },
@@ -41,10 +36,8 @@ public class QueryTests
     }
 
     [Fact]
-    public void BuildWhereClause_BooleanOps()
-    {
-        var filters = new ReportFilters
-        {
+    public void BuildWhereClause_BooleanOps() {
+        var filters = new ReportFilters {
             And =
             [
                 new FilterCondition { TopLevel = "dubcap", Op = "true" },
@@ -58,18 +51,15 @@ public class QueryTests
     }
 
     [Fact]
-    public void GroupByColumn_Mappings()
-    {
-        var cases = new Dictionary<string, string>
-        {
+    public void GroupByColumn_Mappings() {
+        var cases = new Dictionary<string, string> {
             ["ship_type"] = "m.ship",
             ["duration_type"] = "m.duration_type",
             ["rarity"] = "d.rarity",
             ["tier"] = "d.level",
             ["spec_type"] = "d.spec_type",
         };
-        foreach (var (groupBy, want) in cases)
-        {
+        foreach (var (groupBy, want) in cases) {
             Assert.Equal(want, QueryBuilder.GroupByColumn(groupBy));
         }
     }
@@ -91,12 +81,10 @@ public class QueryTests
 
     [Theory]
     [MemberData(nameof(NumericValidationCases))]
-    public void BuildWhereClause_NumericValidation(FilterCondition cond, string? wantSub, string? wantArg, bool wantEmpty)
-    {
+    public void BuildWhereClause_NumericValidation(FilterCondition cond, string? wantSub, string? wantArg, bool wantEmpty) {
         var filters = new ReportFilters { And = [cond] };
         var (clause, args) = QueryBuilder.BuildWhereClause(filters);
-        if (wantEmpty)
-        {
+        if (wantEmpty) {
             Assert.Equal("", clause);
             Assert.Empty(args);
             return;
@@ -107,10 +95,8 @@ public class QueryTests
     }
 
     [Fact]
-    public void ConditionToSql_LaunchDTUsesStrftime()
-    {
-        var filters = new ReportFilters
-        {
+    public void ConditionToSql_LaunchDTUsesStrftime() {
+        var filters = new ReportFilters {
             And = [new FilterCondition { TopLevel = "launchDT", Op = ">=", Val = "2025-01-01" }],
         };
         var (clause, args) = QueryBuilder.BuildWhereClause(filters);
@@ -120,10 +106,8 @@ public class QueryTests
     }
 
     [Fact]
-    public void ConditionToSql_ReturnDTLessThan()
-    {
-        var filters = new ReportFilters
-        {
+    public void ConditionToSql_ReturnDTLessThan() {
+        var filters = new ReportFilters {
             And = [new FilterCondition { TopLevel = "returnDT", Op = "<", Val = "2025-06-01" }],
         };
         var (clause, args) = QueryBuilder.BuildWhereClause(filters);
@@ -132,10 +116,8 @@ public class QueryTests
     }
 
     [Fact]
-    public void ConditionToSql_LaunchDTEquals()
-    {
-        var filters = new ReportFilters
-        {
+    public void ConditionToSql_LaunchDTEquals() {
+        var filters = new ReportFilters {
             And = [new FilterCondition { TopLevel = "launchDT", Op = "=", Val = "2025-05-15" }],
         };
         var (clause, args) = QueryBuilder.BuildWhereClause(filters);
@@ -145,10 +127,8 @@ public class QueryTests
     }
 
     [Fact]
-    public void BuildTimePivotQuery_MissionDimensions()
-    {
-        var def = new ReportDefinition
-        {
+    public void BuildTimePivotQuery_MissionDimensions() {
+        var def = new ReportDefinition {
             Mode = "time_series",
             GroupBy = "time_bucket",
             SecondaryGroupBy = "ship_type",
@@ -164,10 +144,8 @@ public class QueryTests
     }
 
     [Fact]
-    public void BuildTimePivotQuery_ArtifactSecondary_JoinsDrops()
-    {
-        var def = new ReportDefinition
-        {
+    public void BuildTimePivotQuery_ArtifactSecondary_JoinsDrops() {
+        var def = new ReportDefinition {
             Mode = "time_series",
             GroupBy = "time_bucket",
             SecondaryGroupBy = "artifact_name",
@@ -180,10 +158,8 @@ public class QueryTests
     }
 
     [Fact]
-    public void BuildTimePivotQuery_CustomBucket_AddsWindowCondition()
-    {
-        var def = new ReportDefinition
-        {
+    public void BuildTimePivotQuery_CustomBucket_AddsWindowCondition() {
+        var def = new ReportDefinition {
             Mode = "time_series",
             GroupBy = "time_bucket",
             SecondaryGroupBy = "duration_type",
@@ -198,10 +174,8 @@ public class QueryTests
     }
 
     [Fact]
-    public void BuildTimePivotQuery_InvalidSecondary_Throws()
-    {
-        var def = new ReportDefinition
-        {
+    public void BuildTimePivotQuery_InvalidSecondary_Throws() {
+        var def = new ReportDefinition {
             Mode = "time_series",
             SecondaryGroupBy = "nonexistent_dimension",
             TimeBucket = "month",
@@ -211,16 +185,14 @@ public class QueryTests
     }
 
     [Fact]
-    public void FamilyWeightClause_Empty()
-    {
+    public void FamilyWeightClause_Empty() {
         var (clause, args) = QueryBuilder.FamilyWeightClause(Array.Empty<int>());
         Assert.Equal("", clause);
         Assert.Empty(args);
     }
 
     [Fact]
-    public void FamilyWeightClause_SingleId()
-    {
+    public void FamilyWeightClause_SingleId() {
         var (clause, args) = QueryBuilder.FamilyWeightClause(new[] { 1 });
         Assert.Contains("d.artifact_id IN", clause);
         Assert.Single(args);
@@ -228,16 +200,14 @@ public class QueryTests
     }
 
     [Fact]
-    public void FamilyWeightClause_MultipleIds()
-    {
+    public void FamilyWeightClause_MultipleIds() {
         var (clause, args) = QueryBuilder.FamilyWeightClause(new[] { 1, 2, 23 });
         Assert.Contains("?, ?, ?", clause);
         Assert.Equal(3, args.Count);
     }
 
     [Fact]
-    public void BuildWeightedAggregateQuery_IncludesHiddenColumns()
-    {
+    public void BuildWeightedAggregateQuery_IncludesHiddenColumns() {
         var def = new ReportDefinition { Subject = "artifacts", Mode = "aggregate", GroupBy = "ship_type", FamilyWeight = "tachyon-stone" };
         var (query, args) = QueryBuilder.BuildWeightedAggregateQuery(
             def, "m.player_id = ?", new List<object?> { "EI1234" }, "d.artifact_id IN (?, ?)", new List<object?> { 1, 2 });
@@ -248,8 +218,7 @@ public class QueryTests
     }
 
     [Fact]
-    public void BuildWeightedPivotQuery_IncludesHiddenColumns()
-    {
+    public void BuildWeightedPivotQuery_IncludesHiddenColumns() {
         var def = new ReportDefinition { Subject = "artifacts", Mode = "aggregate", GroupBy = "ship_type", SecondaryGroupBy = "duration_type", FamilyWeight = "tachyon-stone" };
         var (query, args) = QueryBuilder.BuildWeightedPivotQuery(
             def, "m.player_id = ?", new List<object?> { "EI1234" }, "d.artifact_id IN (?)", new List<object?> { 1 });
@@ -259,8 +228,7 @@ public class QueryTests
     }
 
     [Fact]
-    public void BuildWeightedTimeSeriesQuery_IncludesHiddenColumns()
-    {
+    public void BuildWeightedTimeSeriesQuery_IncludesHiddenColumns() {
         var def = new ReportDefinition { Subject = "artifacts", Mode = "time_series", TimeBucket = "month", FamilyWeight = "tachyon-stone" };
         var (query, args) = QueryBuilder.BuildWeightedTimeSeriesQuery(
             def, "m.player_id = ?", new List<object?> { "EI1234" }, "d.artifact_id IN (?)", new List<object?> { 1 });
@@ -271,8 +239,7 @@ public class QueryTests
     }
 
     [Fact]
-    public void BuildWeightedTimePivotQuery_IncludesHiddenColumns()
-    {
+    public void BuildWeightedTimePivotQuery_IncludesHiddenColumns() {
         var def = new ReportDefinition { Subject = "artifacts", Mode = "time_series", TimeBucket = "month", SecondaryGroupBy = "ship_type", FamilyWeight = "tachyon-stone" };
         var (query, args) = QueryBuilder.BuildWeightedTimePivotQuery(
             def, "m.player_id = ?", new List<object?> { "EI1234" }, "d.artifact_id IN (?)", new List<object?> { 1 });

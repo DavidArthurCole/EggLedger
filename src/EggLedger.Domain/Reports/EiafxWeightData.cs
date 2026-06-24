@@ -6,8 +6,7 @@ namespace EggLedger.Domain.Reports;
 /// Canonical <see cref="IWeightData"/> backed by eiafx crafting-weight / family data.
 /// CraftingWeight mirrors Go reports.craftingWeight, falling back to 1.0 when absent or the cycle-sentinel (0).
 /// </summary>
-public sealed class EiafxWeightData : IWeightData
-{
+public sealed class EiafxWeightData : IWeightData {
     public static readonly EiafxWeightData Instance = new();
 
     public double CraftingWeight(long artifactId, long level) =>

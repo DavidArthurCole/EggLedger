@@ -2,25 +2,21 @@ using EggLedger.Domain.Util;
 
 namespace EggLedger.Domain.Tests;
 
-public class UtilMatrixTests
-{
+public class UtilMatrixTests {
     [Fact]
-    public void Apply2DPctNormalization_RowPct()
-    {
+    public void Apply2DPctNormalization_RowPct() {
         // 2x2 matrix: [[10,30],[20,20]]
         var vals = new double[] { 10, 30, 20, 20 };
         Matrix.Apply2DPctNormalization(vals, 2, 2, "row_pct");
         var rowSums = new[] { vals[0] + vals[1], vals[2] + vals[3] };
-        foreach (var s in rowSums)
-        {
+        foreach (var s in rowSums) {
             Assert.True(Math.Abs(s - 100) <= 0.01, $"row sum = {s:F2}, want 100");
         }
         Assert.True(Math.Abs(vals[0] - 25) <= 0.01, $"vals[0] = {vals[0]:F2}, want 25.0");
     }
 
     [Fact]
-    public void Apply2DPctNormalization_ColPct()
-    {
+    public void Apply2DPctNormalization_ColPct() {
         // 2x2: [[10,30],[10,70]]
         var vals = new double[] { 10, 30, 10, 70 };
         Matrix.Apply2DPctNormalization(vals, 2, 2, "col_pct");
@@ -31,21 +27,18 @@ public class UtilMatrixTests
     }
 
     [Fact]
-    public void Apply2DPctNormalization_GlobalPct()
-    {
+    public void Apply2DPctNormalization_GlobalPct() {
         var vals = new double[] { 25, 25, 25, 25 };
         Matrix.Apply2DPctNormalization(vals, 2, 2, "global_pct");
         var total = vals[0] + vals[1] + vals[2] + vals[3];
         Assert.True(Math.Abs(total - 100) <= 0.01, $"global sum = {total:F2}, want 100");
-        foreach (var v in vals)
-        {
+        foreach (var v in vals) {
             Assert.True(Math.Abs(v - 25) <= 0.01, $"vals = {v:F2}, want 25.0");
         }
     }
 
     [Fact]
-    public void Apply2DPctNormalization_ZeroRow_NoDivisionByZero()
-    {
+    public void Apply2DPctNormalization_ZeroRow_NoDivisionByZero() {
         // row 0 is all zeros - should stay 0, no exception
         var vals = new double[] { 0, 0, 10, 10 };
         Matrix.Apply2DPctNormalization(vals, 2, 2, "row_pct");
@@ -53,20 +46,17 @@ public class UtilMatrixTests
     }
 
     [Fact]
-    public void Apply2DPctNormalization_UnknownMode_Noop()
-    {
+    public void Apply2DPctNormalization_UnknownMode_Noop() {
         var vals = new double[] { 10, 20, 30, 40 };
         var original = new double[] { 10, 20, 30, 40 };
         Matrix.Apply2DPctNormalization(vals, 2, 2, "none");
-        for (var i = 0; i < vals.Length; i++)
-        {
+        for (var i = 0; i < vals.Length; i++) {
             Assert.Equal(original[i], vals[i]);
         }
     }
 
     [Fact]
-    public void Apply2DPctNormalization_EmptyMatrix_Noop()
-    {
+    public void Apply2DPctNormalization_EmptyMatrix_Noop() {
         var vals = Array.Empty<double>();
         Matrix.Apply2DPctNormalization(vals, 0, 0, "row_pct");
         Assert.Empty(vals);

@@ -7,8 +7,7 @@ namespace EggLedger.Desktop.Update;
 /// GitHub releases API client + asset download. HttpClient is injected so URL
 /// construction, JSON parse, and byte write are unit-testable with a stubbed handler.
 /// </summary>
-public sealed class GithubReleaseClient(HttpClient httpClient)
-{
+public sealed class GithubReleaseClient(HttpClient httpClient) {
     /// <summary>Repo the updater polls. Matches Go _githubRepo.</summary>
     public const string GithubRepo = "DavidArthurCole/EggLedger";
 
@@ -21,28 +20,22 @@ public sealed class GithubReleaseClient(HttpClient httpClient)
     /// Fetch the latest stable release tag + notes (GET /releases/latest). Ports
     /// getLatestTag. Returns null when the tag is empty or the request fails.
     /// </summary>
-    public async Task<Release?> GetLatestTagAsync(CancellationToken cancel = default)
-    {
+    public async Task<Release?> GetLatestTagAsync(CancellationToken cancel = default) {
         var url = $"https://api.github.com/repos/{GithubRepo}/releases/latest";
         var json = await GetStringAsync(url, cancel).ConfigureAwait(false);
-        if (json is null)
-        {
+        if (json is null) {
             return null;
         }
-        try
-        {
+        try {
             using var doc = JsonDocument.Parse(json);
             var root = doc.RootElement;
             var tag = root.TryGetProperty("tag_name", out var t) ? t.GetString() : null;
-            if (string.IsNullOrEmpty(tag))
-            {
+            if (string.IsNullOrEmpty(tag)) {
                 return null;
             }
             var body = root.TryGetProperty("body", out var b) ? b.GetString() ?? "" : "";
             return new Release(tag, body);
-        }
-        catch (JsonException)
-        {
+        } catch (JsonException) {
             return null;
         }
     }
@@ -51,46 +44,36 @@ public sealed class GithubReleaseClient(HttpClient httpClient)
     /// Fetch the highest non-draft release including pre-releases (GET /releases).
     /// Ports getLatestTagIncludingPreReleases. Returns null when none parse.
     /// </summary>
-    public async Task<Release?> GetLatestTagIncludingPreReleasesAsync(CancellationToken cancel = default)
-    {
+    public async Task<Release?> GetLatestTagIncludingPreReleasesAsync(CancellationToken cancel = default) {
         var url = $"https://api.github.com/repos/{GithubRepo}/releases?per_page=10";
         var json = await GetStringAsync(url, cancel).ConfigureAwait(false);
-        if (json is null)
-        {
+        if (json is null) {
             return null;
         }
 
-        try
-        {
+        try {
             using var doc = JsonDocument.Parse(json);
-            if (doc.RootElement.ValueKind != JsonValueKind.Array)
-            {
+            if (doc.RootElement.ValueKind != JsonValueKind.Array) {
                 return null;
             }
             EggLedger.Domain.Util.SemVersion? highest = null;
             Release? best = null;
-            foreach (var rel in doc.RootElement.EnumerateArray())
-            {
-                if (rel.TryGetProperty("draft", out var d) && d.ValueKind == JsonValueKind.True)
-                {
+            foreach (var rel in doc.RootElement.EnumerateArray()) {
+                if (rel.TryGetProperty("draft", out var d) && d.ValueKind == JsonValueKind.True) {
                     continue;
                 }
                 var tag = rel.TryGetProperty("tag_name", out var t) ? t.GetString() : null;
-                if (string.IsNullOrEmpty(tag) || !EggLedger.Domain.Util.SemVersion.TryParse(tag, out var v) || v is null)
-                {
+                if (string.IsNullOrEmpty(tag) || !EggLedger.Domain.Util.SemVersion.TryParse(tag, out var v) || v is null) {
                     continue;
                 }
-                if (highest is null || v.GreaterThan(highest))
-                {
+                if (highest is null || v.GreaterThan(highest)) {
                     highest = v;
                     var body = rel.TryGetProperty("body", out var b) ? b.GetString() ?? "" : "";
                     best = new Release(tag, body);
                 }
             }
             return best;
-        }
-        catch (JsonException)
-        {
+        } catch (JsonException) {
             return null;
         }
     }
@@ -98,18 +81,14 @@ public sealed class GithubReleaseClient(HttpClient httpClient)
     /// <summary>
     /// Release asset filename for the current platform. Ports expectedAssetName.
     /// </summary>
-    public static string ExpectedAssetName()
-    {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
+    public static string ExpectedAssetName() {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
             return "EggLedger.exe";
         }
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-        {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) {
             return "EggLedger-linux.tar.gz";
         }
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-        {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
             return RuntimeInformation.OSArchitecture == Architecture.Arm64
                 ? "EggLedger-mac-arm64.zip"
                 : "EggLedger-mac.zip";
@@ -122,36 +101,28 @@ public sealed class GithubReleaseClient(HttpClient httpClient)
     /// release <paramref name="tag"/> (GET /releases/tags/{tag}). Ports
     /// getUpdateAssetURL. Returns null when the asset is missing.
     /// </summary>
-    public async Task<string?> GetUpdateAssetUrlAsync(string tag, CancellationToken cancel = default)
-    {
+    public async Task<string?> GetUpdateAssetUrlAsync(string tag, CancellationToken cancel = default) {
         var url = $"https://api.github.com/repos/{GithubRepo}/releases/tags/{tag}";
         var json = await GetStringAsync(url, cancel).ConfigureAwait(false);
-        if (json is null)
-        {
+        if (json is null) {
             return null;
         }
 
-        try
-        {
+        try {
             using var doc = JsonDocument.Parse(json);
-            if (!doc.RootElement.TryGetProperty("assets", out var assets) || assets.ValueKind != JsonValueKind.Array)
-            {
+            if (!doc.RootElement.TryGetProperty("assets", out var assets) || assets.ValueKind != JsonValueKind.Array) {
                 return null;
             }
             var want = ExpectedAssetName();
-            foreach (var asset in assets.EnumerateArray())
-            {
+            foreach (var asset in assets.EnumerateArray()) {
                 var name = asset.TryGetProperty("name", out var n) ? n.GetString() : null;
-                if (name == want)
-                {
+                if (name == want) {
                     var dl = asset.TryGetProperty("browser_download_url", out var u) ? u.GetString() : null;
                     return string.IsNullOrEmpty(dl) ? null : dl;
                 }
             }
             return null;
-        }
-        catch (JsonException)
-        {
+        } catch (JsonException) {
             return null;
         }
     }
@@ -165,8 +136,7 @@ public sealed class GithubReleaseClient(HttpClient httpClient)
         string assetUrl,
         string destPath,
         Action<long, long>? progress,
-        CancellationToken cancel = default)
-    {
+        CancellationToken cancel = default) {
         using var resp = await _httpClient.GetAsync(assetUrl, HttpCompletionOption.ResponseHeadersRead, cancel)
             .ConfigureAwait(false);
         resp.EnsureSuccessStatusCode();
@@ -178,12 +148,10 @@ public sealed class GithubReleaseClient(HttpClient httpClient)
         long downloaded = 0;
         long lastReport = 0;
         int read;
-        while ((read = await src.ReadAsync(buffer, cancel).ConfigureAwait(false)) > 0)
-        {
+        while ((read = await src.ReadAsync(buffer, cancel).ConfigureAwait(false)) > 0) {
             await dst.WriteAsync(buffer.AsMemory(0, read), cancel).ConfigureAwait(false);
             downloaded += read;
-            if (downloaded - lastReport >= 64 * 1024)
-            {
+            if (downloaded - lastReport >= 64 * 1024) {
                 progress?.Invoke(downloaded, total);
                 lastReport = downloaded;
             }
@@ -191,31 +159,24 @@ public sealed class GithubReleaseClient(HttpClient httpClient)
         progress?.Invoke(downloaded, total);
         await dst.FlushAsync(cancel).ConfigureAwait(false);
 
-        if (total > 0 && downloaded != total)
-        {
+        if (total > 0 && downloaded != total) {
             throw new IOException($"incomplete download: received {downloaded} of {total} bytes");
         }
     }
 
-    private async Task<string?> GetStringAsync(string url, CancellationToken cancel)
-    {
-        try
-        {
+    private async Task<string?> GetStringAsync(string url, CancellationToken cancel) {
+        try {
             using var req = new HttpRequestMessage(HttpMethod.Get, url);
             // GitHub requires a User-Agent; the Go default client sends one implicitly.
-            if (_httpClient.DefaultRequestHeaders.UserAgent.Count == 0)
-            {
+            if (_httpClient.DefaultRequestHeaders.UserAgent.Count == 0) {
                 req.Headers.UserAgent.ParseAdd("EggLedger");
             }
             using var resp = await _httpClient.SendAsync(req, cancel).ConfigureAwait(false);
-            if (!resp.IsSuccessStatusCode)
-            {
+            if (!resp.IsSuccessStatusCode) {
                 return null;
             }
             return await resp.Content.ReadAsStringAsync(cancel).ConfigureAwait(false);
-        }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
-        {
+        } catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException) {
             return null;
         }
     }

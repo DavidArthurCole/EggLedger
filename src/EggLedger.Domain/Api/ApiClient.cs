@@ -9,8 +9,7 @@ namespace EggLedger.Domain.Api;
 /// Port of Go api/request.go. POSTs base64(protobuf) as form field <c>data</c>, reads a
 /// base64 body, decodes to protobuf. Contract frozen; defaults match the Go source.
 /// </summary>
-public sealed partial class ApiClient
-{
+public sealed partial class ApiClient {
     /// <summary>Default game client version string. Must track the live game.</summary>
     public const string DefaultAppVersion = "1.35.7";
 
@@ -55,8 +54,7 @@ public sealed partial class ApiClient
         string appVersion = DefaultAppVersion,
         string appBuild = DefaultAppBuild,
         uint clientVersion = DefaultClientVersion,
-        Platform platform = DefaultPlatform)
-    {
+        Platform platform = DefaultPlatform) {
         _client = httpClient ?? new HttpClient { Timeout = RequestTimeout };
         ApiPrefix = apiPrefix;
         AppVersion = appVersion;
@@ -66,8 +64,7 @@ public sealed partial class ApiClient
     }
 
     /// <summary>Platform is sent as its proto enum name (e.g. "IOS"), matching Go's Platform.String().</summary>
-    public BasicRequestInfo NewBasicRequestInfo(string userId) => new()
-    {
+    public BasicRequestInfo NewBasicRequestInfo(string userId) => new() {
         EiUserId = userId,
         ClientVersion = ClientVersion,
         Version = AppVersion,
@@ -82,13 +79,11 @@ public sealed partial class ApiClient
     public async Task<byte[]> RequestRawPayloadAsync<TReq>(
         string endpoint,
         TReq reqMsg,
-        CancellationToken cancellationToken = default)
-    {
+        CancellationToken cancellationToken = default) {
         string apiUrl = ApiPrefix + endpoint;
 
         byte[] reqBin;
-        using (var buffer = new MemoryStream())
-        {
+        using (var buffer = new MemoryStream()) {
             Serializer.Serialize(buffer, reqMsg);
             reqBin = buffer.ToArray();
         }
@@ -100,38 +95,26 @@ public sealed partial class ApiClient
         });
 
         HttpResponseMessage resp;
-        try
-        {
+        try {
             resp = await _client.PostAsync(apiUrl, form, cancellationToken).ConfigureAwait(false);
-        }
-        catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
-        {
+        } catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested) {
             throw new ApiRequestException($"POST {apiUrl}: timeout after {RequestTimeout}");
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
+        } catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
             throw new ApiRequestException($"POST {apiUrl}: interrupted");
-        }
-        catch (HttpRequestException ex)
-        {
+        } catch (HttpRequestException ex) {
             throw new ApiRequestException($"POST {apiUrl}: {ex.Message}", ex);
         }
 
-        using (resp)
-        {
+        using (resp) {
             string body = await resp.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-            if (!resp.IsSuccessStatusCode)
-            {
+            if (!resp.IsSuccessStatusCode) {
                 throw new ApiRequestException(
                     $"POST {apiUrl}: HTTP {(int)resp.StatusCode}: {body}");
             }
 
-            try
-            {
+            try {
                 return Convert.FromBase64String(body);
-            }
-            catch (FormatException ex)
-            {
+            } catch (FormatException ex) {
                 throw new ApiRequestException(
                     $"POST {apiUrl}: {body}: base64 decode error: {ex.Message}", ex);
             }
@@ -142,65 +125,48 @@ public sealed partial class ApiClient
     /// Decodes a raw payload into <typeparamref name="TMsg"/>. When authenticated, the payload
     /// is an AuthenticatedMessage whose Message may be zlib-compressed. Mirrors Go DecodeAPIResponse.
     /// </summary>
-    public TMsg DecodeApiResponse<TMsg>(string apiUrl, byte[] payload, bool authenticated)
-    {
-        if (!authenticated)
-        {
-            try
-            {
+    public TMsg DecodeApiResponse<TMsg>(string apiUrl, byte[] payload, bool authenticated) {
+        if (!authenticated) {
+            try {
                 return Deserialize<TMsg>(payload);
-            }
-            catch (Exception ex)
-            {
+            } catch (Exception ex) {
                 throw InterpretUnmarshalError(
                     $"unmarshaling {apiUrl} response: {ChainText(ex)}", ex);
             }
         }
 
         AuthenticatedMessage authMsg;
-        try
-        {
+        try {
             authMsg = Deserialize<AuthenticatedMessage>(payload);
-        }
-        catch (Exception ex)
-        {
+        } catch (Exception ex) {
             throw InterpretUnmarshalError(
                 $"unmarshaling {apiUrl} response as AuthenticatedMessage: {ChainText(ex)}", ex);
         }
 
         byte[] msgBytes = authMsg.Message ?? [];
-        if (authMsg.Compressed)
-        {
-            try
-            {
+        if (authMsg.Compressed) {
+            try {
                 msgBytes = ZlibInflate(msgBytes);
-            }
-            catch (Exception ex)
-            {
+            } catch (Exception ex) {
                 throw new ApiRequestException(
                     $"decompressing AuthenticatedMessage payload in {apiUrl}: {ex.Message}", ex);
             }
         }
 
-        try
-        {
+        try {
             return Deserialize<TMsg>(msgBytes);
-        }
-        catch (Exception ex)
-        {
+        } catch (Exception ex) {
             throw InterpretUnmarshalError(
                 $"unmarshaling AuthenticatedMessage payload in {apiUrl} response: {ChainText(ex)}", ex);
         }
     }
 
-    private static TMsg Deserialize<TMsg>(byte[] data)
-    {
+    private static TMsg Deserialize<TMsg>(byte[] data) {
         using var ms = new MemoryStream(data, writable: false);
         return Serializer.Deserialize<TMsg>(ms);
     }
 
-    private static byte[] ZlibInflate(byte[] data)
-    {
+    private static byte[] ZlibInflate(byte[] data) {
         using var input = new MemoryStream(data, writable: false);
         using var zlib = new ZLibStream(input, CompressionMode.Decompress);
         using var output = new MemoryStream();
@@ -212,21 +178,17 @@ public sealed partial class ApiClient
     /// Flattens an exception chain into "Outer -> Inner -> ..." text. WASM strips exception-message
     /// resource strings, so the real cause sits one or more InnerExceptions down; this surfaces it.
     /// </summary>
-    private static string ChainText(Exception ex)
-    {
+    private static string ChainText(Exception ex) {
         var parts = new List<string>();
-        for (Exception? e = ex; e is not null; e = e.InnerException)
-        {
+        for (Exception? e = ex; e is not null; e = e.InnerException) {
             parts.Add($"{e.GetType().Name}: {e.Message}");
         }
         return string.Join(" -> ", parts);
     }
 
-    private static ApiRequestException InterpretUnmarshalError(string message, Exception inner)
-    {
+    private static ApiRequestException InterpretUnmarshalError(string message, Exception inner) {
         if (inner.Message.Contains("invalid UTF-8", StringComparison.OrdinalIgnoreCase) ||
-            inner.Message.Contains("invalid UTF8", StringComparison.OrdinalIgnoreCase))
-        {
+            inner.Message.Contains("invalid UTF8", StringComparison.OrdinalIgnoreCase)) {
             return new ApiRequestException(
                 "API returned corrupted data (invalid UTF-8 in one or more string fields); " +
                 "this is a known issue affecting some players, and it can only be resolved when " +
@@ -237,8 +199,7 @@ public sealed partial class ApiClient
 }
 
 /// <summary>Error raised by <see cref="ApiClient"/> on transport or decode failure.</summary>
-public sealed class ApiRequestException : Exception
-{
+public sealed class ApiRequestException : Exception {
     public ApiRequestException(string message) : base(message) { }
 
     public ApiRequestException(string message, Exception inner) : base(message, inner) { }

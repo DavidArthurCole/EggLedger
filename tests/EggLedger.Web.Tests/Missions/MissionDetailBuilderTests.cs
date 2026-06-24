@@ -10,8 +10,7 @@ namespace EggLedger.Web.Tests.Missions;
 /// of www/src/composables/useMissionDetail.ts: drop splitting/grouping, capacity
 /// modifier, prev/next ids, and the menno key derivation.
 /// </summary>
-public sealed class MissionDetailBuilderTests
-{
+public sealed class MissionDetailBuilderTests {
     private static MissionDrop Drop(string spec, int id = 1, int level = 0, int rarity = 0) =>
         new() { SpecType = spec, Id = id, Level = level, Rarity = rarity };
 
@@ -19,8 +18,7 @@ public sealed class MissionDetailBuilderTests
         string id, int capacity = 4, int nominal = 4,
         MissionInfo.Spaceship ship = MissionInfo.Spaceship.ChickenOne,
         MissionInfo.DurationType dur = MissionInfo.DurationType.Short,
-        int level = 0, int target = -1) => new()
-        {
+        int level = 0, int target = -1) => new() {
             MissiondId = id,
             Capacity = capacity,
             NominalCapcity = nominal,
@@ -32,8 +30,7 @@ public sealed class MissionDetailBuilderTests
         };
 
     [Fact]
-    public void BuildBase_SplitsDropsBySpecType()
-    {
+    public void BuildBase_SplitsDropsBySpecType() {
         var drops = new[]
         {
             Drop("Artifact"),
@@ -51,8 +48,7 @@ public sealed class MissionDetailBuilderTests
     }
 
     [Fact]
-    public void BuildBase_CapacityModifierClampedToTwo()
-    {
+    public void BuildBase_CapacityModifierClampedToTwo() {
         var huge = M("m1", capacity: 100, nominal: 4);
         var d = MissionDetailBuilder.BuildBase(huge, Array.Empty<MissionDrop>(), Array.Empty<DatabaseMission>(), false);
         Assert.Equal(2, d.CapacityModifier);
@@ -63,16 +59,14 @@ public sealed class MissionDetailBuilderTests
     }
 
     [Fact]
-    public void BuildBase_NominalZeroTreatedAsOne()
-    {
+    public void BuildBase_NominalZeroTreatedAsOne() {
         var m = M("m1", capacity: 1, nominal: 0);
         var d = MissionDetailBuilder.BuildBase(m, Array.Empty<MissionDrop>(), Array.Empty<DatabaseMission>(), false);
         Assert.Equal(1, d.CapacityModifier);
     }
 
     [Fact]
-    public void BuildBase_PrevNextFromFilteredList()
-    {
+    public void BuildBase_PrevNextFromFilteredList() {
         var list = new[] { M("a"), M("b"), M("c") };
         var d = MissionDetailBuilder.BuildBase(list[1], Array.Empty<MissionDrop>(), list, extendedInfo: true);
         Assert.Equal("a", d.PrevMission);
@@ -80,8 +74,7 @@ public sealed class MissionDetailBuilderTests
     }
 
     [Fact]
-    public void BuildBase_PrevNull_NextNull_AtEdges()
-    {
+    public void BuildBase_PrevNull_NextNull_AtEdges() {
         var list = new[] { M("a"), M("b") };
         var first = MissionDetailBuilder.BuildBase(list[0], Array.Empty<MissionDrop>(), list, true);
         Assert.Null(first.PrevMission);
@@ -93,8 +86,7 @@ public sealed class MissionDetailBuilderTests
     }
 
     [Fact]
-    public void BuildBase_NoExtendedInfo_NoPrevNext()
-    {
+    public void BuildBase_NoExtendedInfo_NoPrevNext() {
         var list = new[] { M("a"), M("b") };
         var d = MissionDetailBuilder.BuildBase(list[1], Array.Empty<MissionDrop>(), list, extendedInfo: false);
         Assert.Null(d.PrevMission);
@@ -102,22 +94,19 @@ public sealed class MissionDetailBuilderTests
     }
 
     [Fact]
-    public void MennoKey_RemapsMinusOneTarget()
-    {
+    public void MennoKey_RemapsMinusOneTarget() {
         var m = M("m1", ship: MissionInfo.Spaceship.ChickenHeavy, dur: MissionInfo.DurationType.Tutorial, level: 3, target: -1);
         Assert.Equal("2_3_3_10000", MissionDetailBuilder.MennoKey(m));
     }
 
     [Fact]
-    public void MennoKey_KeepsRealTarget()
-    {
+    public void MennoKey_KeepsRealTarget() {
         var m = M("m1", ship: MissionInfo.Spaceship.ChickenOne, dur: MissionInfo.DurationType.Short, level: 0, target: 42);
         Assert.Equal("0_0_0_42", MissionDetailBuilder.MennoKey(m));
     }
 
     [Fact]
-    public void ApplySortMethod_ReSortsAllLists()
-    {
+    public void ApplySortMethod_ReSortsAllLists() {
         var drops = new[]
         {
             Drop("Artifact", id: 1, level: 0, rarity: 0),

@@ -1,8 +1,7 @@
 namespace EggLedger.Web.Missions.Model;
 
 /// <summary>Strongly-typed mission filter: OR of groups, AND within a group. The legacy {and, or} JSON survives only at the persistence boundary via FilterCodec.</summary>
-public sealed record MissionFilter(IReadOnlyList<FilterGroup> Groups)
-{
+public sealed record MissionFilter(IReadOnlyList<FilterGroup> Groups) {
     public static readonly MissionFilter Empty = new(Array.Empty<FilterGroup>());
 
     /// <summary>True when there is nothing to filter (every mission passes).</summary>
@@ -16,8 +15,7 @@ public sealed record FilterGroup(IReadOnlyList<Condition> Conditions);
 public sealed record Condition(FilterField Field, FilterOperator Operator, FilterValue Value);
 
 /// <summary>The mission attribute a condition tests.</summary>
-public enum FilterField
-{
+public enum FilterField {
     Ship,
     DurationType,
     Level,
@@ -32,8 +30,7 @@ public enum FilterField
 }
 
 /// <summary>The value shape a field carries.</summary>
-public enum FilterValueType
-{
+public enum FilterValueType {
     Enum,
     Numeric,
     Date,
@@ -43,8 +40,7 @@ public enum FilterValueType
 }
 
 /// <summary>Comparison operator. Not every operator is legal for every field. The matcher switches on this enum; the UI maps it to labels.</summary>
-public enum FilterOperator
-{
+public enum FilterOperator {
     Equals,
     NotEquals,
     Greater,
@@ -58,8 +54,7 @@ public enum FilterOperator
 }
 
 /// <summary>Closed union of typed filter values. No glob strings.</summary>
-public abstract record FilterValue
-{
+public abstract record FilterValue {
     /// <summary>Enum code (ship / duration / mission-type / target spec name).</summary>
     public sealed record EnumValue(int Code) : FilterValue;
 
@@ -76,15 +71,13 @@ public abstract record FilterValue
     public sealed record Drop(DropMatch Match) : FilterValue;
 
     /// <summary>An unset value (blank editor row); never matches.</summary>
-    public sealed record None : FilterValue
-    {
+    public sealed record None : FilterValue {
         public static readonly None Instance = new();
     }
 }
 
 /// <summary>Structured replacement for the legacy "name_level_rarity_quality" glob; a null field means "any". Quality is the picked threshold the drop's mission config must reach (gated against the matched duration's range at match time); null = any.</summary>
-public sealed record DropMatch(int? Name, int? Level, int? Rarity, double? Quality = null)
-{
+public sealed record DropMatch(int? Name, int? Level, int? Rarity, double? Quality = null) {
     public static readonly DropMatch Any = new(null, null, null);
 
     public static DropMatch AnyOfRarity(int rarity) => new(null, null, rarity);

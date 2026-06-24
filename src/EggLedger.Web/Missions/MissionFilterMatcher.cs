@@ -9,8 +9,7 @@ namespace EggLedger.Web.Missions;
 public delegate Task<IReadOnlyList<MissionDrop>?> ShipDropsFetcher(string accountId, string missionId);
 
 /// <summary>Tests a DatabaseMission against a typed MissionFilter (OR of AND-groups). Pure except Drops, which is async (fetched per mission). Date compares are same-day Equals with inclusive GE/LE. The legacy string entry points convert via FilterCodec and run through the same core.</summary>
-public sealed class MissionFilterMatcher
-{
+public sealed class MissionFilterMatcher {
     private readonly IReadOnlyList<PossibleMission> _durationConfigs;
     private readonly string _accountId;
     private readonly ShipDropsFetcher _fetchDrops;
@@ -18,8 +17,7 @@ public sealed class MissionFilterMatcher
     public MissionFilterMatcher(
         IReadOnlyList<PossibleMission> durationConfigs,
         string? accountId,
-        ShipDropsFetcher fetchDrops)
-    {
+        ShipDropsFetcher fetchDrops) {
         _durationConfigs = durationConfigs;
         _accountId = accountId ?? "";
         _fetchDrops = fetchDrops;
@@ -30,40 +28,30 @@ public sealed class MissionFilterMatcher
         DateTimeOffset.FromUnixTimeSeconds(timestampSeconds).LocalDateTime;
 
     // OR over groups, AND within a group. Empty filter matches everything. Drop conditions run last so cheap fields short-circuit before the async fetch.
-    public async Task<bool> MatchesAsync(DatabaseMission mission, MissionFilter filter)
-    {
-        if (filter.IsEmpty)
-        {
+    public async Task<bool> MatchesAsync(DatabaseMission mission, MissionFilter filter) {
+        if (filter.IsEmpty) {
             return true;
         }
-        foreach (var group in filter.Groups)
-        {
-            if (await GroupMatchesAsync(mission, group).ConfigureAwait(false))
-            {
+        foreach (var group in filter.Groups) {
+            if (await GroupMatchesAsync(mission, group).ConfigureAwait(false)) {
                 return true;
             }
         }
         return false;
     }
 
-    private async Task<bool> GroupMatchesAsync(DatabaseMission mission, FilterGroup group)
-    {
-        if (group.Conditions.Count == 0)
-        {
+    private async Task<bool> GroupMatchesAsync(DatabaseMission mission, FilterGroup group) {
+        if (group.Conditions.Count == 0) {
             return true;
         }
         // Cheap (synchronous) conditions first; drops last.
-        foreach (var c in group.Conditions)
-        {
-            if (c.Field != FilterField.Drops && !MatchesScalar(mission, c))
-            {
+        foreach (var c in group.Conditions) {
+            if (c.Field != FilterField.Drops && !MatchesScalar(mission, c)) {
                 return false;
             }
         }
-        foreach (var c in group.Conditions)
-        {
-            if (c.Field == FilterField.Drops && !await MatchesDropAsync(mission, c.Operator, DropOf(c.Value)).ConfigureAwait(false))
-            {
+        foreach (var c in group.Conditions) {
+            if (c.Field == FilterField.Drops && !await MatchesDropAsync(mission, c.Operator, DropOf(c.Value)).ConfigureAwait(false)) {
                 return false;
             }
         }
@@ -71,10 +59,8 @@ public sealed class MissionFilterMatcher
     }
 
     /// <summary>Single-condition test. Pure except for the Drops case.</summary>
-    public async Task<bool> MatchesAsync(DatabaseMission mission, Condition condition)
-    {
-        if (condition.Field == FilterField.Drops)
-        {
+    public async Task<bool> MatchesAsync(DatabaseMission mission, Condition condition) {
+        if (condition.Field == FilterField.Drops) {
             return await MatchesDropAsync(mission, condition.Operator, DropOf(condition.Value)).ConfigureAwait(false);
         }
         return MatchesScalar(mission, condition);
@@ -83,10 +69,8 @@ public sealed class MissionFilterMatcher
     private static DropMatch DropOf(FilterValue v) =>
         v is FilterValue.Drop d ? d.Match : DropMatch.Any;
 
-    private bool MatchesScalar(DatabaseMission mission, Condition c)
-    {
-        return c.Field switch
-        {
+    private bool MatchesScalar(DatabaseMission mission, Condition c) {
+        return c.Field switch {
             FilterField.Ship => EnumMatch(EnumCode(mission.Ship), c),
             FilterField.DurationType => EnumMatch(EnumCode(mission.DurationType), c),
             FilterField.MissionType => EnumMatch(mission.MissionType, c),
@@ -105,14 +89,11 @@ public sealed class MissionFilterMatcher
         e is null ? null : Convert.ToInt32(e.Value, CultureInfo.InvariantCulture);
 
     // null enum value: fails Equals, passes NotEquals. Ordering operators compare underlying enum codes (legacy filters allowed them).
-    private static bool EnumMatch(int? missionValue, Condition c)
-    {
-        if (c.Value is not FilterValue.EnumValue e)
-        {
+    private static bool EnumMatch(int? missionValue, Condition c) {
+        if (c.Value is not FilterValue.EnumValue e) {
             return false;
         }
-        return c.Operator switch
-        {
+        return c.Operator switch {
             FilterOperator.Equals => missionValue == e.Code,
             FilterOperator.NotEquals => missionValue != e.Code,
             FilterOperator.Greater => missionValue is { } mv && mv > e.Code,
@@ -123,14 +104,11 @@ public sealed class MissionFilterMatcher
         };
     }
 
-    private static bool NumberMatch(double missionValue, Condition c)
-    {
-        if (c.Value is not FilterValue.Number n)
-        {
+    private static bool NumberMatch(double missionValue, Condition c) {
+        if (c.Value is not FilterValue.Number n) {
             return false;
         }
-        return c.Operator switch
-        {
+        return c.Operator switch {
             FilterOperator.Equals => missionValue == n.N,
             FilterOperator.NotEquals => missionValue != n.N,
             FilterOperator.Greater => missionValue > n.N,
@@ -141,14 +119,11 @@ public sealed class MissionFilterMatcher
         };
     }
 
-    private static bool DateMatch(DateOnly missionDay, Condition c)
-    {
-        if (c.Value is not FilterValue.Day d)
-        {
+    private static bool DateMatch(DateOnly missionDay, Condition c) {
+        if (c.Value is not FilterValue.Day d) {
             return false;
         }
-        return c.Operator switch
-        {
+        return c.Operator switch {
             FilterOperator.Equals => missionDay == d.Date,
             FilterOperator.NotEquals => missionDay != d.Date,
             FilterOperator.Greater => missionDay > d.Date,
@@ -159,59 +134,48 @@ public sealed class MissionFilterMatcher
         };
     }
 
-    private static bool BoolMatch(bool missionValue, FilterOperator op) => op switch
-    {
+    private static bool BoolMatch(bool missionValue, FilterOperator op) => op switch {
         FilterOperator.IsTrue => missionValue,
         FilterOperator.IsFalse => !missionValue,
         _ => false,
     };
 
-    private async Task<bool> MatchesDropAsync(DatabaseMission mission, FilterOperator op, DropMatch m)
-    {
+    private async Task<bool> MatchesDropAsync(DatabaseMission mission, FilterOperator op, DropMatch m) {
         var shipConfig = mission.Ship is { } shipEnum
             ? FindShipConfig(Convert.ToInt32(shipEnum, CultureInfo.InvariantCulture))
             : null;
-        if (shipConfig is null)
-        {
+        if (shipConfig is null) {
             return false;
         }
         var durConfig = mission.DurationType is { } durEnum
             ? FindDurConfig(shipConfig, Convert.ToInt32(durEnum, CultureInfo.InvariantCulture))
             : null;
-        if (durConfig is null)
-        {
+        if (durConfig is null) {
             return false;
         }
 
         // Quality gate: a picked quality threshold is reachable only within the matched duration's quality range for this mission level.
-        if (m.Quality is { } q)
-        {
+        if (m.Quality is { } q) {
             double maxQual = durConfig.MaxQuality + durConfig.LevelQualityBump * mission.Level;
-            if (q > maxQual || durConfig.MinQuality > q)
-            {
+            if (q > maxQual || durConfig.MinQuality > q) {
                 return op == FilterOperator.NotContains;
             }
         }
 
         var allDrops = await _fetchDrops(_accountId, mission.MissiondId).ConfigureAwait(false);
-        if (allDrops is null)
-        {
+        if (allDrops is null) {
             return false;
         }
 
         bool anySatisfies = false;
-        foreach (var drop in allDrops)
-        {
-            if (m.Name is { } name && name != drop.Id)
-            {
+        foreach (var drop in allDrops) {
+            if (m.Name is { } name && name != drop.Id) {
                 continue;
             }
-            if (m.Level is { } level && level != drop.Level)
-            {
+            if (m.Level is { } level && level != drop.Level) {
                 continue;
             }
-            if (m.Rarity is { } rarity && rarity != drop.Rarity)
-            {
+            if (m.Rarity is { } rarity && rarity != drop.Rarity) {
                 continue;
             }
             anySatisfies = true;
@@ -221,24 +185,18 @@ public sealed class MissionFilterMatcher
         return op == FilterOperator.NotContains ? !anySatisfies : anySatisfies;
     }
 
-    private PossibleMission? FindShipConfig(int ship)
-    {
-        foreach (var pm in _durationConfigs)
-        {
-            if (Convert.ToInt32(pm.Ship, CultureInfo.InvariantCulture) == ship)
-            {
+    private PossibleMission? FindShipConfig(int ship) {
+        foreach (var pm in _durationConfigs) {
+            if (Convert.ToInt32(pm.Ship, CultureInfo.InvariantCulture) == ship) {
                 return pm;
             }
         }
         return null;
     }
 
-    private static DurationConfig? FindDurConfig(PossibleMission ship, int duration)
-    {
-        foreach (var d in ship.Durations)
-        {
-            if (Convert.ToInt32(d.DurationType, CultureInfo.InvariantCulture) == duration)
-            {
+    private static DurationConfig? FindDurConfig(PossibleMission ship, int duration) {
+        foreach (var d in ship.Durations) {
+            if (Convert.ToInt32(d.DurationType, CultureInfo.InvariantCulture) == duration) {
                 return d;
             }
         }
@@ -246,16 +204,13 @@ public sealed class MissionFilterMatcher
     }
 
     // Compat shim for the legacy string filter API (the existing UI + tests).
-    public async Task<bool> TestMissionAgainstFilterAsync(DatabaseMission mission, FilterCondition filter)
-    {
+    public async Task<bool> TestMissionAgainstFilterAsync(DatabaseMission mission, FilterCondition filter) {
         // Incomplete (missing field/op) -> no match.
-        if (string.IsNullOrEmpty(filter.TopLevel) || string.IsNullOrEmpty(filter.Op))
-        {
+        if (string.IsNullOrEmpty(filter.TopLevel) || string.IsNullOrEmpty(filter.Op)) {
             return false;
         }
         var typed = FilterCodec.FromLegacyCondition(filter);
-        if (typed is null)
-        {
+        if (typed is null) {
             // Unknown but well-formed field: impose no constraint, so it does not filter every mission out.
             return true;
         }
@@ -266,10 +221,8 @@ public sealed class MissionFilterMatcher
     public async Task<bool> MissionMatchesFilterAsync(
         DatabaseMission mission,
         IReadOnlyList<FilterCondition> filters,
-        IReadOnlyList<IReadOnlyList<FilterCondition>?> orFilters)
-    {
-        for (var i = 0; i < filters.Count; i++)
-        {
+        IReadOnlyList<IReadOnlyList<FilterCondition>?> orFilters) {
+        for (var i = 0; i < filters.Count; i++) {
             if (FilterCodec.FromLegacyCondition(filters[i]) is not { } condition)
                 continue;
             if (await MatchesAsync(mission, condition).ConfigureAwait(false))
@@ -282,15 +235,14 @@ public sealed class MissionFilterMatcher
         return true;
     }
 
-    private async Task<bool> AnySiblingMatchesAsync(DatabaseMission mission, IReadOnlyList<FilterCondition>? siblings)
-    {
+    private async Task<bool> AnySiblingMatchesAsync(DatabaseMission mission, IReadOnlyList<FilterCondition>? siblings) {
         if (siblings is null)
             return false;
-        foreach (var sibling in siblings)
-        {
+        foreach (var sibling in siblings) {
             if (FilterCodec.FromLegacyCondition(sibling) is { } typed
-                && await MatchesAsync(mission, typed).ConfigureAwait(false))
+                && await MatchesAsync(mission, typed).ConfigureAwait(false)) {
                 return true;
+            }
         }
         return false;
     }

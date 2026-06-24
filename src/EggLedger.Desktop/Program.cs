@@ -77,8 +77,7 @@ app.MainWindow
     .SetUseOsDefaultLocation(false)
     .Center();
 
-AppDomain.CurrentDomain.UnhandledException += (_, error) =>
-{
+AppDomain.CurrentDomain.UnhandledException += (_, error) => {
     app.MainWindow.ShowMessage("Fatal exception", error.ExceptionObject.ToString() ?? "Unknown error");
 };
 
@@ -90,12 +89,10 @@ static Uri CloudSyncBaseAddress() => new("https://ledgersync.davidarthurcole.me/
 
 // EggLedger product version for the updater compare. Prefer the assembly
 // informational version (strip any +sha suffix), fall back to a default.
-static string DesktopAppVersion()
-{
+static string DesktopAppVersion() {
     var info = Assembly.GetEntryAssembly()?
         .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
-    if (!string.IsNullOrEmpty(info))
-    {
+    if (!string.IsNullOrEmpty(info)) {
         var plus = info.IndexOf('+', StringComparison.Ordinal);
         return plus >= 0 ? info[..plus] : info;
     }

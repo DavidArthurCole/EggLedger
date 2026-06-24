@@ -7,8 +7,7 @@ namespace EggLedger.Desktop.Update;
 /// impl replaces the Go per-OS waitForProcessExit; the interface keeps it
 /// injectable for tests.
 /// </summary>
-public interface IProcessProbe
-{
+public interface IProcessProbe {
     /// <summary>True if a process with this PID currently exists.</summary>
     bool Exists(int pid);
 }
@@ -18,26 +17,18 @@ public interface IProcessProbe
 /// gone (Exists = false); HasExited is honored so a finished-but-unreaped process
 /// reports gone, matching the Go WaitForSingleObject behavior.
 /// </summary>
-public sealed class ProcessProbe : IProcessProbe
-{
-    public bool Exists(int pid)
-    {
-        if (pid <= 0)
-        {
+public sealed class ProcessProbe : IProcessProbe {
+    public bool Exists(int pid) {
+        if (pid <= 0) {
             return false;
         }
-        try
-        {
+        try {
             using var proc = Process.GetProcessById(pid);
             return !proc.HasExited;
-        }
-        catch (ArgumentException)
-        {
+        } catch (ArgumentException) {
             // No process with that id (already gone).
             return false;
-        }
-        catch (InvalidOperationException)
-        {
+        } catch (InvalidOperationException) {
             return false;
         }
     }
@@ -48,23 +39,18 @@ public sealed class ProcessProbe : IProcessProbe
 /// process is gone, false on timeout while still alive. A zero timeout is a single
 /// immediate probe.
 /// </summary>
-public static class ProcessWait
-{
+public static class ProcessWait {
     /// <summary>
     /// Block until <paramref name="pid"/> is gone or <paramref name="timeout"/>
     /// elapses. Returns true if the process has exited.
     /// </summary>
-    public static bool WaitForExit(IProcessProbe probe, int pid, TimeSpan timeout)
-    {
+    public static bool WaitForExit(IProcessProbe probe, int pid, TimeSpan timeout) {
         var deadline = DateTime.UtcNow + timeout;
-        while (true)
-        {
-            if (!probe.Exists(pid))
-            {
+        while (true) {
+            if (!probe.Exists(pid)) {
                 return true;
             }
-            if (DateTime.UtcNow >= deadline)
-            {
+            if (DateTime.UtcNow >= deadline) {
                 return false;
             }
             Thread.Sleep(50);

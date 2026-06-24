@@ -6,11 +6,9 @@ namespace EggLedger.Domain.Tests.Reports;
 /// Golden tests for the dimension tables, asserting the value/label/scope set
 /// matches the Vue utils/reportDimensions.ts source of truth.
 /// </summary>
-public class ReportDimensionsTests
-{
+public class ReportDimensionsTests {
     [Fact]
-    public void Mission_HasExpectedValuesAndLabels()
-    {
+    public void Mission_HasExpectedValuesAndLabels() {
         var expected = new (string, string)[]
         {
             ("ship_type", "Ship Type"),
@@ -20,8 +18,7 @@ public class ReportDimensionsTests
             ("mission_target", "Mission Target"),
         };
         Assert.Equal(expected.Length, ReportDimensions.Mission.Count);
-        for (int i = 0; i < expected.Length; i++)
-        {
+        for (int i = 0; i < expected.Length; i++) {
             Assert.Equal(expected[i].Item1, ReportDimensions.Mission[i].Value);
             Assert.Equal(expected[i].Item2, ReportDimensions.Mission[i].Label);
             Assert.Equal(DimensionScope.Mission, ReportDimensions.Mission[i].Scope);
@@ -29,8 +26,7 @@ public class ReportDimensionsTests
     }
 
     [Fact]
-    public void Artifact_HasExpectedValuesAndLabels()
-    {
+    public void Artifact_HasExpectedValuesAndLabels() {
         var expected = new (string, string)[]
         {
             ("artifact_name", "Artifact Name"),
@@ -39,8 +35,7 @@ public class ReportDimensionsTests
             ("spec_type", "Spec Type"),
         };
         Assert.Equal(expected.Length, ReportDimensions.Artifact.Count);
-        for (int i = 0; i < expected.Length; i++)
-        {
+        for (int i = 0; i < expected.Length; i++) {
             Assert.Equal(expected[i].Item1, ReportDimensions.Artifact[i].Value);
             Assert.Equal(expected[i].Item2, ReportDimensions.Artifact[i].Label);
             Assert.Equal(DimensionScope.Artifact, ReportDimensions.Artifact[i].Scope);
@@ -48,16 +43,14 @@ public class ReportDimensionsTests
     }
 
     [Fact]
-    public void All_IsMissionThenArtifact()
-    {
+    public void All_IsMissionThenArtifact() {
         Assert.Equal(9, ReportDimensions.All.Count);
         Assert.Equal("ship_type", ReportDimensions.All[0].Value);
         Assert.Equal("artifact_name", ReportDimensions.All[5].Value);
     }
 
     [Fact]
-    public void ArtifactKeys_ContainsOnlyArtifactValues()
-    {
+    public void ArtifactKeys_ContainsOnlyArtifactValues() {
         Assert.Contains("rarity", ReportDimensions.ArtifactKeys);
         Assert.DoesNotContain("ship_type", ReportDimensions.ArtifactKeys);
         Assert.Equal(4, ReportDimensions.ArtifactKeys.Count);

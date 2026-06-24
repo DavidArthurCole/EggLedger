@@ -3,8 +3,7 @@ using System.Globalization;
 namespace EggLedger.Web.Settings;
 
 /// <summary>Settings-tab model: defaults, Go setting keys, and (de)serialization. Values persist as string key/value via <c>IndexedDbSettings</c> using the Go keys so behavior matches across builds.</summary>
-public sealed class SettingsModel
-{
+public sealed class SettingsModel {
     // Setting keys (match the Go storage.go dbSet calls).
 
     public const string KeyAutoRefreshMenno = "auto_refresh_menno_pref";
@@ -65,8 +64,7 @@ public sealed class SettingsModel
         : n;
 
     /// <summary>Hydrates the model from a settings map. Missing keys keep the Go defaults; worker count is clamped to [1, 10].</summary>
-    public void LoadFrom(IReadOnlyDictionary<string, string> settings)
-    {
+    public void LoadFrom(IReadOnlyDictionary<string, string> settings) {
         AutoRefreshMenno = Bool(settings, KeyAutoRefreshMenno, AutoRefreshMenno);
         AutoRetry = Bool(settings, KeyRetryFailedMissions, AutoRetry);
         HideTimeoutErrors = Bool(settings, KeyHideTimeoutErrors, HideTimeoutErrors);

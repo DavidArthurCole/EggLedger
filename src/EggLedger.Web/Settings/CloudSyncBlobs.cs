@@ -6,8 +6,7 @@ using EggLedger.Web.Data;
 namespace EggLedger.Web.Settings;
 
 /// <summary>The machine-agnostic settings safe to sync across devices. JSON names are a frozen contract and must match Go byte-for-byte for cross-device round-trip.</summary>
-public sealed record CloudSyncableSettings
-{
+public sealed record CloudSyncableSettings {
     [JsonPropertyName("auto_refresh_menno_pref")]
     public bool AutoRefreshMennoPref { get; init; }
 
@@ -64,8 +63,7 @@ public sealed record CloudSyncableSettings
 }
 
 /// <summary>One group entry in the "reports" blob. JSON keys are pinned PascalCase to byte-match the untagged Go <c>reportdb.ReportGroupRow</c>, NOT the local snake_case.</summary>
-public sealed record CloudReportGroup
-{
+public sealed record CloudReportGroup {
     [JsonPropertyName("Id")]
     public string Id { get; init; } = "";
 
@@ -82,8 +80,7 @@ public sealed record CloudReportGroup
     public long CreatedAt { get; init; }
 
     /// <summary>Maps a local IndexedDB group row to its Go wire shape.</summary>
-    public static CloudReportGroup FromRow(ReportGroupRow r) => new()
-    {
+    public static CloudReportGroup FromRow(ReportGroupRow r) => new() {
         Id = r.Id,
         AccountId = r.AccountId,
         Name = r.Name,
@@ -92,8 +89,7 @@ public sealed record CloudReportGroup
     };
 
     /// <summary>Maps a Go wire group back to a local IndexedDB group row.</summary>
-    public ReportGroupRow ToRow() => new()
-    {
+    public ReportGroupRow ToRow() => new() {
         Id = Id,
         AccountId = AccountId,
         Name = Name,
@@ -103,8 +99,7 @@ public sealed record CloudReportGroup
 }
 
 /// <summary>The "reports" blob payload (all reports + groups). A frozen cross-device contract: reports are camelCase <see cref="ReportDefinition"/>, groups are PascalCase <see cref="CloudReportGroup"/>, matching Go exactly.</summary>
-public sealed record CloudReportsBlob
-{
+public sealed record CloudReportsBlob {
     [JsonPropertyName("reports")]
     public IReadOnlyList<ReportDefinition> Reports { get; init; } = [];
 
@@ -113,24 +108,21 @@ public sealed record CloudReportsBlob
 
     /// <summary>Packs local IndexedDB rows into the Go-shaped blob (filters string becomes a nested object).</summary>
     public static CloudReportsBlob Pack(
-        IReadOnlyList<ReportRow> reports, IReadOnlyList<ReportGroupRow> groups) => new()
-        {
+        IReadOnlyList<ReportRow> reports, IReadOnlyList<ReportGroupRow> groups) => new() {
             Reports = reports.Select(ReportMapping.ToDefinition).ToList(),
             Groups = groups.Select(CloudReportGroup.FromRow).ToList(),
         };
 }
 
 /// <summary>Pure pack/unpack for the three cloud-sync blobs (accounts/settings/reports). This only shapes payloads; HTTP transport and the poll loop live elsewhere.</summary>
-public static class CloudSyncBlobs
-{
+public static class CloudSyncBlobs {
     /// <summary>The three frozen blob names, matching Go putBlob/getBlob.</summary>
     public const string AccountsBlob = "accounts";
     public const string SettingsBlob = "settings";
     public const string ReportsBlob = "reports";
 
     /// <summary>Projects the cloud-syncable subset out of the full settings map, each key read with the desktop app's default when absent.</summary>
-    public static CloudSyncableSettings PackSettings(IReadOnlyDictionary<string, string> settings) => new()
-    {
+    public static CloudSyncableSettings PackSettings(IReadOnlyDictionary<string, string> settings) => new() {
         AutoRefreshMennoPref = Bool(settings, SettingsModel.KeyAutoRefreshMenno, false),
         RetryFailedMissions = Bool(settings, SettingsModel.KeyRetryFailedMissions, false),
         HideTimeoutErrors = Bool(settings, SettingsModel.KeyHideTimeoutErrors, false),
@@ -152,8 +144,7 @@ public static class CloudSyncBlobs
     };
 
     /// <summary>Turns a restored settings blob into key/value pairs to upsert; only syncable keys are written (machine-local prefs untouched).</summary>
-    public static IReadOnlyDictionary<string, string> UnpackSettings(CloudSyncableSettings s) => new Dictionary<string, string>
-    {
+    public static IReadOnlyDictionary<string, string> UnpackSettings(CloudSyncableSettings s) => new Dictionary<string, string> {
         [SettingsModel.KeyAutoRefreshMenno] = SettingsModel.FormatBool(s.AutoRefreshMennoPref),
         [SettingsModel.KeyRetryFailedMissions] = SettingsModel.FormatBool(s.RetryFailedMissions),
         [SettingsModel.KeyHideTimeoutErrors] = SettingsModel.FormatBool(s.HideTimeoutErrors),
@@ -178,14 +169,11 @@ public static class CloudSyncBlobs
     public static (List<ReportGroupRow> Groups, List<ReportRow> Reports) SelectReportsToImport(
         CloudReportsBlob remote,
         IReadOnlyCollection<string> existingGroupIds,
-        IReadOnlyCollection<string> existingReportIds)
-    {
+        IReadOnlyCollection<string> existingReportIds) {
         var groups = new List<ReportGroupRow>();
         var seenGroups = new HashSet<string>(existingGroupIds, StringComparer.Ordinal);
-        foreach (var g in remote.Groups)
-        {
-            if (string.IsNullOrEmpty(g.Id) || !seenGroups.Add(g.Id))
-            {
+        foreach (var g in remote.Groups) {
+            if (string.IsNullOrEmpty(g.Id) || !seenGroups.Add(g.Id)) {
                 continue;
             }
             groups.Add(g.ToRow());
@@ -193,10 +181,8 @@ public static class CloudSyncBlobs
 
         var reports = new List<ReportRow>();
         var seenReports = new HashSet<string>(existingReportIds, StringComparer.Ordinal);
-        foreach (var d in remote.Reports)
-        {
-            if (string.IsNullOrEmpty(d.Id) || !seenReports.Add(d.Id))
-            {
+        foreach (var d in remote.Reports) {
+            if (string.IsNullOrEmpty(d.Id) || !seenReports.Add(d.Id)) {
                 continue;
             }
             reports.Add(ReportMapping.ToRow(d));

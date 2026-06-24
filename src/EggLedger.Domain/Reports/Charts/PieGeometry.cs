@@ -12,8 +12,7 @@ public readonly record struct PieSlice(string Label, double Value, double Pct, s
 /// Pie chart geometry. Port of ReportPieChart.vue: top-N rollup, slice sweep angles,
 /// and the SVG arc path. Label callout placement stays in the Razor component.
 /// </summary>
-public static class PieGeometry
-{
+public static class PieGeometry {
     /// <summary>Maximum number of slices before the rest roll into "Other".</summary>
     public const int MaxSegments = 10;
 
@@ -21,22 +20,18 @@ public static class PieGeometry
     /// Pie items, rolling everything past <see cref="MaxSegments"/> - 1 into one "Other"
     /// slice (sorted by value desc before the cut); empty when total is zero. Port of ReportPieChart items.
     /// </summary>
-    public static List<PieItem> BuildItems(IReadOnlyList<string> labels, IReadOnlyList<double> values)
-    {
+    public static List<PieItem> BuildItems(IReadOnlyList<string> labels, IReadOnlyList<double> values) {
         double total = values.Sum();
-        if (total == 0)
-        {
+        if (total == 0) {
             return [];
         }
 
         var items = new List<PieItem>(labels.Count);
-        for (int i = 0; i < labels.Count; i++)
-        {
+        for (int i = 0; i < labels.Count; i++) {
             items.Add(new PieItem(labels[i], i < values.Count ? values[i] : 0));
         }
 
-        if (items.Count > MaxSegments)
-        {
+        if (items.Count > MaxSegments) {
             var sorted = items.OrderByDescending(x => x.Value).ToList();
             var kept = sorted.Take(MaxSegments - 1).ToList();
             double other = sorted.Skip(MaxSegments - 1).Sum(x => x.Value);
@@ -47,8 +42,7 @@ public static class PieGeometry
     }
 
     /// <summary>SVG path for a pie slice from center, radius, and start/end angles (radians). Port of ReportPieChart slicePath.</summary>
-    public static string SlicePath(double cx, double cy, double r, double startAngle, double endAngle)
-    {
+    public static string SlicePath(double cx, double cy, double r, double startAngle, double endAngle) {
         double sx = cx + Math.Cos(startAngle) * r;
         double sy = cy + Math.Sin(startAngle) * r;
         double ex = cx + Math.Cos(endAngle) * r;
@@ -71,20 +65,17 @@ public static class PieGeometry
         double cy,
         double r,
         string baseColor,
-        IReadOnlyDictionary<string, string> labelColors)
-    {
+        IReadOnlyDictionary<string, string> labelColors) {
         var items = BuildItems(labels, values);
         var slices = new List<PieSlice>(items.Count);
-        if (items.Count == 0)
-        {
+        if (items.Count == 0) {
             return slices;
         }
 
         double total = items.Sum(i => i.Value);
         var autoColors = SliceColors.AutoSliceColors(baseColor, items.Count);
         double angleOffset = -Math.PI / 2;
-        for (int i = 0; i < items.Count; i++)
-        {
+        for (int i = 0; i < items.Count; i++) {
             var item = items[i];
             double sweep = total == 0 ? 0 : item.Value / total * 2 * Math.PI;
             double startAngle = angleOffset;

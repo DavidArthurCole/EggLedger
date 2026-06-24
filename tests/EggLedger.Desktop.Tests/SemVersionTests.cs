@@ -8,8 +8,7 @@ namespace EggLedger.Desktop.Tests;
 /// asserts the sign of Compare and the boolean GreaterThan/LessThan helpers the Go
 /// CheckForUpdates path relies on (runningVersion.LessThan(latestVersion) etc).
 /// </summary>
-public sealed class SemVersionTests
-{
+public sealed class SemVersionTests {
     [Theory]
     // Plain semver ordering.
     [InlineData("1.0.0", "2.0.0", -1)]
@@ -44,8 +43,7 @@ public sealed class SemVersionTests
     // Prerelease + metadata: metadata still ignored, prerelease still wins.
     [InlineData("1.0.0-rc.1+x", "1.0.0-rc.1+y", 0)]
     [InlineData("1.0.0-rc.1", "1.0.0", -1)]
-    public void CompareTo_MatchesGoVersionSemantics(string a, string b, int expectedSign)
-    {
+    public void CompareTo_MatchesGoVersionSemantics(string a, string b, int expectedSign) {
         var va = SemVersion.Parse(a);
         var vb = SemVersion.Parse(b);
 
@@ -65,8 +63,7 @@ public sealed class SemVersionTests
     [InlineData("1.0.0-alpha.1+build.7")]
     [InlineData("1.2")]
     [InlineData("10")]
-    public void TryParse_AcceptsWellFormed(string input)
-    {
+    public void TryParse_AcceptsWellFormed(string input) {
         Assert.True(SemVersion.TryParse(input, out var v));
         Assert.NotNull(v);
     }
@@ -76,22 +73,19 @@ public sealed class SemVersionTests
     [InlineData("not-a-version")]
     [InlineData("1.2.x")]
     [InlineData("..")]
-    public void TryParse_RejectsMalformed(string input)
-    {
+    public void TryParse_RejectsMalformed(string input) {
         Assert.False(SemVersion.TryParse(input, out var v));
         Assert.Null(v);
     }
 
     [Fact]
-    public void TryParse_NullReturnsFalse()
-    {
+    public void TryParse_NullReturnsFalse() {
         Assert.False(SemVersion.TryParse(null, out var v));
         Assert.Null(v);
     }
 
     [Fact]
-    public void Canonical_NormalizesPrefixAndPadding()
-    {
+    public void Canonical_NormalizesPrefixAndPadding() {
         Assert.Equal("1.2.0", SemVersion.Parse("v1.2").Canonical());
         Assert.Equal("1.0.0", SemVersion.Parse("1").Canonical());
         Assert.Equal("1.2.3-beta", SemVersion.Parse("1.2.3-beta").Canonical());
@@ -106,8 +100,7 @@ public sealed class SemVersionTests
     [InlineData("2.1.4", "2.1.3", false)]
     [InlineData("2.1.4", "2.2.0-rc.1", true)]
     [InlineData("2.2.0-rc.1", "2.2.0", true)]
-    public void UpdateAvailableDecision_MatchesGo(string running, string latest, bool updateAvailable)
-    {
+    public void UpdateAvailableDecision_MatchesGo(string running, string latest, bool updateAvailable) {
         var run = SemVersion.Parse(running);
         var late = SemVersion.Parse(latest);
         Assert.Equal(updateAvailable, run.LessThan(late));

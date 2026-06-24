@@ -10,11 +10,9 @@ using Microsoft.Extensions.DependencyInjection;
 namespace EggLedger.Web;
 
 /// <summary>Shared DI registration for the Blazor UI, used by both WASM and the desktop host. Host-specific bits (HttpClient base, platform capabilities, storage) are supplied or overridden by the caller.</summary>
-public static class WebServiceRegistration
-{
+public static class WebServiceRegistration {
     /// <summary>Register host-agnostic UI services plus browser defaults. A desktop host calls this then overrides storage (D2) and platform capabilities (D3).</summary>
-    public static IServiceCollection AddEggLedgerWeb(this IServiceCollection services, Uri httpBaseAddress)
-    {
+    public static IServiceCollection AddEggLedgerWeb(this IServiceCollection services, Uri httpBaseAddress) {
         services.AddScoped(_ => new HttpClient { BaseAddress = httpBaseAddress });
 
         // IndexedDB persistence. The desktop host (D2) swaps these for native SQLite-backed stores.

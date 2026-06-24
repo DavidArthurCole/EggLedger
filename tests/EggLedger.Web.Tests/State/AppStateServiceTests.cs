@@ -4,11 +4,9 @@ using EggLedger.Web.State;
 
 namespace EggLedger.Web.Tests.State;
 
-public sealed class AppStateServiceTests
-{
+public sealed class AppStateServiceTests {
     [Fact]
-    public void DefaultsToLedgerTabAndNoVersion()
-    {
+    public void DefaultsToLedgerTabAndNoVersion() {
         var sut = new AppStateService();
         Assert.Equal("Ledger", sut.ActiveTab);
         Assert.Equal("", sut.AppVersion);
@@ -17,8 +15,7 @@ public sealed class AppStateServiceTests
     }
 
     [Fact]
-    public void SettingAppVersionFiresChanged()
-    {
+    public void SettingAppVersionFiresChanged() {
         var sut = new AppStateService();
         var fired = 0;
         sut.Changed += () => fired++;
@@ -30,8 +27,7 @@ public sealed class AppStateServiceTests
     }
 
     [Fact]
-    public void SettingSameValueDoesNotFireChanged()
-    {
+    public void SettingSameValueDoesNotFireChanged() {
         var sut = new AppStateService { ActiveTab = "Reports" };
         var fired = 0;
         sut.Changed += () => fired++;
@@ -42,8 +38,7 @@ public sealed class AppStateServiceTests
     }
 
     [Fact]
-    public void SettingKnownAccountsUpdatesAndFires()
-    {
+    public void SettingKnownAccountsUpdatesAndFires() {
         var sut = new AppStateService();
         var fired = 0;
         sut.Changed += () => fired++;
@@ -59,8 +54,7 @@ public sealed class AppStateServiceTests
     }
 
     [Fact]
-    public void PipelineStateReusesFetchAppStateEnum()
-    {
+    public void PipelineStateReusesFetchAppStateEnum() {
         var sut = new AppStateService();
         var fired = 0;
         sut.Changed += () => fired++;

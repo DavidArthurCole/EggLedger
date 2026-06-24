@@ -36,15 +36,13 @@ public sealed record CloudSession(
     string EncryptionKey);
 
 /// <summary>Outcome of one <see cref="CloudSyncService.PollOnceAsync"/> call: still pending, or done with the session.</summary>
-public sealed record PollResult(bool Pending, CloudSession? Session)
-{
+public sealed record PollResult(bool Pending, CloudSession? Session) {
     public static PollResult StillPending { get; } = new(true, null);
     public static PollResult Done(CloudSession session) => new(false, session);
 }
 
 /// <summary>Raised when a cloud sync request fails loudly (auth expired, server error).</summary>
-public sealed class CloudSyncException : Exception
-{
+public sealed class CloudSyncException : Exception {
     public CloudSyncException(string message) : base(message) { }
     public CloudSyncException(string message, Exception inner) : base(message, inner) { }
 }

@@ -10,8 +10,7 @@ namespace EggLedger.Desktop.Update;
 /// <see cref="IUpdateStatusProvider"/>. Call AFTER AddEggLedgerWeb so this override
 /// wins. Registered as a singleton (the update flow spans the app lifetime).
 /// </summary>
-public static class UpdateRegistration
-{
+public static class UpdateRegistration {
     /// <summary>
     /// Swap the no-op update-status provider for the live <see cref="UpdateService"/>.
     /// </summary>
@@ -22,10 +21,8 @@ public static class UpdateRegistration
     /// itself. Defaults to <see cref="Environment.Exit(int)"/>.
     /// </param>
     public static IServiceCollection AddDesktopUpdater(
-        this IServiceCollection services, Func<string> runningVersion, Func<Task>? exitAction = null)
-    {
-        var exit = exitAction ?? (() =>
-        {
+        this IServiceCollection services, Func<string> runningVersion, Func<Task>? exitAction = null) {
+        var exit = exitAction ?? (() => {
             Environment.Exit(0);
             return Task.CompletedTask;
         });

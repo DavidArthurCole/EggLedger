@@ -4,16 +4,13 @@ using EggLedger.Domain.Reports;
 namespace EggLedger.Domain.Tests.Reports;
 
 // Port of Go reports/weight_test.go. ClassifyWeight + date-window classification.
-public class WeightTests
-{
+public class WeightTests {
     private static string Ago(int days) =>
         DateTime.Now.AddDays(-days).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
     [Fact]
-    public void ClassifyWeight_2D_NoArtifact_IsLow()
-    {
-        var def = new ReportDefinition
-        {
+    public void ClassifyWeight_2D_NoArtifact_IsLow() {
+        var def = new ReportDefinition {
             Mode = "aggregate",
             GroupBy = "ship_type",
             SecondaryGroupBy = "duration_type",
@@ -22,10 +19,8 @@ public class WeightTests
     }
 
     [Fact]
-    public void ClassifyWeight_2D_ArtifactNoDate_IsHeavy()
-    {
-        var def = new ReportDefinition
-        {
+    public void ClassifyWeight_2D_ArtifactNoDate_IsHeavy() {
+        var def = new ReportDefinition {
             Mode = "aggregate",
             GroupBy = "ship_type",
             SecondaryGroupBy = "artifact_name",
@@ -34,15 +29,12 @@ public class WeightTests
     }
 
     [Fact]
-    public void ClassifyWeight_2D_ArtifactWithDate_IsMedium()
-    {
-        var def = new ReportDefinition
-        {
+    public void ClassifyWeight_2D_ArtifactWithDate_IsMedium() {
+        var def = new ReportDefinition {
             Mode = "aggregate",
             GroupBy = "ship_type",
             SecondaryGroupBy = "artifact_name",
-            Filters = new ReportFilters
-            {
+            Filters = new ReportFilters {
                 And = [new FilterCondition { TopLevel = "launchDT", Op = ">=", Val = Ago(30) }],
             },
         };
@@ -50,10 +42,8 @@ public class WeightTests
     }
 
     [Fact]
-    public void ClassifyWeight_TimePivot_NoArtifact_NoDate_IsHeavy()
-    {
-        var def = new ReportDefinition
-        {
+    public void ClassifyWeight_TimePivot_NoArtifact_NoDate_IsHeavy() {
+        var def = new ReportDefinition {
             Mode = "time_series",
             GroupBy = "time_bucket",
             SecondaryGroupBy = "ship_type",
@@ -63,16 +53,13 @@ public class WeightTests
     }
 
     [Fact]
-    public void ClassifyWeight_TimePivot_NoArtifact_WithRecentDate_IsMedium()
-    {
-        var def = new ReportDefinition
-        {
+    public void ClassifyWeight_TimePivot_NoArtifact_WithRecentDate_IsMedium() {
+        var def = new ReportDefinition {
             Mode = "time_series",
             GroupBy = "time_bucket",
             SecondaryGroupBy = "ship_type",
             TimeBucket = "month",
-            Filters = new ReportFilters
-            {
+            Filters = new ReportFilters {
                 And = [new FilterCondition { TopLevel = "launchDT", Op = ">=", Val = Ago(30) }],
             },
         };
@@ -80,16 +67,13 @@ public class WeightTests
     }
 
     [Fact]
-    public void ClassifyWeight_TimePivot_NoArtifact_WithOldDate_IsHeavy()
-    {
-        var def = new ReportDefinition
-        {
+    public void ClassifyWeight_TimePivot_NoArtifact_WithOldDate_IsHeavy() {
+        var def = new ReportDefinition {
             Mode = "time_series",
             GroupBy = "time_bucket",
             SecondaryGroupBy = "ship_type",
             TimeBucket = "month",
-            Filters = new ReportFilters
-            {
+            Filters = new ReportFilters {
                 And = [new FilterCondition { TopLevel = "launchDT", Op = ">=", Val = Ago(180) }],
             },
         };
@@ -97,10 +81,8 @@ public class WeightTests
     }
 
     [Fact]
-    public void ClassifyWeight_TimePivot_ArtifactSecondary_NoDate_IsHeavy()
-    {
-        var def = new ReportDefinition
-        {
+    public void ClassifyWeight_TimePivot_ArtifactSecondary_NoDate_IsHeavy() {
+        var def = new ReportDefinition {
             Mode = "time_series",
             GroupBy = "time_bucket",
             SecondaryGroupBy = "artifact_name",
@@ -110,16 +92,13 @@ public class WeightTests
     }
 
     [Fact]
-    public void ClassifyWeight_TimePivot_ArtifactSecondary_WithDate_IsMedium()
-    {
-        var def = new ReportDefinition
-        {
+    public void ClassifyWeight_TimePivot_ArtifactSecondary_WithDate_IsMedium() {
+        var def = new ReportDefinition {
             Mode = "time_series",
             GroupBy = "time_bucket",
             SecondaryGroupBy = "artifact_name",
             TimeBucket = "month",
-            Filters = new ReportFilters
-            {
+            Filters = new ReportFilters {
                 And = [new FilterCondition { TopLevel = "launchDT", Op = ">=", Val = Ago(30) }],
             },
         };
@@ -129,23 +108,19 @@ public class WeightTests
     // dateFilterWindowDays is private in the port; exercise it via ClassifyWeight
     // outcomes that depend on its value (mirrors the Go behavioral coverage).
     [Fact]
-    public void DateWindow_NoFilter_TreatedAsLarge_TimeSeriesHeavy()
-    {
+    public void DateWindow_NoFilter_TreatedAsLarge_TimeSeriesHeavy() {
         // 1D time series, non-custom, no date filter -> HEAVY (window = 9999).
         var def = new ReportDefinition { Mode = "time_series", GroupBy = "time_bucket", TimeBucket = "month" };
         Assert.Equal("HEAVY", Weight.ClassifyWeight(def));
     }
 
     [Fact]
-    public void DateWindow_RecentLaunch_TimeSeriesMedium()
-    {
-        var def = new ReportDefinition
-        {
+    public void DateWindow_RecentLaunch_TimeSeriesMedium() {
+        var def = new ReportDefinition {
             Mode = "time_series",
             GroupBy = "time_bucket",
             TimeBucket = "month",
-            Filters = new ReportFilters
-            {
+            Filters = new ReportFilters {
                 And = [new FilterCondition { TopLevel = "launchDT", Op = ">=", Val = Ago(30) }],
             },
         };
@@ -153,16 +128,13 @@ public class WeightTests
     }
 
     [Fact]
-    public void DateWindow_PicksMostRestrictive_TimeSeriesMedium()
-    {
+    public void DateWindow_PicksMostRestrictive_TimeSeriesMedium() {
         // Window picks the smallest (10 days) -> MEDIUM, not HEAVY.
-        var def = new ReportDefinition
-        {
+        var def = new ReportDefinition {
             Mode = "time_series",
             GroupBy = "time_bucket",
             TimeBucket = "month",
-            Filters = new ReportFilters
-            {
+            Filters = new ReportFilters {
                 And =
                 [
                     new FilterCondition { TopLevel = "launchDT", Op = ">=", Val = Ago(90) },

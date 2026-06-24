@@ -6,17 +6,14 @@ using ProtoBuf;
 
 namespace EggLedger.Web.Tests.Data;
 
-public sealed class IndexedDbMissionStoreTests
-{
-    private static (IndexedDbMissionStore Store, FakeIndexedDb Db) Make()
-    {
+public sealed class IndexedDbMissionStoreTests {
+    private static (IndexedDbMissionStore Store, FakeIndexedDb Db) Make() {
         var db = new FakeIndexedDb();
         var decoder = new LocalApiPayloadDecoder(new ApiClient());
         return (new IndexedDbMissionStore(db, decoder), db);
     }
 
-    private static MissionRow MissionMeta(string playerId, string missionId, double start, int ship = 0) => new()
-    {
+    private static MissionRow MissionMeta(string playerId, string missionId, double start, int ship = 0) => new() {
         PlayerId = playerId,
         MissionId = missionId,
         StartTimestamp = start,
@@ -29,8 +26,7 @@ public sealed class IndexedDbMissionStoreTests
     /// serialized CompleteMissionResponse, gzipped. Mirrors the on-disk format
     /// the Go fetch pipeline writes (raw API response, DB-gzipped).
     /// </summary>
-    private static byte[] PackPayload(CompleteMissionResponse resp)
-    {
+    private static byte[] PackPayload(CompleteMissionResponse resp) {
         using var inner = new MemoryStream();
         Serializer.Serialize(inner, resp);
         var auth = new AuthenticatedMessage { Message = inner.ToArray(), Compressed = false };
@@ -39,8 +35,7 @@ public sealed class IndexedDbMissionStoreTests
         Serializer.Serialize(authBytes, auth);
 
         using var gzipped = new MemoryStream();
-        using (var gz = new GZipStream(gzipped, CompressionMode.Compress, leaveOpen: true))
-        {
+        using (var gz = new GZipStream(gzipped, CompressionMode.Compress, leaveOpen: true)) {
             var raw = authBytes.ToArray();
             gz.Write(raw, 0, raw.Length);
         }
@@ -48,8 +43,7 @@ public sealed class IndexedDbMissionStoreTests
     }
 
     [Fact]
-    public async Task GetCompleteMissionIdsAsync_ReturnsOnlyPlayerRows_OrderedByStart()
-    {
+    public async Task GetCompleteMissionIdsAsync_ReturnsOnlyPlayerRows_OrderedByStart() {
         var (store, db) = Make();
         db.Seed("mission", MissionMeta("EI1", "m2", start: 200));
         db.Seed("mission", MissionMeta("EI1", "m1", start: 100));
@@ -61,16 +55,14 @@ public sealed class IndexedDbMissionStoreTests
     }
 
     [Fact]
-    public async Task GetCompleteMissionIdsAsync_EmptyWhenNoRows()
-    {
+    public async Task GetCompleteMissionIdsAsync_EmptyWhenNoRows() {
         var (store, _) = Make();
         var ids = await store.GetCompleteMissionIdsAsync("EI1");
         Assert.Empty(ids!);
     }
 
     [Fact]
-    public async Task GetPlayerMissionStatsAsync_CountsAndMaxReturn()
-    {
+    public async Task GetPlayerMissionStatsAsync_CountsAndMaxReturn() {
         var (store, db) = Make();
         db.Seed("mission", MissionMeta("EI1", "m1", start: 100)); // return 200
         db.Seed("mission", MissionMeta("EI1", "m2", start: 500)); // return 600
@@ -84,8 +76,7 @@ public sealed class IndexedDbMissionStoreTests
     }
 
     [Fact]
-    public async Task GetPlayerMissionStatsAsync_ZeroWhenNoRows()
-    {
+    public async Task GetPlayerMissionStatsAsync_ZeroWhenNoRows() {
         var (store, _) = Make();
         var stats = await store.GetPlayerMissionStatsAsync("EI1");
         Assert.NotNull(stats);
@@ -94,8 +85,7 @@ public sealed class IndexedDbMissionStoreTests
     }
 
     [Fact]
-    public async Task CountPendingFilterColsAsync_CountsShipMinusOne()
-    {
+    public async Task CountPendingFilterColsAsync_CountsShipMinusOne() {
         var (store, db) = Make();
         db.Seed("mission", MissionMeta("EI1", "done", start: 1, ship: 0));
         db.Seed("mission", MissionMeta("EI1", "pending1", start: 2, ship: -1));
@@ -105,21 +95,17 @@ public sealed class IndexedDbMissionStoreTests
     }
 
     [Fact]
-    public async Task GetCompleteMissionAsync_DecodesGzippedAuthenticatedPayload()
-    {
+    public async Task GetCompleteMissionAsync_DecodesGzippedAuthenticatedPayload() {
         var (store, db) = Make();
-        var resp = new CompleteMissionResponse
-        {
+        var resp = new CompleteMissionResponse {
             Success = true,
             Info = new MissionInfo { Identifier = "m1", Ship = MissionInfo.Spaceship.Henerprise },
         };
-        resp.Artifacts.Add(new CompleteMissionResponse.SecureArtifactSpec
-        {
+        resp.Artifacts.Add(new CompleteMissionResponse.SecureArtifactSpec {
             Spec = new ArtifactSpec { name = ArtifactSpec.Name.TachyonDeflector },
         });
 
-        db.Seed("mission", new MissionRow
-        {
+        db.Seed("mission", new MissionRow {
             PlayerId = "EI1",
             MissionId = "m1",
             StartTimestamp = 12345,
@@ -140,16 +126,14 @@ public sealed class IndexedDbMissionStoreTests
     }
 
     [Fact]
-    public async Task GetCompleteMissionAsync_NullOnCacheMiss()
-    {
+    public async Task GetCompleteMissionAsync_NullOnCacheMiss() {
         var (store, db) = Make();
         db.Seed("mission", MissionMeta("EI1", "m1", start: 1));
         Assert.Null(await store.GetCompleteMissionAsync("EI1", "nope"));
     }
 
     [Fact]
-    public async Task StreamPlayerCompleteMissionsAsync_VisitsDecodedMissionsInOrder()
-    {
+    public async Task StreamPlayerCompleteMissionsAsync_VisitsDecodedMissionsInOrder() {
         var (store, db) = Make();
         db.Seed("mission", PayloadRow("EI1", "m2", start: 200, identifier: "m2"));
         db.Seed("mission", PayloadRow("EI1", "m1", start: 100, identifier: "m1"));
@@ -161,15 +145,12 @@ public sealed class IndexedDbMissionStoreTests
         Assert.Equal(new[] { "m1", "m2" }, seen);
     }
 
-    private static MissionRow PayloadRow(string playerId, string missionId, double start, string identifier)
-    {
-        var resp = new CompleteMissionResponse
-        {
+    private static MissionRow PayloadRow(string playerId, string missionId, double start, string identifier) {
+        var resp = new CompleteMissionResponse {
             Success = true,
             Info = new MissionInfo { Identifier = identifier },
         };
-        return new MissionRow
-        {
+        return new MissionRow {
             PlayerId = playerId,
             MissionId = missionId,
             StartTimestamp = start,

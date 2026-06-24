@@ -4,10 +4,8 @@ using EggLedger.Web.Tests.Data;
 
 namespace EggLedger.Web.Tests.Services;
 
-public sealed class DownloadServiceTests
-{
-    private static (DownloadService Service, FakeJsObjectReference Module) Make()
-    {
+public sealed class DownloadServiceTests {
+    private static (DownloadService Service, FakeJsObjectReference Module) Make() {
         var module = new FakeJsObjectReference();
         var runtime = new FakeJsRuntime(module);
         return (new DownloadService(runtime), module);
@@ -32,8 +30,7 @@ public sealed class DownloadServiceTests
     };
 
     [Fact]
-    public async Task DownloadCsvAsync_forwards_download_with_csv_bytes_and_mime()
-    {
+    public async Task DownloadCsvAsync_forwards_download_with_csv_bytes_and_mime() {
         var (service, module) = Make();
         var missions = CannedMissions();
         var expectedBase64 = Convert.ToBase64String(MissionExport.MissionsToCsvBytes(missions));
@@ -48,8 +45,7 @@ public sealed class DownloadServiceTests
     }
 
     [Fact]
-    public async Task DownloadXlsxAsync_forwards_download_with_xlsx_bytes_and_mime()
-    {
+    public async Task DownloadXlsxAsync_forwards_download_with_xlsx_bytes_and_mime() {
         var (service, module) = Make();
         var missions = CannedMissions();
         var expectedBase64 = Convert.ToBase64String(MissionExport.MissionsToXlsxBytes(missions));
@@ -66,8 +62,7 @@ public sealed class DownloadServiceTests
     }
 
     [Fact]
-    public async Task Module_imported_once_across_calls()
-    {
+    public async Task Module_imported_once_across_calls() {
         var module = new FakeJsObjectReference();
         var runtime = new FakeJsRuntime(module);
         var service = new DownloadService(runtime);
