@@ -4,17 +4,12 @@ using System.Text.Json;
 namespace EggLedger.Domain.Reports.Charts;
 
 /// <summary>
-/// Pure color math for pie and bar chart slices. Port of the Vue
-/// useSliceColors.ts composable (the pure parts): hex/HSL conversion and the
-/// auto hue-spread that drives per-label chart colors. Labels without an explicit
-/// override fall back to an auto-generated hue spread derived from a base color.
+/// Color math for pie and bar chart slices. Port of Vue useSliceColors.ts: hex/HSL
+/// conversion and the auto hue-spread. Labels without an override fall back to the spread.
 /// </summary>
 public static class SliceColors
 {
-    /// <summary>
-    /// Converts a #rrggbb hex string to (hue[0..360), saturation[0..1], lightness[0..1]).
-    /// Port of the useSliceColors hexToHsl.
-    /// </summary>
+    /// <summary>Converts #rrggbb to (hue[0..360), saturation[0..1], lightness[0..1]). Port of useSliceColors hexToHsl.</summary>
     public static (double H, double S, double L) HexToHsl(string hex)
     {
         double rv = ParseByte(hex, 1) / 255.0;
@@ -45,10 +40,7 @@ public static class SliceColors
         return (h, s, l);
     }
 
-    /// <summary>
-    /// Converts HSL (hue degrees, saturation[0..1], lightness[0..1]) to a #rrggbb
-    /// hex string. Port of the useSliceColors hslToHex.
-    /// </summary>
+    /// <summary>Converts HSL (hue degrees, s[0..1], l[0..1]) to #rrggbb. Port of useSliceColors hslToHex.</summary>
     public static string HslToHex(double h, double s, double l)
     {
         double a = s * Math.Min(l, 1 - l);
@@ -62,10 +54,7 @@ public static class SliceColors
         return $"#{F(0)}{F(8)}{F(4)}";
     }
 
-    /// <summary>
-    /// Returns <paramref name="count"/> colors spread evenly across the hue wheel
-    /// starting at the base color's hue. Port of the useSliceColors autoSliceColors.
-    /// </summary>
+    /// <summary><paramref name="count"/> colors spread across the hue wheel from the base color's hue. Port of useSliceColors autoSliceColors.</summary>
     public static IReadOnlyList<string> AutoSliceColors(string baseColor, int count)
     {
         var (h, s, l) = HexToHsl(baseColor);
@@ -77,10 +66,7 @@ public static class SliceColors
         return result;
     }
 
-    /// <summary>
-    /// Parses a JSON-encoded label-to-hex map, returning an empty map on blank or
-    /// invalid input. Port of the useSliceColors parseLabelColors.
-    /// </summary>
+    /// <summary>Parses a JSON label-to-hex map; empty map on blank or invalid input. Port of useSliceColors parseLabelColors.</summary>
     public static Dictionary<string, string> ParseLabelColors(string? raw)
     {
         if (string.IsNullOrEmpty(raw))
@@ -99,9 +85,8 @@ public static class SliceColors
     }
 
     /// <summary>
-    /// Resolves the color for a label: an explicit override wins, otherwise the
-    /// auto hue-spread slot for the label's index, otherwise the base color. Port
-    /// of the useSliceColors getLabelColor.
+    /// Color for a label: explicit override, else the hue-spread slot for the label's
+    /// index, else the base color. Port of useSliceColors getLabelColor.
     /// </summary>
     public static string GetLabelColor(
         string label,
@@ -135,12 +120,9 @@ public static class SliceColors
     }
 
     private static int ParseByte(string hex, int start) =>
-        int.Parse(hex.Substring(start, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+        int.Parse(hex.AsSpan(start, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture);
 
-    // JS % keeps the sign of the dividend; .NET % does too for doubles, but for
-    // hue math we want a non-negative result like the Vue (h + ...) % 360 chains
-    // that only ever feed non-negative operands. This mirrors that contract while
-    // staying safe for any input.
+    // Non-negative modulo, matching the Vue hue-math contract for any input.
     private static double Mod(double a, double n)
     {
         double r = a % n;

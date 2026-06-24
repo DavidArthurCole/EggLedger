@@ -5,21 +5,9 @@ using System.Text.RegularExpressions;
 namespace EggLedger.Domain.Util;
 
 /// <summary>
-/// Pure version parse + compare, ported to match hashicorp/go-version v1.6.0
-/// (EggLedger/update/version.go uses version.NewVersion + GreaterThan/LessThan).
-/// Lives in Domain because it is pure and UI-agnostic; only desktop self-updates,
-/// but the compare itself has no host dependency.
-///
-/// Semantics matched exactly to go-version v1.6.0:
-/// - optional leading "v"; numeric segments padded to at least 3 with zeros
-///   (1.2 == 1.2.0).
-/// - prerelease after "-", metadata after "+".
-/// - build metadata is ignored in comparison.
-/// - a version WITH a prerelease is less than the same core WITHOUT one
-///   (1.0.0-alpha &lt; 1.0.0).
-/// - prerelease compared dot-part by dot-part: numeric part &lt; non-numeric part;
-///   both numeric -&gt; integer compare; both non-numeric -&gt; ordinal string compare;
-///   a missing part defers to the present part's kind.
+/// Version parse + compare, matching hashicorp/go-version v1.6.0. Gotchas: numeric
+/// segments pad to 3 (1.2 == 1.2.0); metadata ignored in compare; a prerelease sorts
+/// below the same core without one; prerelease compared dot-part by dot-part (numeric &lt; non-numeric).
 /// </summary>
 public sealed partial class SemVersion : IComparable<SemVersion>, IEquatable<SemVersion>
 {
@@ -32,34 +20,28 @@ public sealed partial class SemVersion : IComparable<SemVersion>, IEquatable<Sem
     private static partial Regex VersionRegex();
 
     private readonly long[] _segments;
-    private readonly string _pre;
-    private readonly string _metadata;
-    private readonly string _original;
 
     private SemVersion(long[] segments, string pre, string metadata, string original)
     {
         _segments = segments;
-        _pre = pre;
-        _metadata = metadata;
-        _original = original;
+        Prerelease = pre;
+        Metadata = metadata;
+        Original = original;
     }
 
     /// <summary>Numeric segments (padded to at least 3), excluding pre/metadata.</summary>
     public IReadOnlyList<long> Segments => _segments;
 
     /// <summary>Prerelease string (after "-"), or empty.</summary>
-    public string Prerelease => _pre;
+    public string Prerelease { get; }
 
     /// <summary>Metadata string (after "+"), or empty.</summary>
-    public string Metadata => _metadata;
+    public string Metadata { get; }
 
     /// <summary>The original string as passed to Parse.</summary>
-    public string Original => _original;
+    public string Original { get; }
 
-    /// <summary>
-    /// Parse a version, matching go-version NewVersion. Returns false on a
-    /// malformed version (the Go path returns an error and the caller bails).
-    /// </summary>
+    /// <summary>Parse a version (go-version NewVersion). False on a malformed version.</summary>
     public static bool TryParse(string? input, out SemVersion? version)
     {
         version = null;
@@ -114,10 +96,7 @@ public sealed partial class SemVersion : IComparable<SemVersion>, IEquatable<Sem
             ? v
             : throw new FormatException($"Malformed version: {input}");
 
-    /// <summary>
-    /// Canonical string: dotted segments, then "-pre", then "+metadata".
-    /// Matches go-version String() (used for the fast-path equality check).
-    /// </summary>
+    /// <summary>Canonical string: dotted segments, then "-pre", then "+metadata". Matches go-version String().</summary>
     public string Canonical()
     {
         var sb = new StringBuilder();
@@ -129,21 +108,18 @@ public sealed partial class SemVersion : IComparable<SemVersion>, IEquatable<Sem
             }
             sb.Append(_segments[i].ToString(CultureInfo.InvariantCulture));
         }
-        if (_pre.Length > 0)
+        if (Prerelease.Length > 0)
         {
-            sb.Append('-').Append(_pre);
+            sb.Append('-').Append(Prerelease);
         }
-        if (_metadata.Length > 0)
+        if (Metadata.Length > 0)
         {
-            sb.Append('+').Append(_metadata);
+            sb.Append('+').Append(Metadata);
         }
         return sb.ToString();
     }
 
-    /// <summary>
-    /// Compare this to other: -1 if less, 0 if equal, 1 if greater. Ports
-    /// go-version Version.Compare exactly.
-    /// </summary>
+    /// <summary>Compare: -1/0/1. Ports go-version Version.Compare.</summary>
     public int CompareTo(SemVersion? other)
     {
         ArgumentNullException.ThrowIfNull(other);
@@ -159,8 +135,8 @@ public sealed partial class SemVersion : IComparable<SemVersion>, IEquatable<Sem
 
         if (SegmentsEqual(self, oth))
         {
-            var preSelf = _pre;
-            var preOther = other._pre;
+            var preSelf = Prerelease;
+            var preOther = other.Prerelease;
             if (preSelf.Length == 0 && preOther.Length == 0)
             {
                 return 0;
@@ -219,14 +195,13 @@ public sealed partial class SemVersion : IComparable<SemVersion>, IEquatable<Sem
 
     public override int GetHashCode()
     {
-        // Equality ignores metadata and uses padded segments + prerelease; hash to
-        // match (canonical without metadata).
+        // Equality ignores metadata; hash on padded segments + prerelease to match.
         var hash = new HashCode();
         foreach (var s in _segments)
         {
             hash.Add(s);
         }
-        hash.Add(_pre);
+        hash.Add(Prerelease);
         return hash.ToHashCode();
     }
 

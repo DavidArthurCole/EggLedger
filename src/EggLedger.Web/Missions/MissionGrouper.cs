@@ -2,36 +2,33 @@ using EggLedger.Domain.MissionPacking;
 
 namespace EggLedger.Web.Missions;
 
-/// <summary>A year section with its collapse state. Port of Vue GroupedYear.</summary>
+/// <summary>A year section with its collapse state.</summary>
 public sealed class GroupedYear
 {
     public int Year { get; set; }
     public bool Enabled { get; set; }
 }
 
-/// <summary>A month section with its collapse state. Port of Vue GroupedMonth.</summary>
+/// <summary>A month section with its collapse state.</summary>
 public sealed class GroupedMonth
 {
     public int Month { get; set; }
     public bool Enabled { get; set; }
 }
 
-/// <summary>A day section with its collapse state. Port of Vue GroupedDay.</summary>
+/// <summary>A day section with its collapse state.</summary>
 public sealed class GroupedDay
 {
     public int Day { get; set; }
     public bool Enabled { get; set; }
 }
 
-/// <summary>
-/// The collapse-state arrays paralleling the mission matrix. Port of Vue
-/// GroupedArrays: year[], month[year][], day[year][month][].
-/// </summary>
+/// <summary>Collapse-state arrays paralleling the mission matrix: year[], month[year][], day[year][month][].</summary>
 public sealed class GroupedArrays
 {
-    public List<GroupedYear> Year { get; set; } = new();
-    public List<List<GroupedMonth>> Month { get; set; } = new();
-    public List<List<List<GroupedDay>>> Day { get; set; } = new();
+    public List<GroupedYear> Year { get; set; } = [];
+    public List<List<GroupedMonth>> Month { get; set; } = [];
+    public List<List<List<GroupedDay>>> Day { get; set; } = [];
 }
 
 /// <summary>
@@ -41,19 +38,12 @@ public sealed class GroupedArrays
 public sealed class MissionGrouping
 {
     /// <summary>year -> month -> day -> missions, all date axes descending.</summary>
-    public List<List<List<List<DatabaseMission>>>> Missions { get; init; } = new();
+    public List<List<List<List<DatabaseMission>>>> Missions { get; init; } = [];
     public GroupedArrays Arrays { get; init; } = new();
     public bool AllVisible { get; init; }
 }
 
-/// <summary>
-/// Groups missions by launch date into year/month/day sections. C# port of the
-/// pure grouping core of www/src/composables/useMissionListGrouping.ts. Single
-/// O(N) pass builds a year-&gt;month-&gt;day map; axes sort descending; per-day
-/// mission lists are reversed (matching the Vue <c>.reverse()</c>). Collapse
-/// state: when <paramref name="collapseOlderSections"/> is set only the newest
-/// year (index 0) is enabled.
-/// </summary>
+/// <summary>Groups missions by launch date into year/month/day sections. Single O(N) pass; axes sort descending; per-day lists reversed (matching the Vue .reverse()). When collapseOlderSections is set only the newest year (index 0) is enabled.</summary>
 public static class MissionGrouper
 {
     public static MissionGrouping Group(
@@ -66,8 +56,7 @@ public static class MissionGrouper
             return new MissionGrouping { AllVisible = true };
         }
 
-        // year -> month -> day -> missions, insertion order tracked for nothing
-        // (axes are explicitly sorted descending below).
+        // year -> month -> day -> missions; axes are explicitly sorted descending below.
         var dateMap = new Dictionary<int, Dictionary<int, Dictionary<int, List<DatabaseMission>>>>();
         foreach (var mission in missions)
         {
@@ -77,17 +66,17 @@ public static class MissionGrouper
             int da = d.Day;
             if (!dateMap.TryGetValue(y, out var ym))
             {
-                ym = new Dictionary<int, Dictionary<int, List<DatabaseMission>>>();
+                ym = [];
                 dateMap[y] = ym;
             }
             if (!ym.TryGetValue(mo, out var md))
             {
-                md = new Dictionary<int, List<DatabaseMission>>();
+                md = [];
                 ym[mo] = md;
             }
             if (!md.TryGetValue(da, out var list))
             {
-                list = new List<DatabaseMission>();
+                list = [];
                 md[da] = list;
             }
             list.Add(mission);

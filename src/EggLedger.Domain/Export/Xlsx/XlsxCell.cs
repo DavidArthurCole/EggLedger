@@ -61,8 +61,7 @@ public readonly struct XlsxCell
     }
 
     /// <summary>
-    /// Time to Excel 1900 date serial. Day 1 = Jan 1, 1900; epoch is Dec 30,
-    /// 1899 UTC. Mirrors Go excelSerial: t.UTC().Sub(epoch).Hours()/24.
+    /// Time to Excel 1900 date serial (epoch Dec 30, 1899 UTC). Mirrors Go excelSerial.
     /// </summary>
     public static double ExcelSerial(DateTimeOffset t)
     {

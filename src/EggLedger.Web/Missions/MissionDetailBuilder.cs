@@ -4,10 +4,7 @@ using EggLedger.Web.Services;
 
 namespace EggLedger.Web.Missions;
 
-/// <summary>
-/// Menno community-data summary attached to a viewed mission. Port of the Vue
-/// mennoData shape (configs + total drop count).
-/// </summary>
+/// <summary>Menno community-data summary attached to a viewed mission (configs + total drop count).</summary>
 public sealed class MissionMennoData
 {
     public int TotalDropsCount { get; set; }
@@ -15,18 +12,14 @@ public sealed class MissionMennoData
         Array.Empty<ConfigurationItem>();
 }
 
-/// <summary>
-/// Computed detail for one viewed mission. C# port of the Vue ViewMissionData
-/// produced by useMissionDetail.ts. Drop lists are grouped + sorted; metadata
-/// (capacity modifier, prev/next ids, dates) is derived once.
-/// </summary>
+/// <summary>Computed detail for one viewed mission: drop lists grouped + sorted, metadata (capacity modifier, prev/next ids, dates) derived once.</summary>
 public sealed class ViewMissionData
 {
     public DatabaseMission MissionInfo { get; set; } = new();
-    public List<DropLike> Artifacts { get; set; } = new();
-    public List<DropLike> Stones { get; set; } = new();
-    public List<DropLike> StoneFragments { get; set; } = new();
-    public List<DropLike> Ingredients { get; set; } = new();
+    public List<DropLike> Artifacts { get; set; } = [];
+    public List<DropLike> Stones { get; set; } = [];
+    public List<DropLike> StoneFragments { get; set; } = [];
+    public List<DropLike> Ingredients { get; set; } = [];
     public DateTime LaunchDT { get; set; }
     public DateTime ReturnDT { get; set; }
     public string DurationStr { get; set; } = "";
@@ -36,13 +29,7 @@ public sealed class ViewMissionData
     public MissionMennoData MennoData { get; set; } = new();
 }
 
-/// <summary>
-/// Pure mission-detail computation. C# port of the pure core of
-/// www/src/composables/useMissionDetail.ts (getSpecificMissionData plus the
-/// sort-method re-sort and the menno-key derivation from viewSpecificMission).
-/// The async overlay state, bridge fetches, and caching stay in the Blazor
-/// component; this class only shapes already-fetched data.
-/// </summary>
+/// <summary>Pure mission-detail computation: shapes already-fetched data only. Async overlay state, bridge fetches, and caching stay in the Blazor component.</summary>
 public static class MissionDetailBuilder
 {
     private static DropLike ToDropLike(MissionDrop d) => new()
@@ -56,13 +43,7 @@ public static class MissionDetailBuilder
         SpecType = d.SpecType,
     };
 
-    /// <summary>
-    /// Builds the base ViewMissionData from a mission and its drops. Port of
-    /// getSpecificMissionData: split drops by spec type, group + sort each list,
-    /// derive dates, capacity modifier, and prev/next ids. Drops are initially
-    /// grouped with sortedGroupedSpecType; <see cref="ApplySortMethod"/> re-sorts
-    /// per the active method.
-    /// </summary>
+    /// <summary>Builds the base ViewMissionData: split drops by spec type, group + sort each list, derive dates, capacity modifier, prev/next ids. Initially grouped with sortedGroupedSpecType; ApplySortMethod re-sorts per the active method.</summary>
     public static ViewMissionData BuildBase(
         DatabaseMission missionInfo,
         IReadOnlyList<MissionDrop> allDrops,
@@ -118,11 +99,7 @@ public static class MissionDetailBuilder
         };
     }
 
-    /// <summary>
-    /// Re-sorts the already-grouped drop lists per the active sort method. Port of
-    /// the viewSpecificMission re-sort: 'iv' -> inventoryVisualizerSort, otherwise
-    /// sortGroupAlreadyCombed.
-    /// </summary>
+    /// <summary>Re-sorts the already-grouped drop lists: iv -> inventoryVisualizerSort, otherwise sortGroupAlreadyCombed.</summary>
     public static void ApplySortMethod(ViewMissionData data, MissionSortMethod method)
     {
         Func<IEnumerable<DropLike>, List<DropLike>> sortFn = method == MissionSortMethod.Iv
@@ -134,11 +111,7 @@ public static class MissionDetailBuilder
         data.Ingredients = sortFn(data.Ingredients);
     }
 
-    /// <summary>
-    /// Menno lookup key for a mission. Port of the viewSpecificMission key
-    /// derivation: target -1 is remapped to 10000, key is
-    /// <c>ship_duration_level_target</c>.
-    /// </summary>
+    /// <summary>Menno lookup key for a mission: target -1 remapped to 10000, key is ship_duration_level_target.</summary>
     public static string MennoKey(DatabaseMission mission)
     {
         int target = mission.TargetInt == -1 ? 10000 : mission.TargetInt;

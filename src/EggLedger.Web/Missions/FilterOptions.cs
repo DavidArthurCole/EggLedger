@@ -3,23 +3,17 @@ using EggLedger.Domain.MissionQuery;
 
 namespace EggLedger.Web.Missions;
 
-/// <summary>
-/// Filter value-option builders. C# port of www/src/utils/filterOptions.ts. Pure
-/// functions: given config inputs, produce the option lists the select / modal
-/// pickers render and that <see cref="MissionFilterMatcher"/> validates against.
-/// Behaviour is golden-matched to the Vue source (option order, value encoding,
-/// dedup and sort rules).
-/// </summary>
+/// <summary>Pure filter value-option builders, golden-matched to filterOptions.ts (option order, value encoding, dedup and sort rules). MissionFilterMatcher validates against these.</summary>
 public static class FilterOptions
 {
     private static readonly string[] ShipNames =
-    {
+    [
         "Chicken One", "Chicken Nine", "Chicken Heavy",
         "BCR", "Quintillion Chicken", "Cornish-Hen Corvette",
         "Galeggtica", "Defihent", "Voyegger", "Henerprise", "Atreggies Henliner",
-    };
+    ];
 
-    private static readonly string[] DurationNames = { "Short", "Standard", "Extended", "Tutorial" };
+    private static readonly string[] DurationNames = ["Short", "Standard", "Extended", "Tutorial"];
 
     public static List<FilterOption> GetShipFilterOptions()
     {
@@ -56,24 +50,24 @@ public static class FilterOptions
         return result;
     }
 
-    public static List<FilterOption> GetMissionTypeFilterOptions() => new()
-    {
+    public static List<FilterOption> GetMissionTypeFilterOptions() =>
+    [
         new FilterOption { Text = "Home", Value = "0" },
         new FilterOption { Text = "Virtue", Value = "1" },
         new FilterOption { Text = "Unknown", Value = "-1" },
-    };
+    ];
 
-    public static List<FilterOption> GetFarmFilterOptions() => new()
-    {
+    public static List<FilterOption> GetFarmFilterOptions() =>
+    [
         new FilterOption { Text = "Home", Value = "0" },
         new FilterOption { Text = "Virtue", Value = "1" },
-    };
+    ];
 
-    public static List<FilterOption> GetBoolFilterOptions() => new()
-    {
+    public static List<FilterOption> GetBoolFilterOptions() =>
+    [
         new FilterOption { Text = "True", Value = "true" },
         new FilterOption { Text = "False", Value = "false" },
-    };
+    ];
 
     public static List<FilterOption> GetTargetFilterOptions(IEnumerable<PossibleTarget> possibleTargets)
     {
@@ -90,28 +84,23 @@ public static class FilterOptions
         return result;
     }
 
-    public static List<FilterOption> GetArtifactRarityFilterOptions() => new()
-    {
+    public static List<FilterOption> GetArtifactRarityFilterOptions() =>
+    [
         new FilterOption { Text = "Common", Value = "0" },
         new FilterOption { Text = "Rare", Value = "1", StyleClass = "text-rare" },
         new FilterOption { Text = "Epic", Value = "2", StyleClass = "text-epic" },
         new FilterOption { Text = "Legendary", Value = "3", StyleClass = "text-legendary" },
-    };
+    ];
 
-    public static List<FilterOption> GetArtifactSpecTypeFilterOptions() => new()
-    {
+    public static List<FilterOption> GetArtifactSpecTypeFilterOptions() =>
+    [
         new FilterOption { Text = "Artifact", Value = "0" },
         new FilterOption { Text = "Stone", Value = "1" },
         new FilterOption { Text = "Stone Fragment", Value = "2" },
         new FilterOption { Text = "Ingredient", Value = "3" },
-    };
+    ];
 
-    /// <summary>
-    /// Value options for a mission filter field. Port of Vue
-    /// getMissionFilterValueOptions: ship/farm/duration/level/type/dubcap/buggedcap.
-    /// Returns [] for target (caller supplies targets) and drops (caller has its
-    /// own modal).
-    /// </summary>
+    /// <summary>Value options for a mission filter field. Returns [] for target (caller supplies targets) and drops (caller has its own modal).</summary>
     public static List<FilterOption> GetMissionFilterValueOptions(string topLevel) => topLevel switch
     {
         "ship" => GetShipFilterOptions(),
@@ -120,14 +109,10 @@ public static class FilterOptions
         "level" => GetLevelFilterOptions(),
         "type" => GetMissionTypeFilterOptions(),
         "dubcap" or "buggedcap" => GetBoolFilterOptions(),
-        _ => new List<FilterOption>(),
+        _ => [],
     };
 
-    /// <summary>
-    /// One option per distinct artifact level. Port of Vue
-    /// getArtifactTierFilterOptions: dedup by level, sort ascending, value is the
-    /// raw level int.
-    /// </summary>
+    /// <summary>One option per distinct artifact level: dedup by level, sort ascending, value is the raw level int.</summary>
     public static List<FilterOption> GetArtifactTierFilterOptions(IEnumerable<PossibleArtifact> artifactConfigs)
     {
         var levels = new SortedSet<int>();
@@ -147,11 +132,7 @@ public static class FilterOptions
         return result;
     }
 
-    /// <summary>
-    /// One option per artifact family. Port of Vue getArtifactNameFilterOptions:
-    /// pick the lowest-level entry per name enum, value is the name enum, sort
-    /// alphabetically by text.
-    /// </summary>
+    /// <summary>One option per artifact family: pick the lowest-level entry per name enum, value is the name enum, sort alphabetically by text.</summary>
     public static List<FilterOption> GetArtifactNameFilterOptions(IReadOnlyList<PossibleArtifact> artifactConfigs)
     {
         var representatives = new Dictionary<int, PossibleArtifact>();
@@ -172,9 +153,8 @@ public static class FilterOptions
                 ImagePath = DropPath(a),
             });
         }
-        // Vue sorts via localeCompare; use an invariant culture compare so case
-        // and diacritics order like the live app rather than raw UTF-16 ordinal.
-        result.Sort((x, y) => string.Compare(x.Text, y.Text, StringComparison.InvariantCultureIgnoreCase));
+        // Vue sorts via localeCompare; invariant culture compare orders like the live app, not raw UTF-16 ordinal.
+        result.Sort((x, y) => string.Compare(x.Text, y.Text, StringComparison.OrdinalIgnoreCase));
         return result;
     }
 
@@ -208,12 +188,7 @@ public static class FilterOptions
         _ => "",
     };
 
-    /// <summary>
-    /// Drop filter value options. Port of Vue getDropFilterOptions. Insertion
-    /// order is preserved (the "Any Rare/Epic/Legendary" trio first, then per
-    /// family/tier in first-seen order). Value encoding is
-    /// <c>name_level_rarity_baseQuality</c>; "%" marks a wildcard segment.
-    /// </summary>
+    /// <summary>Drop filter value options. Insertion order preserved ("Any Rare/Epic/Legendary" trio first, then per family/tier in first-seen order). Value encoding is name_level_rarity_baseQuality; "%" marks a wildcard segment.</summary>
     public static List<FilterOption> GetDropFilterOptions(
         IReadOnlyList<PossibleArtifact> artifactConfigs,
         double maxQuality,
@@ -242,13 +217,13 @@ public static class FilterOptions
         {
             if (!byFamily.TryGetValue(a.Name, out var byTier))
             {
-                byTier = new Dictionary<int, List<PossibleArtifact>>();
+                byTier = [];
                 byFamily[a.Name] = byTier;
                 familyOrder.Add(a.Name);
             }
             if (!byTier.TryGetValue(a.Level, out var rarities))
             {
-                rarities = new List<PossibleArtifact>();
+                rarities = [];
                 byTier[a.Level] = rarities;
             }
             rarities.Add(a);
@@ -303,7 +278,7 @@ public static class FilterOptions
         return result;
     }
 
-    // First-seen tier order for a family, matching JS Map insertion order.
+    // First-seen tier order for a family (JS Map insertion order).
     private static List<int> TierOrder(IReadOnlyList<PossibleArtifact> artifactList, int familyId)
     {
         var seen = new HashSet<int>();

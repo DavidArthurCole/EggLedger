@@ -8,14 +8,7 @@
 
 <PageTitle>EggLedger - About</PageTitle>
 
-@*
-    About tab. Port of AboutView.vue: the support banner, FAQ panes, and credits.
-    The desktop self-update banner is gated on IsDesktop (the browser build has no
-    update flow). External links are plain anchors with target="_blank" (fine in
-    both browser and desktop hosts). The coffee-banner dismiss is session-local
-    (the Vue version persists to localStorage; no localStorage helper exists in the
-    C# port, so dismissal lasts the session).
-*@
+@* Self-update banner is gated on IsDesktop (browser build has no updater). Coffee-banner dismiss is session-local (no localStorage helper in the C# port). *@
 
 <section class="flex-1 w-full mx-auto px-4 overflow-y-auto">
     <div class="text-sm text-gray-400 space-y-2 pb-3">
@@ -43,9 +36,7 @@
 
         @if (Platform.IsDesktop)
         {
-            @* Desktop-only: in-place self-update overlay, bound to the live
-               IUpdateStatusProvider the desktop host registers. The browser build
-               has no updater (gated out by IsDesktop). *@
+            @* Self-update overlay bound to the desktop host's IUpdateStatusProvider. *@
             <div class="flex items-center gap-3 p-3 rounded-lg bg-blue-950/40 border border-blue-700/40 mt-2">
                 @switch (UpdateStatus.Phase)
                 {
@@ -197,8 +188,7 @@
 
     private void OnUpdateChanged() => InvokeAsync(StateHasChanged);
 
-    // Explicit user check from the About overlay bypasses the 12h cooldown (force=true),
-    // matching the Go --force-update-check intent for a deliberate "check now".
+    // Explicit user check bypasses the 12h cooldown (force=true).
     private Task CheckUpdate() => UpdateStatus.CheckForUpdatesAsync(force: true);
 
     private Task InstallUpdate()

@@ -1,13 +1,8 @@
 @using EggLedger.Web.Settings
 
-@*
-    Grouped settings toggles. Port of the toggle sections in
-    www/src/views/SettingsView.vue that survive in the browser build: Export,
-    Fetch Behavior (incl. the worker slider), and Display. Window/Browser and
-    Storage groups are desktop-only and gated in SettingsPage, not here. Each
-    control writes its setting key through OnSetting; the parent owns persistence
-    and auto-sync. Classes match the Vue (view-layout @apply layer).
-*@
+@* Grouped settings toggles: Export, Fetch Behavior, Display. Desktop-only groups
+   (Window/Browser, Storage) are gated in SettingsPage. Controls write via OnSetting;
+   the parent owns persistence and auto-sync. *@
 
 <div class="px-2 py-2 text-sm text-gray-400 bg-darker rounded-md tabular-nums overflow-auto">
     <span class="mr-0_5rem font-bold text-lg text-gray-400 ledger-underline">Export</span><br />
@@ -107,19 +102,14 @@
 </div>
 
 @code {
-    /// <summary>The live settings model the page hydrated from IndexedDB.</summary>
     [Parameter, EditorRequired]
     public SettingsModel Model { get; set; } = default!;
 
-    /// <summary>
-    /// Persist callback: (key, stringValue). The page writes it to
-    /// IndexedDbSettings and fires auto-sync. Invoked after the model is mutated.
-    /// </summary>
+    /// <summary>Persist callback (key, stringValue); invoked after the model is mutated.</summary>
     [Parameter, EditorRequired]
     public EventCallback<(string Key, string Value)> OnSetting { get; set; }
 
-    // Worker-band coloring matches the Vue: 1-4 safe (green), 5-7 caution (orange),
-    // 8-10 risky (red). Bars use solid bg utilities; text/border use the lighter shade.
+    // Worker bands: 1-4 safe (green), 5-7 caution (orange), 8-10 risky (red).
     private static string WorkerCellClass(int n) =>
         n <= 4 ? "bg-green-600" : n <= 7 ? "bg-orange-500" : "bg-red-600";
 

@@ -3,12 +3,9 @@ using System.Security.Cryptography;
 namespace EggLedger.Domain.Crypto;
 
 /// <summary>
-/// AES-256-GCM blob encryption matching Go cloudsync.encryptBlob/decryptBlob.
-///
-/// <para>Wire format: 12-byte random nonce, prepended to the GCM ciphertext+tag,
-/// the whole thing base64 (StdEncoding). Go's <c>gcm.Seal</c> appends the 16-byte
-/// auth tag to the ciphertext; .NET <see cref="AesGcm"/> takes the tag
-/// separately, so on decrypt the trailing 16 bytes are split off as the tag.</para>
+/// AES-256-GCM blob encryption matching Go cloudsync.encryptBlob/decryptBlob. Wire format:
+/// base64(12-byte nonce || ciphertext || 16-byte tag). Go appends the tag to the ciphertext while
+/// .NET <see cref="AesGcm"/> takes it separately, so decrypt splits the trailing 16 bytes off.
 /// </summary>
 public static class BlobCrypto
 {

@@ -1,12 +1,6 @@
 @using EggLedger.Web.Settings
 
-@*
-    Color picker. Port of www/src/components/ColorPicker.vue: a swatch button that
-    opens a popover with preset swatches, saturation/lightness sliders, and a hex
-    input. All color math (hex<->HSL, normalize, presets) is the tested pure
-    ColorPickerMath helper, which itself reuses SliceColors for the conversions.
-    Two-way bound through Value/ValueChanged (the canonical #rrggbb string).
-*@
+@* Color math lives in the pure ColorPickerMath helper. Two-way bound through Value/ValueChanged (canonical #rrggbb). *@
 
 <div class="color-picker">
     <button type="button"

@@ -1,5 +1,4 @@
-@* Port of www/src/components/TargetDisplay.vue. Renders the target artifact icon
-   for a mission, or nothing when the target is empty / UNKNOWN. *@
+@* Target artifact icon for a mission, or nothing when empty / UNKNOWN. *@
 
 @if (_path is not null)
 {
@@ -18,7 +17,7 @@
         (_path, _alt) = TargetImage(Target);
     }
 
-    // Port of TargetDisplay.targetImage. Returns (null, "") for empty/UNKNOWN.
+    // Returns (null, "") for empty/UNKNOWN.
     private static (string?, string) TargetImage(string? target)
     {
         if (string.IsNullOrEmpty(target) || target == "UNKNOWN")

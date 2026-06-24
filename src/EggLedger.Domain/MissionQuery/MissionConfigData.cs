@@ -1,7 +1,7 @@
-using Ei;
 using EggLedger.Domain.Ei;
 using EggLedger.Domain.Eiafx;
 using EggLedger.Domain.LedgerData;
+using Ei;
 
 namespace EggLedger.Domain.MissionQuery;
 
@@ -27,11 +27,8 @@ public sealed class PossibleArtifact
 }
 
 /// <summary>
-/// Builds the shared mission filter configuration from the embedded eiafx config
-/// and ledger display data. C# port of the Go main.go init helpers
-/// (getMaxQuality / initPossibleTargets / initPossibleArtifacts). Lives in Domain
-/// so it can reach the internal enum-name helpers; the Web layer consumes it via
-/// MissionConfigProvider.
+/// Builds the shared mission filter configuration from the eiafx config and ledger
+/// display data. Go port of main.go init helpers (getMaxQuality / initPossibleTargets / initPossibleArtifacts).
 /// </summary>
 public static class MissionConfigData
 {
@@ -55,8 +52,8 @@ public static class MissionConfigData
     }
 
     /// <summary>
-    /// Port of initPossibleTargets: a "None (Pre 1.27)" sentinel then one entry
-    /// per ledger artifact target, id from the proto enum value.
+    /// Port of initPossibleTargets: a "None (Pre 1.27)" sentinel then one entry per
+    /// ledger artifact target, id from the proto enum value.
     /// </summary>
     public static List<PossibleTarget> Targets()
     {
@@ -77,10 +74,7 @@ public static class MissionConfigData
         return result;
     }
 
-    /// <summary>
-    /// Port of initPossibleArtifacts: every artifact param whose baseQuality is
-    /// within max quality, names resolved.
-    /// </summary>
+    /// <summary>Port of initPossibleArtifacts: every artifact param within max quality, names resolved.</summary>
     public static List<PossibleArtifact> Artifacts()
     {
         double maxQuality = MaxQuality();

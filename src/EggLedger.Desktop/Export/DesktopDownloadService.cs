@@ -5,12 +5,9 @@ using EggLedger.Web.Services;
 namespace EggLedger.Desktop.Export;
 
 /// <summary>
-/// Desktop export sink. Instead of a browser download, it produces the same Domain
-/// export bytes (<see cref="MissionExport"/>), asks the native save dialog for a
-/// path (<see cref="IPlatformCapabilities.ChooseSaveFilePathAsync"/>), writes the
-/// bytes there, and reveals the file in the OS file browser. A cancelled dialog
-/// (null path) is a no-op. This is the .NET port of the Go desktop behavior where
-/// exports are written to disk and revealed, not streamed to a browser.
+/// Desktop export sink. Produces the Domain export bytes, asks the native save
+/// dialog for a path, writes the bytes, and reveals the file. A cancelled dialog
+/// (null path) is a no-op.
 /// </summary>
 public sealed class DesktopDownloadService(IPlatformCapabilities platform) : IDownloadService
 {

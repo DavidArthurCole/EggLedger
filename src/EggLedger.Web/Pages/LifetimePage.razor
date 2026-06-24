@@ -79,8 +79,7 @@
 
     private void OnAccountChanged() => InvokeAsync(LoadAsync);
 
-    // Refresh when a fetch completes so freshly fetched missions show up without a
-    // manual reload (mirrors the Vue appState watch).
+    // Refresh on fetch completion so new missions show without a manual reload.
     private void OnAppStateChanged()
     {
         if (AppState.PipelineState == EggLedger.Web.Services.AppState.Success && Active.ActiveAccountId is not null)

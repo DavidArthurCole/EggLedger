@@ -4,10 +4,9 @@ using System.Text.Json.Serialization;
 namespace EggLedger.Desktop.Storage;
 
 /// <summary>
-/// Data-root and subdirectory resolvers plus the atomic copy-then-move helpers.
-/// Port of Go storage/storage_move.go. A <c>bootstrap.json</c> under the user
-/// config dir optionally redirects the data root (set when the user relocates
-/// their data); otherwise everything lives under the executable directory.
+/// Data-root and subdirectory resolvers plus copy helpers. Port of Go
+/// storage/storage_move.go. A <c>bootstrap.json</c> under the user config dir
+/// optionally redirects the data root; otherwise data lives under the exe dir.
 /// </summary>
 public static class StoragePaths
 {

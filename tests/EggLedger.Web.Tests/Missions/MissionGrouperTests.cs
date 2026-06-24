@@ -49,7 +49,7 @@ public sealed class MissionGrouperTests
             M(20230101, "c"),
         };
         var g = MissionGrouper.Group(missions, FakeLedgerDate, collapseOlderSections: false);
-        Assert.Equal(new[] { 2024, 2023, 2022 }, g.Arrays.Year.Select(y => y.Year).ToArray());
+        Assert.Equal([2024, 2023, 2022], [.. g.Arrays.Year.Select(y => y.Year)]);
     }
 
     [Fact]
@@ -62,9 +62,9 @@ public sealed class MissionGrouperTests
             M(20240310, "c"),
         };
         var g = MissionGrouper.Group(missions, FakeLedgerDate, collapseOlderSections: false);
-        Assert.Equal(new[] { 3, 1 }, g.Arrays.Month[0].Select(m => m.Month).ToArray());
+        Assert.Equal([3, 1], [.. g.Arrays.Month[0].Select(m => m.Month)]);
         // March has two days 15 then 10.
-        Assert.Equal(new[] { 15, 10 }, g.Arrays.Day[0][0].Select(d => d.Day).ToArray());
+        Assert.Equal([15, 10], [.. g.Arrays.Day[0][0].Select(d => d.Day)]);
     }
 
     [Fact]

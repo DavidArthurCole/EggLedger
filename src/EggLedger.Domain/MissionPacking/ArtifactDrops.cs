@@ -1,14 +1,10 @@
-using Ei;
 using EggLedger.Domain.Ei;
 using EggLedger.Domain.Eiafx;
+using Ei;
 
 namespace EggLedger.Domain.MissionPacking;
 
-/// <summary>
-/// One artifact drop ready for persistence. C# port of the per-row shape Go
-/// db.BuildArtifactDropRows produces. The persistence layer maps this to its
-/// storage row.
-/// </summary>
+/// <summary>One artifact drop ready for persistence. Go port of db.BuildArtifactDropRows row shape.</summary>
 public readonly record struct ArtifactDrop(
     int DropIndex,
     int ArtifactId,
@@ -18,9 +14,8 @@ public readonly record struct ArtifactDrop(
     double Quality);
 
 /// <summary>
-/// Builds artifact-drop rows from a decoded mission. C# port of Go
-/// db.BuildArtifactDropRows: drop_index is the 0-based position, spec_type is
-/// classified by proto name, quality is the eiafx base quality.
+/// Builds artifact-drop rows from a decoded mission. Go port of db.BuildArtifactDropRows:
+/// DropIndex is 0-based, SpecType classified by proto name, Quality is eiafx base quality.
 /// </summary>
 public static class ArtifactDrops
 {

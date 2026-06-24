@@ -1,13 +1,11 @@
-using Ei;
 using EggLedger.Domain.MissionQuery;
+using Ei;
 
 namespace EggLedger.Domain.MissionPacking;
 
 /// <summary>
-/// Compiled, display-ready mission record. C# port of Go
-/// missionpacking.DatabaseMission. Ship / DurationType are nullable to mirror
-/// the Go pointer fields (null when Info was absent). Implements the MissionQuery
-/// marker so it can flow back through IMissionStore as the opaque display row.
+/// Compiled, display-ready mission record. Go port of missionpacking.DatabaseMission.
+/// Ship/DurationType are null when Info was absent (Go pointer fields).
 /// </summary>
 public sealed class DatabaseMission : IMissionRow
 {

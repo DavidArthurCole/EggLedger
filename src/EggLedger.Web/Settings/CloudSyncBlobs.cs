@@ -5,14 +5,7 @@ using EggLedger.Web.Data;
 
 namespace EggLedger.Web.Settings;
 
-/// <summary>
-/// The cloud-syncable settings subset. C# port of the Go cloudsync
-/// <c>cloudSyncableSettings</c> struct (cloudsync/blob.go): the machine-agnostic
-/// settings safe to sync across devices (excludes paths, resolution, browser, and
-/// other machine-local prefs). The JSON property names are the frozen blob
-/// contract and must match Go byte-for-byte so a blob written by the desktop app
-/// round-trips in the browser and vice versa.
-/// </summary>
+/// <summary>The machine-agnostic settings safe to sync across devices. JSON names are a frozen contract and must match Go byte-for-byte for cross-device round-trip.</summary>
 public sealed record CloudSyncableSettings
 {
     [JsonPropertyName("auto_refresh_menno_pref")]
@@ -70,15 +63,7 @@ public sealed record CloudSyncableSettings
     public bool LifetimeShowExpectedTotals { get; init; }
 }
 
-/// <summary>
-/// One group entry in the "reports" blob. C# port of the Go
-/// <c>reportdb.ReportGroupRow</c> (reportdb/groups.go). That Go struct carries NO
-/// json tags, so Go's default marshal emits PascalCase field names. To byte-match
-/// the cross-device contract the JSON keys here are pinned PascalCase
-/// (<c>Id</c>, <c>AccountId</c>, <c>Name</c>, <c>SortOrder</c>, <c>CreatedAt</c>),
-/// NOT the snake_case the local IndexedDB store uses. Map to/from the local
-/// <see cref="ReportGroupRow"/> at the blob boundary.
-/// </summary>
+/// <summary>One group entry in the "reports" blob. JSON keys are pinned PascalCase to byte-match the untagged Go <c>reportdb.ReportGroupRow</c>, NOT the local snake_case.</summary>
 public sealed record CloudReportGroup
 {
     [JsonPropertyName("Id")]
@@ -117,21 +102,7 @@ public sealed record CloudReportGroup
     };
 }
 
-/// <summary>
-/// The "reports" blob payload. C# port of the Go <c>cloudReportsBlob</c>
-/// (cloudsync/blob.go): all reports and groups across every known account. The
-/// blob is a FROZEN cross-device contract, so the wire shape mirrors Go exactly:
-/// <list type="bullet">
-/// <item>top-level keys are <c>reports</c> / <c>groups</c> (the Go struct's json tags),</item>
-/// <item>each report is a <see cref="ReportDefinition"/> (camelCase keys, nested
-/// <c>filters</c> object), matching Go <c>reports.ReportDefinition</c>, NOT the
-/// snake_case IndexedDB <see cref="ReportRow"/> whose <c>filters</c> is a string,</item>
-/// <item>each group is a <see cref="CloudReportGroup"/> (PascalCase keys), matching
-/// the untagged Go <c>reportdb.ReportGroupRow</c>.</item>
-/// </list>
-/// Use <see cref="ReportMapping"/> to convert local <see cref="ReportRow"/>s to/from
-/// the <see cref="ReportDefinition"/> wire form (it parses/serializes the filters).
-/// </summary>
+/// <summary>The "reports" blob payload (all reports + groups). A frozen cross-device contract: reports are camelCase <see cref="ReportDefinition"/>, groups are PascalCase <see cref="CloudReportGroup"/>, matching Go exactly.</summary>
 public sealed record CloudReportsBlob
 {
     [JsonPropertyName("reports")]
@@ -140,28 +111,16 @@ public sealed record CloudReportsBlob
     [JsonPropertyName("groups")]
     public IReadOnlyList<CloudReportGroup> Groups { get; init; } = [];
 
-    /// <summary>
-    /// Packs local IndexedDB rows into the Go-shaped blob: each report row becomes a
-    /// <see cref="ReportDefinition"/> (filters string -> nested object) via
-    /// <see cref="ReportMapping.ToDefinition"/>, each group row becomes a
-    /// <see cref="CloudReportGroup"/>.
-    /// </summary>
+    /// <summary>Packs local IndexedDB rows into the Go-shaped blob (filters string becomes a nested object).</summary>
     public static CloudReportsBlob Pack(
         IReadOnlyList<ReportRow> reports, IReadOnlyList<ReportGroupRow> groups) => new()
-    {
-        Reports = reports.Select(ReportMapping.ToDefinition).ToList(),
-        Groups = groups.Select(CloudReportGroup.FromRow).ToList(),
-    };
+        {
+            Reports = reports.Select(ReportMapping.ToDefinition).ToList(),
+            Groups = groups.Select(CloudReportGroup.FromRow).ToList(),
+        };
 }
 
-/// <summary>
-/// Pure pack/unpack assembly for the three cloud-sync blobs (<c>accounts</c>,
-/// <c>settings</c>, <c>reports</c>). C# port of the pure parts of
-/// www/src/composables/useCloudSync.ts + the Go cloudsync sync-up / restore-down
-/// flows: which blob carries what, the syncable-settings projection, and the
-/// merge rules on restore. The HTTP transport and the poll loop live in the
-/// Settings cloud-sync panel; this class only shapes the payloads.
-/// </summary>
+/// <summary>Pure pack/unpack for the three cloud-sync blobs (accounts/settings/reports). This only shapes payloads; HTTP transport and the poll loop live elsewhere.</summary>
 public static class CloudSyncBlobs
 {
     /// <summary>The three frozen blob names, matching Go putBlob/getBlob.</summary>
@@ -169,12 +128,7 @@ public static class CloudSyncBlobs
     public const string SettingsBlob = "settings";
     public const string ReportsBlob = "reports";
 
-    /// <summary>
-    /// Projects the cloud-syncable subset out of the full settings map. Mirrors the
-    /// Go runSyncToCloud settings-blob assembly: only the machine-agnostic keys are
-    /// included, each read with the same default the desktop app uses when the key
-    /// is absent.
-    /// </summary>
+    /// <summary>Projects the cloud-syncable subset out of the full settings map, each key read with the desktop app's default when absent.</summary>
     public static CloudSyncableSettings PackSettings(IReadOnlyDictionary<string, string> settings) => new()
     {
         AutoRefreshMennoPref = Bool(settings, SettingsModel.KeyAutoRefreshMenno, false),
@@ -197,11 +151,7 @@ public static class CloudSyncBlobs
         LifetimeShowExpectedTotals = Bool(settings, "lifetime_show_expected_totals", false),
     };
 
-    /// <summary>
-    /// Turns a restored settings blob into the key/value pairs to upsert into the
-    /// settings store. Mirrors Go applyCloudSettings: writes only the syncable keys
-    /// (machine-local prefs like resolution and browser path are untouched).
-    /// </summary>
+    /// <summary>Turns a restored settings blob into key/value pairs to upsert; only syncable keys are written (machine-local prefs untouched).</summary>
     public static IReadOnlyDictionary<string, string> UnpackSettings(CloudSyncableSettings s) => new Dictionary<string, string>
     {
         [SettingsModel.KeyAutoRefreshMenno] = SettingsModel.FormatBool(s.AutoRefreshMennoPref),
@@ -224,11 +174,7 @@ public static class CloudSyncBlobs
         ["lifetime_show_expected_totals"] = SettingsModel.FormatBool(s.LifetimeShowExpectedTotals),
     };
 
-    /// <summary>
-    /// Selects the report/group rows to insert on restore: each row whose id is not
-    /// already present locally, de-duplicated by id (first wins) and skipping blank
-    /// ids. Mirrors Go importRemoteReports's seen-set guard.
-    /// </summary>
+    /// <summary>Selects report/group rows to insert on restore: ids not already present locally, de-duplicated by id (first wins), skipping blank ids.</summary>
     public static (List<ReportGroupRow> Groups, List<ReportRow> Reports) SelectReportsToImport(
         CloudReportsBlob remote,
         IReadOnlyCollection<string> existingGroupIds,

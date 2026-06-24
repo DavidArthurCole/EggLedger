@@ -4,26 +4,20 @@ namespace EggLedger.Desktop.Storage;
 
 /// <summary>
 /// Owns one open <see cref="SqliteConnection"/> for a database file, applying the
-/// pragmas the Go host uses (foreign_keys ON, WAL journal, busy_timeout) and the
-/// embedded migrations for the named set. Mirrors Go db/init.go InitDB: open with
-/// the pragma connection string, run migrations to the target version.
-///
-/// A single long-lived connection is held for the app lifetime. Microsoft.Data.
-/// Sqlite serializes commands on one connection, matching the Go single-handle
-/// model (DoDBOperation funnels through one *sql.DB). Tests pass a shared
-/// in-memory data source so the schema survives between operations.
+/// pragmas (foreign_keys ON, WAL, busy_timeout) and embedded migrations. A single
+/// long-lived connection is held for the app lifetime; Microsoft.Data.Sqlite
+/// serializes commands on it, matching the Go single-handle model. Tests pass a
+/// shared in-memory data source so the schema survives between operations.
 /// </summary>
 public sealed class SqliteDatabase : IDisposable
 {
-    private readonly SqliteConnection _connection;
-
     private SqliteDatabase(SqliteConnection connection)
     {
-        _connection = connection;
+        Connection = connection;
     }
 
     /// <summary>The open connection. Callers create commands against it directly.</summary>
-    public SqliteConnection Connection => _connection;
+    public SqliteConnection Connection { get; }
 
     /// <summary>
     /// Opens (creating the parent dir) the mission DB at <paramref name="path"/>,
@@ -32,7 +26,7 @@ public sealed class SqliteDatabase : IDisposable
     public static SqliteDatabase OpenMissionDb(string path)
     {
         var db = Open(path);
-        SqliteMigrationRunner.MigrateMissionDb(db._connection);
+        SqliteMigrationRunner.MigrateMissionDb(db.Connection);
         return db;
     }
 
@@ -43,7 +37,7 @@ public sealed class SqliteDatabase : IDisposable
     public static SqliteDatabase OpenReportDb(string path)
     {
         var db = Open(path);
-        SqliteMigrationRunner.MigrateReportDb(db._connection);
+        SqliteMigrationRunner.MigrateReportDb(db.Connection);
         return db;
     }
 
@@ -89,6 +83,6 @@ public sealed class SqliteDatabase : IDisposable
 
     public void Dispose()
     {
-        _connection.Dispose();
+        Connection.Dispose();
     }
 }

@@ -1,15 +1,11 @@
 namespace EggLedger.Domain.Util;
 
-/// <summary>
-/// Matrix normalization helpers. C# Domain port of Go util/matrix.go. Pure.
-/// </summary>
+/// <summary>Matrix normalization helpers. Go port of util/matrix.go.</summary>
 public static class Matrix
 {
     /// <summary>
-    /// Normalizes a row-major matrix in-place so each row, column, or the whole
-    /// grid sums to 100. vals is laid out as nR rows of nC columns (index
-    /// r*nC+c). mode must be "row_pct", "col_pct", or "global_pct"; any other
-    /// value is a no-op. Rows/columns that sum to zero are left untouched.
+    /// Normalizes a row-major matrix in-place (index r*nC+c) so each row/col/grid sums to 100.
+    /// mode is "row_pct"/"col_pct"/"global_pct"; other values are a no-op, zero sums untouched.
     /// </summary>
     public static void Apply2DPctNormalization(double[] vals, int nR, int nC, string mode)
     {

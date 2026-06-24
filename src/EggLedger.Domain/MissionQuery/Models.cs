@@ -1,8 +1,7 @@
 namespace EggLedger.Domain.MissionQuery;
 
 /// <summary>
-/// Port of Go missionquery.MissionDrop. One artifact/stone/ingredient dropped
-/// by a mission, with display fields resolved.
+/// Port of Go missionquery.MissionDrop. One artifact/stone/ingredient dropped by a mission.
 /// </summary>
 public sealed class MissionDrop
 {
@@ -17,13 +16,11 @@ public sealed class MissionDrop
     public int IVOrder { get; set; }
 }
 
-/// <summary>
-/// Port of Go missionquery.PossibleMission. A ship and its per-duration config.
-/// </summary>
+/// <summary>Port of Go missionquery.PossibleMission. A ship and its per-duration config.</summary>
 public sealed class PossibleMission
 {
     public global::Ei.MissionInfo.Spaceship Ship { get; set; }
-    public List<DurationConfig> Durations { get; set; } = new();
+    public List<DurationConfig> Durations { get; set; } = [];
 }
 
 /// <summary>Port of Go missionquery.DurationConfig.</summary>
@@ -48,9 +45,8 @@ public sealed class DatabaseAccount
 }
 
 /// <summary>
-/// Minimal known-account record the store yields for GetExistingData. Mirrors
-/// the subset of Go storage.Account that missionquery reads. Defined locally to
-/// avoid depending on a not-yet-ported storage package.
+/// Minimal known-account record the store yields for GetExistingData. Subset of
+/// Go storage.Account, defined locally to avoid depending on a not-yet-ported storage package.
 /// </summary>
 public sealed class KnownAccount
 {
@@ -61,10 +57,8 @@ public sealed class KnownAccount
 }
 
 /// <summary>
-/// Full known-account record. C# port of Go storage.Account: the persisted
-/// per-account display data the Ledger tab and account header read (adds the
-/// soul-egg / prophecy-egg / truth-egg fields the minimal <see cref="KnownAccount"/>
-/// omits). Built by <see cref="AccountFactory.FromBackup"/>.
+/// Full known-account record. Go port of storage.Account; adds the SE/PE/TE fields
+/// the minimal <see cref="KnownAccount"/> omits. Built by <see cref="AccountFactory.FromBackup"/>.
 /// </summary>
 public sealed class AccountInfo
 {
@@ -86,8 +80,5 @@ public sealed class AccountInfo
     };
 }
 
-/// <summary>
-/// Per-player mission stats the store yields for GetExistingData. Mirrors Go
-/// db.RetrievePlayerMissionStats (count, maxReturnTS).
-/// </summary>
+/// <summary>Per-player mission stats for GetExistingData. Mirrors Go db.RetrievePlayerMissionStats.</summary>
 public readonly record struct PlayerMissionStats(int Count, double MaxReturnTimestamp);

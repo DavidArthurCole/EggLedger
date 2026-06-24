@@ -9,15 +9,7 @@
 @inject IndexedDbAccountStore Accounts
 @inject IndexedDbReportStore Reports
 
-@*
-    Cloud-sync panel. Port of www/src/views/SettingsView.vue Settings Sync section
-    + useCloudSync.ts: connect (Discord redirect + poll loop), connected status,
-    sync up / restore down, disconnect, delete remote data, auto-sync toggle. Owns
-    the 2s/5min poll loop around CloudSyncService.PollOnceAsync with cancellation
-    so navigating away cannot leak it. Drives CloudSyncService; persists the
-    session through CloudSessionStore; packs/unpacks the accounts/settings/reports
-    blobs through the tested CloudSyncBlobs helper.
-*@
+@* Owns the 2s/5min auth poll loop around CloudSyncService.PollOnceAsync with cancellation so navigating away cannot leak it. *@
 
 <div class="px-2 py-2 text-sm text-gray-400 bg-darker rounded-md tabular-nums overflow-auto">
     <span class="mr-0_5rem font-bold text-lg text-gray-400 ledger-underline">Settings Sync</span>
@@ -199,9 +191,7 @@
         _reachable = await CheckReachableAsync();
         _reachableChecking = false;
 
-        // Resume a redirect-interrupted auth: if BeginAuthAsync navigated the tab to
-        // Discord and the OAuth callback returned us here, a pending state was saved
-        // before the redirect. Pick the poll loop back up so the session lands.
+        // Resume a redirect-interrupted auth: a pending state saved before the Discord redirect means we restart the poll loop so the session lands.
         if (_reachable && !_connected)
         {
             var pending = await SessionStore.GetPendingAuthStateAsync();
@@ -241,10 +231,7 @@
         try
         {
             var state = await Cloud.BeginAuthAsync();
-            // BeginAuthAsync force-navigates the tab to Discord. Persist the poll
-            // state first so the reloaded SPA resumes polling on return (see
-            // OnInitializedAsync). If navigation is intercepted and we stay on the
-            // page, the loop below runs immediately; either way it is cancel-safe.
+            // BeginAuthAsync force-navigates to Discord, so persist poll state first so the reloaded SPA resumes polling on return.
             await SessionStore.SetPendingAuthStateAsync(state);
             await PollUntilDoneAsync(state);
         }
@@ -283,9 +270,7 @@
         }
         catch (OperationCanceledException)
         {
-            // Timed out or navigated away: stop waiting, drop the spinner. Clear the
-            // pending state only on a real timeout (the CTS fired), not on a
-            // dispose-driven cancel where we may still resume after a reload.
+            // Clear pending state only on a real timeout, not a dispose-driven cancel where we may resume after a reload.
             if (_pollCts is not null && _pollCts.IsCancellationRequested && !_disposed)
             {
                 await SessionStore.ClearPendingAuthStateAsync();
@@ -320,7 +305,7 @@
         if (_session is not null)
         {
             try { await Cloud.DisconnectAsync(_session.Token); }
-            catch { /* server logout is best-effort, match Go */ }
+            catch { /* server logout is best-effort */ }
         }
         await SessionStore.ClearSessionAsync();
         _session = null;
@@ -394,7 +379,7 @@
             }
             catch (CloudSyncException)
             {
-                // Nothing synced yet for accounts; skip (match Go warn-and-continue).
+                // Nothing synced yet for accounts; skip.
             }
 
             try
@@ -404,7 +389,7 @@
             }
             catch (CloudSyncException)
             {
-                // Nothing synced yet for settings; skip (match Go warn-and-continue).
+                // Nothing synced yet for settings; skip.
             }
 
             try
@@ -435,7 +420,7 @@
     {
         var existingGroupIds = new HashSet<string>(StringComparer.Ordinal);
         var existingReportIds = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var g in remote.Groups)
+        foreach (var g in remote.Groups ?? [])
         {
             var local = await Reports.RetrieveReportGroupAsync(g.Id);
             if (local is not null)
@@ -443,7 +428,7 @@
                 existingGroupIds.Add(g.Id);
             }
         }
-        foreach (var r in remote.Reports)
+        foreach (var r in remote.Reports ?? [])
         {
             var local = await Reports.RetrieveReportAsync(r.Id);
             if (local is not null)
@@ -495,11 +480,7 @@
         await SessionStore.SetAutoSyncAsync(_autoSync);
     }
 
-    /// <summary>
-    /// Pushes to the cloud when auto-sync is on and a session is connected.
-    /// Called by the Settings page after a cloud-syncable setting changes, mirroring
-    /// the Vue useCloudSync auto-sync watch. No-op otherwise.
-    /// </summary>
+    /// <summary>Pushes to the cloud when auto-sync is on and connected; no-op otherwise. Called by the Settings page after a cloud-syncable setting changes.</summary>
     public async Task AutoSyncIfEnabledAsync()
     {
         if (!_autoSync || !_connected || _session is null || _syncInProgress)

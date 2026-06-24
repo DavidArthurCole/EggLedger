@@ -4,14 +4,9 @@ using ProtoBuf;
 namespace EggLedger.Domain.MissionPacking;
 
 /// <summary>
-/// Standalone <see cref="IMissionConfigSource"/>: deserializes the embedded
-/// eiafx-config.bin (protobuf ArtifactsConfigurationResponse). This is the same
-/// data the eiafx package loads, so output matches the Go reference.
-///
-/// <para>A8 reconciliation: <see cref="EiafxMissionConfigSource"/> is the
-/// canonical adapter that binds to the shared <c>EggLedger.Domain.Eiafx.EiafxConfig</c>
-/// instead of re-decoding the bin. This embedded source is retained as the
-/// self-contained fallback for callers that do not wire the canonical config.</para>
+/// Standalone <see cref="IMissionConfigSource"/> that deserializes the embedded
+/// eiafx-config.bin. Self-contained fallback; prefer <see cref="EiafxMissionConfigSource"/>
+/// when the canonical eiafx config is wired up.
 /// </summary>
 public sealed class EmbeddedMissionConfigSource : IMissionConfigSource
 {

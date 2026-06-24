@@ -20,7 +20,7 @@ public sealed class ExportGroup
     public string Eid { get; set; } = "";
     public string Nickname { get; set; } = "";
     public string AccountColor { get; set; } = "";
-    public List<FilePair> Pairs { get; set; } = new();
+    public List<FilePair> Pairs { get; set; } = [];
 }
 
 /// <summary>An export file with its size. Decouples ListGroups from the disk.</summary>
@@ -94,7 +94,7 @@ public static class ExportManagement
         var entries = fs.ListFiles(missionsDir);
         if (entries == null)
         {
-            return new List<ExportGroup>();
+            return [];
         }
 
         var pairsByEid = new Dictionary<string, Dictionary<string, FilePair>>(StringComparer.Ordinal);
@@ -182,7 +182,7 @@ public static class ExportManagement
             return (0, 0);
         }
         var groups = ListGroups(exportsDir, fs);
-        List<FilePair> playerPairs = new();
+        List<FilePair> playerPairs = [];
         foreach (var g in groups)
         {
             if (g.Eid == playerId)

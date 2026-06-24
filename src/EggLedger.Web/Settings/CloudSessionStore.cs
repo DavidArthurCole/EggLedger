@@ -4,15 +4,7 @@ using EggLedger.Web.Services;
 
 namespace EggLedger.Web.Settings;
 
-/// <summary>
-/// Persists the connected cloud-sync session and its sync timestamps in
-/// <see cref="IndexedDbSettings"/>, using the same setting keys the Go app uses
-/// (storage.go cloud_* keys). C# stand-in for the Go AppStorage cloud fields: the
-/// browser has no SQLite settings table, so the token / encryption key / Discord
-/// identity / last-push / last-pull / auto-sync flag live as string settings. The
-/// <see cref="CloudSyncService"/> stays stateless; this owns the persisted
-/// <see cref="CloudSession"/>.
-/// </summary>
+/// <summary>Persists the cloud-sync session + sync timestamps in <see cref="IndexedDbSettings"/>, using the Go cloud_* setting keys (storage.go).</summary>
 public sealed class CloudSessionStore
 {
     public const string KeyToken = "cloud_session_token";
@@ -23,11 +15,7 @@ public sealed class CloudSessionStore
     public const string KeyLastPullAt = "cloud_last_pull_at";
     public const string KeyAutoSync = "cloud_auto_sync";
 
-    /// <summary>
-    /// Browser-only: the poll state token saved before the full-page redirect to
-    /// Discord, so the reloaded SPA can resume polling. The desktop app has no
-    /// equivalent (it polls in-process without navigating away).
-    /// </summary>
+    /// <summary>Browser-only: poll state token saved before the Discord redirect so the reloaded SPA can resume polling. No desktop equivalent.</summary>
     public const string KeyPendingAuthState = "cloud_pending_auth_state";
 
     private readonly IndexedDbSettings _settings;
@@ -37,9 +25,7 @@ public sealed class CloudSessionStore
         _settings = settings;
     }
 
-    /// <summary>
-    /// The persisted session, or null when no token is stored (disconnected).
-    /// </summary>
+    /// <summary>The persisted session, or null when no token is stored (disconnected).</summary>
     public async Task<CloudSession?> GetSessionAsync()
     {
         var all = await _settings.GetAllSettingsAsync();

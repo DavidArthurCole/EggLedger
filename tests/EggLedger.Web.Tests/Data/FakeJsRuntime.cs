@@ -12,11 +12,11 @@ public sealed class FakeJsRuntime : IJSRuntime
 
     public FakeJsRuntime(FakeJsObjectReference module) => _module = module;
 
-    public List<(string Identifier, object?[] Args)> Calls { get; } = new();
+    public List<(string Identifier, object?[] Args)> Calls { get; } = [];
 
     public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args)
     {
-        Calls.Add((identifier, args ?? Array.Empty<object?>()));
+        Calls.Add((identifier, args ?? []));
 
         if (identifier == "import")
         {

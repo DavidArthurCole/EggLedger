@@ -4,9 +4,8 @@ using System.Text.Json;
 namespace EggLedger.Domain.LedgerData;
 
 /// <summary>
-/// Loads and holds the active ledger display data. C# Domain port of Go
-/// ledgerdata: embedded-fallback path only (no file caching, no download).
-/// The embedded ledger-display-data-min.json is the source of truth.
+/// Loads and holds the active ledger display data. Go port of ledgerdata, embedded
+/// path only (no file caching, no download); embedded JSON is the source of truth.
 /// </summary>
 public static class LedgerData
 {

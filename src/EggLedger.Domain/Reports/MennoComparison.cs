@@ -1,16 +1,9 @@
 namespace EggLedger.Domain.Reports;
 
 /// <summary>
-/// Pure rendering math for a Menno community comparison overlaid on a user's 2D
-/// heatmap report. Port of the compare-mode computed properties in ReportCard.vue
-/// (mennoAirtimeResult / userPerMissionResult / ratioMatrix / ratioResult) plus
-/// the gating decision. The actual comparison values come from
-/// MennoService.ExecuteComparison; this only reshapes the two ReportResults for
-/// the three compare modes so the C3.3 heatmap can render them.
-///
-/// <para>The comparison renders only for a 2D heatmap report; every other display
-/// mode ignores Menno (matching the Vue, where the menno branches are all gated on
-/// displayMode === 'heatmap').</para>
+/// Rendering math for a Menno community comparison on a user's 2D heatmap report.
+/// Port of the compare-mode computed properties in ReportCard.vue; renders only for
+/// a 2D heatmap (every other display mode ignores Menno).
 /// </summary>
 public static class MennoComparison
 {
@@ -20,10 +13,8 @@ public static class MennoComparison
     public const string DualValue = "dual_value";
 
     /// <summary>
-    /// Whether the Menno comparison should render for this report given the user
-    /// result and the (possibly null) comparison result. Mirrors the Vue gating:
-    /// menno must be enabled, the user result must be a 2D heatmap, and the
-    /// comparison result must be present (ExecuteComparison returned non-null).
+    /// Whether the comparison should render: menno enabled, user result is a 2D
+    /// heatmap, comparison result present. Mirrors the Vue gating.
     /// </summary>
     public static bool ShouldRender(ReportDefinition def, ReportResult? userResult, ReportResult? mennoResult)
     {
@@ -43,10 +34,9 @@ public static class MennoComparison
     }
 
     /// <summary>
-    /// The community result reshaped for the side-by-side panel. When normalizeBy
-    /// is "airtime" and the comparison carries per-nominal-hour values, those are
-    /// substituted so both panels share per-flight-hour units; otherwise the
-    /// comparison result is returned unchanged. Port of mennoAirtimeResult.
+    /// Community result reshaped for the side-by-side panel. When normalizeBy is
+    /// "airtime", per-nominal-hour values are substituted so both panels share units.
+    /// Port of mennoAirtimeResult.
     /// </summary>
     public static ReportResult MennoAirtimeResult(ReportDefinition def, ReportResult mennoResult)
     {
@@ -59,14 +49,12 @@ public static class MennoComparison
         {
             return mennoResult;
         }
-        return Clone(mennoResult, matrixValues: new List<double>(avm));
+        return Clone(mennoResult, matrixValues: [.. avm]);
     }
 
     /// <summary>
-    /// The user's result reshaped for dual-value display: per-mission values are
-    /// substituted (when present) so the displayed top number divided by the
-    /// community bottom number equals the ratio shown by the color. Port of
-    /// userPerMissionResult.
+    /// User's result reshaped for dual-value display: per-mission values substituted
+    /// so top/bottom equals the ratio shown by color. Port of userPerMissionResult.
     /// </summary>
     public static ReportResult UserPerMissionResult(ReportResult userResult)
     {
@@ -75,13 +63,12 @@ public static class MennoComparison
         {
             return userResult;
         }
-        return Clone(userResult, matrixValues: new List<double>(rpm));
+        return Clone(userResult, matrixValues: [.. rpm]);
     }
 
     /// <summary>
-    /// Per-cell ratio user/menno. Numerator prefers the user's per-mission values
-    /// when present. A null entry marks a cell with no community value (menno == 0),
-    /// which downstream renders as the unfilled "-" cell. Port of ratioMatrix.
+    /// Per-cell ratio user/menno; numerator prefers per-mission values. Null marks a
+    /// cell with no community value (menno == 0), rendered as the unfilled "-" cell. Port of ratioMatrix.
     /// </summary>
     public static IReadOnlyList<double?> RatioMatrix(ReportResult userResult, ReportResult mennoResult)
     {
@@ -104,9 +91,8 @@ public static class MennoComparison
     }
 
     /// <summary>
-    /// The ratio result for the "ratio" compare mode: a copy of the user result
-    /// with matrix values replaced by the ratio (null -&gt; 0) and IsFloat set.
-    /// Port of ratioResult.
+    /// Ratio result for "ratio" mode: user result copy with matrix values replaced by
+    /// the ratio (null -&gt; 0) and IsFloat set. Port of ratioResult.
     /// </summary>
     public static ReportResult RatioResult(ReportResult userResult, ReportResult mennoResult)
     {
@@ -122,10 +108,8 @@ public static class MennoComparison
     }
 
     /// <summary>
-    /// Per-cell color values for dual-value mode: the ratio with null entries
-    /// flattened to 0 (cellIntensity treats 0 as unfilled). The top/bottom display
-    /// numbers come from the per-mission user result and the community result; this
-    /// only drives the background intensity. Port of the colorValues prop wiring.
+    /// Per-cell color values for dual-value mode: ratio with nulls flattened to 0
+    /// (0 is unfilled). Drives only the background intensity. Port of the colorValues prop wiring.
     /// </summary>
     public static IReadOnlyList<double> RatioColorValues(ReportResult userResult, ReportResult mennoResult)
     {
@@ -138,11 +122,7 @@ public static class MennoComparison
         return vals;
     }
 
-    /// <summary>
-    /// Shallow copy of a ReportResult with the matrix values swapped. Reuses the
-    /// row/col labels, raw labels, mission counts, weight, and dimensionality of the
-    /// source so the heatmap renders identically apart from the supplied values.
-    /// </summary>
+    /// <summary>Shallow copy of a ReportResult with the matrix values swapped; all other fields reused.</summary>
     private static ReportResult Clone(ReportResult src, List<double> matrixValues) => new()
     {
         Labels = src.Labels,

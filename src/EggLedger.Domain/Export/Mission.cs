@@ -1,7 +1,7 @@
 using System.Globalization;
-using Ei;
 using EggLedger.Domain.Ei;
 using EggLedger.Domain.Util;
+using Ei;
 
 namespace EggLedger.Domain.Export;
 
@@ -25,17 +25,16 @@ public sealed class Mission
     public TimeSpan Duration { get; set; }
     public double DurationDays { get; set; }
     public uint Capacity { get; set; }
-    public List<ArtifactSpec> Artifacts { get; set; } = new();
-    public List<string> ArtifactNames { get; set; } = new();
+    public List<ArtifactSpec> Artifacts { get; set; } = [];
+    public List<string> ArtifactNames { get; set; } = [];
     public ArtifactSpec.Name TargetArtifact { get; set; } = ArtifactSpec.Name.Unknown;
 
     /// <summary>RFC3339 in UTC, matching Go time.Format(time.RFC3339).</summary>
     private const string Rfc3339 = "yyyy-MM-ddTHH:mm:ssK";
 
     /// <summary>
-    /// Replacement for the buggy GetTargetArtifact, which returned LUNAR_TOTEM
-    /// for nil. Returns UNKNOWN unless a target is set and the mission started on
-    /// or after the cutoff (kevin can't count).
+    /// Replacement for the buggy GetTargetArtifact (returned LUNAR_TOTEM for nil). Returns UNKNOWN
+    /// unless a target is set and the mission started on or after the cutoff.
     /// </summary>
     public static ArtifactSpec.Name CustomGetTargetArtifact(MissionInfo? mission)
     {

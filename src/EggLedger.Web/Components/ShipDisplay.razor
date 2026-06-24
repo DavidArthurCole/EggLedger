@@ -2,9 +2,8 @@
 @using EggLedger.Domain.MissionPacking
 @using EggLedger.Web.Missions
 
-@* Port of www/src/components/ShipDisplay.vue (single mode). Identity card +
-   details card + capacity badge, then the drop displays. Hover tooltips and the
-   menno expected-drops detail are deferred. *@
+@* Single-mode ship display: identity + details + capacity badge, then drops.
+   Hover tooltips and menno expected-drops detail are deferred. *@
 
 <div class="text-gray-300 text-center">
     <div class="flex flex-row gap-2 mb-3 mx-auto items-center" style="width: fit-content;">
@@ -69,7 +68,6 @@
 
     private static string Format(DateTime dt) => dt.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
 
-    // Port of ShipDisplay.properCase.
     private static string ProperCase(string value)
     {
         var words = value.ToLowerInvariant().Split(' ');

@@ -3,18 +3,15 @@ using System.Globalization;
 namespace EggLedger.Domain.Reports;
 
 /// <summary>
-/// Heuristic query-cost classification for report definitions. Port of Go
-/// reports/weight.go. Pure aside from the wall-clock used by date-window sizing.
+/// Heuristic query-cost classification for report definitions. Port of Go reports/weight.go.
+/// Uses wall-clock for date-window sizing.
 /// </summary>
 public static class Weight
 {
-    /// <summary>
-    /// Assigns a cost tier ("LOW", "MEDIUM", "HEAVY") to a report definition.
-    /// Port of Go ClassifyWeight.
-    /// </summary>
+    /// <summary>Assigns a cost tier ("LOW"/"MEDIUM"/"HEAVY") to a report definition. Port of Go ClassifyWeight.</summary>
     public static string ClassifyWeight(ReportDefinition def)
     {
-        // Time-series + secondary group-by: time pivot (most expensive case first).
+        // Time pivot (most expensive case first).
         if (def.SecondaryGroupBy != "" && def.Mode == "time_series")
         {
             var eitherIsArtifact = IsArtifactDimension(def.GroupBy) || IsArtifactDimension(def.SecondaryGroupBy);
@@ -95,7 +92,7 @@ public static class Weight
     {
         foreach (var c in f.And)
         {
-            if (c.TopLevel == "launchDT" || c.TopLevel == "returnDT")
+            if (c.TopLevel is "launchDT" or "returnDT")
             {
                 return true;
             }
@@ -104,7 +101,7 @@ public static class Weight
         {
             foreach (var c in group)
             {
-                if (c.TopLevel == "launchDT" || c.TopLevel == "returnDT")
+                if (c.TopLevel is "launchDT" or "returnDT")
                 {
                     return true;
                 }
@@ -113,10 +110,7 @@ public static class Weight
         return false;
     }
 
-    /// <summary>
-    /// Rough estimate of the filter window in days. Returns 9999 if it cannot be
-    /// determined. Port of Go dateFilterWindowDays.
-    /// </summary>
+    /// <summary>Rough filter-window estimate in days; 9999 if undeterminable. Port of Go dateFilterWindowDays.</summary>
     private static int DateFilterWindowDays(ReportFilters f)
     {
         var minDays = 9999;
@@ -128,11 +122,11 @@ public static class Weight
         var now = DateTime.Now;
         foreach (var c in all)
         {
-            if (c.TopLevel != "launchDT" && c.TopLevel != "returnDT")
+            if (c.TopLevel is not "launchDT" and not "returnDT")
             {
                 continue;
             }
-            if (c.Op != ">" && c.Op != ">=")
+            if (c.Op is not ">" and not ">=")
             {
                 continue;
             }

@@ -4,10 +4,9 @@ using Ei;
 namespace EggLedger.Domain.Api;
 
 /// <summary>
-/// Turns a raw (base64-decoded) Egg Inc API payload into the typed response.
-/// The WASM host cannot run protobuf-net decode (Reflection.Emit is forbidden),
-/// so it uses a remote implementation that delegates to the sync server; the
-/// desktop host and tests use the local protobuf-net path.
+/// Turns a raw (base64-decoded) API payload into the typed response. WASM cannot run protobuf-net
+/// decode (Reflection.Emit forbidden), so it delegates to the sync server; desktop and tests use the
+/// local protobuf-net path.
 /// </summary>
 public interface IApiPayloadDecoder
 {

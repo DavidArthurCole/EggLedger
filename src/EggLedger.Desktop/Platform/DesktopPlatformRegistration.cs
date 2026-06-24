@@ -7,26 +7,19 @@ namespace EggLedger.Desktop.Platform;
 
 /// <summary>
 /// Registers the native desktop <see cref="IPlatformCapabilities"/>, replacing the
-/// browser no-op stub. Call AFTER AddEggLedgerWeb so this override wins (same
-/// RemoveAll-then-add pattern as the SQLite storage swap). The Photino window is
-/// only available after the app is built, so the window-backed services are wired
-/// once the host has its MainWindow.
+/// browser no-op stub. Call AFTER AddEggLedgerWeb so this override wins.
 /// </summary>
 public static class DesktopPlatformRegistration
 {
     /// <summary>
-    /// Swaps the browser <see cref="IPlatformCapabilities"/> for the native desktop
-    /// impl over <paramref name="window"/>. Registers the process runner and window
-    /// wrapper as singletons (one window for the app lifetime).
+    /// Swaps in the native impl over <paramref name="window"/>, registering the
+    /// process runner and window wrapper as singletons.
     /// </summary>
     public static IServiceCollection AddDesktopPlatformCapabilities(
         this IServiceCollection services, PhotinoWindow window)
         => services.AddDesktopPlatformCapabilities(new ProcessRunner(), new PhotinoDesktopWindow(window));
 
-    /// <summary>
-    /// Registers the native capabilities over explicit seams. Used by the window
-    /// overload above and directly by tests with fakes.
-    /// </summary>
+    /// <summary>Registers the native capabilities over explicit seams (used by tests with fakes).</summary>
     public static IServiceCollection AddDesktopPlatformCapabilities(
         this IServiceCollection services, IProcessRunner processRunner, IDesktopWindow window)
     {

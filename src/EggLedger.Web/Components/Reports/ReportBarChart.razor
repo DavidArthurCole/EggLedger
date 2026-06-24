@@ -1,12 +1,8 @@
 @using EggLedger.Domain.Reports
 @using EggLedger.Domain.Reports.Charts
 
-@*
-    Horizontal bar chart. Port of ReportBarChart.vue: a 3-column grid of
-    label / track / value rows, sortable by chart_type (bar_desc / bar_asc).
-    Uses CSS-width bars (no SVG); colors come from per-label overrides or the
-    base color. Tooltip is rendered statically via the native title attribute.
-*@
+@* Horizontal bar chart (CSS-width bars), sortable by chart_type (bar_desc / bar_asc).
+   Colors come from per-label overrides or the base color. *@
 
 <div class="w-full h-full grid gap-x-2 gap-y-1 overflow-y-auto pr-3"
      style="grid-template-columns: max-content 1fr max-content; align-content: start;">

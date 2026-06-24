@@ -3,16 +3,9 @@
 @inject IndexedDbReportStore Store
 @inject IJSRuntime Js
 
-@*
-    Report builder dialog (native <dialog>). Port of the core ReportBuilderPanel.vue
-    form: name/description, subject, group-by + optional secondary group-by, display
-    mode (chart type), normalize, color/unfilled, grid size (ReportGridSizePicker),
-    min-sample, the AND filters (ReportFilterEditor), and the Menno toggle (the
-    Menno comparison RENDER is deferred to C3.6; the flags persist here). Builds a
-    ReportDefinition, auto-classifies weight, and saves via IndexedDbReportStore.
-    Advanced options (OR filters, time buckets, value filters, family weight, label
-    color overrides, report groups assignment) are deferred; see plan notes.
-*@
+@* Report builder dialog (native <dialog>). Builds a ReportDefinition, auto-classifies
+   weight, saves via IndexedDbReportStore. Advanced options (OR filters, time buckets,
+   value filters, family weight, label color overrides, group assignment) are deferred. *@
 
 <dialog @ref="_dialog" class="builder-dialog bg-dark rounded-lg relative shadow-xl w-full max-w-2xl max-h-90vh flex flex-col">
     @if (_form is not null)
@@ -156,7 +149,7 @@
     [Parameter, EditorRequired]
     public string AccountId { get; set; } = "";
 
-    /// <summary>Group id to assign new reports to, or null for ungrouped.</summary>
+    /// <summary>Group id for new reports, or null for ungrouped.</summary>
     [Parameter]
     public string? GroupId { get; set; }
 

@@ -6,10 +6,8 @@ namespace EggLedger.Domain.Reports.Charts;
 public readonly record struct HeatmapCellStyle(string BackgroundColor, string Color);
 
 /// <summary>
-/// Pure heatmap cell math. Port of the must-be-correct parts of
-/// ReportHeatmap.vue: intensity, base/unfilled color blending, relative
-/// luminance text-color choice, and the below-sample-threshold check. The drag
-/// reorder and DOM wiring stay in the Razor component.
+/// Heatmap cell math. Port of ReportHeatmap.vue: intensity, base/unfilled color blending,
+/// relative-luminance text color, and the below-sample-threshold check.
 /// </summary>
 public static class HeatmapGeometry
 {
@@ -23,9 +21,9 @@ public static class HeatmapGeometry
 
     /// <summary>Parses a #rrggbb hex into (r, g, b) byte components. Port of hexToRgb.</summary>
     public static (int R, int G, int B) HexToRgb(string hex) => (
-        int.Parse(hex.Substring(1, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture),
-        int.Parse(hex.Substring(3, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture),
-        int.Parse(hex.Substring(5, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture));
+        int.Parse(hex.AsSpan(1, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture),
+        int.Parse(hex.AsSpan(3, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture),
+        int.Parse(hex.AsSpan(5, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture));
 
     /// <summary>WCAG relative luminance of an sRGB color. Port of relativeLuminance.</summary>
     public static double RelativeLuminance(int r, int g, int b)
@@ -39,9 +37,8 @@ public static class HeatmapGeometry
     }
 
     /// <summary>
-    /// Cell fill intensity in [0.12, 1]. Color-values override raw value; pct and
-    /// ratio modes have their own scales; default is value / globalMax. Port of
-    /// cellIntensity.
+    /// Cell fill intensity in [0.12, 1]. colorValue overrides raw value; pct and ratio
+    /// modes have own scales; default is value / globalMax. Port of cellIntensity.
     /// </summary>
     public static double CellIntensity(
         double value,
@@ -75,10 +72,8 @@ public static class HeatmapGeometry
     }
 
     /// <summary>
-    /// Computes a cell's background and text color, blending base over unfilled by
-    /// intensity and choosing dark or light text by luminance. Empty / below-
-    /// threshold cells use the unfilled color. Port of the cellStyle computed
-    /// (without the hover brightness filter, which is applied in CSS).
+    /// Cell background and text color: blends base over unfilled by intensity, text dark/light
+    /// by luminance; empty/below-threshold cells use unfilled. Port of cellStyle (hover filter is in CSS).
     /// </summary>
     public static HeatmapCellStyle CellStyle(
         double value,
@@ -112,8 +107,8 @@ public static class HeatmapGeometry
     }
 
     /// <summary>
-    /// Display string for a cell value honoring ratio / pct / integer / float
-    /// formatting. Below-threshold returns "-". Port of displayValue.
+    /// Display string for a cell value (ratio/pct/integer/float); below-threshold returns "-".
+    /// Port of displayValue.
     /// </summary>
     public static string DisplayValue(double value, string? normalizeBy, bool belowThreshold)
     {
@@ -143,10 +138,8 @@ public static class HeatmapGeometry
     }
 
     /// <summary>
-    /// Display string for the optional secondary sub-line (Menno dual_value mode).
-    /// Below-threshold returns empty (the sub-line is hidden); otherwise it formats
-    /// the value as 0 / pct / integer / float, matching the primary value's number
-    /// formatting minus the ratio case. Port of secondaryDisplayValue.
+    /// Display string for the optional secondary sub-line (Menno dual_value); below-threshold
+    /// returns empty, else 0/pct/integer/float (no ratio case). Port of secondaryDisplayValue.
     /// </summary>
     public static string SecondaryDisplayValue(double value, string? normalizeBy, bool belowThreshold)
     {

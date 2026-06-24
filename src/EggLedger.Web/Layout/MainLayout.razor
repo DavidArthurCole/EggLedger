@@ -31,9 +31,7 @@
 @code {
     protected override async Task OnInitializedAsync()
     {
-        // Load the persisted screenshot-safety (mask EIDs) toggle once at startup so
-        // every component that masks reflects it on first render. Vue loads this in
-        // useSettings; here the shell seeds the shared ScreenshotSafetyState.
+        // Seed the shared mask-EID toggle at startup so masking components reflect it on first render.
         var settings = await Settings.GetAllSettingsAsync();
         if (settings.TryGetValue(SettingsModel.KeyScreenshotSafety, out var v))
         {

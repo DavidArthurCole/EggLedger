@@ -1,0 +1,154 @@
+@using EggLedger.Web.Missions
+@using EggLedger.Web.State
+@inject IJSRuntime Js
+@implements IAsyncDisposable
+
+@* Searchable option picker with image thumbnails and keyboard nav. Drops show a
+   rarity ring, targets show the target icon. *@
+
+<div class="searchable-picker relative inline-block">
+    <button type="button" class="filter-select border-gray-300 text-gray-400 flex items-center gap-1.5 text-left"
+            @onclick="ToggleAsync">
+        @if (Selected is { } sel)
+        {
+            @if (!string.IsNullOrEmpty(sel.ImagePath))
+            {
+                <img class="max-w-5 @RingClass(sel)" loading="lazy" decoding="async" alt="@sel.Text" src="@ImageSrc(sel)" />
+            }
+            <span class="@(sel.StyleClass ?? "text-gray-400")">@sel.Text</span>
+        }
+        else
+        {
+            <span class="text-gray-500">@Placeholder</span>
+        }
+    </button>
+
+    @if (_open)
+    {
+        <div class="searchable-picker-pop absolute z-50 mt-1 w-72 max-h-80 overflow-auto rounded-md border border-gray-600 bg-darkest shadow-2xl">
+            <input @ref="_searchInput" type="text" class="w-full box-border px-2 py-1 text-sm bg-darkest border-b border-gray-600 text-gray-300 focus:outline-none"
+                   placeholder="Search..." @bind="_query" @bind:event="oninput"
+                   @onkeydown="OnSearchKeyDown" />
+            <div>
+                @{ var filtered = Filtered(); }
+                @if (filtered.Count == 0)
+                {
+                    <div class="px-2 py-1.5 text-sm text-gray-500">No results found.</div>
+                }
+                else
+                {
+                    @for (var i = 0; i < filtered.Count; i++)
+                    {
+                        var idx = i;
+                        var opt = filtered[idx];
+                        <button type="button"
+                                class="w-full flex items-center gap-2 px-2 py-1 text-sm text-left hover:bg-darker @(idx == _activeIndex ? "bg-darker" : "")"
+                                @onclick="() => Choose(opt)">
+                            @if (!string.IsNullOrEmpty(opt.ImagePath))
+                            {
+                                <img class="max-w-6 @RingClass(opt)" loading="lazy" decoding="async" alt="@opt.Text" src="@ImageSrc(opt)" />
+                            }
+                            <span class="@(opt.StyleClass ?? "text-gray-400")">@opt.Text</span>
+                        </button>
+                    }
+                }
+            </div>
+            @if (Footer is not null)
+            {
+                <div class="border-t border-gray-600 px-2 py-1">@Footer</div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public IReadOnlyList<FilterOption> Options { get; set; } = [];
+    [Parameter] public string? SelectedValue { get; set; }
+    [Parameter] public string Placeholder { get; set; } = "Select...";
+    [Parameter] public string ImageBasePath { get; set; } = "images/";
+    [Parameter] public bool RarityRing { get; set; }
+    [Parameter] public EventCallback<FilterOption> OnSelect { get; set; }
+    [Parameter] public RenderFragment? Footer { get; set; }
+
+    private bool _open;
+    private string _query = "";
+    private int _activeIndex = -1;
+    private ElementReference _searchInput;
+    private IJSObjectReference? _dismiss;
+
+    private FilterOption? Selected =>
+        SelectedValue is null ? null : Options.FirstOrDefault(o => o.Value == SelectedValue);
+
+    private List<FilterOption> Filtered()
+    {
+        if (string.IsNullOrWhiteSpace(_query))
+            return [.. Options];
+        return [.. Options.Where(o => o.Text.Contains(_query, StringComparison.OrdinalIgnoreCase))];
+    }
+
+    private string ImageSrc(FilterOption o) => ContentPaths.Asset(ImageBasePath + o.ImagePath);
+
+    private string RingClass(FilterOption o) =>
+        RarityRing && o.Rarity is > 0 ? $"rounded-full bg-r-{o.Rarity}" : "";
+
+    private async Task ToggleAsync()
+    {
+        _open = !_open;
+        if (_open)
+        {
+            _query = "";
+            _activeIndex = -1;
+            await EnsureDismissAsync();
+            await Task.Yield();
+            await _searchInput.FocusAsync();
+        }
+    }
+
+    private void OnSearchKeyDown(KeyboardEventArgs e)
+    {
+        var filtered = Filtered();
+        switch (e.Key)
+        {
+            case "ArrowDown":
+                _activeIndex = Math.Min(_activeIndex + 1, filtered.Count - 1);
+                break;
+            case "ArrowUp":
+                _activeIndex = Math.Max(_activeIndex - 1, 0);
+                break;
+            case "Enter" when _activeIndex >= 0 && _activeIndex < filtered.Count:
+                _ = Choose(filtered[_activeIndex]);
+                break;
+            case "Escape":
+                _open = false;
+                break;
+        }
+    }
+
+    private async Task Choose(FilterOption opt)
+    {
+        _open = false;
+        await OnSelect.InvokeAsync(opt);
+    }
+
+    [JSInvokable]
+    public void CloseFromOutside()
+    {
+        if (!_open)
+            return;
+        _open = false;
+        StateHasChanged();
+    }
+
+    private async Task EnsureDismissAsync()
+    {
+        _dismiss ??= await Js.InvokeAsync<IJSObjectReference>(
+            "import", "./_content/EggLedger.Web/js/clickaway.js");
+        await _dismiss.InvokeVoidAsync("register", DotNetObjectReference.Create(this), "searchable-picker");
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_dismiss is not null)
+            await _dismiss.DisposeAsync();
+    }
+}

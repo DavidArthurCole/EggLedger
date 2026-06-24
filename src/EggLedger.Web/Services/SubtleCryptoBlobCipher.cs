@@ -2,13 +2,7 @@ using Microsoft.JSInterop;
 
 namespace EggLedger.Web.Services;
 
-/// <summary>
-/// AES-256-GCM via the browser SubtleCrypto API (JS interop). Used by the WASM
-/// host because System.Security.Cryptography.AesGcm is not supported on the
-/// browser runtime. Wire format is identical to <see cref="LocalBlobCipher"/>
-/// and the Go server: base64(nonce || ciphertext || tag). Plaintext crosses the
-/// JS boundary as base64 to avoid byte[] marshalling quirks.
-/// </summary>
+/// <summary>AES-256-GCM via the browser SubtleCrypto API, for the WASM host where AesGcm is unsupported. Wire format matches <see cref="LocalBlobCipher"/>: base64(nonce || ciphertext || tag). Plaintext crosses the JS boundary as base64 to avoid byte[] marshalling quirks.</summary>
 public sealed class SubtleCryptoBlobCipher : IBlobCipher
 {
     private readonly IJSRuntime _js;
@@ -34,11 +28,7 @@ public sealed class SubtleCryptoBlobCipher : IBlobCipher
             throw new InvalidOperationException("decrypt: empty ciphertext (nothing synced yet?)");
         }
         var module = await ModuleAsync();
-        string? plaintextB64 = await module.InvokeAsync<string>("decrypt", ct, hexKey, b64);
-        if (plaintextB64 is null)
-        {
-            throw new InvalidOperationException("decrypt: SubtleCrypto returned no data");
-        }
+        string? plaintextB64 = await module.InvokeAsync<string>("decrypt", ct, hexKey, b64) ?? throw new InvalidOperationException("decrypt: SubtleCrypto returned no data");
         return Convert.FromBase64String(plaintextB64);
     }
 }

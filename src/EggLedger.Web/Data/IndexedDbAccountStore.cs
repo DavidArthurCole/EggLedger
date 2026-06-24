@@ -5,13 +5,10 @@ using EggLedger.Domain.MissionQuery;
 namespace EggLedger.Web.Data;
 
 /// <summary>
-/// Known-account persistence. C# port of the Go storage.AppStorage
-/// known-accounts + active-account fields, which the desktop app keeps in its
-/// settings table. The browser has no dedicated accounts object store, so the
-/// account list is stored as one JSON blob under the <c>known_accounts</c>
-/// settings key and the selection under <c>active_account_id</c>, reusing the
-/// existing <c>settings</c> store (no IndexedDB schema bump). Upsert by id keeps
-/// at most one row per account, matching Go's AddKnownAccount.
+/// Known-account persistence (C# port of Go storage.AppStorage). No dedicated
+/// accounts store: the list is one JSON blob under <c>known_accounts</c> and the
+/// selection under <c>active_account_id</c> in the existing <c>settings</c> store
+/// (no IndexedDB schema bump). Upsert by id keeps one row per account.
 /// </summary>
 public sealed class IndexedDbAccountStore
 {
@@ -32,10 +29,7 @@ public sealed class IndexedDbAccountStore
         return Deserialize(all);
     }
 
-    /// <summary>
-    /// Upserts an account by id (replacing an existing entry, else appending),
-    /// then persists the list. Mirrors Go AddKnownAccount.
-    /// </summary>
+    /// <summary>Upserts an account by id, then persists the list. Mirrors Go AddKnownAccount.</summary>
     public async Task AddKnownAccountAsync(AccountInfo account)
     {
         var all = await _settings.GetAllSettingsAsync();
@@ -79,23 +73,23 @@ public sealed class IndexedDbAccountStore
     public async Task SetActiveAccountIdAsync(string id) =>
         await _settings.SetSettingAsync(ActiveAccountKey, id ?? "");
 
-    private static List<AccountInfo> Deserialize(IReadOnlyDictionary<string, string> settings)
+    private static List<AccountInfo> Deserialize(Dictionary<string, string> settings)
     {
         if (!settings.TryGetValue(KnownAccountsKey, out var raw) || string.IsNullOrEmpty(raw))
         {
-            return new List<AccountInfo>();
+            return [];
         }
         try
         {
             var rows = JsonSerializer.Deserialize<List<AccountInfoRow>>(raw, Rows.JsonOptions);
             return rows is null
-                ? new List<AccountInfo>()
+                ? []
                 : rows.ConvertAll(AccountInfoRow.ToAccount);
         }
         catch (JsonException)
         {
             // Corrupt blob: start clean rather than wedge the Ledger tab.
-            return new List<AccountInfo>();
+            return [];
         }
     }
 
@@ -107,10 +101,9 @@ public sealed class IndexedDbAccountStore
 }
 
 /// <summary>
-/// Persistence DTO for a known account. The explicit snake_case
+/// Persistence DTO for a known account. Explicit snake_case
 /// <see cref="JsonPropertyNameAttribute"/> names decouple the stored blob from
-/// the Domain <see cref="AccountInfo"/> property names, so renaming a Domain
-/// field cannot silently break round-trip of already-stored blobs.
+/// Domain <see cref="AccountInfo"/> property names, so a rename cannot break round-trip.
 /// </summary>
 public sealed record AccountInfoRow
 {

@@ -1,7 +1,7 @@
-using Ei;
 using EggLedger.Domain.MissionPacking;
 using EggLedger.Domain.MissionQuery;
 using EggLedger.Web.Missions;
+using Ei;
 
 namespace EggLedger.Web.Tests.Missions;
 
@@ -20,16 +20,16 @@ public sealed class MissionDetailBuilderTests
         MissionInfo.Spaceship ship = MissionInfo.Spaceship.ChickenOne,
         MissionInfo.DurationType dur = MissionInfo.DurationType.Short,
         int level = 0, int target = -1) => new()
-    {
-        MissiondId = id,
-        Capacity = capacity,
-        NominalCapcity = nominal,
-        Ship = ship,
-        DurationType = dur,
-        Level = level,
-        TargetInt = target,
-        DurationString = "Short",
-    };
+        {
+            MissiondId = id,
+            Capacity = capacity,
+            NominalCapcity = nominal,
+            Ship = ship,
+            DurationType = dur,
+            Level = level,
+            TargetInt = target,
+            DurationString = "Short",
+        };
 
     [Fact]
     public void BuildBase_SplitsDropsBySpecType()

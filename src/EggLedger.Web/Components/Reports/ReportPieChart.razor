@@ -2,12 +2,8 @@
 @using EggLedger.Domain.Reports
 @using EggLedger.Domain.Reports.Charts
 
-@*
-    Pie chart. Port of ReportPieChart.vue. Slice arc geometry and colors come from
-    the golden-tested PieGeometry helper. The heavy connector-line label callouts
-    with collision spreading are simplified to a compact legend beneath the pie;
-    the slices, percentages, and colors are faithful. Tooltip via title attr.
-*@
+@* Pie chart; slice geometry and colors from PieGeometry. Connector-line callouts are
+   simplified to a compact legend beneath the pie. *@
 
 <div class="w-full h-full flex items-center justify-center gap-2">
     <svg viewBox="0 0 @Vw @Vh" preserveAspectRatio="xMidYMid meet" class="h-full" style="max-width: 60%; aspect-ratio: 1 / 1;">

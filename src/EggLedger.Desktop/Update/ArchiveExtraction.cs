@@ -5,12 +5,9 @@ using System.Runtime.InteropServices;
 namespace EggLedger.Desktop.Update;
 
 /// <summary>
-/// Pulls the runnable EggLedger binary out of a downloaded release archive, ported
-/// from EggLedger/update/updater_bindings.go (extractBinaryFromArchive /
-/// extractFromTarGz / extractFromZip). The Windows release asset is the raw binary
-/// (no extraction); the linux asset is a .tar.gz and the mac assets are .zip, so the
-/// real binary has to be pulled out of the archive and given the executable bit on
-/// unix before it can be launched as EggLedger_new.
+/// Pulls the EggLedger binary out of a downloaded release archive. Windows assets
+/// are raw (no extraction); linux .tar.gz and mac .zip need the binary extracted and
+/// given the executable bit on unix before it can launch as EggLedger_new.
 /// </summary>
 public static class ArchiveExtraction
 {

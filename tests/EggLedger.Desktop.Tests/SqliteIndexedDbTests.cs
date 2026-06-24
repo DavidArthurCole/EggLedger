@@ -159,13 +159,25 @@ public sealed class SqliteIndexedDbTests : IDisposable
         var store = new IndexedDbReportStore(_db, now: () => 1234);
         await store.InsertReportAsync(new ReportRow
         {
-            Id = "r1", AccountId = "EI1", Name = "R1", Subject = "missions",
-            Mode = "aggregate", DisplayMode = "chart", GroupBy = "ship_type", SortOrder = 0,
+            Id = "r1",
+            AccountId = "EI1",
+            Name = "R1",
+            Subject = "missions",
+            Mode = "aggregate",
+            DisplayMode = "chart",
+            GroupBy = "ship_type",
+            SortOrder = 0,
         });
         await store.InsertReportAsync(new ReportRow
         {
-            Id = "r2", AccountId = "EI1", Name = "R2", Subject = "missions",
-            Mode = "aggregate", DisplayMode = "chart", GroupBy = "ship_type", SortOrder = 1,
+            Id = "r2",
+            AccountId = "EI1",
+            Name = "R2",
+            Subject = "missions",
+            Mode = "aggregate",
+            DisplayMode = "chart",
+            GroupBy = "ship_type",
+            SortOrder = 1,
         });
 
         var list = await store.RetrieveAccountReportsAsync("EI1");
@@ -203,7 +215,7 @@ public sealed class SqliteIndexedDbTests : IDisposable
         {
             PlayerId = "EI1",
             RecordedAt = 1700000500d,
-            Payload = new byte[] { 1 },
+            Payload = [1],
         });
         Assert.Equal(1, await _db.CountAsync("backup"));
         got = await _db.GetAsync<BackupRow>("backup", "EI1");
@@ -227,7 +239,7 @@ public sealed class SqliteIndexedDbTests : IDisposable
         Assert.Equal(raw, Gunzip(row.Payload));
 
         // Within 12h: skipped, original retained.
-        await store.InsertBackupAsync("EI1", t0 + 3600, new byte[] { 1, 2, 3 }, gap);
+        await store.InsertBackupAsync("EI1", t0 + 3600, [1, 2, 3], gap);
         row = await _db.GetAsync<BackupRow>("backup", "EI1");
         Assert.Equal(t0, row!.RecordedAt);
         Assert.Equal(raw, Gunzip(row.Payload));
@@ -257,7 +269,7 @@ public sealed class SqliteIndexedDbTests : IDisposable
         PlayerId = player,
         MissionId = mission,
         StartTimestamp = 1700000000,
-        CompletePayload = Array.Empty<byte>(),
+        CompletePayload = [],
         Ship = 1,
         DurationType = 0,
         Level = 1,

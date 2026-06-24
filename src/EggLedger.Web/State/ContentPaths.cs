@@ -1,12 +1,6 @@
 namespace EggLedger.Web.State;
 
-/// <summary>
-/// Static-asset paths. Images ship in this Razor Class Library's wwwroot, which
-/// the host serves under the RCL content prefix <c>_content/EggLedger.Web/</c>
-/// (matching how the CSS and JS are referenced). The Vue app served from the web
-/// root used bare <c>images/...</c> paths; the C# port must add the prefix or
-/// every icon 404s.
-/// </summary>
+/// <summary>Static-asset paths. RCL wwwroot is served under the content prefix <c>_content/EggLedger.Web/</c>; assets must carry it or every icon 404s.</summary>
 public static class ContentPaths
 {
     /// <summary>RCL static-asset base, e.g. <c>_content/EggLedger.Web/</c>.</summary>

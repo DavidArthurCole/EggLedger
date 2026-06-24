@@ -4,16 +4,9 @@
 @using EggLedger.Domain.Reports
 @using EggLedger.Domain.Reports.Charts
 
-@*
-    Line / area chart. Port of ReportLineChart.vue. Geometry (points, polyline,
-    area path, y ticks, x label thinning + formatting) comes from the golden-
-    tested ChartGeometry helper. Fixed viewBox (responsive via preserveAspectRatio
-    and CSS width); the Vue ResizeObserver pixel sizing is not needed for the SVG
-    coordinate space. Hover crosshair/tooltip simplified to per-point titles.
-
-    SVG <text> elements are emitted via MarkupString helpers because Razor
-    reserves the bare <text> tag for its own text-transition control block.
-*@
+@* Line / area chart; geometry from ChartGeometry, fixed viewBox (responsive via CSS).
+   SVG <text> is emitted via MarkupString helpers because Razor reserves the bare
+   <text> tag for its own text-transition control block. *@
 
 <div class="h-full w-full">
     @if (Points().Count >= 2)

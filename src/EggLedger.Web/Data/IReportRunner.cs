@@ -3,11 +3,8 @@ using EggLedger.Domain.Reports;
 namespace EggLedger.Web.Data;
 
 /// <summary>
-/// Runs a report definition for an account and returns the labeled result. The
-/// browser fills this with <see cref="IndexedDbMissionDb"/> (materializes rows
-/// from IndexedDB into the in-memory report runner); the desktop host fills it
-/// with a SQLite-backed runner that executes the SQL <see cref="ReportExecutor"/>
-/// path natively. Same UI, two backends.
+/// Runs a report definition for an account. Browser uses <see cref="IndexedDbMissionDb"/>
+/// (in-memory runner); desktop uses a SQLite-backed <see cref="ReportExecutor"/> runner.
 /// </summary>
 public interface IReportRunner
 {

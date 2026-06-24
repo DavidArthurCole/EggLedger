@@ -1,12 +1,6 @@
 namespace EggLedger.Web.Platform;
 
-/// <summary>
-/// Capability seam over platform-specific shell features the Go/lorca desktop
-/// build exposes (open file, reveal in folder, native save dialog, restart,
-/// window size). The browser build implements these as downloads / no-ops; a
-/// future desktop host implements them for real. Desktop-only UI controls gate
-/// on <see cref="IsDesktop"/>.
-/// </summary>
+/// <summary>Capability seam over platform-specific shell features. The browser build implements these as downloads/no-ops; desktop-only UI gates on <see cref="IsDesktop"/>.</summary>
 public interface IPlatformCapabilities
 {
     /// <summary>True when running in a desktop shell with real OS file access.</summary>
@@ -18,10 +12,7 @@ public interface IPlatformCapabilities
     /// <summary>Reveal a file in the OS file browser (select it in its folder).</summary>
     Task OpenFileInFolderAsync(string path);
 
-    /// <summary>
-    /// Prompt for a save path. Returns the chosen absolute path, or null when no
-    /// native picker is available (browser downloads to its own path).
-    /// </summary>
+    /// <summary>Prompt for a save path; returns the chosen absolute path, or null when no native picker is available.</summary>
     Task<string?> ChooseSaveFilePathAsync(string defaultName);
 
     /// <summary>Restart the application (desktop self-update flow).</summary>

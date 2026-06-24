@@ -195,9 +195,7 @@
 
         var progress = new Progress<FetchProgress>(p =>
         {
-            // Per-mission segment events (Cache/Fetch/Decode/Store) carry no counts;
-            // they must not clobber the running Total/Finished/Failed/Retried shown
-            // in the counter. Carry the last-known counts forward on those events.
+            // Segment events carry no counts, so carry last-known counts forward to avoid clobbering the counter.
             bool segmentOnly = p.Segment is not null;
             if (segmentOnly && _progress is not null)
             {

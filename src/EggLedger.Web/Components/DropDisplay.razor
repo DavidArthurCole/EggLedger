@@ -1,8 +1,6 @@
 @using EggLedger.Web.Missions
 
-@* Port of www/src/components/DropDisplay.vue + the icon-grid core of
-   InnerDropDisplay.vue (tooltips deferred). One spec-type section: a colored
-   label "Label (totalCount)" then the grouped drop icons with counts. *@
+@* One spec-type section: colored label "Label (totalCount)" then grouped drop icons with counts. Tooltips deferred. *@
 
 @if (Items is { Count: > 0 })
 {
@@ -50,7 +48,6 @@
         }
     }
 
-    // Port of getLabelDisplayValue.
     private string LabelText => Type switch
     {
         "artifact" => "Artifacts",
@@ -60,7 +57,6 @@
         _ => "Unknown",
     };
 
-    // Port of getLabelClassList color mapping.
     private string LabelClass => "mission-view-div " + Type switch
     {
         "artifact" => "bg-blue-900",
@@ -69,14 +65,14 @@
         _ => "bg-gray-900",
     };
 
-    // Port of getSpecPathOffset: Stone -> +2, else +1.
+    // Stone -> +2, else +1.
     private static int SpecPathOffset(DropLike item) => item.SpecType == "Stone" ? 2 : 1;
 
-    // Port of getAClass: artifacts carry their rarity background, others bg-r-0.
+    // Artifacts carry their rarity background, others bg-r-0.
     private static string RarityBgClass(DropLike item) =>
         item.SpecType == "Artifact" ? "ledger-af-link bg-r-" + item.Rarity : "ledger-af-link bg-r-0";
 
-    // Port of numToDigClass: count badge width by digit count.
+    // Count badge width by digit count.
     private static string NumToDigClass(int num) => num switch
     {
         > 999999 => "w-sevendig",
@@ -88,7 +84,6 @@
         _ => "w-onedig",
     };
 
-    // Port of specPath.
     private static string SpecPath(DropLike item)
     {
         var fixedName = item.Name

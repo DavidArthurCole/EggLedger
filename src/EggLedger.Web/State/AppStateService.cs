@@ -3,49 +3,35 @@ using EggLedger.Web.Services;
 
 namespace EggLedger.Web.State;
 
-/// <summary>
-/// Broad app/UI state. C# port of the Vue useAppState composable (NOT the fetch
-/// pipeline enum, which is <see cref="EggLedger.Web.Services.AppState"/> in
-/// FetchModels). Named distinctly to avoid that clash. Holds the app version, the
-/// known-accounts list, the active tab label, and the current pipeline state, with
-/// a change notification so the shell re-renders. Scoped (one instance per app).
-/// </summary>
+/// <summary>Broad app/UI state. Named distinctly from the fetch pipeline enum <see cref="EggLedger.Web.Services.AppState"/> to avoid the clash.</summary>
 public sealed class AppStateService
 {
-    private string _appVersion = "";
-    private IReadOnlyList<KnownAccount> _knownAccounts = [];
-    private string _activeTab = "Ledger";
-    private AppState? _pipelineState;
-
     /// <summary>Compiled app version string.</summary>
     public string AppVersion
     {
-        get => _appVersion;
-        set => Set(ref _appVersion, value);
-    }
+        get;
+        set => Set(ref field, value);
+    } = "";
 
     /// <summary>Known accounts loaded from the mission store.</summary>
     public IReadOnlyList<KnownAccount> KnownAccounts
     {
-        get => _knownAccounts;
-        set => Set(ref _knownAccounts, value);
-    }
+        get;
+        set => Set(ref field, value);
+    } = [];
 
     /// <summary>Active tab label (matches the tab bar labels).</summary>
     public string ActiveTab
     {
-        get => _activeTab;
-        set => Set(ref _activeTab, value);
-    }
+        get;
+        set => Set(ref field, value);
+    } = "Ledger";
 
-    /// <summary>
-    /// Current fetch pipeline state, or null before the first fetch. Reuses the
-    /// existing <see cref="AppState"/> enum rather than redefining it.
-    /// </summary>
+    /// <summary>Current fetch pipeline state, or null before the first fetch.</summary>
     public AppState? PipelineState
     {
-        get => _pipelineState;
-        set => Set(ref _pipelineState, value);
+        get;
+        set => Set(ref field, value);
     }
 
     /// <summary>Raised whenever any tracked field changes.</summary>

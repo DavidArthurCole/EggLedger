@@ -11,7 +11,7 @@ namespace EggLedger.Domain.Export;
 public static class MissionExport
 {
     private static readonly (string Header, double Width)[] ColumnDefs =
-    {
+    [
         ("ID", 40),
         ("Type", 12),
         ("Ship", 26),
@@ -22,7 +22,7 @@ public static class MissionExport
         ("Duration days", 16),
         ("Capacity", 10),
         ("Target", 26),
-    };
+    ];
 
     private static int MaxArtifactCount(IReadOnlyList<Mission> missions)
     {
@@ -172,7 +172,7 @@ public static class MissionExport
     /// Writes one CSV record. Matches Go encoding/csv: comma separator, CRLF
     /// line terminator (including after the final record), minimal quoting.
     /// </summary>
-    private static void WriteCsvRecord(StringBuilder sb, IReadOnlyList<string> fields)
+    private static void WriteCsvRecord(StringBuilder sb, List<string> fields)
     {
         for (int i = 0; i < fields.Count; i++)
         {
@@ -214,13 +214,11 @@ public static class MissionExport
         {
             return false;
         }
-        if (field.IndexOfAny(new[] { '"', ',', '\r', '\n' }) >= 0)
+        if (field.IndexOfAny(['"', ',', '\r', '\n']) >= 0)
         {
             return true;
         }
-        // Go quotes a field that begins with whitespace recognized as part of a
-        // record separator only via the above; leading space is not quoted by
-        // encoding/csv. Match: only the special chars trigger quoting.
+        // Match Go encoding/csv: only the special chars trigger quoting (leading space does not).
         return false;
     }
 }

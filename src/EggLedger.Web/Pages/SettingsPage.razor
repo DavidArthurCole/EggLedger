@@ -20,8 +20,7 @@
         <div class="flex-1 min-h-0 px-3 py-2 overflow-auto shadow-sm block text-sm font-mono text-gray-400 bg-darkest rounded-md">
             @if (Platform.IsDesktop)
             {
-                @* Desktop-only: window/browser sizing and storage management need real
-                   OS access. Hidden in the browser build; a desktop host renders these. *@
+                @* Desktop-only: window sizing and storage management need OS access. *@
                 <div class="px-2 py-2 text-sm text-gray-400 bg-darker rounded-md tabular-nums overflow-auto">
                     <span class="mr-0_5rem font-bold text-lg text-gray-400 ledger-underline">Window &amp; Browser</span>
                     <span class="text-gray-500 text-xs italic ml-1">(effective on restart)</span><br />
@@ -62,15 +61,12 @@
     private async Task OnSettingAsync((string Key, string Value) change)
     {
         await Settings.SetSettingAsync(change.Key, change.Value);
-        // Mask-EID toggle is shared app-wide; push it to the live state so every
-        // EID on screen re-masks immediately without a reload.
+        // Mask-EID toggle is shared app-wide; push to live state so every EID re-masks immediately.
         if (change.Key == SettingsModel.KeyScreenshotSafety)
         {
             ScreenshotSafety.Enabled = change.Value == "true";
         }
-        // Auto-sync mirrors the Vue useCloudSync watch: a change to a cloud-syncable
-        // setting triggers a push when auto-sync is on and a session is connected.
-        // Machine-local keys (auto-export, worker-warning) do not.
+        // A cloud-syncable setting change triggers a push when auto-sync is on and connected. Machine-local keys do not.
         if (_cloudPanel is not null && IsCloudSyncableKey(change.Key))
         {
             await _cloudPanel.AutoSyncIfEnabledAsync();

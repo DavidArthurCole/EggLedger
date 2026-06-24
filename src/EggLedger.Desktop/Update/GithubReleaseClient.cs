@@ -4,12 +4,8 @@ using System.Text.Json;
 namespace EggLedger.Desktop.Update;
 
 /// <summary>
-/// GitHub releases API client + asset download, ported from
-/// EggLedger/update/version.go (getLatestTag, getLatestTagIncludingPreReleases,
-/// expectedAssetName, getUpdateAssetURL, downloadUpdate). HttpClient is injected so
-/// the URL construction + JSON parse + byte write are unit-testable with a stubbed
-/// handler (assert it hits the right URL and writes the bytes); no real GitHub call
-/// happens in tests.
+/// GitHub releases API client + asset download. HttpClient is injected so URL
+/// construction, JSON parse, and byte write are unit-testable with a stubbed handler.
 /// </summary>
 public sealed class GithubReleaseClient(HttpClient httpClient)
 {
@@ -177,29 +173,27 @@ public sealed class GithubReleaseClient(HttpClient httpClient)
 
         var total = resp.Content.Headers.ContentLength ?? 0;
         await using var src = await resp.Content.ReadAsStreamAsync(cancel).ConfigureAwait(false);
-        await using (var dst = new FileStream(destPath, FileMode.Create, FileAccess.Write, FileShare.None))
+        await using var dst = new FileStream(destPath, FileMode.Create, FileAccess.Write, FileShare.None);
+        var buffer = new byte[64 * 1024];
+        long downloaded = 0;
+        long lastReport = 0;
+        int read;
+        while ((read = await src.ReadAsync(buffer, cancel).ConfigureAwait(false)) > 0)
         {
-            var buffer = new byte[64 * 1024];
-            long downloaded = 0;
-            long lastReport = 0;
-            int read;
-            while ((read = await src.ReadAsync(buffer, cancel).ConfigureAwait(false)) > 0)
+            await dst.WriteAsync(buffer.AsMemory(0, read), cancel).ConfigureAwait(false);
+            downloaded += read;
+            if (downloaded - lastReport >= 64 * 1024)
             {
-                await dst.WriteAsync(buffer.AsMemory(0, read), cancel).ConfigureAwait(false);
-                downloaded += read;
-                if (downloaded - lastReport >= 64 * 1024)
-                {
-                    progress?.Invoke(downloaded, total);
-                    lastReport = downloaded;
-                }
+                progress?.Invoke(downloaded, total);
+                lastReport = downloaded;
             }
-            progress?.Invoke(downloaded, total);
-            await dst.FlushAsync(cancel).ConfigureAwait(false);
+        }
+        progress?.Invoke(downloaded, total);
+        await dst.FlushAsync(cancel).ConfigureAwait(false);
 
-            if (total > 0 && downloaded != total)
-            {
-                throw new IOException($"incomplete download: received {downloaded} of {total} bytes");
-            }
+        if (total > 0 && downloaded != total)
+        {
+            throw new IOException($"incomplete download: received {downloaded} of {total} bytes");
         }
     }
 
@@ -209,7 +203,7 @@ public sealed class GithubReleaseClient(HttpClient httpClient)
         {
             using var req = new HttpRequestMessage(HttpMethod.Get, url);
             // GitHub requires a User-Agent; the Go default client sends one implicitly.
-            if (!_httpClient.DefaultRequestHeaders.UserAgent.Any())
+            if (_httpClient.DefaultRequestHeaders.UserAgent.Count == 0)
             {
                 req.Headers.UserAgent.ParseAdd("EggLedger");
             }

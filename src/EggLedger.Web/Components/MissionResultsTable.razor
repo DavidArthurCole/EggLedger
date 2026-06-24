@@ -2,9 +2,7 @@
 @using EggLedger.Domain.MissionPacking
 @using EggLedger.Web.Missions
 
-@* Port of www/src/components/MissionResultsTable.vue. Renders the year/month/day
-   collapse tree, each mission a clickable row. Multi-view (row/free) selection is
-   deferred. *@
+@* Year/month/day collapse tree, each mission a clickable row. Multi-view selection deferred. *@
 
 @if (Grouping is null || Grouping.Missions.Count == 0)
 {
@@ -77,7 +75,7 @@ else
                                                         @foreach (var mission in Grouping.Missions[yearIndex][monthIndex][dayIndex])
                                                         {
                                                             var m = mission;
-                                                            <div class="text-sm mission-item-3" data-missionid="@m.MissiondId">
+                                                            <div @key="m.MissiondId" class="text-sm mission-item-3" data-missionid="@m.MissiondId">
                                                                 <button type="button" class="text-sm mr-5 font-bold btn btn-outline-dark bg-transparent" @onclick="@(() => OnView(m.MissiondId))">
                                                                     @if (!ViewByDate)
                                                                     {
@@ -134,7 +132,7 @@ else
     [Parameter]
     public bool RecolorBc { get; set; }
 
-    /// <summary>Mission id currently shown in the overlay, highlighted in the list.</summary>
+    /// <summary>Mission id shown in the overlay, highlighted in the list.</summary>
     [Parameter]
     public string? MissionBeingViewed { get; set; }
 
@@ -147,7 +145,6 @@ else
 
     private async Task OnView(string missionId) => await OnViewMission.InvokeAsync(missionId);
 
-    // Port of isDayRowVisible.
     private bool DayVisible(int yi, int mi, int di) =>
         ViewByDate ? Grouping!.Arrays.Day[yi][mi][di].Enabled : Grouping!.Arrays.Month[yi][mi].Enabled;
 
@@ -233,7 +230,6 @@ else
         await OnGroupingChanged.InvokeAsync();
     }
 
-    // Port of getShipColorText.
     private string RowColor(DatabaseMission m, bool altMode)
     {
         if (MissionBeingViewed == m.MissiondId)

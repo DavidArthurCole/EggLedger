@@ -86,7 +86,7 @@ public sealed class LifetimeSorterTests
     {
         var data = new LifetimeData
         {
-            Artifacts = new List<DropLike> { D(1, 2, 0, 1), D(2, 0, 0, 1) },
+            Artifacts = [D(1, 2, 0, 1), D(2, 0, 0, 1)],
         };
 
         LifetimeSorter.Sort(data, LifetimeSortMethod.Default);
@@ -101,10 +101,10 @@ public sealed class LifetimeSorterTests
     {
         var data = new LifetimeData
         {
-            Artifacts = new List<DropLike> { D(1, 0, 0, 1), D(2, 0, 0, 9) },
-            Stones = new List<DropLike> { D(3, 0, 0, 1), D(4, 0, 0, 9) },
-            StoneFragments = new List<DropLike> { D(5, 0, 0, 1), D(6, 0, 0, 9) },
-            Ingredients = new List<DropLike> { D(7, 0, 0, 1), D(8, 0, 0, 9) },
+            Artifacts = [D(1, 0, 0, 1), D(2, 0, 0, 9)],
+            Stones = [D(3, 0, 0, 1), D(4, 0, 0, 9)],
+            StoneFragments = [D(5, 0, 0, 1), D(6, 0, 0, 9)],
+            Ingredients = [D(7, 0, 0, 1), D(8, 0, 0, 9)],
         };
 
         LifetimeSorter.Sort(data, LifetimeSortMethod.Count);
@@ -120,13 +120,13 @@ public sealed class LifetimeSorterTests
     {
         var data = new LifetimeData
         {
-            Artifacts = new List<DropLike> { D(1, 0, 0, 1), D(2, 0, 0, 1), D(3, 0, 0, 1) },
+            Artifacts = [D(1, 0, 0, 1), D(2, 0, 0, 1), D(3, 0, 0, 1)],
         };
 
         LifetimeSorter.Sort(data, LifetimeSortMethod.Random, new Random(42));
 
         Assert.Equal(3, data.Artifacts.Count);
         var ids = data.Artifacts.Select(d => d.Id).OrderBy(x => x).ToArray();
-        Assert.Equal(new[] { 1, 2, 3 }, ids);
+        Assert.Equal([1, 2, 3], ids);
     }
 }

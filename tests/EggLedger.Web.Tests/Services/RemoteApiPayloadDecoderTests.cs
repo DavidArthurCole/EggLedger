@@ -3,8 +3,8 @@ using System.Text;
 using System.Text.Json;
 using EggLedger.Domain.Api;
 using EggLedger.Domain.Ei;
-using Ei;
 using EggLedger.Web.Services;
+using Ei;
 using Xunit;
 
 namespace EggLedger.Web.Tests.Services;
@@ -38,7 +38,7 @@ public class RemoteApiPayloadDecoderTests
         var http = new HttpClient(handler) { BaseAddress = new Uri("https://example/") };
         IApiPayloadDecoder decoder = new RemoteApiPayloadDecoder(http);
 
-        var got = await decoder.DecodeFirstContactAsync(new byte[] { 1, 2, 3 });
+        var got = await decoder.DecodeFirstContactAsync([1, 2, 3]);
 
         Assert.Equal("EI42", got.EiUserId);
         Assert.Equal("/api/v1/decode/first-contact", handler.LastPath);
@@ -54,7 +54,7 @@ public class RemoteApiPayloadDecoderTests
         var http = new HttpClient(handler) { BaseAddress = new Uri("https://example/") };
         IApiPayloadDecoder decoder = new RemoteApiPayloadDecoder(http);
 
-        var got = await decoder.DecodeCompleteMissionAsync(new byte[] { 9 });
+        var got = await decoder.DecodeCompleteMissionAsync([9]);
 
         Assert.True(got.Success);
         Assert.Equal("EI99", got.EiUserId);

@@ -27,7 +27,7 @@ public class QueryGoldenTests
             "            WHERE m.player_id = ?\n" +
             "            GROUP BY m.ship\n" +
             "            ORDER BY count DESC";
-        AssertQuery(q, want, a, new object?[] { "EI1" });
+        AssertQuery(q, want, a, ["EI1"]);
     }
 
     [Fact]
@@ -42,7 +42,7 @@ public class QueryGoldenTests
             "            WHERE m.player_id = ? AND d.drop_index >= 0\n" +
             "            GROUP BY d.rarity\n" +
             "            ORDER BY count DESC";
-        AssertQuery(q, want, a, new object?[] { "EI1" });
+        AssertQuery(q, want, a, ["EI1"]);
     }
 
     [Fact]
@@ -56,7 +56,7 @@ public class QueryGoldenTests
             "            WHERE m.player_id = ?\n" +
             "            GROUP BY bucket\n" +
             "            ORDER BY bucket ASC";
-        AssertQuery(q, want, a, new object?[] { "EI1" });
+        AssertQuery(q, want, a, ["EI1"]);
     }
 
     [Fact]
@@ -71,7 +71,7 @@ public class QueryGoldenTests
             "            WHERE m.player_id = ? AND d.drop_index >= 0 AND m.start_timestamp >= strftime('%s', 'now', ?)\n" +
             "            GROUP BY bucket\n" +
             "            ORDER BY bucket ASC";
-        AssertQuery(q, want, a, new object?[] { "EI1", "-3 months" });
+        AssertQuery(q, want, a, ["EI1", "-3 months"]);
     }
 
     [Fact]
@@ -85,7 +85,7 @@ public class QueryGoldenTests
             "            WHERE m.player_id = ?\n" +
             "            GROUP BY m.ship, m.duration_type\n" +
             "            ORDER BY m.ship, m.duration_type";
-        AssertQuery(q, want, a, new object?[] { "EI1" });
+        AssertQuery(q, want, a, ["EI1"]);
     }
 
     [Fact]
@@ -100,7 +100,7 @@ public class QueryGoldenTests
             "            WHERE m.player_id = ? AND d.drop_index >= 0\n" +
             "            GROUP BY d.rarity, d.level\n" +
             "            ORDER BY d.rarity, d.level";
-        AssertQuery(q, want, a, new object?[] { "EI1" });
+        AssertQuery(q, want, a, ["EI1"]);
     }
 
     [Fact]
@@ -114,7 +114,7 @@ public class QueryGoldenTests
             "            WHERE m.player_id = ?\n" +
             "            GROUP BY bucket, grp\n" +
             "            ORDER BY bucket ASC, grp ASC";
-        AssertQuery(q, want, a, new object?[] { "EI1" });
+        AssertQuery(q, want, a, ["EI1"]);
     }
 
     [Fact]
@@ -129,7 +129,7 @@ public class QueryGoldenTests
             "            WHERE m.player_id = ? AND d.drop_index >= 0 AND m.start_timestamp >= strftime('%s', 'now', ?)\n" +
             "            GROUP BY bucket, grp\n" +
             "            ORDER BY bucket ASC, grp ASC";
-        AssertQuery(q, want, a, new object?[] { "EI1", "-14 days" });
+        AssertQuery(q, want, a, ["EI1", "-14 days"]);
     }
 
     [Fact]
@@ -147,7 +147,7 @@ public class QueryGoldenTests
             "        WHERE m.player_id = ? AND d.artifact_id IN (?, ?) AND d.drop_index >= 0\n" +
             "        GROUP BY m.ship, d.artifact_id, d.level\n" +
             "        ORDER BY cap_weight DESC";
-        AssertQuery(q, want, a, new object?[] { "EI1", 1, 2 });
+        AssertQuery(q, want, a, ["EI1", 1, 2]);
     }
 
     [Fact]
@@ -165,7 +165,7 @@ public class QueryGoldenTests
             "        WHERE m.player_id = ? AND d.artifact_id IN (?) AND d.drop_index >= 0\n" +
             "        GROUP BY m.ship, m.duration_type, d.artifact_id, d.level\n" +
             "        ORDER BY m.ship, m.duration_type";
-        AssertQuery(q, want, a, new object?[] { "EI1", 1 });
+        AssertQuery(q, want, a, ["EI1", 1]);
     }
 
     [Fact]
@@ -183,7 +183,7 @@ public class QueryGoldenTests
             "        WHERE m.player_id = ? AND d.artifact_id IN (?) AND d.drop_index >= 0 AND m.start_timestamp >= strftime('%s', 'now', ?)\n" +
             "        GROUP BY bucket, d.artifact_id, d.level\n" +
             "        ORDER BY bucket ASC";
-        AssertQuery(q, want, a, new object?[] { "EI1", 1, "-4 days" });
+        AssertQuery(q, want, a, ["EI1", 1, "-4 days"]);
     }
 
     [Fact]
@@ -201,7 +201,7 @@ public class QueryGoldenTests
             "        WHERE m.player_id = ? AND d.artifact_id IN (?) AND d.drop_index >= 0\n" +
             "        GROUP BY bucket, d.artifact_id, d.level\n" +
             "        ORDER BY bucket ASC";
-        AssertQuery(q, want, a, new object?[] { "EI1", 1 });
+        AssertQuery(q, want, a, ["EI1", 1]);
     }
 
     [Fact]
@@ -219,6 +219,6 @@ public class QueryGoldenTests
             "        WHERE m.player_id = ? AND d.artifact_id IN (?) AND d.drop_index >= 0\n" +
             "        GROUP BY bucket, grp, d.artifact_id, d.level\n" +
             "        ORDER BY bucket ASC, grp ASC";
-        AssertQuery(q, want, a, new object?[] { "EI1", 1 });
+        AssertQuery(q, want, a, ["EI1", 1]);
     }
 }

@@ -1,19 +1,16 @@
 using System.IO.Compression;
-using Ei;
 using EggLedger.Domain.Api;
 using EggLedger.Domain.MissionPacking;
 using EggLedger.Domain.MissionQuery;
+using Ei;
 
 namespace EggLedger.Web.Data;
 
 /// <summary>
-/// IndexedDB-backed <see cref="IMissionStore"/>. C# port of the data access the
-/// Go missionquery package performs against SQLite, reading the browser
-/// IndexedDB <c>mission</c> store instead. Per-player reads use the
-/// <c>player_id</c> index. Stored <c>complete_payload</c> bytes are gzip(raw API
-/// response): gunzip, then decode as an AuthenticatedMessage exactly like Go
-/// api.DecodeCompleteMissionPayload, then restore StartTimeDerived from the
-/// row's start_timestamp.
+/// IndexedDB-backed <see cref="IMissionStore"/> (C# port of Go missionquery over SQLite).
+/// Per-player reads use the <c>player_id</c> index. Stored <c>complete_payload</c> is
+/// gzip(raw API response): gunzip, decode as an AuthenticatedMessage, then restore
+/// StartTimeDerived from the row's start_timestamp.
 /// </summary>
 public sealed class IndexedDbMissionStore : IMissionStore
 {
@@ -28,19 +25,9 @@ public sealed class IndexedDbMissionStore : IMissionStore
     private readonly IndexedDbAccountStore? _accounts;
 
     /// <param name="db">IndexedDB wrapper.</param>
-    /// <param name="decoder">
-    /// Payload decoder. The desktop host uses the in-process protobuf-net path;
-    /// the WASM host delegates to the sync server (the browser cannot emit).
-    /// </param>
-    /// <param name="packer">
-    /// Mission compiler. When null, one is built from the canonical eiafx config
-    /// via <see cref="EiafxMissionConfigSource.Instance"/>.
-    /// </param>
-    /// <param name="accounts">
-    /// Known-account store. When null, <see cref="GetKnownAccountsAsync"/> returns
-    /// an empty list (the mission/backup schema carries no account rows). Supplied
-    /// in the app so GetExistingData joins the persisted accounts with stats.
-    /// </param>
+    /// <param name="decoder">Payload decoder. Desktop uses in-process protobuf-net; WASM delegates to the sync server (browser cannot emit).</param>
+    /// <param name="packer">Mission compiler. When null, built from the canonical eiafx config via <see cref="EiafxMissionConfigSource.Instance"/>.</param>
+    /// <param name="accounts">Known-account store. When null, <see cref="GetKnownAccountsAsync"/> returns empty (mission/backup schema has no account rows).</param>
     public IndexedDbMissionStore(IIndexedDb db, IApiPayloadDecoder decoder, MissionPacker? packer = null, IndexedDbAccountStore? accounts = null)
     {
         _db = db;
@@ -58,12 +45,7 @@ public sealed class IndexedDbMissionStore : IMissionStore
             .ToList();
     }
 
-    /// <summary>
-    /// Known accounts. The mission/backup schema carries no account rows, so the
-    /// list comes from the injected <see cref="IndexedDbAccountStore"/> (the Go
-    /// storage known-accounts list, persisted in the settings store). Returns an
-    /// empty list when no account store is wired.
-    /// </summary>
+    /// <summary>Known accounts from the injected <see cref="IndexedDbAccountStore"/>; empty when no account store is wired.</summary>
     public async Task<IReadOnlyList<KnownAccount>> GetKnownAccountsAsync()
     {
         if (_accounts is null)
@@ -74,10 +56,7 @@ public sealed class IndexedDbMissionStore : IMissionStore
         return accounts.Select(a => a.ToKnownAccount()).ToList();
     }
 
-    /// <summary>
-    /// Mission count and max return_timestamp for the player. Mirrors Go
-    /// RetrievePlayerMissionStats (COUNT(*), COALESCE(MAX(return_timestamp), 0)).
-    /// </summary>
+    /// <summary>Mission count and max return_timestamp for the player. Mirrors Go RetrievePlayerMissionStats.</summary>
     public async Task<PlayerMissionStats?> GetPlayerMissionStatsAsync(string playerId)
     {
         var rows = await PlayerRowsAsync(playerId);
@@ -85,11 +64,7 @@ public sealed class IndexedDbMissionStore : IMissionStore
         return new PlayerMissionStats(rows.Count, max);
     }
 
-    /// <summary>
-    /// Streams every decoded complete mission for the player, ordered by
-    /// start_timestamp. Returns false on a decode error to mirror Go's
-    /// error-then-nil behavior.
-    /// </summary>
+    /// <summary>Streams every decoded mission for the player, ordered by start_timestamp. Returns false on a decode error (mirrors Go).</summary>
     public async Task<bool> StreamPlayerCompleteMissionsAsync(string playerId, Action<CompleteMissionResponse> onMission)
     {
         var rows = await PlayerRowsAsync(playerId);
@@ -110,10 +85,7 @@ public sealed class IndexedDbMissionStore : IMissionStore
         return true;
     }
 
-    /// <summary>
-    /// One decoded mission for (player, mission). Null on cache miss or decode
-    /// error (Go returns nil mission for both).
-    /// </summary>
+    /// <summary>One decoded mission for (player, mission). Null on cache miss or decode error (Go returns nil for both).</summary>
     public async Task<CompleteMissionResponse?> GetCompleteMissionAsync(string playerId, string missionId)
     {
         var rows = await PlayerRowsAsync(playerId);
@@ -132,22 +104,14 @@ public sealed class IndexedDbMissionStore : IMissionStore
         }
     }
 
-    /// <summary>
-    /// Count of player missions still missing migration-6 filter columns
-    /// (ship == -1). Mirrors Go CountPendingFilterCols. Never errors here, so
-    /// never returns null.
-    /// </summary>
+    /// <summary>Count of player missions missing migration-6 filter columns (ship == -1). Mirrors Go CountPendingFilterCols.</summary>
     public async Task<int?> CountPendingFilterColsAsync(string eid)
     {
         var rows = await PlayerRowsAsync(eid);
         return rows.Count(r => r.Ship == -1);
     }
 
-    /// <summary>
-    /// Fast path: display rows built from stored filter columns only (ship != -1),
-    /// ordered by start_timestamp. Mirrors Go RetrievePlayerMissionMeta +
-    /// MissionMetaToDBMission.
-    /// </summary>
+    /// <summary>Fast path: display rows from stored filter columns only (ship != -1), ordered by start_timestamp.</summary>
     public async Task<IReadOnlyList<IMissionRow>?> GetPlayerMissionMetaAsync(string eid)
     {
         var rows = await PlayerRowsAsync(eid);
@@ -159,10 +123,7 @@ public sealed class IndexedDbMissionStore : IMissionStore
         return result;
     }
 
-    /// <summary>
-    /// Slow path: every decoded complete mission for the player, ordered by
-    /// start_timestamp. Null on a decode error.
-    /// </summary>
+    /// <summary>Slow path: every decoded mission for the player, ordered by start_timestamp. Null on a decode error.</summary>
     public async Task<IReadOnlyList<CompleteMissionResponse>?> GetPlayerCompleteMissionsAsync(string eid)
     {
         var rows = await PlayerRowsAsync(eid);
@@ -185,22 +146,16 @@ public sealed class IndexedDbMissionStore : IMissionStore
     public IMissionRow CompileMissionInformation(CompleteMissionResponse mission) =>
         _packer.CompileMissionInformation(mission);
 
-    /// <summary>
-    /// No background backfill runs in the browser yet. The fast path rebuilds
-    /// from stored columns on the next view; this is a no-op until a backfill
-    /// worker is ported.
-    /// </summary>
+    /// <summary>No-op: no background backfill in the browser yet. The fast path rebuilds from stored columns on next view.</summary>
     public void QueueFilterColBackfill(string eid)
     {
     }
 
     /// <summary>
-    /// Inserts the first-contact backup. Mirrors Go db.InsertBackup: the raw
-    /// payload is gzipped and stored with <c>recorded_at = timestamp</c>. When
-    /// <paramref name="minimumGap"/> is positive and the player's existing backup
-    /// is newer than that gap, the write is skipped (the 12h dedup). The browser
-    /// <c>backup</c> store keys on <c>player_id</c> alone, so there is at most one
-    /// row per player; the dedup compares against that single row.
+    /// Inserts the first-contact backup (Go db.InsertBackup): raw payload gzipped.
+    /// When <paramref name="minimumGap"/> is positive and the existing backup is
+    /// newer than that gap, the write is skipped (the 12h dedup). The browser
+    /// <c>backup</c> store keys on <c>player_id</c> alone, so there is one row per player.
     /// </summary>
     public async Task InsertBackupAsync(string playerId, double timestamp, byte[] rawPayload, TimeSpan minimumGap)
     {
@@ -227,12 +182,9 @@ public sealed class IndexedDbMissionStore : IMissionStore
     }
 
     /// <summary>
-    /// Inserts one fetched mission plus its artifact_drops rows. Mirrors Go
-    /// db.InsertCompleteMission + db.InsertArtifactDrops: <paramref name="rawPayload"/>
-    /// is the raw API payload (the AuthenticatedMessage wire), gzipped into
-    /// <c>complete_payload</c> exactly as <see cref="GetCompleteMissionAsync"/>
-    /// expects to read it back. Filter columns and mission_type are precomputed by
-    /// the caller via the packer.
+    /// Inserts one fetched mission plus its artifact_drops rows. <paramref name="rawPayload"/>
+    /// is the raw AuthenticatedMessage wire, gzipped into <c>complete_payload</c> exactly as
+    /// <see cref="GetCompleteMissionAsync"/> reads it back. Filter columns precomputed by the caller.
     /// </summary>
     public async Task InsertCompleteMissionAsync(
         string playerId,
@@ -280,10 +232,7 @@ public sealed class IndexedDbMissionStore : IMissionStore
         }
     }
 
-    /// <summary>
-    /// Gzips bytes at default compression. C# port of Go db.compress; the inverse
-    /// of <see cref="Gunzip"/> used on the read path.
-    /// </summary>
+    /// <summary>Gzips bytes (Go db.compress); inverse of <see cref="Gunzip"/>.</summary>
     private static byte[] Gzip(byte[] data)
     {
         using var output = new MemoryStream();
@@ -297,22 +246,18 @@ public sealed class IndexedDbMissionStore : IMissionStore
     private async Task<List<MissionRow>> PlayerRowsAsync(string playerId)
     {
         var rows = await _db.GetAllByIndexAsync<MissionRow>(MissionStore, PlayerIdIndex, playerId);
-        return rows.ToList();
+        return [.. rows];
     }
 
     /// <summary>
-    /// Gunzips the stored payload, decodes it as an AuthenticatedMessage wrapping
-    /// a CompleteMissionResponse (Go DecodeCompleteMissionPayload), then restores
-    /// StartTimeDerived from the row's start_timestamp like the Go DB reads do.
+    /// Gunzips the stored payload, decodes it as an AuthenticatedMessage wrapping a
+    /// CompleteMissionResponse, then restores StartTimeDerived from the row's start_timestamp.
     /// </summary>
     private async Task<CompleteMissionResponse> DecodeAsync(MissionRow row)
     {
         byte[] raw = Gunzip(row.CompletePayload);
         var resp = await _decoder.DecodeCompleteMissionAsync(raw).ConfigureAwait(false);
-        if (resp.Info is not null)
-        {
-            resp.Info.StartTimeDerived = row.StartTimestamp;
-        }
+        resp.Info?.StartTimeDerived = row.StartTimestamp;
         return resp;
     }
 

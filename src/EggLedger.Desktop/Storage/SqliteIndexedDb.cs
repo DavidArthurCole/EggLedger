@@ -1,23 +1,16 @@
 using System.Globalization;
 using System.Text.Json;
-using Microsoft.Data.Sqlite;
 using EggLedger.Web.Data;
+using Microsoft.Data.Sqlite;
 
 namespace EggLedger.Desktop.Storage;
 
 /// <summary>
-/// Native SQLite implementation of <see cref="IIndexedDb"/>. The browser fills
-/// this interface with a JS-interop IndexedDB wrapper; the desktop host fills it
-/// with real SQLite so every store built on top of it
-/// (<see cref="IndexedDbMissionStore"/>, <see cref="IndexedDbReportStore"/>,
-/// <see cref="IndexedDbSettings"/>, <see cref="IndexedDbAccountStore"/>,
-/// <see cref="IndexedDbMissionDb"/>) runs against SQLite with no UI changes.
-///
-/// Each logical store maps to a real table whose columns are the snake_case JSON
-/// property names of the corresponding row record (see EggLedger.Web.Data.Rows).
-/// Rows are serialized to a <see cref="JsonElement"/> to read those column names,
-/// then written/read column-by-column. Operations are dispatched to the mission
-/// DB or the report DB by store name.
+/// Native SQLite implementation of <see cref="IIndexedDb"/> (the browser uses a
+/// JS-interop wrapper). Each logical store maps to a table whose columns are the
+/// snake_case JSON property names of the row record; rows round-trip through a
+/// <see cref="JsonElement"/>. Operations dispatch to the mission or report DB by
+/// store name.
 /// </summary>
 public sealed class SqliteIndexedDb : IIndexedDb
 {
@@ -90,7 +83,7 @@ public sealed class SqliteIndexedDb : IIndexedDb
         var connection = Conn(meta);
         using var cmd = connection.CreateCommand();
         cmd.CommandText = $"SELECT * FROM {meta.Table} WHERE {index} = ?;";
-        BindArgs(cmd, new[] { value });
+        BindArgs(cmd, [value]);
         return ValueTask.FromResult(ReadAll<T>(meta, cmd));
     }
 
@@ -128,9 +121,8 @@ public sealed class SqliteIndexedDb : IIndexedDb
 
     private void Upsert(StoreMeta meta, object value, SqliteTransaction? tx = null)
     {
-        // Serialize the row record to JSON; the snake_case property names are the
-        // column names. autoIncrement key columns absent from JSON (e.g. a null id)
-        // are skipped so SQLite assigns them.
+        // Serialize to JSON; snake_case property names are the column names. A null
+        // autoIncrement column is skipped so SQLite assigns it.
         using var doc = JsonSerializer.SerializeToDocument(value, value.GetType(), JsonOpts);
         var props = new List<(string Col, JsonElement Val)>();
         foreach (var prop in doc.RootElement.EnumerateObject())
@@ -154,18 +146,15 @@ public sealed class SqliteIndexedDb : IIndexedDb
 
         if (meta.UpsertByDelete)
         {
-            // The backup table has a surrogate id PK and no UNIQUE(player_id), so
-            // ON CONFLICT(player_id) is impossible. Match the browser keyPath=player_id
-            // (one row per player) by deleting any existing rows for the key, then
-            // plain-inserting. The surrogate id is omitted and auto-assigned.
+            // No UNIQUE(player_id) on the backup table, so ON CONFLICT is impossible.
+            // Emulate keyPath=player_id (one row per player) by delete-then-insert.
             DeleteByKey(meta, props, connection, tx);
         }
 
         string conflict;
         if (meta.AutoIncrementColumn is not null || meta.UpsertByDelete)
         {
-            // autoIncrement stores have a surrogate PK; a plain INSERT mirrors
-            // IndexedDB put with an unset key adding a new record. UpsertByDelete
+            // Plain INSERT: autoIncrement stores get a fresh key; UpsertByDelete
             // stores already removed any prior row above.
             conflict = "";
         }
@@ -196,7 +185,7 @@ public sealed class SqliteIndexedDb : IIndexedDb
         {
             del.Transaction = tx;
         }
-        var clauses = new List<string>(meta.KeyColumns.Count);
+        var clauses = new List<string>(meta.KeyColumns.Length);
         var k = 0;
         foreach (var keyCol in meta.KeyColumns)
         {
@@ -218,7 +207,7 @@ public sealed class SqliteIndexedDb : IIndexedDb
         {
             result.Add(Materialize<T>(meta, reader));
         }
-        return result.ToArray();
+        return [.. result];
     }
 
     // Rebuilds the row's JSON object from the SELECT columns, then deserializes to
@@ -307,12 +296,12 @@ public sealed class SqliteIndexedDb : IIndexedDb
 
     private static (string where, object[] args) KeyPredicate(StoreMeta meta, object key)
     {
-        if (meta.KeyColumns.Count == 1)
+        if (meta.KeyColumns.Length == 1)
         {
             return ($"{meta.KeyColumns[0]} = ?", new[] { key });
         }
         // Composite key (mission: [player_id, mission_id]) arrives as an array.
-        if (key is object[] parts && parts.Length == meta.KeyColumns.Count)
+        if (key is object[] parts && parts.Length == meta.KeyColumns.Length)
         {
             var where = string.Join(" AND ", meta.KeyColumns.Select(c => $"{c} = ?"));
             return (where, parts);
@@ -320,15 +309,14 @@ public sealed class SqliteIndexedDb : IIndexedDb
         throw new ArgumentException($"composite key expected for store {meta.Table}", nameof(key));
     }
 
-    private static void BindArgs(SqliteCommand cmd, IReadOnlyList<object> args)
+    private static void BindArgs(SqliteCommand cmd, object[] args)
     {
         // IIndexedDb passes positional "?" args; bind them in order.
-        for (var i = 0; i < args.Count; i++)
+        for (var i = 0; i < args.Length; i++)
         {
             cmd.Parameters.AddWithValue("@k" + i.ToString(CultureInfo.InvariantCulture), args[i] ?? DBNull.Value);
         }
-        // Rewrite "?" placeholders to named parameters Microsoft.Data.Sqlite binds.
-        // The placeholder count must equal args.Count; "?" is never a SQL literal here.
+        // Rewrite "?" placeholders to the named parameters Microsoft.Data.Sqlite binds.
         var sql = cmd.CommandText;
         var idx = 0;
         while (sql.Contains('?'))
@@ -337,59 +325,52 @@ public sealed class SqliteIndexedDb : IIndexedDb
             sql = sql.Remove(pos, 1).Insert(pos, "@k" + idx.ToString(CultureInfo.InvariantCulture));
             idx++;
         }
-        if (idx != args.Count)
+        if (idx != args.Length)
         {
             throw new InvalidOperationException(
-                $"placeholder/arg mismatch: {idx} '?' placeholders but {args.Count} args");
+                $"placeholder/arg mismatch: {idx} '?' placeholders but {args.Length} args");
         }
         cmd.CommandText = sql;
     }
-
-    private static void BindArgs(SqliteCommand cmd, object[] args) =>
-        BindArgs(cmd, (IReadOnlyList<object>)args);
 
     private static Dictionary<string, StoreMeta> BuildStoreMeta() => new(StringComparer.Ordinal)
     {
         ["mission"] = new StoreMeta(
             "mission", useReportDb: false,
-            keyColumns: new[] { "player_id", "mission_id" },
+            keyColumns: ["player_id", "mission_id"],
             autoIncrementColumn: null,
-            boolColumns: new[] { "is_dub_cap", "is_bugged_cap" }),
+            boolColumns: ["is_dub_cap", "is_bugged_cap"]),
         ["backup"] = new StoreMeta(
             "backup", useReportDb: false,
-            keyColumns: new[] { "player_id" },
+            keyColumns: ["player_id"],
             autoIncrementColumn: null,
-            boolColumns: Array.Empty<string>(),
-            // The migrated table has a surrogate id PK and no UNIQUE(player_id), so
-            // an ON CONFLICT(player_id) upsert is impossible. Emulate the browser
-            // keyPath=player_id (one row per player) by delete-then-insert.
+            boolColumns: [],
+            // No UNIQUE(player_id), so emulate keyPath=player_id by delete-then-insert.
             upsertByDelete: true),
         ["artifact_drops"] = new StoreMeta(
             "artifact_drops", useReportDb: false,
-            keyColumns: new[] { "id" },
+            keyColumns: ["id"],
             autoIncrementColumn: "id",
-            boolColumns: Array.Empty<string>()),
+            boolColumns: []),
         ["settings"] = new StoreMeta(
             "settings", useReportDb: false,
-            keyColumns: new[] { "key" },
+            keyColumns: ["key"],
             autoIncrementColumn: null,
-            boolColumns: Array.Empty<string>()),
+            boolColumns: []),
         ["reports"] = new StoreMeta(
             "reports", useReportDb: true,
-            keyColumns: new[] { "id" },
+            keyColumns: ["id"],
             autoIncrementColumn: null,
-            boolColumns: new[] { "menno_enabled" }),
+            boolColumns: ["menno_enabled"]),
         ["report_groups"] = new StoreMeta(
             "report_groups", useReportDb: true,
-            keyColumns: new[] { "id" },
+            keyColumns: ["id"],
             autoIncrementColumn: null,
-            boolColumns: Array.Empty<string>()),
+            boolColumns: []),
     };
 
-    // Derives each store's BLOB columns from the migrated schema via
-    // PRAGMA table_info so a new BLOB column never silently stores as base64 TEXT.
-    // The whitelist is gone: the schema is the single source of truth, so any drift
-    // is impossible rather than silent.
+    // Derives BLOB columns from PRAGMA table_info (schema is the source of truth) so
+    // a new BLOB column never silently stores as base64 TEXT.
     private void BindBlobColumns()
     {
         foreach (var meta in _stores.Values)
@@ -428,7 +409,7 @@ public sealed class SqliteIndexedDb : IIndexedDb
 
         public string Table { get; }
         public bool UseReportDb { get; }
-        public IReadOnlyList<string> KeyColumns { get; }
+        public string[] KeyColumns { get; }
         public string? AutoIncrementColumn { get; }
         public bool UpsertByDelete { get; }
         public HashSet<string> BoolColumns { get; }

@@ -2,15 +2,12 @@ using EggLedger.Domain.LedgerData;
 
 namespace EggLedger.Domain.Util;
 
-/// <summary>
-/// Farmer role lookup. C# Domain port of Go util/role.go. Pure (reads the
-/// loaded ledger config).
-/// </summary>
+/// <summary>Farmer role lookup. Go port of util/role.go; reads the loaded ledger config.</summary>
 public static class Role
 {
     /// <summary>
-    /// Resolves the farmer role for an earnings bonus. Returns (color, name,
-    /// addendum, value, precision) mirroring the Go RoleFromEB tuple order.
+    /// Resolves the farmer role for an earnings bonus. Returns (color, name, addendum, value, precision)
+    /// mirroring the Go RoleFromEB tuple order.
     /// </summary>
     public static (string Color, string Name, string Addendum, double Value, int Precision) RoleFromEB(double earningsBonus)
     {
@@ -43,7 +40,7 @@ public static class Role
                 return (role.Color, role.Name, Format.Addendum(ooms), earningsBonusCopy, precision);
             }
         }
-        var last = roles[roles.Count - 1];
+        var last = roles[^1];
         return (last.Color, last.Name, Format.Addendum(last.Oom), earningsBonusCopy, precision);
     }
 }

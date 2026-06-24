@@ -1,18 +1,12 @@
 namespace EggLedger.Desktop.Update;
 
 /// <summary>
-/// Startup-time update plumbing run before the UI comes up: parse the
-/// --replace-* / --handshake-* flags, clean stale binaries, and (when this process
-/// is the freshly launched EggLedger_new) run the takeover that renames itself into
-/// the canonical EggLedger[.exe] once the old instance has exited.
-///
-/// Ports the new-instance side of EggLedger/update/update.go (RunTakeover /
-/// runTakeover) and the flag parsing of update_flags.go + ResolveReplaceMode.
-///
-/// MANUAL-VERIFY: the takeover only runs in a real second process launched with the
-/// flags after a download. The pieces it calls (DecideReplace, ProcessWait,
-/// RenameWithRetry, CleanStaleBinaries, the handshake ping) are unit-tested; the
-/// orchestration across two live processes is verified by hand on Windows.
+/// Startup update plumbing run before the UI: parse --replace-* / --handshake-*
+/// flags, clean stale binaries, and (when this process is the launched
+/// EggLedger_new) run the takeover that renames itself to canonical EggLedger[.exe]
+/// once the old instance exits.
+/// MANUAL-VERIFY: the takeover only runs in a real second process; the pieces it
+/// calls are unit-tested but the two-process orchestration is verified by hand.
 /// </summary>
 public sealed class UpdateBootstrap(IProcessProbe probe, BinaryReplacement replacement)
 {

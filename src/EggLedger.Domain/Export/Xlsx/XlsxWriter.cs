@@ -5,14 +5,13 @@ using System.Text;
 namespace EggLedger.Domain.Export.Xlsx;
 
 /// <summary>
-/// Writes minimal single-sheet XLSX files. Port of Go package xlsxwriter:
-/// streaming row writes, optional column widths, one built-in datetime style.
-/// No reading capability. Pure (writes to a caller-supplied stream).
+/// Writes minimal single-sheet XLSX files. Port of Go package xlsxwriter: streaming row writes,
+/// optional column widths, one built-in datetime style.
 /// </summary>
 public sealed class XlsxWriter : IDisposable
 {
     private readonly ZipArchive _zip;
-    private double[] _colWidths = Array.Empty<double>();
+    private double[] _colWidths = [];
     private int _rowNum;
     private bool _sheetStarted;
     private StringBuilder? _sheet;
@@ -40,7 +39,7 @@ public sealed class XlsxWriter : IDisposable
     /// </summary>
     public void SetColWidths(IReadOnlyList<double> widths)
     {
-        _colWidths = widths.ToArray();
+        _colWidths = [.. widths];
     }
 
     /// <summary>Appends a row of cells to the sheet.</summary>
@@ -187,7 +186,7 @@ public sealed class XlsxWriter : IDisposable
     }
 
     private static readonly (string Name, string Content)[] StaticEntries =
-    {
+    [
         ("[Content_Types].xml",
             "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
             + "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\">"
@@ -230,5 +229,5 @@ public sealed class XlsxWriter : IDisposable
             + "</cellXfs>"
             + "<cellStyles count=\"1\"><cellStyle name=\"Normal\" xfId=\"0\" builtinId=\"0\"/></cellStyles>"
             + "</styleSheet>"),
-    };
+    ];
 }

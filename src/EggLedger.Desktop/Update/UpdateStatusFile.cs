@@ -4,9 +4,8 @@ using System.Text.Json.Serialization;
 namespace EggLedger.Desktop.Update;
 
 /// <summary>
-/// Outcome payload the replace-mode process writes next to the executable and the
-/// freshly relaunched process reads once on startup. Port of
-/// EggLedger/update/update_status.go Status. Lives in the exe dir (not the data
+/// Outcome payload the replace-mode process writes next to the exe and the
+/// relaunched process reads once on startup. Lives in the exe dir (not the data
 /// root) so both processes agree on the path with no init dependency.
 /// </summary>
 public sealed class UpdateStatus
@@ -29,12 +28,11 @@ public sealed class UpdateStatus
 
 /// <summary>
 /// Reads/writes the on-disk update-status handoff file. Pure file IO over an
-/// injected directory, so it is unit-testable with a temp dir (mirrors the Go
-/// TestUpdateStatusRoundTrip case).
+/// injected directory, so it is unit-testable with a temp dir.
 /// </summary>
 public static class UpdateStatusFile
 {
-    /// <summary>File name written next to the executable. Matches Go.</summary>
+    /// <summary>File name written next to the exe. Matches Go.</summary>
     public const string FileName = ".egg-update-status.json";
 
     private static readonly JsonSerializerOptions JsonOptions = new()

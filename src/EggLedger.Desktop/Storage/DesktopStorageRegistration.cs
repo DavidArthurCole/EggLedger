@@ -7,15 +7,10 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 namespace EggLedger.Desktop.Storage;
 
 /// <summary>
-/// Registers the native SQLite storage backend for the desktop host, replacing
-/// the browser IndexedDB services with SQLite-backed ones behind the same
-/// interfaces. Call AFTER AddEggLedgerWeb so these overrides win.
-///
-/// Swaps:
-///   IIndexedDb  -> SqliteIndexedDb  (makes every store SQLite-backed)
-///   IReportRunner -> SqliteReportRunner (LIVE SQL ReportExecutor path)
-/// Everything else (IMissionStore, report store, settings, accounts) is unchanged
-/// because those concrete stores funnel through IIndexedDb.
+/// Registers the native SQLite storage backend, replacing the browser IndexedDB
+/// services behind the same interfaces. Call AFTER AddEggLedgerWeb so overrides win.
+/// Swaps IIndexedDb -&gt; SqliteIndexedDb and IReportRunner -&gt; SqliteReportRunner;
+/// the other stores are unchanged because they funnel through IIndexedDb.
 /// </summary>
 public static class DesktopStorageRegistration
 {

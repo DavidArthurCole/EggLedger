@@ -1,5 +1,5 @@
-using Ei;
 using EggLedger.Domain.MissionPacking;
+using Ei;
 
 namespace EggLedger.Domain.Tests;
 

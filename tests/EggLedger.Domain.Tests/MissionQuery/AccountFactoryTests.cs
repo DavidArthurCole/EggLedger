@@ -1,5 +1,5 @@
-using Ei;
 using EggLedger.Domain.MissionQuery;
+using Ei;
 
 namespace EggLedger.Domain.Tests.MissionQuery;
 
@@ -45,7 +45,7 @@ public sealed class AccountFactoryTests
         {
             UserName = "Carol",
             game = new Backup.Game(),
-            virtue = new Backup.Virtue { EovEarneds = new uint[] { 3, 5, 7 } },
+            virtue = new Backup.Virtue { EovEarneds = [3, 5, 7] },
         };
 
         var acct = AccountFactory.FromBackup(Eid, backup);

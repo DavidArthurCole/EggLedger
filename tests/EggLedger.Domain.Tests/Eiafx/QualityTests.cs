@@ -1,6 +1,6 @@
 using System.Globalization;
-using Ei;
 using EggLedger.Domain.Eiafx;
+using Ei;
 
 namespace EggLedger.Domain.Tests.Eiafx;
 

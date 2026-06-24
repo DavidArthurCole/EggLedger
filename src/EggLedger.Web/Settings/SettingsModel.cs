@@ -2,21 +2,10 @@ using System.Globalization;
 
 namespace EggLedger.Web.Settings;
 
-/// <summary>
-/// Settings-tab model: the settings the Settings tab owns plus their defaults,
-/// the Go setting keys, and the cloud-syncable key subset. C# port of the pure
-/// parts of www/src/composables/useSettings.ts and the Go storage settings
-/// (storage.go + cloudsync/blob.go cloudSyncableSettings). All values persist as
-/// string key/value through <c>IndexedDbSettings</c> using the same keys the Go
-/// app uses, so behavior matches across the desktop and browser builds.
-///
-/// <para>The reactive get/set lives in the Settings page; this type is the pure
-/// defaults + key set + (de)serialization so the contract is golden-testable
-/// against Vue/Go without a running component.</para>
-/// </summary>
+/// <summary>Settings-tab model: defaults, Go setting keys, and (de)serialization. Values persist as string key/value via <c>IndexedDbSettings</c> using the Go keys so behavior matches across builds.</summary>
 public sealed class SettingsModel
 {
-    // ----- Go setting keys (storage.go dbSet calls). -----
+    // Setting keys (match the Go storage.go dbSet calls).
 
     public const string KeyAutoRefreshMenno = "auto_refresh_menno_pref";
     public const string KeyRetryFailedMissions = "retry_failed_missions";
@@ -30,12 +19,12 @@ public sealed class SettingsModel
     public const string KeyAutoExportXlsx = "auto_export_xlsx";
     public const string KeyWorkerCountWarningRead = "worker_count_warning_read";
 
-    // ----- Worker-count bounds (Go GetWorkerCount/SetWorkerCount clamp). -----
+    // Worker-count bounds (clamped on read).
 
     public const int MinWorkerCount = 1;
     public const int MaxWorkerCount = 10;
 
-    // ----- Settings-tab fields with Go defaults. -----
+    // Settings-tab fields with their defaults.
 
     /// <summary>Refresh Menno community data once weekly. Default false.</summary>
     public bool AutoRefreshMenno { get; set; }
@@ -70,17 +59,12 @@ public sealed class SettingsModel
     /// <summary>Whether the worker-count warning has been dismissed. Default false.</summary>
     public bool WorkerCountWarningRead { get; set; }
 
-    /// <summary>
-    /// Clamps a worker count to [1, 10], matching Go GetWorkerCount/SetWorkerCount.
-    /// </summary>
+    /// <summary>Clamps a worker count to [1, 10].</summary>
     public static int ClampWorkerCount(int n) => n < MinWorkerCount ? MinWorkerCount
         : n > MaxWorkerCount ? MaxWorkerCount
         : n;
 
-    /// <summary>
-    /// Hydrates the model from a settings map (Go FormatBool / Itoa strings).
-    /// Missing keys keep the Go defaults. Worker count is clamped to [1, 10].
-    /// </summary>
+    /// <summary>Hydrates the model from a settings map. Missing keys keep the Go defaults; worker count is clamped to [1, 10].</summary>
     public void LoadFrom(IReadOnlyDictionary<string, string> settings)
     {
         AutoRefreshMenno = Bool(settings, KeyAutoRefreshMenno, AutoRefreshMenno);

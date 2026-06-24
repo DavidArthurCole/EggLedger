@@ -149,8 +149,7 @@
         _grouping = MissionGrouper.Group(_tabFiltered, MissionFilterMatcher.LedgerDate, collapseOlderSections: true);
     }
 
-    private async Task ApplyFilterAsync(
-        (IReadOnlyList<FilterCondition> Filters, IReadOnlyList<IReadOnlyList<FilterCondition>?> OrFilters) args)
+    private async Task ApplyFilterAsync(EggLedger.Web.Missions.Model.MissionFilter filter)
     {
         if (_allMissions is null || _matcher is null)
         {
@@ -163,7 +162,7 @@
         var result = new List<DatabaseMission>();
         foreach (var mission in _allMissions)
         {
-            if (await _matcher.MissionMatchesFilterAsync(mission, args.Filters, args.OrFilters))
+            if (await _matcher.MatchesAsync(mission, filter))
             {
                 result.Add(mission);
             }

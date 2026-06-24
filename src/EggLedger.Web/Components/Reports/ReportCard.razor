@@ -4,15 +4,9 @@
 @inject IReportRunner MissionDb
 @inject MennoService Menno
 
-@*
-    A single report card: colored header (name + weight badge), the dispatched
-    chart, and edit/delete controls in edit mode. Runs the report against the
-    engine on first render. Port of ReportCard.vue (core path).
-
-    When the report has Menno enabled and produced a 2D heatmap result, it also runs
-    MennoService.ExecuteComparison and renders the community comparison per
-    mennoCompareMode (side_by_side / ratio / dual_value). Closes the C3.3 deferral.
-*@
+@* A single report card: header (name + weight badge), dispatched chart, edit/delete
+   controls. When Menno-enabled and the result is a 2D heatmap, also runs the community
+   comparison per mennoCompareMode (side_by_side / ratio / dual_value). *@
 
 <div class="relative bg-dark rounded-lg border border-gray-700 flex flex-col h-full overflow-hidden" style="grid-column: @Pos.Col / span @Pos.W; grid-row: @Pos.Row / span @Pos.H;">
     <div class="flex items-start justify-between gap-2 px-3 pt-3 pb-1.5 border-b border-gray-700/50" style="border-left: 3px solid @ColorOr;">
@@ -169,14 +163,8 @@
         await RunMennoComparisonAsync();
     }
 
-    /// <summary>
-    /// Runs the Menno community comparison when the report is Menno-enabled and the
-    /// user result is a 2D heatmap with raw labels. Ensures the community data is
-    /// downloaded (showing the loading modal), then calls ExecuteComparison. A null
-    /// comparison (ineligible dimensions or insufficient match) leaves the card on
-    /// the plain user chart. Per-cell min-sample gating is handled inside the
-    /// heatmap via MinSampleSize.
-    /// </summary>
+    /// <summary>Runs the Menno comparison for Menno-enabled 2D-heatmap results; a null
+    /// comparison leaves the plain user chart. Per-cell min-sample gating lives in the heatmap.</summary>
     private async Task RunMennoComparisonAsync()
     {
         if (_result is null
@@ -219,8 +207,7 @@
         }
         catch
         {
-            // A failed Menno download or comparison leaves the plain user chart;
-            // the community overlay is supplementary, not load-bearing.
+            // Failed download/comparison leaves the plain user chart; the overlay is supplementary.
             _mennoResult = null;
         }
     }

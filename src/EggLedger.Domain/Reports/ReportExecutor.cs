@@ -5,9 +5,7 @@ namespace EggLedger.Domain.Reports;
 
 /// <summary>
 /// Runs report queries and assembles labeled results. Port of Go reports
-/// execute.go / execute_weighted.go / normalize.go. The Go file-level *sql.DB
-/// (SetMissionDB) becomes constructor-injected IMissionDb; eiafx weighting data
-/// is injected via IWeightData.
+/// execute.go / execute_weighted.go / normalize.go, with DB and weighting data injected.
 /// </summary>
 public sealed class ReportExecutor
 {
@@ -65,18 +63,12 @@ public sealed class ReportExecutor
         }
 
         string query;
-        switch (def.Mode)
+        (query, args) = def.Mode switch
         {
-            case "aggregate":
-                (query, args) = QueryBuilder.BuildAggregateQuery(def, baseWhere, args);
-                break;
-            case "time_series":
-                (query, args) = QueryBuilder.BuildTimeSeriesQuery(def, baseWhere, args);
-                break;
-            default:
-                throw new InvalidOperationException($"unknown mode \"{def.Mode}\"");
-        }
-
+            "aggregate" => QueryBuilder.BuildAggregateQuery(def, baseWhere, args),
+            "time_series" => QueryBuilder.BuildTimeSeriesQuery(def, baseWhere, args),
+            _ => throw new InvalidOperationException($"unknown mode \"{def.Mode}\""),
+        };
         var rows = _db.Query(query, args);
 
         var rawLabels = new List<string>();
@@ -156,11 +148,11 @@ public sealed class ReportExecutor
         var matrixValues = f.Matrix;
 
         var pctMode = def.NormalizeBy;
-        if (pctMode == "row_pct" || pctMode == "col_pct" || pctMode == "global_pct")
+        if (pctMode is "row_pct" or "col_pct" or "global_pct")
         {
             Matrix.Apply2DPctNormalization(matrixValues, f.RowLabels.Count, f.ColLabels.Count, pctMode);
         }
-        else if (pctMode != "" && pctMode != "none")
+        else if (pctMode is not "" and not "none")
         {
             var col1 = QueryBuilder.GroupByColumn(def.GroupBy);
             var col2 = QueryBuilder.GroupByColumn(def.SecondaryGroupBy);
@@ -186,7 +178,7 @@ public sealed class ReportExecutor
         {
             RowLabels = f.RowLabels,
             ColLabels = f.ColLabels,
-            MatrixValues = matrixValues.ToList(),
+            MatrixValues = [.. matrixValues],
             Is2D = true,
             Weight = def.Weight,
             RawRowLabels = f.RawRowLabels,
@@ -222,7 +214,7 @@ public sealed class ReportExecutor
         var nR = bucketLabels.Count;
 
         var pctMode = def.NormalizeBy;
-        if (pctMode == "row_pct" || pctMode == "col_pct" || pctMode == "global_pct")
+        if (pctMode is "row_pct" or "col_pct" or "global_pct")
         {
             Matrix.Apply2DPctNormalization(matrixValues, nR, nC, pctMode);
         }
@@ -231,7 +223,7 @@ public sealed class ReportExecutor
         {
             RowLabels = bucketLabels,
             ColLabels = f.ColLabels,
-            MatrixValues = matrixValues.ToList(),
+            MatrixValues = [.. matrixValues],
             Is2D = true,
             Weight = def.Weight,
             RawRowLabels = bucketLabels,
@@ -287,9 +279,8 @@ public sealed class ReportExecutor
             }
         }
 
-        // Sort descending by final value (stable). Mirrors Go sort.SliceStable on
-        // floatValues, which reorders only the values slice; labels are then rebuilt
-        // from rawOrder, which is NOT reordered. We reproduce that exact behavior.
+        // Mirrors Go sort.SliceStable on floatValues only: values reorder, labels are
+        // rebuilt from rawOrder (which is NOT reordered).
         StableSortFloatDescending(floatValues);
         for (var i = 0; i < rawOrder.Count; i++)
         {
@@ -369,11 +360,11 @@ public sealed class ReportExecutor
 
         var pctMode = def.NormalizeBy;
         List<double>? rawPerMissionValues = null;
-        if (pctMode == "row_pct" || pctMode == "col_pct" || pctMode == "global_pct")
+        if (pctMode is "row_pct" or "col_pct" or "global_pct")
         {
             Matrix.Apply2DPctNormalization(matrixValues, rowLabels.Count, colLabels.Count, pctMode);
         }
-        else if (pctMode != "" && pctMode != "none")
+        else if (pctMode is not "" and not "none")
         {
             var col1 = QueryBuilder.GroupByColumn(def.GroupBy);
             var col2 = QueryBuilder.GroupByColumn(def.SecondaryGroupBy);
@@ -396,7 +387,7 @@ public sealed class ReportExecutor
                             }
                         }
                     }
-                    rawPerMissionValues = rpm.ToList();
+                    rawPerMissionValues = [.. rpm];
                 }
 
                 var denomMap = Denom2D(def, col1, col2, pctMode, baseWhere, baseArgs);
@@ -417,7 +408,7 @@ public sealed class ReportExecutor
         {
             RowLabels = rowLabels,
             ColLabels = colLabels,
-            MatrixValues = matrixValues.ToList(),
+            MatrixValues = [.. matrixValues],
             Is2D = true,
             Weight = def.Weight,
             RawRowLabels = f.RawRowLabels,
@@ -499,7 +490,7 @@ public sealed class ReportExecutor
         var nR = bucketLabels.Count;
 
         var pctMode = def.NormalizeBy;
-        if (pctMode == "row_pct" || pctMode == "col_pct" || pctMode == "global_pct")
+        if (pctMode is "row_pct" or "col_pct" or "global_pct")
         {
             Matrix.Apply2DPctNormalization(matrixValues, nR, nC, pctMode);
         }
@@ -508,7 +499,7 @@ public sealed class ReportExecutor
         {
             RowLabels = bucketLabels,
             ColLabels = f.ColLabels,
-            MatrixValues = matrixValues.ToList(),
+            MatrixValues = [.. matrixValues],
             Is2D = true,
             Weight = def.Weight,
             RawRowLabels = bucketLabels,

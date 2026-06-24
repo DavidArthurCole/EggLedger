@@ -2,14 +2,9 @@
 @using EggLedger.Domain.Reports
 @using EggLedger.Domain.Reports.Charts
 
-@*
-    Heatmap table over a 2D result. Port of ReportHeatmap.vue: a row/col grid of
-    cells colored by intensity, with the golden-tested HeatmapGeometry helper
-    owning cell color, text color, threshold suppression, and display formatting.
-    Axis drag-reorder is deferred (static order); cell coloring + values are
-    faithful. The optional secondary-value sub-line and color-value override drive
-    the Menno dual_value mode (C3.6).
-*@
+@* Heatmap table over a 2D result; HeatmapGeometry owns color, threshold suppression,
+   and formatting. Axis drag-reorder deferred. Optional secondary-value sub-line and
+   color-value override drive the Menno dual_value mode. *@
 
 <div class="h-full w-full overflow-auto pr-1">
     <table class="text-xs w-full h-full border-collapse table-fixed">
@@ -62,19 +57,12 @@
     [Parameter]
     public int MinSampleSize { get; set; }
 
-    /// <summary>
-    /// Optional secondary per-cell values rendered as a dimmer sub-line under the
-    /// primary value. Drives the Menno dual_value mode (the community number under
-    /// the user number). Null hides the sub-line.
-    /// </summary>
+    /// <summary>Optional per-cell sub-line under the primary value (Menno community number); null hides it.</summary>
     [Parameter]
     public IReadOnlyList<double>? SecondaryValues { get; set; }
 
-    /// <summary>
-    /// Optional per-cell color-intensity override (ratio semantics: 1.0 = community
-    /// average, 2.0 = full intensity). Display values are unaffected; only the cell
-    /// background uses these. Drives the Menno dual_value coloring.
-    /// </summary>
+    /// <summary>Optional per-cell color-intensity override (ratio: 1.0 = community avg, 2.0 = full).
+    /// Affects only the cell background, not display values.</summary>
     [Parameter]
     public IReadOnlyList<double>? ColorValues { get; set; }
 

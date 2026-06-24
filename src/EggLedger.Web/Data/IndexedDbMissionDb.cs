@@ -3,13 +3,9 @@ using EggLedger.Domain.Reports;
 namespace EggLedger.Web.Data;
 
 /// <summary>
-/// Browser report execution over IndexedDB. IndexedDB has no SQL engine, so this
-/// materializes the player's mission and artifact-drop rows and runs them through
-/// <see cref="InMemoryReportRunner"/>, which reuses the validated report math.
-///
-/// It deliberately does not implement the SQL <see cref="IMissionDb"/> contract;
-/// that path stays for a future server backend. The runner filters by account id
-/// internally, so passing the player's rows (or all rows) yields the same result.
+/// Browser report execution over IndexedDB. No SQL engine, so it materializes the
+/// player's mission and drop rows and runs them through <see cref="InMemoryReportRunner"/>.
+/// Deliberately does not implement the SQL <see cref="IMissionDb"/> contract (kept for a future server backend).
 /// </summary>
 public sealed class IndexedDbMissionDb : IReportRunner
 {
@@ -27,9 +23,8 @@ public sealed class IndexedDbMissionDb : IReportRunner
     }
 
     /// <summary>
-    /// Runs the report for the given account id. Mission rows come from the
-    /// <c>player_id</c> index; drop rows are read store-wide and filtered to the
-    /// player (the browser DB is single-account, so this is the whole drop set).
+    /// Runs the report for the account id. Mission rows from the <c>player_id</c> index;
+    /// drop rows read store-wide and filtered to the player (browser DB is single-account).
     /// </summary>
     public async Task<ReportResult> RunReportAsync(ReportDefinition def, string accountId)
     {

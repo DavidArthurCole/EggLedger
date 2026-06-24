@@ -2,28 +2,20 @@ using System.Text.RegularExpressions;
 
 namespace EggLedger.Web.State;
 
-/// <summary>
-/// Holds the "mask player IDs on screen" (screenshot-safety) toggle and applies
-/// it to displayed text. C# port of the Vue <c>screenshotSafety</c> ref +
-/// <c>maskEid</c>: when on, any <c>EI</c> followed by 16 digits is replaced with
-/// a placeholder so EIDs do not leak into screenshots. Scoped (one per app); the
-/// shell loads the persisted value at startup and updates it from Settings.
-/// </summary>
+/// <summary>Screenshot-safety toggle: when on, masks any EI+16-digits so EIDs do not leak into screenshots. Scoped (one per app).</summary>
 public sealed partial class ScreenshotSafetyState
 {
-    private bool _enabled;
-
     /// <summary>Whether EIDs are masked on screen.</summary>
     public bool Enabled
     {
-        get => _enabled;
+        get;
         set
         {
-            if (_enabled == value)
+            if (field == value)
             {
                 return;
             }
-            _enabled = value;
+            field = value;
             Changed?.Invoke();
         }
     }
@@ -31,13 +23,10 @@ public sealed partial class ScreenshotSafetyState
     /// <summary>Raised when the toggle changes so subscribers re-render.</summary>
     public event Action? Changed;
 
-    /// <summary>
-    /// Returns <paramref name="text"/> with every EID masked when enabled,
-    /// otherwise unchanged. Mirrors the Vue regex <c>/EI\d{16}/g</c>.
-    /// </summary>
+    /// <summary>Returns <paramref name="text"/> with every EID masked when enabled, otherwise unchanged.</summary>
     public string Mask(string? text)
     {
-        if (string.IsNullOrEmpty(text) || !_enabled)
+        if (string.IsNullOrEmpty(text) || !Enabled)
         {
             return text ?? "";
         }

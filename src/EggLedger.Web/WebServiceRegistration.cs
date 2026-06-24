@@ -9,27 +9,15 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace EggLedger.Web;
 
-/// <summary>
-/// Shared DI registration for the EggLedger Blazor UI, used by both the browser
-/// WASM entrypoint and the Photino desktop host so the service list stays in one
-/// place. Host-specific bits (HttpClient base address, platform capabilities,
-/// storage) are supplied by the caller / overridden afterwards.
-/// </summary>
+/// <summary>Shared DI registration for the Blazor UI, used by both WASM and the desktop host. Host-specific bits (HttpClient base, platform capabilities, storage) are supplied or overridden by the caller.</summary>
 public static class WebServiceRegistration
 {
-    /// <summary>
-    /// Register the host-agnostic UI services plus the browser defaults
-    /// (IndexedDB stores, browser platform capabilities). A desktop host calls
-    /// this then overrides storage (D2) and platform capabilities (D3).
-    /// </summary>
-    /// <param name="services">The DI container.</param>
-    /// <param name="httpBaseAddress">Base address for the same-origin HttpClient.</param>
+    /// <summary>Register host-agnostic UI services plus browser defaults. A desktop host calls this then overrides storage (D2) and platform capabilities (D3).</summary>
     public static IServiceCollection AddEggLedgerWeb(this IServiceCollection services, Uri httpBaseAddress)
     {
         services.AddScoped(_ => new HttpClient { BaseAddress = httpBaseAddress });
 
-        // IndexedDB persistence. The browser owns one instance per app; the desktop
-        // host (D2) swaps these for the native SQLite-backed stores.
+        // IndexedDB persistence. The desktop host (D2) swaps these for native SQLite-backed stores.
         services.AddScoped<IIndexedDb, IndexedDb>();
         services.AddScoped<IndexedDbSettings>();
         services.AddScoped<IndexedDbAccountStore>();
@@ -49,23 +37,18 @@ public static class WebServiceRegistration
         // Shared, read-only mission filter configuration for the Mission Data tab.
         services.AddScoped<EggLedger.Web.Missions.MissionConfigProvider>();
 
-        // Egg Inc API client. The browser cannot call the auxbrain host directly
-        // (CORS blocks it), so the WASM build points at a SAME-ORIGIN path that the
-        // host (nginx / the desktop) reverse-proxies to the real API. Endpoints are
-        // appended to this prefix, so "/egg-api" + "/ei/bot_first_contact" resolves
-        // against the HttpClient BaseAddress (the serving origin) -> proxied upstream.
+        // Egg Inc API client. CORS blocks calling auxbrain directly, so the prefix is a
+        // same-origin path the host reverse-proxies upstream (resolved against the HttpClient BaseAddress).
         services.AddScoped(sp => new ApiClient(sp.GetRequiredService<HttpClient>(), apiPrefix: "/egg-api"));
 
-        // Decode seam: default to in-process protobuf-net decode. The WASM host
-        // overrides this with a server-delegating decoder (protobuf-net cannot emit
-        // in the browser). Desktop keeps the local path.
+        // Decode seam: default in-process protobuf-net decode. WASM overrides with a
+        // server-delegating decoder (protobuf-net cannot emit in the browser); desktop keeps the local path.
         services.AddScoped<IApiPayloadDecoder>(sp => new LocalApiPayloadDecoder(sp.GetRequiredService<ApiClient>()));
 
         services.AddScoped<FetchService>();
         services.AddScoped<AddAccountService>();
 
-        // Serves CSV/XLSX export bytes as a browser download via the download.js shim.
-        // The UI binds IDownloadService so the desktop host can swap in a save-to-disk
+        // CSV/XLSX export download. UI binds IDownloadService so desktop can swap a save-to-disk
         // sink (D5); the concrete impl is also resolvable for IAsyncDisposable cleanup.
         services.AddScoped<DownloadService>();
         services.AddScoped<IDownloadService>(sp => sp.GetRequiredService<DownloadService>());
@@ -76,28 +59,23 @@ public static class WebServiceRegistration
         // Menno community drop-rate stats client (read-only, in-memory cache).
         services.AddScoped<MennoService>();
 
-        // Cloud sync: Discord OAuth (browser redirect + poll) + AES-encrypted blob
-        // transport. The redirect is abstracted behind INavigation for testability.
+        // Cloud sync: Discord OAuth + AES-encrypted blobs. Redirect is behind INavigation for testability.
         services.AddScoped<INavigation, BlazorNavigation>();
-        // Blob crypto seam: the browser cannot run managed AES-GCM (AesGcm is
-        // unsupported on the WASM runtime), so the default is the SubtleCrypto
-        // (JS interop) cipher. The desktop host overrides this with the managed
-        // LocalBlobCipher.
+        // Blob crypto seam: WASM has no managed AES-GCM, so default is the SubtleCrypto
+        // (JS interop) cipher; desktop overrides with the managed LocalBlobCipher.
         services.AddScoped<IBlobCipher, SubtleCryptoBlobCipher>();
         services.AddScoped<CloudSyncService>();
         services.AddScoped<EggLedger.Web.Settings.CloudSessionStore>();
 
-        // Shell state and the platform capability seam. Default is the browser
-        // (non-desktop) impl; the desktop host overrides it with a native impl.
+        // Shell state and the platform capability seam. Desktop overrides the browser impl with a native one.
         services.AddScoped<ActiveAccount>();
         services.AddScoped<ScreenshotSafetyState>();
         services.AddScoped<AppStateService>();
         services.AddScoped<AccountLoader>();
         services.AddScoped<IPlatformCapabilities, BrowserPlatformCapabilities>();
 
-        // Update-status surface for the About overlay. Browser default is the
-        // permanently-up-to-date no-op; the desktop host overrides with the live
-        // updater-backed provider. The overlay is gated on IsDesktop regardless.
+        // Update-status surface for the About overlay. Browser default is the no-op; desktop
+        // overrides with the live updater. Overlay is gated on IsDesktop regardless.
         services.AddScoped<IUpdateStatusProvider, NoOpUpdateStatusProvider>();
 
         return services;

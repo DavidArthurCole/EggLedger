@@ -6,17 +6,11 @@ using Microsoft.Data.Sqlite;
 namespace EggLedger.Desktop.Storage;
 
 /// <summary>
-/// Applies embedded SQL migrations to a SQLite database in numeric order and
-/// tracks the applied version via <c>PRAGMA user_version</c>. Port of the Go
-/// golang-migrate runner (db/migrate.go, reportdb/migrate.go): the same numbered
-/// <c>N_name.up.sql</c> files run in order to a target version, and a re-run is a
-/// no-op once <c>user_version</c> already equals the target.
-///
-/// Migrations are embedded resources named
-/// <c>EggLedger.Desktop.Storage.Migrations.&lt;Set&gt;.&lt;N&gt;_&lt;name&gt;.up.sql</c>.
-/// Each file's whole text runs inside one transaction so a partial failure rolls
-/// back (matching golang-migrate's per-step transaction). PRAGMA user_version is
-/// bumped to N after each successful file.
+/// Applies embedded SQL migrations in numeric order, tracking the applied version
+/// via <c>PRAGMA user_version</c>. Port of the Go golang-migrate runner; a re-run
+/// is a no-op once user_version equals the target. Resources are named
+/// <c>EggLedger.Desktop.Storage.Migrations.&lt;Set&gt;.&lt;N&gt;_&lt;name&gt;.up.sql</c>;
+/// each file runs in one transaction so a partial failure rolls back.
 /// </summary>
 public static class SqliteMigrationRunner
 {
@@ -29,24 +23,17 @@ public static class SqliteMigrationRunner
     private static readonly Regex FileNamePattern =
         new(@"\.Migrations\.(?<set>[^.]+)\.(?<num>\d+)_", RegexOptions.Compiled);
 
-    /// <summary>
-    /// Applies every mission-set migration up to <see cref="MissionTargetVersion"/>.
-    /// Idempotent: a DB already at the target version is left untouched.
-    /// </summary>
+    /// <summary>Applies mission-set migrations up to the target. Idempotent.</summary>
     public static void MigrateMissionDb(SqliteConnection connection) =>
         Migrate(connection, "Mission", MissionTargetVersion);
 
-    /// <summary>
-    /// Applies every report-set migration up to <see cref="ReportTargetVersion"/>.
-    /// Idempotent.
-    /// </summary>
+    /// <summary>Applies report-set migrations up to the target. Idempotent.</summary>
     public static void MigrateReportDb(SqliteConnection connection) =>
         Migrate(connection, "Report", ReportTargetVersion);
 
     /// <summary>
-    /// Runs the named migration set against <paramref name="connection"/>, applying
-    /// only files numbered above the current <c>user_version</c> and up to
-    /// <paramref name="targetVersion"/>, in ascending numeric order.
+    /// Runs the named set, applying only files numbered above the current
+    /// user_version and up to targetVersion, in ascending order.
     /// </summary>
     public static void Migrate(SqliteConnection connection, string set, int targetVersion)
     {

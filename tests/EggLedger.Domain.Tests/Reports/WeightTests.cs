@@ -43,7 +43,7 @@ public class WeightTests
             SecondaryGroupBy = "artifact_name",
             Filters = new ReportFilters
             {
-                And = new() { new FilterCondition { TopLevel = "launchDT", Op = ">=", Val = Ago(30) } },
+                And = [new FilterCondition { TopLevel = "launchDT", Op = ">=", Val = Ago(30) }],
             },
         };
         Assert.Equal("MEDIUM", Weight.ClassifyWeight(def));
@@ -73,7 +73,7 @@ public class WeightTests
             TimeBucket = "month",
             Filters = new ReportFilters
             {
-                And = new() { new FilterCondition { TopLevel = "launchDT", Op = ">=", Val = Ago(30) } },
+                And = [new FilterCondition { TopLevel = "launchDT", Op = ">=", Val = Ago(30) }],
             },
         };
         Assert.Equal("MEDIUM", Weight.ClassifyWeight(def));
@@ -90,7 +90,7 @@ public class WeightTests
             TimeBucket = "month",
             Filters = new ReportFilters
             {
-                And = new() { new FilterCondition { TopLevel = "launchDT", Op = ">=", Val = Ago(180) } },
+                And = [new FilterCondition { TopLevel = "launchDT", Op = ">=", Val = Ago(180) }],
             },
         };
         Assert.Equal("HEAVY", Weight.ClassifyWeight(def));
@@ -120,7 +120,7 @@ public class WeightTests
             TimeBucket = "month",
             Filters = new ReportFilters
             {
-                And = new() { new FilterCondition { TopLevel = "launchDT", Op = ">=", Val = Ago(30) } },
+                And = [new FilterCondition { TopLevel = "launchDT", Op = ">=", Val = Ago(30) }],
             },
         };
         Assert.Equal("MEDIUM", Weight.ClassifyWeight(def));
@@ -146,7 +146,7 @@ public class WeightTests
             TimeBucket = "month",
             Filters = new ReportFilters
             {
-                And = new() { new FilterCondition { TopLevel = "launchDT", Op = ">=", Val = Ago(30) } },
+                And = [new FilterCondition { TopLevel = "launchDT", Op = ">=", Val = Ago(30) }],
             },
         };
         Assert.Equal("MEDIUM", Weight.ClassifyWeight(def));
@@ -163,11 +163,11 @@ public class WeightTests
             TimeBucket = "month",
             Filters = new ReportFilters
             {
-                And = new()
-                {
+                And =
+                [
                     new FilterCondition { TopLevel = "launchDT", Op = ">=", Val = Ago(90) },
                     new FilterCondition { TopLevel = "launchDT", Op = ">=", Val = Ago(10) },
-                },
+                ],
             },
         };
         Assert.Equal("MEDIUM", Weight.ClassifyWeight(def));

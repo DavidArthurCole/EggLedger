@@ -1,7 +1,7 @@
 using System.IO.Compression;
-using Ei;
 using EggLedger.Domain.Api;
 using EggLedger.Web.Data;
+using Ei;
 using ProtoBuf;
 
 namespace EggLedger.Web.Tests.Data;

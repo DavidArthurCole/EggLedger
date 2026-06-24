@@ -2,7 +2,7 @@ using EggLedger.Domain.MissionQuery;
 
 namespace EggLedger.Web.Missions;
 
-/// <summary>Context the field option-sources draw from. Port of Vue FilterFieldCtx.</summary>
+/// <summary>Context the field option-sources draw from.</summary>
 public sealed class FilterFieldCtx
 {
     public IReadOnlyList<PossibleTarget> PossibleTargets { get; init; } = Array.Empty<PossibleTarget>();
@@ -10,11 +10,7 @@ public sealed class FilterFieldCtx
     public double MaxQuality { get; init; }
 }
 
-/// <summary>
-/// Definition of a filter field. C# port of the Vue FilterFieldDef in
-/// filterFields.ts: key, label, scope, value-picker kind, operator list, and an
-/// optional option source.
-/// </summary>
+/// <summary>Definition of a filter field: key, label, scope, value-picker kind, operator list, optional option source.</summary>
 public sealed class FilterFieldDef
 {
     public string Key { get; init; } = "";
@@ -30,11 +26,7 @@ public sealed class FilterFieldDef
     public Func<FilterFieldCtx, List<FilterOption>>? OptionsSource { get; init; }
 }
 
-/// <summary>
-/// Static filter field/operator definitions. C# port of filterFields.ts. The
-/// field set, operator lists, default-operator rules, and scope partitions are
-/// golden-matched to the Vue source.
-/// </summary>
+/// <summary>Static filter field/operator definitions, golden-matched to filterFields.ts (field set, operator lists, default-operator rules, scope partitions).</summary>
 public static class FilterFields
 {
     public static readonly IReadOnlyList<FilterOp> EqualityOps = new[]
@@ -62,12 +54,7 @@ public static class FilterFields
         new FilterOp(">=", "on or after"),
     };
 
-    /// <summary>
-    /// Date operators for the Mission Data tab filter bar. Port of FullFilter.vue
-    /// getFilterOpOptions for launchDT/returnDT: "on" maps to the day-equality
-    /// operator "d=", not "=". A date "=" reference-compares and never matches
-    /// (see MissionFilterMatcher), so the bar must emit "d=" for "on".
-    /// </summary>
+    /// <summary>Date operators for the Mission Data tab filter bar. "on" must map to "d=" (day-equality), since a date "=" reference-compares and never matches (see MissionFilterMatcher).</summary>
     public static readonly IReadOnlyList<FilterOp> MissionDateOps = new[]
     {
         new FilterOp("d=", "on"),
@@ -75,11 +62,7 @@ public static class FilterFields
         new FilterOp(">", "after"),
     };
 
-    /// <summary>
-    /// Operators the Mission Data filter bar should present for a field. Date
-    /// fields use MissionDateOps (Vue parity); everything else uses the field's
-    /// own Ops. Keeps the shared Reports field set unchanged.
-    /// </summary>
+    /// <summary>Operators the Mission Data filter bar presents for a field. Date fields use MissionDateOps; everything else uses the field's own Ops.</summary>
     public static IReadOnlyList<FilterOp> MissionBarOpsFor(FilterFieldDef def) =>
         def.ValueKind == FilterValueKind.Date ? MissionDateOps : def.Ops;
 
@@ -95,7 +78,7 @@ public static class FilterFields
         new FilterOp("false", "False"),
     };
 
-    /// <summary>All filter fields, mission then artifact scope. Port of REPORT_FILTER_FIELDS.</summary>
+    /// <summary>All filter fields, mission then artifact scope.</summary>
     public static readonly IReadOnlyList<FilterFieldDef> ReportFilterFields = new[]
     {
         new FilterFieldDef
@@ -176,7 +159,7 @@ public static class FilterFields
         },
     };
 
-    /// <summary>Field definition for a key, or null. Port of getReportField.</summary>
+    /// <summary>Field definition for a key, or null.</summary>
     public static FilterFieldDef? GetReportField(string key)
     {
         foreach (var f in ReportFilterFields)
@@ -189,11 +172,7 @@ public static class FilterFields
         return null;
     }
 
-    /// <summary>
-    /// Default operator for a field in the Mission Data bar. Port of
-    /// defaultOpForField: bool -> "true", drops -> "c", date -> "d=" (first
-    /// MissionBarOps), else first operator.
-    /// </summary>
+    /// <summary>Default operator for a field in the Mission Data bar: bool -> "true", drops -> "c", date -> "d=", else first operator.</summary>
     public static string DefaultOpForField(FilterFieldDef def)
     {
         if (def.ValueKind == FilterValueKind.Bool)
@@ -208,7 +187,7 @@ public static class FilterFields
         return ops.Count > 0 ? ops[0].Value : "";
     }
 
-    /// <summary>Mission-scoped fields. Port of reportMissionFields.</summary>
+    /// <summary>Mission-scoped fields.</summary>
     public static List<FilterFieldDef> ReportMissionFields()
     {
         var result = new List<FilterFieldDef>();
@@ -222,7 +201,7 @@ public static class FilterFields
         return result;
     }
 
-    /// <summary>Artifact-scoped fields. Port of reportArtifactFields.</summary>
+    /// <summary>Artifact-scoped fields.</summary>
     public static List<FilterFieldDef> ReportArtifactFields()
     {
         var result = new List<FilterFieldDef>();

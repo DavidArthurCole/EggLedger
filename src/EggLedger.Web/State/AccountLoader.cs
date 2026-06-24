@@ -3,15 +3,7 @@ using EggLedger.Web.Data;
 
 namespace EggLedger.Web.State;
 
-/// <summary>
-/// Single source of truth for loading persisted accounts into shared shell
-/// state. Reads the known accounts and active-account id from the
-/// <see cref="IndexedDbAccountStore"/> into <see cref="AppStateService"/> +
-/// <see cref="ActiveAccount"/> once, and persists the active id whenever the
-/// selection changes (whether from the in-tab selector or the global header).
-/// C# stand-in for the Go startup that seeds knownAccounts + getActiveAccountId
-/// and the setActiveAccountId binding.
-/// </summary>
+/// <summary>Loads persisted accounts + active id into shared state once, and persists the active id on selection change.</summary>
 public sealed class AccountLoader : IDisposable
 {
     private readonly IndexedDbAccountStore _store;
@@ -32,11 +24,7 @@ public sealed class AccountLoader : IDisposable
     /// <summary>The full account list last loaded, richest form (SE/PE/TE included).</summary>
     public IReadOnlyList<AccountInfo> Accounts { get; private set; } = [];
 
-    /// <summary>
-    /// Loads accounts + active id into shared state on first call and wires the
-    /// persist-on-change subscription. Idempotent: later calls re-read the list
-    /// (so a freshly added account shows up) without re-subscribing.
-    /// </summary>
+    /// <summary>Loads accounts + active id and wires persist-on-change. Idempotent: later calls re-read the list without re-subscribing.</summary>
     public async Task EnsureLoadedAsync()
     {
         if (!_subscribed)
@@ -73,7 +61,7 @@ public sealed class AccountLoader : IDisposable
         {
             return;
         }
-        // Fire-and-forget persist; the in-memory state is already updated.
+        // Fire-and-forget persist; in-memory state is already updated.
         _ = _store.SetActiveAccountIdAsync(_active.ActiveAccountId ?? "");
     }
 

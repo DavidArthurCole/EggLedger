@@ -6,10 +6,8 @@ using ProtoBuf;
 namespace EggLedger.Domain.Ei;
 
 /// <summary>
-/// Mirrors Go's protobuf enum String() / *_value map behavior for the C#
-/// (protobuf-net) generated enums. Go String() yields the proto name
-/// (e.g. "TACHYON_DEFLECTOR"); protobuf-net stores that on [ProtoEnum(Name=...)]
-/// while naming the member PascalCase.
+/// Mirrors Go's protobuf enum String() / *_value maps for protobuf-net enums. Go String() yields the
+/// proto name (e.g. "TACHYON_DEFLECTOR"), which protobuf-net stores on [ProtoEnum(Name=...)].
 /// </summary>
 internal static class EnumNames
 {

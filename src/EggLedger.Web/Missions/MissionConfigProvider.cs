@@ -3,13 +3,7 @@ using EggLedger.Domain.MissionQuery;
 
 namespace EggLedger.Web.Missions;
 
-/// <summary>
-/// Supplies the shared, read-only mission configuration the filter UI and the
-/// <see cref="MissionFilterMatcher"/> need: per-ship duration configs, possible
-/// targets, draftable artifacts, and the global max quality. Thin scoped wrapper
-/// caching the Domain <see cref="MissionConfigData"/> builders (themselves ports
-/// of the Go main.go init helpers + missionquery.GetDurationConfigs).
-/// </summary>
+/// <summary>Supplies the shared read-only mission config the filter UI and MissionFilterMatcher need (duration configs, targets, artifacts, max quality). Thin scoped wrapper caching the Domain MissionConfigData builders.</summary>
 public sealed class MissionConfigProvider
 {
     private readonly Lazy<IReadOnlyList<PossibleMission>> _durationConfigs =

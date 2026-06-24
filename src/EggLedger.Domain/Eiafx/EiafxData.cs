@@ -9,10 +9,8 @@ namespace EggLedger.Domain.Eiafx;
 public sealed record FamilyMeta(string Id, string Name);
 
 /// <summary>
-/// Crafting weights and artifact families, parsed from the embedded
-/// eiafx-data-min.json. Port of Go eiafx/data.go. Embedded-only: no file cache
-/// or background download (the Go cache/download path is host concern, omitted
-/// from the pure domain).
+/// Crafting weights and artifact families from the embedded eiafx-data-min.json. Port of Go
+/// eiafx/data.go, embedded-only (the Go cache/download path is a host concern, omitted here).
 /// </summary>
 public static class EiafxData
 {
@@ -21,9 +19,8 @@ public static class EiafxData
     private static readonly Lazy<ParsedData> _data = new(LoadEmbedded);
 
     /// <summary>
-    /// Maps (afxId, afxLevel) to the T1-equivalent base item weight. Base items
-    /// (no recipe) have weight 1.0. Mirrors Go eiafx.CraftingWeights. The cycle
-    /// sentinel value 0.0 is preserved exactly.
+    /// Maps (afxId, afxLevel) to the T1-equivalent base item weight (base items have weight 1.0).
+    /// Mirrors Go eiafx.CraftingWeights; the cycle sentinel value 0.0 is preserved exactly.
     /// </summary>
     public static IReadOnlyDictionary<(int AfxId, int AfxLevel), double> CraftingWeights => _data.Value.CraftingWeights;
 
@@ -37,9 +34,8 @@ public static class EiafxData
     public static IReadOnlyList<FamilyMeta> Families => _data.Value.Families;
 
     /// <summary>
-    /// Crafting weight for a tier, falling back to 1.0 when the key is absent or
-    /// the cycle-sentinel (0). Port of Go reports.craftingWeight, hoisted here so
-    /// the canonical data owns the fallback.
+    /// Crafting weight for a tier, falling back to 1.0 when the key is absent or the cycle-sentinel
+    /// (0). Port of Go reports.craftingWeight.
     /// </summary>
     public static double CraftingWeightOrOne(long afxId, long afxLevel)
     {
@@ -69,13 +65,13 @@ public static class EiafxData
     // Port of Go parseDataConfig.
     private static ParsedData Parse(ArtifactDataConfig cfg)
     {
-        var families = cfg.Families ?? new List<FamilyData>();
+        var families = cfg.Families ?? [];
 
         // Flat map from (afxId, afxLevel) -> tier for weight traversal.
         var tierMap = new Dictionary<(int, int), TierData>();
         foreach (var fam in families)
         {
-            foreach (var t in fam.Tiers ?? new List<TierData>())
+            foreach (var t in fam.Tiers ?? [])
             {
                 tierMap[(t.AfxId, t.AfxLevel)] = t;
             }
@@ -113,7 +109,7 @@ public static class EiafxData
         var fids = new Dictionary<string, IReadOnlyList<int>>(families.Count);
         foreach (var f in families)
         {
-            fids[f.Id] = f.ChildAfxIds ?? new List<int>();
+            fids[f.Id] = f.ChildAfxIds ?? [];
         }
 
         var fams = new List<FamilyMeta>(families.Count);

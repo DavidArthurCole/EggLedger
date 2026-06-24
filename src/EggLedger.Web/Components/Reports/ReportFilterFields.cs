@@ -3,15 +3,10 @@ namespace EggLedger.Web.Components.Reports;
 /// <summary>A filter operator: wire value plus display label.</summary>
 public readonly record struct FilterOp(string Value, string Label);
 
-/// <summary>
-/// A report filter field definition. Port of the subset of the Vue
-/// utils/filterFields.ts REPORT_FILTER_FIELDS needed by the builder's AND-filter
-/// editor. Option lists (select/modal) are left to the UI; this captures the
-/// key, label, scope, and operator set so a valid FilterCondition can be built.
-/// </summary>
+/// <summary>A report filter field: key, label, scope, and operator set. Option lists are left to the UI.</summary>
 public sealed record ReportFilterField(string Key, string Label, string Scope, IReadOnlyList<FilterOp> Ops);
 
-/// <summary>Static report filter field table. Port of REPORT_FILTER_FIELDS.</summary>
+/// <summary>Static report filter field table.</summary>
 public static class ReportFilterFields
 {
     private static readonly IReadOnlyList<FilterOp> EqualityOps = new[]
@@ -39,7 +34,7 @@ public static class ReportFilterFields
         new FilterOp(">=", "on or after"),
     };
 
-    /// <summary>All report filter fields, mission scope first. Port of REPORT_FILTER_FIELDS.</summary>
+    /// <summary>All report filter fields, mission scope first.</summary>
     public static readonly IReadOnlyList<ReportFilterField> All = new[]
     {
         new ReportFilterField("ship", "Ship", "mission", ComparisonOps),
@@ -56,11 +51,11 @@ public static class ReportFilterFields
         new ReportFilterField("artifact_quality", "Quality", "artifact", ComparisonOps),
     };
 
-    /// <summary>Returns the field for a key, or null. Port of getReportField.</summary>
+    /// <summary>Returns the field for a key, or null.</summary>
     public static ReportFilterField? Get(string key) =>
         All.FirstOrDefault(f => f.Key == key);
 
-    /// <summary>Default operator for a field's first op. Port of defaultOpForField (non-bool/drops fields).</summary>
+    /// <summary>Default operator for a field (its first op).</summary>
     public static string DefaultOp(ReportFilterField f) =>
         f.Ops.Count > 0 ? f.Ops[0].Value : "";
 }

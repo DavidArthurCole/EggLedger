@@ -3,8 +3,8 @@ using Ei;
 namespace EggLedger.Domain.Api;
 
 /// <summary>
-/// Port of Go api/api.go. The two concrete Egg Inc endpoints used by EggLedger:
-/// unauthenticated first-contact and authenticated complete-mission.
+/// Port of Go api/api.go. The two endpoints used: unauthenticated first-contact and
+/// authenticated complete-mission.
 /// </summary>
 public sealed partial class ApiClient
 {

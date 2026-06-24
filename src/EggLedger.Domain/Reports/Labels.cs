@@ -1,25 +1,24 @@
 using System.Globalization;
-using Ei;
 using EggLedger.Domain.Ei;
 using EggLedger.Domain.LedgerData;
+using Ei;
 
 namespace EggLedger.Domain.Reports;
 
 /// <summary>
-/// Raw-value to display-string conversion and sort ordering for report group-by
-/// dimensions. Port of Go reports/labels.go. Pure.
+/// Raw-value to display-string conversion and sort ordering for report group-by dimensions.
+/// Port of Go reports/labels.go.
 /// </summary>
 public static class Labels
 {
-    private static readonly string[] RarityNames = { "Common", "Rare", "Epic", "Legendary" };
-    private static readonly string[] TierNames = { "T1", "T2", "T3", "T4" };
+    private static readonly string[] RarityNames = ["Common", "Rare", "Epic", "Legendary"];
+    private static readonly string[] TierNames = ["T1", "T2", "T3", "T4"];
 
     private static LedgerDisplayData Config => LedgerData.LedgerData.Config;
 
     /// <summary>
-    /// Human-readable display name for an artifact enum value via
-    /// ledgerdata.ArtifactTargets, falling back to CasedName. Port of Go
-    /// artifactDisplayName.
+    /// Display name for an artifact enum value via ledgerdata.ArtifactTargets,
+    /// falling back to CasedName. Port of Go artifactDisplayName.
     /// </summary>
     private static string ArtifactDisplayName(int v)
     {
@@ -42,9 +41,8 @@ public static class Labels
     };
 
     /// <summary>
-    /// Returns true when raw value rawA should sort before rawB for the given
-    /// groupBy. Numeric dimensions compare by integer value; others compare
-    /// lexicographically (ordinal). Port of Go LabelSortLess.
+    /// True when rawA sorts before rawB for the groupBy. Numeric dimensions compare
+    /// by integer, others ordinal. Port of Go LabelSortLess.
     /// </summary>
     public static bool LabelSortLess(string groupBy, string rawA, string rawB)
     {

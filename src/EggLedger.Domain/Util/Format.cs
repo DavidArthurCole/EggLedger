@@ -2,20 +2,15 @@ using System.Globalization;
 
 namespace EggLedger.Domain.Util;
 
-/// <summary>
-/// Number formatting helpers. C# Domain port of Go util/format.go. Pure.
-/// </summary>
+/// <summary>Number formatting helpers. Go port of util/format.go.</summary>
 public static class Format
 {
     private static readonly string[] Suffixes =
-    {
+    [
         "", "K", "M", "B", "T", "q", "Q", "s", "S", "o", "N", "d", "U", "D", "Td", "qd", "Qd", "sd", "Sd", "od", "Nd",
-    };
+    ];
 
-    /// <summary>
-    /// Returns the order-of-magnitude suffix for the given exponent index.
-    /// 0 -&gt; "", 1 -&gt; "K", 2 -&gt; "M", ... up to 20; anything above 20 -&gt; "!".
-    /// </summary>
+    /// <summary>Order-of-magnitude suffix for the exponent index (0..20); above 20 returns "!".</summary>
     public static string Addendum(int oom)
     {
         if (oom > 20)
@@ -25,10 +20,7 @@ public static class Format
         return Suffixes[oom];
     }
 
-    /// <summary>
-    /// Formats a large value as a short human-readable string,
-    /// e.g. 1234567890 -&gt; "1.23B". Uses the same suffix table as Addendum.
-    /// </summary>
+    /// <summary>Formats a large value as a short string, e.g. 1234567890 -&gt; "1.23B".</summary>
     public static string AbbreviateFloat(double v)
     {
         var vCopy = v;

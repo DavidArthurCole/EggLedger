@@ -1,8 +1,8 @@
-using Ei;
 using EggLedger.Domain.Api;
 using EggLedger.Web.Data;
 using EggLedger.Web.Services;
 using EggLedger.Web.Tests.Data;
+using Ei;
 using ProtoBuf;
 
 namespace EggLedger.Web.Tests.Services;

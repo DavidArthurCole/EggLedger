@@ -1,21 +1,13 @@
 using System.Globalization;
-using Ei;
 using EggLedger.Domain.Api;
 using EggLedger.Domain.Ei;
 using EggLedger.Domain.MissionPacking;
 using EggLedger.Web.Data;
+using Ei;
 
 namespace EggLedger.Web.Services;
 
-/// <summary>
-/// The EID-fetch pipeline. C# port of the Go runFetchPipeline + fetchOneMission
-/// + the data.go fetch-with-context helpers, scoped to the browser. Fetches a
-/// player's first-contact backup, diffs completed missions against the local
-/// IndexedDB store, then fans out bounded-concurrency workers to fetch and store
-/// the missing missions. Reports progress through <see cref="IProgress{T}"/> and
-/// drives the <see cref="AppState"/> machine. Desktop-only concerns (CSV/XLSX
-/// export, process-registry UI, one-time backfill passes) are handled elsewhere.
-/// </summary>
+/// <summary>The EID-fetch pipeline: fetch a player's first-contact backup, diff completed missions against the local IndexedDB store, then fan out bounded-concurrency workers to fetch and store the missing missions. Reports progress and drives the <see cref="AppState"/> machine.</summary>
 public sealed class FetchService
 {
     private const int DefaultWorkerCount = 1;
@@ -37,12 +29,7 @@ public sealed class FetchService
         _packer = packer ?? new MissionPacker(EiafxMissionConfigSource.Instance);
     }
 
-    /// <summary>
-    /// Runs the full fetch pipeline for a player. Returns the terminal
-    /// <see cref="AppState"/> (Success/Failed/Interrupted). Progress events report
-    /// state transitions, mission-counter snapshots, and per-mission segment
-    /// updates. Cancellation drives the pipeline to Interrupted.
-    /// </summary>
+    /// <summary>Runs the full fetch pipeline, returning the terminal <see cref="AppState"/>. Cancellation drives the pipeline to Interrupted.</summary>
     public async Task<AppState> FetchPlayerDataAsync(
         string playerId,
         IProgress<FetchProgress>? progress,
@@ -165,19 +152,13 @@ public sealed class FetchService
         }
 
         Report(AppState.ExportingData);
-        // Export (CSV/XLSX) is the browser DownloadService's job, run from the UI;
-        // the fetch service stops at persistence. This state is reported for
-        // parity with the Go state machine.
+        // Export is DownloadService's job; the fetch service stops at persistence. State reported for parity with the Go state machine.
 
         Report(AppState.Success);
         return AppState.Success;
     }
 
-    /// <summary>
-    /// Fetches + validates the first-contact backup, then stores it (12h min-gap
-    /// dedup). C# port of data.go fetchFirstContactWithContext. On Validate
-    /// failure throws with the Go "please double check your ID" wrap.
-    /// </summary>
+    /// <summary>Fetches, validates, and stores the first-contact backup (12h min-gap dedup). Throws "please double check your ID" on validation failure.</summary>
     private async Task<EggIncFirstContactResponse> FetchFirstContactAsync(string playerId, CancellationToken cancellationToken)
     {
         byte[] payload = await _api.RequestFirstContactRawPayloadAsync(playerId, cancellationToken).ConfigureAwait(false);
@@ -192,26 +173,20 @@ public sealed class FetchService
         double lastBackupTime = fc.Backup?.settings?.LastBackupTime ?? 0;
         if (lastBackupTime != 0)
         {
-            // Non-fatal in Go; swallow store errors so a backup write hiccup does
-            // not abort the fetch.
+            // Swallow store errors so a backup write hiccup does not abort the fetch.
             try
             {
                 await _store.InsertBackupAsync(playerId, lastBackupTime, payload, BackupMinGap).ConfigureAwait(false);
             }
             catch
             {
-                // Intentionally ignored, matching Go's log-and-continue.
+                // Intentionally ignored (log-and-continue).
             }
         }
         return fc;
     }
 
-    /// <summary>
-    /// Fans out <paramref name="workerCount"/> bounded-concurrency tasks over the
-    /// mission set. The SemaphoreSlim is the C# equivalent of Go's per-batch
-    /// worker semaphore; there is no per-batch sleep because the browser has no
-    /// shared desktop rate limiter. Returns true if cancellation was observed.
-    /// </summary>
+    /// <summary>Fans out bounded-concurrency tasks over the mission set, gated by a SemaphoreSlim. No per-batch sleep: the browser has no shared rate limiter. Returns true if cancellation was observed.</summary>
     private async Task<bool> RunWorkersAsync(
         string playerId,
         IReadOnlyList<(string Id, double Start)> missions,
@@ -244,8 +219,7 @@ public sealed class FetchService
                 }
                 catch (OperationCanceledException)
                 {
-                    // Treated as a non-success; the outer cancellation check turns
-                    // the run into Interrupted.
+                    // Non-success; the outer cancellation check turns the run into Interrupted.
                     onError(new FailedMission(id, start));
                 }
                 catch
@@ -272,13 +246,7 @@ public sealed class FetchService
         return cancellationToken.IsCancellationRequested;
     }
 
-    /// <summary>
-    /// Fetches and stores a single mission. C# port of fetchCompleteMissionWithContext
-    /// + fetchOneMission. Cache hit returns without an API call; otherwise fetch,
-    /// decode (authenticated), validate Success + non-empty Artifacts, pack the
-    /// filter columns, and store the mission + drop rows. Segment statuses are
-    /// reported through <paramref name="progress"/>.
-    /// </summary>
+    /// <summary>Fetches and stores a single mission. Cache hit returns without an API call; otherwise fetch, decode, validate Success + non-empty Artifacts, pack filter columns, and store.</summary>
     private async Task FetchOneMissionAsync(
         string playerId,
         string missionId,
@@ -358,7 +326,7 @@ public sealed class FetchService
         Track("Store", SegmentStatus.Done);
     }
 
-    private static int ReadWorkerCount(IReadOnlyDictionary<string, string> settings)
+    private static int ReadWorkerCount(Dictionary<string, string> settings)
     {
         int n = DefaultWorkerCount;
         if (settings.TryGetValue("worker_count", out var raw)
@@ -369,7 +337,7 @@ public sealed class FetchService
         return Math.Clamp(n, 1, MaxWorkerCount);
     }
 
-    private static bool ReadRetryFailedSetting(IReadOnlyDictionary<string, string> settings) =>
+    private static bool ReadRetryFailedSetting(Dictionary<string, string> settings) =>
         settings.TryGetValue("retry_failed_missions", out var raw)
             && bool.TryParse(raw, out var b) && b;
 }

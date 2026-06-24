@@ -4,21 +4,15 @@ using EggLedger.Domain.Reports;
 namespace EggLedger.Web.Data;
 
 /// <summary>
-/// Pure conversions between the persisted <see cref="ReportRow"/> (IndexedDB
-/// shape, snake_case wire names) and the <see cref="ReportDefinition"/> that the
-/// report engine (<c>RunReportAsync</c>) and the builder use. Port of the
-/// row/definition mapping the Go backend does in reportdb/converters; here it is
-/// explicit because no mapping existed yet. All methods are pure and tested.
+/// Pure conversions between the persisted <see cref="ReportRow"/> (snake_case wire)
+/// and the <see cref="ReportDefinition"/> the report engine and builder use.
+/// Port of Go reportdb/converters. All methods are pure.
 /// </summary>
 public static class ReportMapping
 {
     private static readonly JsonSerializerOptions FilterOptions = new(JsonSerializerDefaults.Web);
 
-    /// <summary>
-    /// Builds a <see cref="ReportDefinition"/> from a persisted row, parsing the
-    /// filters JSON into the structured <see cref="ReportFilters"/>. Unknown or
-    /// blank filters JSON yields empty AND/OR groups.
-    /// </summary>
+    /// <summary>Builds a <see cref="ReportDefinition"/> from a row, parsing filters JSON. Blank/invalid yields empty AND/OR groups.</summary>
     public static ReportDefinition ToDefinition(ReportRow r) => new()
     {
         Id = r.Id,
@@ -56,11 +50,7 @@ public static class ReportMapping
         MinSampleSize = r.MinSampleSize,
     };
 
-    /// <summary>
-    /// Builds a persisted row from a definition, serializing the structured
-    /// filters back to compact JSON. Created/updated timestamps are left for the
-    /// store to stamp (it overrides them on insert/update).
-    /// </summary>
+    /// <summary>Builds a row from a definition, serializing filters to compact JSON. Timestamps are left for the store to stamp.</summary>
     public static ReportRow ToRow(ReportDefinition d) => new()
     {
         Id = d.Id,

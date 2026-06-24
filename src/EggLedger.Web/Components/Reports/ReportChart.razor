@@ -1,11 +1,7 @@
 @using EggLedger.Domain.Reports
 
-@*
-    Dispatches a report definition + result to the matching chart component by
-    displayMode. Port of the chart-selection logic in ReportCard.vue (the non-
-    Menno branches; Menno comparison rendering is deferred to C3.6). Empty results
-    show a placeholder.
-*@
+@* Dispatches a report definition + result to the matching chart by displayMode.
+   Empty results show a placeholder. *@
 
 @if (IsEmpty)
 {

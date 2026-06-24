@@ -3,21 +3,14 @@ using System.Globalization;
 namespace EggLedger.Domain.Reports;
 
 /// <summary>
-/// In-memory reproduction of the SQLite time expressions the report queries use.
-/// The SQL path computes bucket labels with
-/// <c>strftime(format, datetime(start_timestamp, 'unixepoch'))</c> and parses
-/// date-filter values with <c>strftime('%s', value)</c>. This helper performs the
-/// same conversions in C# (all UTC) so the SQL-free path produces identical
-/// bucket strings and date comparisons.
+/// In-memory reproduction of the SQLite time expressions the report queries use,
+/// all UTC, so the SQL-free path produces identical bucket strings and date comparisons.
 /// </summary>
 internal static class TimeBucket
 {
     private static readonly DateTime Epoch = new(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
-    /// <summary>
-    /// Bucket label for a unix timestamp, matching
-    /// <c>strftime(TimeBucketFormat(...), datetime(ts, 'unixepoch'))</c>.
-    /// </summary>
+    /// <summary>Bucket label for a unix timestamp, matching strftime(TimeBucketFormat(...), datetime(ts, 'unixepoch')).</summary>
     public static string Format(string timeBucket, string customUnit, long unixSeconds)
     {
         var fmt = QueryBuilder.TimeBucketFormat(timeBucket, customUnit);
@@ -33,9 +26,8 @@ internal static class TimeBucket
     }
 
     /// <summary>
-    /// SQLite strftime('%Y-%W') label. Week 0 contains all days before the year's
-    /// first Monday; week 1 starts on the first Monday. Mirrors TimeFill's
-    /// FormatSQLiteWeekLabel.
+    /// SQLite strftime('%Y-%W') label: week 0 is days before the year's first Monday,
+    /// week 1 starts on the first Monday. Mirrors TimeFill.FormatSQLiteWeekLabel.
     /// </summary>
     private static string WeekLabel(DateTime t)
     {
@@ -46,19 +38,18 @@ internal static class TimeBucket
     }
 
     /// <summary>
-    /// Parses a date-filter value to a unix timestamp, matching
-    /// <c>strftime('%s', value)</c>. SQLite accepts "YYYY-MM-DD" (midnight UTC) and
-    /// "YYYY-MM-DD HH:MM:SS". Returns false when the value is not a recognized date.
+    /// Parses a date-filter value to a unix timestamp (strftime('%s', value)). Accepts
+    /// "YYYY-MM-DD" (midnight UTC) and "YYYY-MM-DD HH:MM:SS"; false on an unrecognized date.
     /// </summary>
     public static bool TryParseDateToUnix(string value, out long unixSeconds)
     {
         unixSeconds = 0;
         string[] formats =
-        {
+        [
             "yyyy-MM-dd",
             "yyyy-MM-dd HH:mm:ss",
             "yyyy-MM-ddTHH:mm:ss",
-        };
+        ];
         if (!DateTime.TryParseExact(value, formats, CultureInfo.InvariantCulture,
                 DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var t))
         {
@@ -69,9 +60,8 @@ internal static class TimeBucket
     }
 
     /// <summary>
-    /// Reproduces <c>strftime('%s', 'now', modifier)</c> for the custom-window
-    /// cutoff. modifier is "-N days" or "-N months" as built by
-    /// CustomWindowCondition. Uses UTC now.
+    /// Reproduces strftime('%s', 'now', modifier) for the custom-window cutoff using
+    /// UTC now; modifier is "-N days" or "-N months" from CustomWindowCondition.
     /// </summary>
     public static long NowMinus(string modifier)
     {

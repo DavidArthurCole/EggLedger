@@ -1,32 +1,14 @@
 using System.Globalization;
 using EggLedger.Domain.MissionPacking;
 using EggLedger.Domain.MissionQuery;
+using EggLedger.Web.Missions.Model;
 
 namespace EggLedger.Web.Missions;
 
-/// <summary>
-/// Fetches the drops for a mission. C# seam for the Vue
-/// <c>globalThis.getShipDrops(accountId, missionId)</c> bridge call the drops
-/// filter makes. Returns null on cache miss / error (Vue treats both as "no
-/// match").
-/// </summary>
+/// <summary>Fetches the drops for a mission (seam for the Vue getShipDrops bridge). Returns null on cache miss / error, treated as "no match".</summary>
 public delegate Task<IReadOnlyList<MissionDrop>?> ShipDropsFetcher(string accountId, string missionId);
 
-/// <summary>
-/// Tests a <see cref="DatabaseMission"/> against a compiled filter tree. C# port
-/// of www/src/composables/useFilterMatching.ts (the core predicate). AND
-/// conditions with OR siblings: a mission passes when every AND condition passes,
-/// or, for any failing AND condition, one of its OR siblings passes ("and-only"
-/// fallback). The drops case is async because it fetches drop data via the
-/// injected <see cref="ShipDropsFetcher"/>.
-///
-/// <para>JS comparison semantics are preserved exactly, including: loose
-/// <c>==</c>/<c>!=</c> between the numeric mission field and the string filter
-/// value; the date <c>=</c> operator comparing two distinct Date objects by
-/// reference (always unequal, so <c>=</c> on a date never matches); and the
-/// date <c>&lt;=</c>/<c>&gt;=</c> operators falling through to the no-op default
-/// (always pass).</para>
-/// </summary>
+/// <summary>Tests a DatabaseMission against a typed MissionFilter (OR of AND-groups). Pure except Drops, which is async (fetched per mission). Date compares are same-day Equals with inclusive GE/LE. The legacy string entry points convert via FilterCodec and run through the same core.</summary>
 public sealed class MissionFilterMatcher
 {
     private readonly IReadOnlyList<PossibleMission> _durationConfigs;
@@ -43,287 +25,202 @@ public sealed class MissionFilterMatcher
         _fetchDrops = fetchDrops;
     }
 
-    /// <summary>Port of ledgerDate: Unix seconds -> local DateTime (Date in JS).</summary>
+    /// <summary>Unix seconds -> local DateTime.</summary>
     public static DateTime LedgerDate(long timestampSeconds) =>
         DateTimeOffset.FromUnixTimeSeconds(timestampSeconds).LocalDateTime;
 
-    /// <summary>
-    /// Port of ledgerDateObj: "YYYY-MM-DD" -> local midnight DateTime. Mirrors the
-    /// JS <c>new Date(year, monthIndex, day)</c> constructor (local time).
-    /// </summary>
-    public static DateTime LedgerDateObj(string date)
+    // OR over groups, AND within a group. Empty filter matches everything. Drop conditions run last so cheap fields short-circuit before the async fetch.
+    public async Task<bool> MatchesAsync(DatabaseMission mission, MissionFilter filter)
     {
-        var parts = date.Split('-');
-        int year = int.Parse(parts[0], CultureInfo.InvariantCulture);
-        int month = int.Parse(parts[1], CultureInfo.InvariantCulture);
-        int day = int.Parse(parts[2], CultureInfo.InvariantCulture);
-        return new DateTime(year, month, day, 0, 0, 0, DateTimeKind.Local);
-    }
-
-    // Tagged comparison operands so JS loose equality and the date reference-bug
-    // can be reproduced exactly. A "string number" value is the mission field
-    // rendered as JS would render it (a number); the filter value is the raw
-    // string the user picked.
-
-    private enum OperandKind { Number, Bool, Date, Null }
-
-    private readonly record struct Operand(OperandKind Kind, double Num, bool Bool, DateTime Date)
-    {
-        public static Operand OfNumber(double n) => new(OperandKind.Number, n, false, default);
-        public static Operand OfBool(bool b) => new(OperandKind.Bool, 0, b, default);
-        public static Operand OfDate(DateTime d) => new(OperandKind.Date, 0, false, d);
-        public static readonly Operand OfNull = new(OperandKind.Null, 0, false, default);
-    }
-
-    /// <summary>
-    /// Port of commonFilterLogic. Returns the (unchanged) currentState when the
-    /// condition holds; false otherwise. For unknown operators it returns
-    /// currentState unchanged (JS default branch).
-    /// </summary>
-    private static bool CommonFilterLogic(Operand value, Operand filterValue, string op, bool currentState)
-    {
-        switch (op)
+        if (filter.IsEmpty)
         {
-            case "d=":
-                // toDateString() equality on two Date operands.
-                if (value.Kind == OperandKind.Date && filterValue.Kind == OperandKind.Date)
-                {
-                    if (value.Date.Date != filterValue.Date.Date)
-                    {
-                        return false;
-                    }
-                }
-                break;
-            case "=":
-                if (!LooseEquals(value, filterValue))
-                {
-                    return false;
-                }
-                break;
-            case "!=":
-                if (LooseEquals(value, filterValue))
-                {
-                    return false;
-                }
-                break;
-            case ">":
-                if (ToNumber(value) <= ToNumber(filterValue))
-                {
-                    return false;
-                }
-                break;
-            case "<":
-                if (ToNumber(value) >= ToNumber(filterValue))
-                {
-                    return false;
-                }
-                break;
-            case "true":
-                if (!Truthy(value))
-                {
-                    return false;
-                }
-                break;
-            case "false":
-                if (Truthy(value))
-                {
-                    return false;
-                }
-                break;
-            default:
-                return currentState;
+            return true;
         }
-        return currentState;
+        foreach (var group in filter.Groups)
+        {
+            if (await GroupMatchesAsync(mission, group).ConfigureAwait(false))
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
-    // JS == / != semantics for the operand pairs this filter produces.
-    private static bool LooseEquals(Operand a, Operand b)
+    private async Task<bool> GroupMatchesAsync(DatabaseMission mission, FilterGroup group)
     {
-        // Date "=" compares two distinct Date object references in JS: always
-        // unequal. Reproduce that exactly (the date "=" operator never matches).
-        if (a.Kind == OperandKind.Date || b.Kind == OperandKind.Date)
+        if (group.Conditions.Count == 0)
+        {
+            return true;
+        }
+        // Cheap (synchronous) conditions first; drops last.
+        foreach (var c in group.Conditions)
+        {
+            if (c.Field != FilterField.Drops && !MatchesScalar(mission, c))
+            {
+                return false;
+            }
+        }
+        foreach (var c in group.Conditions)
+        {
+            if (c.Field == FilterField.Drops && !await MatchesDropAsync(mission, c.Operator, DropOf(c.Value)).ConfigureAwait(false))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /// <summary>Single-condition test. Pure except for the Drops case.</summary>
+    public async Task<bool> MatchesAsync(DatabaseMission mission, Condition condition)
+    {
+        if (condition.Field == FilterField.Drops)
+        {
+            return await MatchesDropAsync(mission, condition.Operator, DropOf(condition.Value)).ConfigureAwait(false);
+        }
+        return MatchesScalar(mission, condition);
+    }
+
+    private static DropMatch DropOf(FilterValue v) =>
+        v is FilterValue.Drop d ? d.Match : DropMatch.Any;
+
+    private bool MatchesScalar(DatabaseMission mission, Condition c)
+    {
+        return c.Field switch
+        {
+            FilterField.Ship => EnumMatch(EnumCode(mission.Ship), c),
+            FilterField.DurationType => EnumMatch(EnumCode(mission.DurationType), c),
+            FilterField.MissionType => EnumMatch(mission.MissionType, c),
+            FilterField.Target => EnumMatch(mission.TargetInt, c),
+            FilterField.Level => NumberMatch(mission.Level, c),
+            FilterField.Capacity => NumberMatch(mission.Capacity, c),
+            FilterField.LaunchDate => DateMatch(DateOnly.FromDateTime(LedgerDate(mission.LaunchDT)), c),
+            FilterField.ReturnDate => DateMatch(DateOnly.FromDateTime(LedgerDate(mission.ReturnDT)), c),
+            FilterField.DubCap => BoolMatch(mission.IsDubCap, c.Operator),
+            FilterField.BuggedCap => BoolMatch(mission.IsBuggedCap, c.Operator),
+            _ => true,
+        };
+    }
+
+    private static int? EnumCode<T>(T? e) where T : struct, Enum =>
+        e is null ? null : Convert.ToInt32(e.Value, CultureInfo.InvariantCulture);
+
+    // null enum value: fails Equals, passes NotEquals. Ordering operators compare underlying enum codes (legacy filters allowed them).
+    private static bool EnumMatch(int? missionValue, Condition c)
+    {
+        if (c.Value is not FilterValue.EnumValue e)
         {
             return false;
         }
-        if (a.Kind == OperandKind.Null || b.Kind == OperandKind.Null)
+        return c.Operator switch
         {
-            // value != filterValue with one side null: equal only if both null.
-            return a.Kind == OperandKind.Null && b.Kind == OperandKind.Null;
-        }
-        return ToNumber(a) == ToNumber(b);
+            FilterOperator.Equals => missionValue == e.Code,
+            FilterOperator.NotEquals => missionValue != e.Code,
+            FilterOperator.Greater => missionValue is { } mv && mv > e.Code,
+            FilterOperator.Less => missionValue is { } mv && mv < e.Code,
+            FilterOperator.GreaterOrEqual => missionValue is { } mv && mv >= e.Code,
+            FilterOperator.LessOrEqual => missionValue is { } mv && mv <= e.Code,
+            _ => false,
+        };
     }
 
-    private static double ToNumber(Operand o) => o.Kind switch
+    private static bool NumberMatch(double missionValue, Condition c)
     {
-        OperandKind.Number => o.Num,
-        OperandKind.Date => o.Date.Ticks, // relational coercion of Date -> number
-        OperandKind.Bool => o.Bool ? 1 : 0,
-        _ => double.NaN,
-    };
+        if (c.Value is not FilterValue.Number n)
+        {
+            return false;
+        }
+        return c.Operator switch
+        {
+            FilterOperator.Equals => missionValue == n.N,
+            FilterOperator.NotEquals => missionValue != n.N,
+            FilterOperator.Greater => missionValue > n.N,
+            FilterOperator.Less => missionValue < n.N,
+            FilterOperator.GreaterOrEqual => missionValue >= n.N,
+            FilterOperator.LessOrEqual => missionValue <= n.N,
+            _ => false,
+        };
+    }
 
-    private static bool Truthy(Operand o) => o.Kind switch
+    private static bool DateMatch(DateOnly missionDay, Condition c)
     {
-        OperandKind.Bool => o.Bool,
-        OperandKind.Number => o.Num != 0,
-        OperandKind.Date => true,
+        if (c.Value is not FilterValue.Day d)
+        {
+            return false;
+        }
+        return c.Operator switch
+        {
+            FilterOperator.Equals => missionDay == d.Date,
+            FilterOperator.NotEquals => missionDay != d.Date,
+            FilterOperator.Greater => missionDay > d.Date,
+            FilterOperator.Less => missionDay < d.Date,
+            FilterOperator.GreaterOrEqual => missionDay >= d.Date,
+            FilterOperator.LessOrEqual => missionDay <= d.Date,
+            _ => false,
+        };
+    }
+
+    private static bool BoolMatch(bool missionValue, FilterOperator op) => op switch
+    {
+        FilterOperator.IsTrue => missionValue,
+        FilterOperator.IsFalse => !missionValue,
         _ => false,
     };
 
-    private static Operand NumberFromString(string s) =>
-        double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var v)
-            ? Operand.OfNumber(v)
-            : Operand.OfNull;
-
-    /// <summary>
-    /// Tests a single condition against a mission. Port of
-    /// testMissionAgainstFilter. Returns false when the condition is incomplete
-    /// (mirrors the Vue guard returning false).
-    /// </summary>
-    public async Task<bool> TestMissionAgainstFilterAsync(DatabaseMission mission, FilterCondition filter)
+    private async Task<bool> MatchesDropAsync(DatabaseMission mission, FilterOperator op, DropMatch m)
     {
-        // Vue guard: topLevel/op/val all non-null. Val is a non-null string here,
-        // so only a missing topLevel/op short-circuits to "no match".
-        if (string.IsNullOrEmpty(filter.TopLevel) || string.IsNullOrEmpty(filter.Op))
-        {
-            return false;
-        }
-
-        const bool start = true;
-
-        switch (filter.TopLevel)
-        {
-            case "buggedcap":
-                // Vue passes filter.val as the OPERATOR ("true"/"false"), null value.
-                return CommonFilterLogic(Operand.OfBool(mission.IsBuggedCap), Operand.OfNull, filter.Val, start);
-            case "dubcap":
-                return CommonFilterLogic(Operand.OfBool(mission.IsDubCap), Operand.OfNull, filter.Val, start);
-            case "ship":
-                return CommonFilterLogic(NumberOrNull(mission.Ship), NumberFromString(filter.Val), filter.Op, start);
-            case "farm":
-            case "type":
-                return CommonFilterLogic(Operand.OfNumber(mission.MissionType), NumberFromString(filter.Val), filter.Op, start);
-            case "duration":
-                return CommonFilterLogic(NumberOrNull(mission.DurationType), NumberFromString(filter.Val), filter.Op, start);
-            case "level":
-                return CommonFilterLogic(Operand.OfNumber(mission.Level), NumberFromString(filter.Val), filter.Op, start);
-            case "target":
-                return CommonFilterLogic(Operand.OfNumber(mission.TargetInt), NumberFromString(filter.Val), filter.Op, start);
-            case "launchDT":
-                return CommonFilterLogic(
-                    Operand.OfDate(LedgerDate(mission.LaunchDT)),
-                    Operand.OfDate(LedgerDateObj(filter.Val)),
-                    filter.Op, start);
-            case "returnDT":
-                return CommonFilterLogic(
-                    Operand.OfDate(LedgerDate(mission.ReturnDT)),
-                    Operand.OfDate(LedgerDateObj(filter.Val)),
-                    filter.Op, start);
-            case "drops":
-                return await TestDropsAsync(mission, filter);
-            default:
-                return start;
-        }
-    }
-
-    private static Operand NumberOrNull<T>(T? enumValue) where T : struct, Enum =>
-        enumValue is null ? Operand.OfNull : Operand.OfNumber(Convert.ToInt32(enumValue.Value, CultureInfo.InvariantCulture));
-
-    private async Task<bool> TestDropsAsync(DatabaseMission mission, FilterCondition filter)
-    {
-        bool filterPassed = true;
-
         var shipConfig = mission.Ship is { } shipEnum
-            ? FindShipConfig((int)Convert.ToInt32(shipEnum, CultureInfo.InvariantCulture))
+            ? FindShipConfig(Convert.ToInt32(shipEnum, CultureInfo.InvariantCulture))
             : null;
         if (shipConfig is null)
         {
             return false;
         }
         var durConfig = mission.DurationType is { } durEnum
-            ? FindDurConfig(shipConfig, (int)Convert.ToInt32(durEnum, CultureInfo.InvariantCulture))
+            ? FindDurConfig(shipConfig, Convert.ToInt32(durEnum, CultureInfo.InvariantCulture))
             : null;
         if (durConfig is null)
         {
             return false;
         }
 
-        double maxQual = durConfig.MaxQuality + (durConfig.LevelQualityBump * mission.Level);
+        // Quality gate: a picked quality threshold is reachable only within the matched duration's quality range for this mission level.
+        if (m.Quality is { } q)
+        {
+            double maxQual = durConfig.MaxQuality + durConfig.LevelQualityBump * mission.Level;
+            if (q > maxQual || durConfig.MinQuality > q)
+            {
+                return op == FilterOperator.NotContains;
+            }
+        }
 
-        var segs = filter.Val.Split('_');
-        string filterName = segs.Length > 0 ? segs[0] : "";
-        string filterLevel = segs.Length > 1 ? segs[1] : "";
-        string filterRarity = segs.Length > 2 ? segs[2] : "";
-        string filterQuality = segs.Length > 3 ? segs[3] : "";
-        bool nameBypass = filterName == "%";
-        bool levelBypass = filterLevel == "%";
-        bool rarityBypass = filterRarity == "%";
-        bool qualityBypass = filterQuality == "%";
-
-        var allDrops = await _fetchDrops(_accountId, mission.MissiondId);
+        var allDrops = await _fetchDrops(_accountId, mission.MissiondId).ConfigureAwait(false);
         if (allDrops is null)
         {
             return false;
         }
 
-        switch (filter.Op)
+        bool anySatisfies = false;
+        foreach (var drop in allDrops)
         {
-            case "c":
+            if (m.Name is { } name && name != drop.Id)
             {
-                bool foundDrop = false;
-                if ((!qualityBypass && maxQual < ParseFloat(filterQuality)) ||
-                    (!qualityBypass && durConfig.MinQuality > ParseFloat(filterQuality)))
-                {
-                    filterPassed = false;
-                }
-                foreach (var drop in allDrops)
-                {
-                    if (!nameBypass && ParseInt(filterName) != drop.Id)
-                    {
-                        continue;
-                    }
-                    if (!levelBypass && ParseInt(filterLevel) != drop.Level)
-                    {
-                        continue;
-                    }
-                    if (!rarityBypass && ParseInt(filterRarity) != drop.Rarity)
-                    {
-                        continue;
-                    }
-                    foundDrop = true;
-                }
-                if (!foundDrop)
-                {
-                    filterPassed = false;
-                }
-                break;
+                continue;
             }
-            case "dnc":
+            if (m.Level is { } level && level != drop.Level)
             {
-                foreach (var drop in allDrops)
-                {
-                    if (!nameBypass && ParseInt(filterName) != drop.Id)
-                    {
-                        continue;
-                    }
-                    if (!levelBypass && ParseInt(filterLevel) != drop.Level)
-                    {
-                        continue;
-                    }
-                    if (!rarityBypass && ParseInt(filterRarity) != drop.Rarity)
-                    {
-                        continue;
-                    }
-                    filterPassed = false;
-                }
-                break;
+                continue;
             }
+            if (m.Rarity is { } rarity && rarity != drop.Rarity)
+            {
+                continue;
+            }
+            anySatisfies = true;
+            break;
         }
 
-        return filterPassed;
+        return op == FilterOperator.NotContains ? !anySatisfies : anySatisfies;
     }
 
-    // Vue indexes durationConfigs.value[mission.ship]; here we resolve by enum
-    // value rather than array index so ordering changes cannot silently misalign.
     private PossibleMission? FindShipConfig(int ship)
     {
         foreach (var pm in _durationConfigs)
@@ -348,81 +245,53 @@ public sealed class MissionFilterMatcher
         return null;
     }
 
-    private static double ParseFloat(string s) =>
-        double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v : double.NaN;
-
-    private static int ParseInt(string s)
+    // Compat shim for the legacy string filter API (the existing UI + tests).
+    public async Task<bool> TestMissionAgainstFilterAsync(DatabaseMission mission, FilterCondition filter)
     {
-        // JS Number.parseInt: leading integer prefix; NaN -> never equals an int field.
-        int i = 0;
-        bool neg = false;
-        if (i < s.Length && (s[i] == '+' || s[i] == '-'))
+        // Incomplete (missing field/op) -> no match.
+        if (string.IsNullOrEmpty(filter.TopLevel) || string.IsNullOrEmpty(filter.Op))
         {
-            neg = s[i] == '-';
-            i++;
+            return false;
         }
-        int start = i;
-        while (i < s.Length && s[i] >= '0' && s[i] <= '9')
+        var typed = FilterCodec.FromLegacyCondition(filter);
+        if (typed is null)
         {
-            i++;
+            // Unknown but well-formed field: impose no constraint, so it does not filter every mission out.
+            return true;
         }
-        if (i == start)
-        {
-            return int.MinValue; // stands in for NaN: will not equal any real drop field
-        }
-        int value = int.Parse(s.Substring(start, i - start), CultureInfo.InvariantCulture);
-        return neg ? -value : value;
+        return await MatchesAsync(mission, typed).ConfigureAwait(false);
     }
 
-    /// <summary>
-    /// Tests a mission against the full AND/OR filter set. Port of
-    /// missionMatchesFilter. A mission passes when every AND condition passes; a
-    /// failing AND condition is rescued if any of its OR siblings passes.
-    /// </summary>
+    // Legacy AND-list + per-index OR-sibling semantics (see docs/filter-legacy-semantics.md).
     public async Task<bool> MissionMatchesFilterAsync(
         DatabaseMission mission,
         IReadOnlyList<FilterCondition> filters,
         IReadOnlyList<IReadOnlyList<FilterCondition>?> orFilters)
     {
-        bool allFiltersPassed = true;
-        int index = 0;
-        foreach (var filter in filters)
+        for (var i = 0; i < filters.Count; i++)
         {
-            if (IsComplete(filter))
-            {
-                bool filterPassed = await TestMissionAgainstFilterAsync(mission, filter);
-                if (!filterPassed)
-                {
-                    var siblings = index < orFilters.Count ? orFilters[index] : null;
-                    if (siblings is not null)
-                    {
-                        foreach (var orFilter in siblings)
-                        {
-                            if (IsComplete(orFilter))
-                            {
-                                filterPassed = await TestMissionAgainstFilterAsync(mission, orFilter);
-                                if (filterPassed)
-                                {
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    if (!filterPassed)
-                    {
-                        allFiltersPassed = false;
-                    }
-                }
-            }
-            index++;
+            if (FilterCodec.FromLegacyCondition(filters[i]) is not { } condition)
+                continue;
+            if (await MatchesAsync(mission, condition).ConfigureAwait(false))
+                continue;
+
+            var siblings = i < orFilters.Count ? orFilters[i] : null;
+            if (!await AnySiblingMatchesAsync(mission, siblings).ConfigureAwait(false))
+                return false;
         }
-        return allFiltersPassed;
+        return true;
     }
 
-    // Vue completeness guard: topLevel != null && op != null && (val != null ||
-    // topLevel === 'target'). In Vue an empty-string val still satisfies
-    // "val != null", so only a missing topLevel/op makes a condition incomplete
-    // (Val is a non-null string here, modelling JS's non-null branch).
-    private static bool IsComplete(FilterCondition f) =>
-        !string.IsNullOrEmpty(f.TopLevel) && f.Op is not null && f.Op.Length > 0;
+    private async Task<bool> AnySiblingMatchesAsync(DatabaseMission mission, IReadOnlyList<FilterCondition>? siblings)
+    {
+        if (siblings is null)
+            return false;
+        foreach (var sibling in siblings)
+        {
+            if (FilterCodec.FromLegacyCondition(sibling) is { } typed
+                && await MatchesAsync(mission, typed).ConfigureAwait(false))
+                return true;
+        }
+        return false;
+    }
 }

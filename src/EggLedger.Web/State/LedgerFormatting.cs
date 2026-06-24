@@ -3,19 +3,10 @@ using EggLedger.Domain.MissionQuery;
 
 namespace EggLedger.Web.State;
 
-/// <summary>
-/// Pure presentation helpers for the Ledger tab. C# ports of the Vue
-/// GlobalAccountHeader <c>sortedAccounts</c> + <c>formatTimeSince</c> and the
-/// DatabaseAccountSelector search filter, extracted so the .razor stays thin and
-/// the logic is unit-testable.
-/// </summary>
+/// <summary>Pure presentation helpers for the Ledger tab, extracted so the .razor stays thin and the logic is unit-testable.</summary>
 public static class LedgerFormatting
 {
-    /// <summary>
-    /// Accounts ordered by stored mission count, descending. Port of the Vue
-    /// <c>sortedAccounts</c> computed. Stable for equal counts (preserves input
-    /// order).
-    /// </summary>
+    /// <summary>Accounts ordered by stored mission count, descending. Stable for equal counts (preserves input order).</summary>
     public static IReadOnlyList<DatabaseAccount> SortByMissionCountDescending(IEnumerable<DatabaseAccount> accounts) =>
         accounts
             .Select((acct, index) => (acct, index))
@@ -24,12 +15,7 @@ public static class LedgerFormatting
             .Select(x => x.acct)
             .ToList();
 
-    /// <summary>
-    /// "fetched X ago" relative label from a unix-seconds return timestamp. Exact
-    /// port of the Vue <c>formatTimeSince</c>: empty for a missing or future
-    /// timestamp; otherwise days/hours/minutes collapsed to the two coarsest
-    /// non-zero units.
-    /// </summary>
+    /// <summary>Relative "X ago" label from a unix-seconds timestamp; empty for missing/future, else the two coarsest non-zero units.</summary>
     public static string FormatTimeSince(double returnUnixSeconds, double nowUnixSeconds)
     {
         if (returnUnixSeconds == 0)
@@ -56,11 +42,7 @@ public static class LedgerFormatting
         return $"{minutes}m ago";
     }
 
-    /// <summary>
-    /// Filters accounts by a query against id or nickname (case-insensitive
-    /// substring). Port of the DatabaseAccountSelector <c>filteredAccounts</c>
-    /// computed: a blank query returns the input unchanged.
-    /// </summary>
+    /// <summary>Filters accounts by case-insensitive substring against id or nickname; a blank query returns input unchanged.</summary>
     public static IReadOnlyList<DatabaseAccount> FilterAccounts(IReadOnlyList<DatabaseAccount> accounts, string? query)
     {
         if (string.IsNullOrEmpty(query))
@@ -75,15 +57,11 @@ public static class LedgerFormatting
             .ToList();
     }
 
-    /// <summary>Trim + uppercase, matching the Vue <c>normalizedEid</c> computed.</summary>
+    /// <summary>Trim + uppercase an EID.</summary>
     public static string NormalizeEid(string? eid) =>
         (eid ?? "").Trim().ToUpper(CultureInfo.InvariantCulture);
 
-    /// <summary>
-    /// Validation message for a candidate EID, or empty when valid. Exact port of
-    /// the Vue AddAccountDialog <c>eidProblem</c> computed (operates on the
-    /// normalized value). Empty input yields empty (no error shown).
-    /// </summary>
+    /// <summary>Validation message for a normalized candidate EID, or empty when valid (empty input yields empty, no error).</summary>
     public static string EidProblem(string normalizedEid)
     {
         string v = normalizedEid;

@@ -14,37 +14,32 @@ public class QueryDropsTests
             new object?[] { "12", "3", "2" },
             false,
         },
-        new object?[]
-        {
+        [
             new FilterCondition { TopLevel = "drops", Op = "c", Val = "%_%_3_%" },
             "EXISTS (SELECT 1 FROM artifact_drops WHERE mission_id = m.mission_id AND player_id = m.player_id AND rarity = ?)",
             new object?[] { "3" },
             false,
-        },
-        new object?[]
-        {
+        ],
+        [
             new FilterCondition { TopLevel = "drops", Op = "dnc", Val = "12_%_%_%" },
             "NOT EXISTS (SELECT 1 FROM artifact_drops WHERE mission_id = m.mission_id AND player_id = m.player_id AND artifact_id = ?)",
             new object?[] { "12" },
             false,
-        },
-        new object?[]
-        {
+        ],
+        [
             new FilterCondition { TopLevel = "drops", Op = "c", Val = "%_%_%_%" },
             "EXISTS (SELECT 1 FROM artifact_drops WHERE mission_id = m.mission_id AND player_id = m.player_id)",
             Array.Empty<object?>(),
             false,
-        },
-        new object?[]
-        {
+        ],
+        [
             new FilterCondition { TopLevel = "drops", Op = "c", Val = "" },
             null, null, true,
-        },
-        new object?[]
-        {
+        ],
+        [
             new FilterCondition { TopLevel = "drops", Op = "x", Val = "12_%_%_%" },
             null, null, true,
-        },
+        ],
     };
 
     [Theory]

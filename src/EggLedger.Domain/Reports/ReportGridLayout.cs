@@ -7,12 +7,8 @@ public readonly record struct GridCardPos(int Col, int Row, int W, int H, int Id
 public readonly record struct EmptyZone(int ColStart, int ColEnd, int RowStart, int InsertAfter);
 
 /// <summary>
-/// Pure grid layout geometry for the report dashboard. Port of the Vue
-/// utils/reportGridLayout.ts module: replicates CSS grid auto-placement (row
-/// direction, no dense) so the app can reason about where each report card lands,
-/// compute empty drop zones during drag-and-drop, and resolve insertion order.
-/// All methods are pure: they take definitions and occupancy as explicit
-/// arguments and hold no shared state.
+/// Grid layout geometry for the report dashboard. Port of Vue utils/reportGridLayout.ts;
+/// replicates CSS grid auto-placement (row direction, no dense) for card placement, drop zones, and insertion order.
 /// </summary>
 public static class ReportGridLayout
 {
@@ -188,7 +184,7 @@ public static class ReportGridLayout
         var (cardPositions, occupied) = BuildOccupancyFromLayout(defs);
         if (cardPositions.Count == 0)
         {
-            return new List<EmptyZone>();
+            return [];
         }
         int maxRow = cardPositions.Max(p => p.Row + p.H - 1);
         var zones = new List<EmptyZone>();

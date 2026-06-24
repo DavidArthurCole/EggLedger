@@ -5,12 +5,7 @@ using Ei;
 
 namespace EggLedger.Web.Services;
 
-/// <summary>
-/// WASM decode path. protobuf-net cannot decode in the browser (Reflection.Emit
-/// is forbidden), so the raw payload is POSTed to the sync server's stateless
-/// decode endpoint, which returns JSON we rehydrate into the protobuf-net types
-/// using the shared <see cref="ApiPayloadJson.Options"/> contract.
-/// </summary>
+/// <summary>WASM decode path: protobuf-net cannot decode in the browser (Reflection.Emit is forbidden), so the raw payload is POSTed to the server's stateless decode endpoint and the JSON rehydrated via <see cref="ApiPayloadJson.Options"/>.</summary>
 public sealed class RemoteApiPayloadDecoder : IApiPayloadDecoder
 {
     private readonly HttpClient _http;

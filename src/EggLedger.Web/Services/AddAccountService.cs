@@ -5,14 +5,7 @@ using EggLedger.Web.Data;
 
 namespace EggLedger.Web.Services;
 
-/// <summary>
-/// Adds an account from an EID. C# port of the Go <c>addAccount</c> binding:
-/// fetch + validate the first-contact backup, shape the display fields via
-/// <see cref="AccountFactory"/>, then persist the account. The subsequent
-/// mission fetch is driven separately by <see cref="FetchService"/> from the UI,
-/// matching the desktop flow where adding an account and fetching its missions
-/// are distinct steps.
-/// </summary>
+/// <summary>Adds an account from an EID: validate the first-contact backup, then persist. Mission fetch is a separate step driven by <see cref="FetchService"/>.</summary>
 public sealed class AddAccountService
 {
     private static readonly TimeSpan FirstContactTimeout = TimeSpan.FromSeconds(20);
@@ -28,11 +21,7 @@ public sealed class AddAccountService
         _decoder = decoder;
     }
 
-    /// <summary>
-    /// Fetches the backup for <paramref name="eid"/>, builds the account, and
-    /// stores it. Throws on an invalid id (Go's "please double check your ID"
-    /// wrap) or a network/decode failure. Returns the stored account.
-    /// </summary>
+    /// <summary>Fetches the backup, builds and stores the account. Throws on an invalid id or a network/decode failure.</summary>
     public async Task<AccountInfo> AddAccountAsync(string eid, CancellationToken cancellationToken = default)
     {
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);

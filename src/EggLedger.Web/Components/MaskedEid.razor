@@ -2,12 +2,7 @@
 @inject ScreenshotSafetyState ScreenshotSafety
 @implements IDisposable
 
-@*
-    Renders an EID, masked when screenshot-safety is on. Matches the Vue mask:
-    the "EI" prefix stays visible and the 16 digits are replaced by a solid bar
-    (an inline block using the current text color), so screenshots leak nothing.
-    When masking is off, the raw EID renders as text.
-*@
+@* When screenshot-safety is on, keep the "EI" prefix but replace the 16 digits with a solid bar so screenshots leak nothing. *@
 @if (ScreenshotSafety.Enabled && IsEid(Value))
 {
     <span>EI</span><span class="inline-block rounded-sm bg-current select-none align-[-0.05em]" style="width: 16ch; height: 0.8em;"></span>

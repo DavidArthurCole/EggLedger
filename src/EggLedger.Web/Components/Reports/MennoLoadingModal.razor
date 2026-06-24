@@ -1,12 +1,7 @@
 @inject IJSRuntime Js
 
-@*
-    Loading modal shown while the Menno community drop-rate aggregate downloads.
-    Port of MennoLoadingModal.vue as a native <dialog>. The Vue version renders
-    byte-level download progress from a streamed Go fetch; MennoService.RefreshAsync
-    in the browser is a single awaitable with no progress plumbing, so this shows a
-    spinner while the await runs. Open it before the await, close it after.
-*@
+@* Spinner modal shown while the Menno community aggregate downloads. Open before
+   the await, close after. *@
 
 <dialog @ref="_dialog" class="menno-loading">
     <div class="menno-body">
@@ -33,14 +28,12 @@
     private async ValueTask<IJSObjectReference> ModuleAsync() =>
         _module ??= await Js.InvokeAsync<IJSObjectReference>("import", "./_content/EggLedger.Web/js/dialog.js");
 
-    /// <summary>Shows the modal (call before awaiting the download).</summary>
     public async Task OpenAsync()
     {
         var module = await ModuleAsync();
         await module.InvokeVoidAsync("showModal", _dialog);
     }
 
-    /// <summary>Closes the modal (call after the download resolves or fails).</summary>
     public async Task CloseAsync()
     {
         var module = await ModuleAsync();

@@ -2,12 +2,8 @@
 @using EggLedger.Domain.Reports
 @using EggLedger.Domain.Reports.Charts
 
-@*
-    Grouped horizontal bars over a 2D result. Port of ReportGroupedBar.vue: each
-    row label heads a stack of colored per-column bars, with a "Other" rollup once
-    columns exceed MaxCols. Hue-spread series colors via ChartGeometry.SeriesColors.
-    Legend drag-reorder is deferred (static column order); bars + colors faithful.
-*@
+@* Grouped horizontal bars over a 2D result: each row heads a stack of per-column bars,
+   with an "Other" rollup once columns exceed MaxCols. Legend drag-reorder deferred. *@
 
 <div class="h-full flex flex-col gap-1 overflow-auto">
     @{

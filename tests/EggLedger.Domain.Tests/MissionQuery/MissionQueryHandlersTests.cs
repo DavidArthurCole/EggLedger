@@ -1,6 +1,6 @@
-using Ei;
 using EggLedger.Domain.Ei;
 using EggLedger.Domain.MissionQuery;
+using Ei;
 
 namespace EggLedger.Domain.Tests.MissionQuery;
 
@@ -146,7 +146,7 @@ public class MissionQueryHandlersTests
         var mp = new ArtifactsConfigurationResponse.MissionParameters
         {
             Ship = MissionInfo.Spaceship.Atreggies,
-            LevelMissionRequirements = new uint[] { 0, 10, 20, 30 },
+            LevelMissionRequirements = [0, 10, 20, 30],
         };
         mp.Durations.Add(new ArtifactsConfigurationResponse.MissionParameters.Duration
         {
@@ -191,7 +191,7 @@ public class MissionQueryHandlersTests
     [Fact]
     public async Task GetShipDrops_NullOnCacheMiss()
     {
-        var (h, store, _) = NewSut();
+        var (h, _, _) = NewSut();
         // no entry => GetCompleteMission returns null
         Assert.Null(await h.GetShipDropsAsync("p", "m"));
     }
@@ -270,11 +270,11 @@ public class MissionQueryHandlersTests
         var (h, store, _) = NewSut();
         var a = new ArtifactSpec { name = ArtifactSpec.Name.TachyonStoneFragment };
         var b = new ArtifactSpec { name = ArtifactSpec.Name.GoldMeteorite, level = ArtifactSpec.Level.Normal };
-        store.Streamable["p"] = new List<CompleteMissionResponse>
-        {
+        store.Streamable["p"] =
+        [
             Mission("m1", a),
             Mission("m2", b, a),
-        };
+        ];
 
         var got = await h.GetAllPlayerDropsAsync("p");
 
@@ -291,7 +291,7 @@ public class MissionQueryHandlersTests
     public async Task GetAllPlayerDrops_EmptyMissionGivesEmptyList()
     {
         var (h, store, _) = NewSut();
-        store.Streamable["p"] = new List<CompleteMissionResponse> { Mission("m1") };
+        store.Streamable["p"] = [Mission("m1")];
 
         var got = await h.GetAllPlayerDropsAsync("p");
 

@@ -2,7 +2,7 @@ using EggLedger.Domain.MissionPacking;
 
 namespace EggLedger.Web.Missions;
 
-/// <summary>Multi-view selection mode for the mission list. Port of the Vue 'off'|'row'|'free'.</summary>
+/// <summary>Multi-view selection mode for the mission list (off/row/free).</summary>
 public enum MultiViewMode
 {
     Off,
@@ -10,20 +10,14 @@ public enum MultiViewMode
     Free,
 }
 
-/// <summary>Drop sort method for the mission overlay. Port of the Vue 'default'|'iv'.</summary>
+/// <summary>Drop sort method for the mission overlay (default/iv).</summary>
 public enum MissionSortMethod
 {
     Default,
     Iv,
 }
 
-/// <summary>
-/// Mission-list display preferences plus the mission-type tab filtering. C# port
-/// of www/src/composables/useMissionViewOptions.ts. Display flags default to and
-/// (de)serialize exactly as the Go storage settings do; the pure mission-type
-/// tab helpers (<see cref="HasBothMissionTypes"/>,
-/// <see cref="TabFilteredMissions"/>) match the Vue computeds.
-/// </summary>
+/// <summary>Mission-list display preferences plus mission-type tab filtering. Display flags default to and (de)serialize exactly as the Go storage settings do.</summary>
 public sealed class MissionViewOptions
 {
     // Vue defaults (useMissionViewOptions.ts).
@@ -47,10 +41,7 @@ public sealed class MissionViewOptions
     public const string KeyMultiViewMode = "mission_multi_view_mode";
     public const string KeySortMethod = "mission_sort_method";
 
-    /// <summary>
-    /// Port of hasBothMissionTypes: true only when the loaded set contains at
-    /// least one Home (0) and at least one Virtue (1) mission.
-    /// </summary>
+    /// <summary>True only when the loaded set contains at least one Home (0) and one Virtue (1) mission.</summary>
     public static bool HasBothMissionTypes(IReadOnlyList<DatabaseMission>? missions)
     {
         if (missions is null || missions.Count == 0)
@@ -73,10 +64,7 @@ public sealed class MissionViewOptions
         return home && virtue;
     }
 
-    /// <summary>
-    /// Port of tabFilteredMissions: when no tab is selected (null) the input list
-    /// passes through unchanged; otherwise only missions whose type equals the tab.
-    /// </summary>
+    /// <summary>When no tab is selected (null) the input passes through unchanged; otherwise only missions whose type equals the tab.</summary>
     public static IReadOnlyList<DatabaseMission>? TabFilteredMissions(
         IReadOnlyList<DatabaseMission>? filteredMissions,
         int? missionTypeTab)
@@ -116,10 +104,7 @@ public sealed class MissionViewOptions
     public static string SortMethodToString(MissionSortMethod method) =>
         method == MissionSortMethod.Iv ? "iv" : "default";
 
-    /// <summary>
-    /// Hydrates display flags from a settings map (Go FormatBool / raw strings).
-    /// Missing keys keep the Vue defaults. Mirrors the onMounted hydration block.
-    /// </summary>
+    /// <summary>Hydrates display flags from a settings map; missing keys keep the defaults.</summary>
     public void LoadFrom(IReadOnlyDictionary<string, string> settings)
     {
         if (settings.TryGetValue(KeyViewByDate, out var vbd))

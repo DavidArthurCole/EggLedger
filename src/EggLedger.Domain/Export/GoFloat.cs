@@ -78,8 +78,8 @@ public static class GoFloat
             i = 1;
         }
 
-        int eIdx = s.IndexOfAny(new[] { 'E', 'e' }, i);
-        string mantissa = s.Substring(i, eIdx - i);
+        int eIdx = s.IndexOfAny(['E', 'e'], i);
+        string mantissa = s[i..eIdx];
         int exp = int.Parse(s[(eIdx + 1)..], CultureInfo.InvariantCulture);
 
         string intPart;
@@ -139,7 +139,7 @@ public static class GoFloat
         }
 
         // Determine decimal exponent of the shortest representation.
-        string plain = shortest.IndexOfAny(new[] { 'E', 'e' }) >= 0 ? ExpandExponential(shortest) : shortest;
+        string plain = shortest.IndexOfAny(['E', 'e']) >= 0 ? ExpandExponential(shortest) : shortest;
         string abs = plain.StartsWith('-') ? plain[1..] : plain;
         bool neg = plain.StartsWith('-');
 
@@ -166,14 +166,14 @@ public static class GoFloat
         }
 
         // Go 'g': use exponential when exp < -4 or exp >= 21.
-        if (exp < -4 || exp >= 21)
+        if (exp is < -4 or >= 21)
         {
-            return ToGoExponential(v, neg, intPart, fracPart, exp);
+            return ToGoExponential(neg, intPart, fracPart, exp);
         }
         return plain;
     }
 
-    private static string ToGoExponential(double v, bool neg, string intPart, string fracPart, int exp)
+    private static string ToGoExponential(bool neg, string intPart, string fracPart, int exp)
     {
         string digits = (intPart + fracPart).TrimStart('0');
         if (digits.Length == 0)

@@ -11,11 +11,11 @@ public class QueryTests
     {
         var filters = new ReportFilters
         {
-            And = new()
-            {
+            And =
+            [
                 new FilterCondition { TopLevel = "ship", Op = "=", Val = "3" },
                 new FilterCondition { TopLevel = "duration", Op = "!=", Val = "0" },
-            },
+            ],
         };
         var (clause, args) = QueryBuilder.BuildWhereClause(filters);
         Assert.Contains("m.ship = ?", clause);
@@ -28,11 +28,11 @@ public class QueryTests
     {
         var filters = new ReportFilters
         {
-            And = new()
-            {
+            And =
+            [
                 new FilterCondition { TopLevel = "artifact_rarity", Op = ">=", Val = "2" },
                 new FilterCondition { TopLevel = "artifact_spec_type", Op = "=", Val = "Artifact" },
-            },
+            ],
         };
         var (clause, args) = QueryBuilder.BuildWhereClause(filters);
         Assert.Contains("d.rarity >= ?", clause);
@@ -45,11 +45,11 @@ public class QueryTests
     {
         var filters = new ReportFilters
         {
-            And = new()
-            {
+            And =
+            [
                 new FilterCondition { TopLevel = "dubcap", Op = "true" },
                 new FilterCondition { TopLevel = "buggedcap", Op = "false" },
-            },
+            ],
         };
         var (clause, args) = QueryBuilder.BuildWhereClause(filters);
         Assert.Contains("m.is_dub_cap = 1", clause);
@@ -77,23 +77,23 @@ public class QueryTests
     public static IEnumerable<object?[]> NumericValidationCases() => new[]
     {
         new object?[] { new FilterCondition { TopLevel = "artifact_tier", Op = "=", Val = "3" }, "d.level = ?", "3", false },
-        new object?[] { new FilterCondition { TopLevel = "artifact_rarity", Op = ">=", Val = "2" }, "d.rarity >= ?", "2", false },
-        new object?[] { new FilterCondition { TopLevel = "level", Op = "=", Val = "5" }, "m.level = ?", "5", false },
-        new object?[] { new FilterCondition { TopLevel = "ship", Op = "=", Val = "3" }, "m.ship = ?", "3", false },
-        new object?[] { new FilterCondition { TopLevel = "artifact_name", Op = "=", Val = "12" }, "d.artifact_id = ?", "12", false },
-        new object?[] { new FilterCondition { TopLevel = "artifact_quality", Op = ">", Val = "3.5" }, "d.quality > ?", "3.5", false },
-        new object?[] { new FilterCondition { TopLevel = "artifact_spec_type", Op = "=", Val = "Artifact" }, "d.spec_type = ?", "Artifact", false },
-        new object?[] { new FilterCondition { TopLevel = "artifact_tier", Op = "=", Val = "gusset" }, null, null, true },
-        new object?[] { new FilterCondition { TopLevel = "artifact_rarity", Op = "=", Val = "rare" }, null, null, true },
-        new object?[] { new FilterCondition { TopLevel = "ship", Op = "=", Val = "henliner" }, null, null, true },
-        new object?[] { new FilterCondition { TopLevel = "artifact_quality", Op = "=", Val = "abc" }, null, null, true },
+        [new FilterCondition { TopLevel = "artifact_rarity", Op = ">=", Val = "2" }, "d.rarity >= ?", "2", false],
+        [new FilterCondition { TopLevel = "level", Op = "=", Val = "5" }, "m.level = ?", "5", false],
+        [new FilterCondition { TopLevel = "ship", Op = "=", Val = "3" }, "m.ship = ?", "3", false],
+        [new FilterCondition { TopLevel = "artifact_name", Op = "=", Val = "12" }, "d.artifact_id = ?", "12", false],
+        [new FilterCondition { TopLevel = "artifact_quality", Op = ">", Val = "3.5" }, "d.quality > ?", "3.5", false],
+        [new FilterCondition { TopLevel = "artifact_spec_type", Op = "=", Val = "Artifact" }, "d.spec_type = ?", "Artifact", false],
+        [new FilterCondition { TopLevel = "artifact_tier", Op = "=", Val = "gusset" }, null, null, true],
+        [new FilterCondition { TopLevel = "artifact_rarity", Op = "=", Val = "rare" }, null, null, true],
+        [new FilterCondition { TopLevel = "ship", Op = "=", Val = "henliner" }, null, null, true],
+        [new FilterCondition { TopLevel = "artifact_quality", Op = "=", Val = "abc" }, null, null, true],
     };
 
     [Theory]
     [MemberData(nameof(NumericValidationCases))]
     public void BuildWhereClause_NumericValidation(FilterCondition cond, string? wantSub, string? wantArg, bool wantEmpty)
     {
-        var filters = new ReportFilters { And = new() { cond } };
+        var filters = new ReportFilters { And = [cond] };
         var (clause, args) = QueryBuilder.BuildWhereClause(filters);
         if (wantEmpty)
         {
@@ -111,7 +111,7 @@ public class QueryTests
     {
         var filters = new ReportFilters
         {
-            And = new() { new FilterCondition { TopLevel = "launchDT", Op = ">=", Val = "2025-01-01" } },
+            And = [new FilterCondition { TopLevel = "launchDT", Op = ">=", Val = "2025-01-01" }],
         };
         var (clause, args) = QueryBuilder.BuildWhereClause(filters);
         Assert.Contains("m.start_timestamp >= strftime('%s', ?)", clause);
@@ -124,7 +124,7 @@ public class QueryTests
     {
         var filters = new ReportFilters
         {
-            And = new() { new FilterCondition { TopLevel = "returnDT", Op = "<", Val = "2025-06-01" } },
+            And = [new FilterCondition { TopLevel = "returnDT", Op = "<", Val = "2025-06-01" }],
         };
         var (clause, args) = QueryBuilder.BuildWhereClause(filters);
         Assert.Contains("m.return_timestamp < strftime('%s', ?)", clause);
@@ -136,7 +136,7 @@ public class QueryTests
     {
         var filters = new ReportFilters
         {
-            And = new() { new FilterCondition { TopLevel = "launchDT", Op = "=", Val = "2025-05-15" } },
+            And = [new FilterCondition { TopLevel = "launchDT", Op = "=", Val = "2025-05-15" }],
         };
         var (clause, args) = QueryBuilder.BuildWhereClause(filters);
         Assert.Contains("m.start_timestamp = strftime('%s', ?)", clause);

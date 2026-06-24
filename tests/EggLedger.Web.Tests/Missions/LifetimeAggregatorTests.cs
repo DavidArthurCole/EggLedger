@@ -36,7 +36,7 @@ public sealed class LifetimeAggregatorTests
         var d = new Dictionary<string, List<MissionDrop>>();
         foreach (var (id, drops) in missions)
         {
-            d[id] = drops.ToList();
+            d[id] = [.. drops];
         }
         return d;
     }

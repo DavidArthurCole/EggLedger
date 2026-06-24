@@ -1,7 +1,7 @@
-using Ei;
 using EggLedger.Domain.MissionPacking;
 using EggLedger.Domain.MissionQuery;
 using EggLedger.Web.Missions;
+using Ei;
 
 namespace EggLedger.Web.Tests.Missions;
 
@@ -24,18 +24,18 @@ public sealed class MissionFilterMatcherTests
         long launchDT = 0,
         long returnDT = 0,
         string id = "m1") => new()
-    {
-        Ship = ship,
-        DurationType = duration,
-        Level = level,
-        TargetInt = targetInt,
-        MissionType = missionType,
-        IsDubCap = dubCap,
-        IsBuggedCap = buggedCap,
-        LaunchDT = launchDT,
-        ReturnDT = returnDT,
-        MissiondId = id,
-    };
+        {
+            Ship = ship,
+            DurationType = duration,
+            Level = level,
+            TargetInt = targetInt,
+            MissionType = missionType,
+            IsDubCap = dubCap,
+            IsBuggedCap = buggedCap,
+            LaunchDT = launchDT,
+            ReturnDT = returnDT,
+            MissiondId = id,
+        };
 
     private static MissionFilterMatcher Matcher(
         ShipDropsFetcher? fetcher = null,
@@ -129,10 +129,14 @@ public sealed class MissionFilterMatcherTests
     }
 
     [Fact]
-    public async Task LaunchDate_EqualsNeverMatches()
+    public async Task LaunchDate_EqualsMatchesSameDay()
     {
+        // The Mission Data bar emits "d=" (same-day); the redesigned matcher now
+        // compares calendar days correctly instead of the old never-match bug.
         var m = Mission(launchDT: Unix(2024, 6, 1));
-        Assert.False(await Matcher().TestMissionAgainstFilterAsync(m, C("launchDT", "=", "2024-06-01")));
+        Assert.True(await Matcher().TestMissionAgainstFilterAsync(m, C("launchDT", "d=", "2024-06-01")));
+        var other = Mission(launchDT: Unix(2024, 6, 2));
+        Assert.False(await Matcher().TestMissionAgainstFilterAsync(other, C("launchDT", "d=", "2024-06-01")));
     }
 
     [Fact]
@@ -153,11 +157,15 @@ public sealed class MissionFilterMatcherTests
     }
 
     [Fact]
-    public async Task LaunchDate_OnOrBefore_IsNoOpAndPasses()
+    public async Task LaunchDate_OnOrBefore_IsInclusive()
     {
-        // "<=" is not handled by commonFilterLogic -> default -> currentState (true).
-        var m = Mission(launchDT: Unix(2024, 12, 31));
-        Assert.True(await Matcher().TestMissionAgainstFilterAsync(m, C("launchDT", "<=", "2024-01-01")));
+        // "<=" now compares inclusively (fixed from the old no-op-always-pass bug).
+        var after = Mission(launchDT: Unix(2024, 12, 31));
+        Assert.False(await Matcher().TestMissionAgainstFilterAsync(after, C("launchDT", "<=", "2024-01-01")));
+        var onBoundary = Mission(launchDT: Unix(2024, 1, 1));
+        Assert.True(await Matcher().TestMissionAgainstFilterAsync(onBoundary, C("launchDT", "<=", "2024-01-01")));
+        var before = Mission(launchDT: Unix(2023, 12, 31));
+        Assert.True(await Matcher().TestMissionAgainstFilterAsync(before, C("launchDT", "<=", "2024-01-01")));
     }
 
     [Fact]
@@ -182,10 +190,10 @@ public sealed class MissionFilterMatcherTests
         new PossibleMission
         {
             Ship = MissionInfo.Spaceship.ChickenOne,
-            Durations = new List<DurationConfig>
-            {
+            Durations =
+            [
                 new() { DurationType = MissionInfo.DurationType.Short, MinQuality = 0, MaxQuality = 5, LevelQualityBump = 1 },
-            },
+            ],
         },
     };
 

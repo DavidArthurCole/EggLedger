@@ -128,14 +128,12 @@ public sealed class MigrationTests
         var dir = Path.GetDirectoryName(path)!;
         try
         {
-            using (var db = SqliteDatabase.OpenMissionDb(path))
-            {
-                Assert.Equal(9, UserVersion(db.Connection));
+            using var db = SqliteDatabase.OpenMissionDb(path);
+            Assert.Equal(9, UserVersion(db.Connection));
 
-                using var cmd = db.Connection.CreateCommand();
-                cmd.CommandText = "PRAGMA foreign_keys;";
-                Assert.Equal(1L, (long)cmd.ExecuteScalar()!);
-            }
+            using var cmd = db.Connection.CreateCommand();
+            cmd.CommandText = "PRAGMA foreign_keys;";
+            Assert.Equal(1L, (long)cmd.ExecuteScalar()!);
         }
         finally
         {

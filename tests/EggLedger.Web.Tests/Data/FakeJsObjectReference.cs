@@ -8,9 +8,9 @@ namespace EggLedger.Web.Tests.Data;
 /// </summary>
 public sealed class FakeJsObjectReference : IJSObjectReference
 {
-    public List<(string Identifier, object?[] Args)> Calls { get; } = new();
+    public List<(string Identifier, object?[] Args)> Calls { get; } = [];
 
-    private readonly Dictionary<string, Queue<object?>> _canned = new();
+    private readonly Dictionary<string, Queue<object?>> _canned = [];
 
     public bool Disposed { get; private set; }
 
@@ -27,7 +27,7 @@ public sealed class FakeJsObjectReference : IJSObjectReference
 
     public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args)
     {
-        Calls.Add((identifier, args ?? Array.Empty<object?>()));
+        Calls.Add((identifier, args ?? []));
 
         if (_canned.TryGetValue(identifier, out var queue) && queue.Count > 0)
         {

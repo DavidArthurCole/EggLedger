@@ -22,7 +22,6 @@
 </div>
 
 @code {
-    /// <summary>One navigable tab: display label plus its route href.</summary>
     public sealed record TabItem(string Label, string Href);
 
     [Parameter]
@@ -41,8 +40,7 @@
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e) =>
         InvokeAsync(StateHasChanged);
 
-    // The Ledger tab ("/") matches exactly so it does not stay highlighted on
-    // every other route; the rest match by prefix.
+    // Ledger tab ("/") matches exactly so it isn't highlighted everywhere; rest match by prefix.
     private bool IsActive(string href)
     {
         var path = "/" + Nav.ToBaseRelativePath(Nav.Uri).Split('?', '#')[0].TrimEnd('/');

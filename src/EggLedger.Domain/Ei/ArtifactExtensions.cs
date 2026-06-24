@@ -1,13 +1,12 @@
 using System.Globalization;
-using Ei;
 using EggLedger.Domain.LedgerData;
+using Ei;
 
 namespace EggLedger.Domain.Ei;
 
 /// <summary>
-/// Port of Go ei/artifacts.go. Display + classification logic for ArtifactSpec
-/// and its enums. Go pointer-presence (a.Name == nil, *a.Level) maps to the
-/// protobuf-net ShouldSerialize* presence guards.
+/// Port of Go ei/artifacts.go: display + classification for ArtifactSpec and its enums. Go
+/// pointer-presence (a.Name == nil) maps to the protobuf-net ShouldSerialize* guards.
 /// </summary>
 public static class ArtifactExtensions
 {
@@ -127,9 +126,8 @@ public static class ArtifactExtensions
     }
 
     /// <summary>
-    /// Display string combining the artifact's specific value with its generic
-    /// benefit description. Special !! values are returned as-is; normal values
-    /// are substituted into the generic template where [^b] appears.
+    /// Combines the artifact's specific value with its generic benefit description. Special !! values
+    /// are returned as-is; normal values substitute into the generic template where [^b] appears.
     /// </summary>
     public static string CombinedEffectString(this ArtifactSpec a)
     {
@@ -364,18 +362,14 @@ public static class ArtifactExtensions
 
     public static int TierNumber(this ArtifactSpec a)
     {
-        switch (a.Type())
+        return a.Type() switch
         {
-            case ArtifactSpec.Type.Artifact:
-                return (int)a.level + 1;
-            case ArtifactSpec.Type.Stone:
-                return (int)a.level + 2;
-            case ArtifactSpec.Type.StoneIngredient:
-                return 1;
-            case ArtifactSpec.Type.Ingredient:
-                return (int)a.level + 1;
-        }
-        return 1;
+            ArtifactSpec.Type.Artifact => (int)a.level + 1,
+            ArtifactSpec.Type.Stone => (int)a.level + 2,
+            ArtifactSpec.Type.StoneIngredient => 1,
+            ArtifactSpec.Type.Ingredient => (int)a.level + 1,
+            _ => 1,
+        };
     }
 
     public static string TierName(this ArtifactSpec a)
@@ -412,18 +406,14 @@ public static class ArtifactExtensions
 
     public static string Display(this ArtifactSpec.Rarity r)
     {
-        switch (r)
+        return r switch
         {
-            case ArtifactSpec.Rarity.Common:
-                return "Common";
-            case ArtifactSpec.Rarity.Rare:
-                return "Rare";
-            case ArtifactSpec.Rarity.Epic:
-                return "Epic";
-            case ArtifactSpec.Rarity.Legendary:
-                return "Legendary";
-        }
-        return "Unknown";
+            ArtifactSpec.Rarity.Common => "Common",
+            ArtifactSpec.Rarity.Rare => "Rare",
+            ArtifactSpec.Rarity.Epic => "Epic",
+            ArtifactSpec.Rarity.Legendary => "Legendary",
+            _ => "Unknown",
+        };
     }
 
     public static string Display(this ArtifactSpec.Type t) =>

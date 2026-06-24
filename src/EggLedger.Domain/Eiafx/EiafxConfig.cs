@@ -3,9 +3,8 @@ using Ei;
 namespace EggLedger.Domain.Eiafx;
 
 /// <summary>
-/// Static accessor for the active eiafx config, mirroring Go's read-only
-/// eiafx.Config global. Defaults to the embedded .bin source. A host may swap
-/// the source once at startup via <see cref="SetSource"/>.
+/// Static accessor for the active eiafx config (Go's read-only eiafx.Config global). Defaults to the
+/// embedded .bin source; a host may swap it once at startup via <see cref="SetSource"/>.
 /// </summary>
 public static class EiafxConfig
 {

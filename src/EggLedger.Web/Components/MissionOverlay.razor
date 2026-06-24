@@ -4,9 +4,7 @@
 @inject MissionQueryHandlers Queries
 @inject IJSRuntime Js
 
-@* Port of www/src/components/MissionOverlay.vue (single mode only). Native
-   <dialog> via dialog.js. Shows ShipDisplay + prev/next nav + close. Multi mode
-   is deferred. *@
+@* Single-mode mission overlay (native <dialog> via dialog.js). Multi mode deferred. *@
 
 <dialog @ref="_dialog" class="mission-overlay w-60vw max-h-95vh bg-dark rounded-lg relative flex flex-col" @oncancel="OnCancel" @oncancel:preventDefault="false" @onclose="OnCancel">
     <button class="absolute top-2 right-2 z-10 rounded-md text-gray-400 hover:text-gray-200 focus:outline-none" type="button" @onclick="CloseAsync" aria-label="Close">
@@ -41,18 +39,13 @@
 </dialog>
 
 @code {
-    /// <summary>Active account id, used to fetch drops for the viewed mission.</summary>
     [Parameter]
     public string? AccountId { get; set; }
 
-    /// <summary>
-    /// The currently filtered + tab-filtered missions, in display order. Drives
-    /// prev/next navigation.
-    /// </summary>
+    /// <summary>Filtered missions in display order; drives prev/next navigation.</summary>
     [Parameter]
     public IReadOnlyList<DatabaseMission> FilteredMissions { get; set; } = Array.Empty<DatabaseMission>();
 
-    /// <summary>Active drop sort method for the overlay.</summary>
     [Parameter]
     public MissionSortMethod SortMethod { get; set; } = MissionSortMethod.Default;
 
@@ -63,7 +56,6 @@
     private async ValueTask<IJSObjectReference> ModuleAsync() =>
         _module ??= await Js.InvokeAsync<IJSObjectReference>("import", "./_content/EggLedger.Web/js/dialog.js");
 
-    /// <summary>Opens the overlay for a mission id, building its detail data.</summary>
     public async Task OpenAsync(string missionId)
     {
         await LoadAsync(missionId);
@@ -123,7 +115,6 @@
 
     private void OnCancel()
     {
-        // Esc / backdrop close: native <dialog> handles the close itself.
         _data = null;
     }
 }

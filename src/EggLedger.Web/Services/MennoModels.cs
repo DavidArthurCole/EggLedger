@@ -2,19 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace EggLedger.Web.Services;
 
-/// <summary>
-/// Strongly-typed Menno community drop-rate DTOs. C# port of the Go menno
-/// package structs (ConfigurationItem and friends), decoded with
-/// System.Text.Json.
-///
-/// <para>This is the explicit improvement over the Go path: the Go code decoded
-/// the Azure response into loose interface{} maps, so a renamed or removed field
-/// silently became a zero value and the UI showed empty data with no error. Here
-/// every field the comparison math reads is a typed property, and
-/// <see cref="MennoDecode.Validate"/> rejects an item whose required nested
-/// objects failed to bind. A schema drift therefore fails loudly rather than
-/// yielding silent zeros.</para>
-/// </summary>
+/// <summary>Strongly-typed Menno community drop-rate DTOs. Every field the comparison math reads is typed and <see cref="MennoDecode.Validate"/> rejects unbound required nested objects, so a schema drift fails loudly instead of yielding silent zeros.</summary>
 public sealed record IdNamePair
 {
     [JsonPropertyName("id")]
@@ -24,7 +12,7 @@ public sealed record IdNamePair
     public string Name { get; init; } = "";
 }
 
-/// <summary>Ship-side configuration of a community drop record. Port of Go ShipConfiguration.</summary>
+/// <summary>Ship-side configuration of a community drop record.</summary>
 public sealed record ShipConfiguration
 {
     [JsonPropertyName("shipType")]
@@ -40,7 +28,7 @@ public sealed record ShipConfiguration
     public IdNamePair? TargetArtifact { get; init; }
 }
 
-/// <summary>Artifact-side configuration of a community drop record. Port of Go ArtifactConfiguration.</summary>
+/// <summary>Artifact-side configuration of a community drop record.</summary>
 public sealed record ArtifactConfiguration
 {
     [JsonPropertyName("artifactType")]
@@ -53,11 +41,7 @@ public sealed record ArtifactConfiguration
     public int ArtifactLevel { get; init; }
 }
 
-/// <summary>
-/// One community aggregate record: a ship+artifact configuration and the total
-/// drops observed for it. Port of Go ConfigurationItem. The Azure endpoint
-/// returns a raw JSON array of these.
-/// </summary>
+/// <summary>One community aggregate record: a ship+artifact configuration and its total drops. The endpoint returns a raw JSON array of these.</summary>
 public sealed record ConfigurationItem
 {
     [JsonPropertyName("shipConfiguration")]

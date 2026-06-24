@@ -3,15 +3,11 @@ using System.Net;
 namespace EggLedger.Desktop.Update;
 
 /// <summary>
-/// Localhost-only HTTP listener owned by the OLD instance during a self-update.
-/// Ports EggLedger/update/update_handshake.go startHandshakeListener. A POST to
-/// /ready carrying the matching token signals <see cref="Served"/> exactly once
-/// (CompareAndSwap-gated like the Go atomic flag); a wrong/missing token is
-/// rejected with 403 and never signals. The new instance proves identity over
-/// loopback before the old instance exits.
-///
-/// The token check + the request/response shape are unit-testable against a real
-/// 127.0.0.1 listener (see HandshakeTests). The cross-PROCESS part is manual-verify.
+/// Loopback-only HTTP listener owned by the OLD instance during a self-update. A
+/// POST to /ready with the matching token signals <see cref="Served"/> exactly once
+/// (CompareAndSwap-gated); a wrong/missing token is rejected with 403 and never
+/// signals. MANUAL-VERIFY: the token check is unit-tested but the cross-process part
+/// is not.
 /// </summary>
 public sealed class HandshakeListener : IDisposable
 {
@@ -48,8 +44,10 @@ public sealed class HandshakeListener : IDisposable
         listener.Prefixes.Add($"http://{address}/");
         listener.Start();
 
-        var self = new HandshakeListener(listener, token, address);
-        self._cts = new CancellationTokenSource();
+        var self = new HandshakeListener(listener, token, address)
+        {
+            _cts = new CancellationTokenSource()
+        };
         _ = self.ServeLoopAsync(self._cts.Token);
         return self;
     }

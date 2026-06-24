@@ -29,7 +29,7 @@ public sealed class CloudSyncServiceTests
     // name, the auth start/poll endpoints, and the authed-route bearer check.
     private sealed class FakeServer : HttpMessageHandler
     {
-        private readonly Dictionary<string, string> _blobs = new();
+        private readonly Dictionary<string, string> _blobs = [];
 
         public string? PendingState;
         public PollResponse? PollPayload; // null => still pending (202)

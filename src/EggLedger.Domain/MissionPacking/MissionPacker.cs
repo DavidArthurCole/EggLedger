@@ -1,14 +1,12 @@
 using System.Globalization;
-using Ei;
 using EggLedger.Domain.Ei;
+using Ei;
 
 namespace EggLedger.Domain.MissionPacking;
 
 /// <summary>
-/// Mission compilation + nominal-capacity logic. C# port of Go package
-/// missionpacking (capacity.go + missionpacking.go). Preserves all numeric
-/// logic exactly, including the mission_type = -1 ("not yet determined")
-/// sentinel.
+/// Mission compilation + nominal-capacity logic. Go port of package missionpacking
+/// (capacity.go + missionpacking.go), including the mission_type = -1 ("not yet determined") sentinel.
 /// </summary>
 public sealed class MissionPacker
 {
@@ -25,9 +23,8 @@ public sealed class MissionPacker
     }
 
     /// <summary>
-    /// Builds the nominal-capacity table from the eiafx config. For each ship +
-    /// duration the per-level slice is capacity + (levelCapacityBump * level).
-    /// Mirrors Go initNominalShipCapacities.
+    /// Builds the nominal-capacity table from the eiafx config: per-level slice is
+    /// capacity + (levelCapacityBump * level). Mirrors Go initNominalShipCapacities.
     /// </summary>
     private Dictionary<MissionInfo.Spaceship, Dictionary<MissionInfo.DurationType, float[]>> BuildNominalShipCapacities()
     {
@@ -43,7 +40,7 @@ public sealed class MissionPacker
                 float capacity = duration.Capacity;
                 if (levelCount == 0)
                 {
-                    byDuration[duration.DurationType] = new[] { capacity };
+                    byDuration[duration.DurationType] = [capacity];
                 }
                 else
                 {
@@ -61,8 +58,8 @@ public sealed class MissionPacker
     }
 
     /// <summary>
-    /// Returns the nominal-capacity slice for a ship+duration. ok is false when
-    /// the ship or duration is absent. Mirrors Go ShipCapacities.
+    /// Nominal-capacity slice for a ship+duration; false when ship/duration absent.
+    /// Mirrors Go ShipCapacities.
     /// </summary>
     public bool TryGetShipCapacities(MissionInfo.Spaceship ship, MissionInfo.DurationType dur, out float[] caps)
     {
@@ -72,20 +69,15 @@ public sealed class MissionPacker
             caps = found;
             return true;
         }
-        caps = Array.Empty<float>();
+        caps = [];
         return false;
     }
 
-    /// <summary>
-    /// Proto name for a target artifact, or empty when none. Mirrors Go
-    /// properTargetName (nil -&gt; "").
-    /// </summary>
+    /// <summary>Proto name for a target artifact, empty when none. Mirrors Go properTargetName.</summary>
     private static string ProperTargetName(ArtifactSpec.Name? name) =>
         name is null ? "" : EnumNames.ProtoName(name.Value);
 
-    /// <summary>
-    /// Compact human-readable duration string. Mirrors Go durationStringFromSecs.
-    /// </summary>
+    /// <summary>Compact human-readable duration string. Mirrors Go durationStringFromSecs.</summary>
     public static string DurationStringFromSecs(double seconds)
     {
         if (seconds == 0)
@@ -117,8 +109,8 @@ public sealed class MissionPacker
     }
 
     /// <summary>
-    /// Extracts the migration-6 filter columns from a decoded mission response.
-    /// ok is false when Info is null. Mirrors Go ComputeMissionFilterCols.
+    /// Extracts migration-6 filter columns from a decoded mission; false when Info is null.
+    /// Mirrors Go ComputeMissionFilterCols.
     /// </summary>
     public bool TryComputeMissionFilterCols(double startTimestamp, CompleteMissionResponse resp, out MissionFilterCols cols)
     {
@@ -148,7 +140,7 @@ public sealed class MissionPacker
             nominalCap = caps[level];
         }
         bool isDubCap = nominalCap > 0 && (float)capacity >= nominalCap * 1.7f;
-        bool isBuggedCap = startTimestamp > BuggedCapLower && startTimestamp < BuggedCapUpper;
+        bool isBuggedCap = startTimestamp is > BuggedCapLower and < BuggedCapUpper;
 
         cols = new MissionFilterCols
         {
@@ -165,10 +157,7 @@ public sealed class MissionPacker
         return true;
     }
 
-    /// <summary>
-    /// Builds a DatabaseMission from a lightweight MissionMeta row. Mirrors Go
-    /// MissionMetaToDBMission.
-    /// </summary>
+    /// <summary>Builds a DatabaseMission from a MissionMeta row. Mirrors Go MissionMetaToDBMission.</summary>
     public DatabaseMission MissionMetaToDBMission(MissionMeta meta)
     {
         var ship = (MissionInfo.Spaceship)meta.Ship;
@@ -215,9 +204,8 @@ public sealed class MissionPacker
     }
 
     /// <summary>
-    /// Resolves a mission-type integer, falling back to the proto payload when
-    /// the stored value is the -1 "not yet determined" sentinel. Mirrors Go
-    /// resolveMissionType.
+    /// Resolves mission-type, falling back to the proto payload when the stored value
+    /// is the -1 sentinel. Mirrors Go resolveMissionType.
     /// </summary>
     private static int ResolveMissionType(int dbMissionType, CompleteMissionResponse mission)
     {
@@ -234,8 +222,8 @@ public sealed class MissionPacker
     }
 
     /// <summary>
-    /// Compiles a full DatabaseMission from a decoded mission response. Returns
-    /// an empty record when Info is null. Mirrors Go CompileMissionInformation.
+    /// Compiles a full DatabaseMission from a decoded mission; empty record when Info is null.
+    /// Mirrors Go CompileMissionInformation.
     /// </summary>
     public DatabaseMission CompileMissionInformation(CompleteMissionResponse completeMissionResponse)
     {
@@ -288,8 +276,8 @@ public sealed class MissionPacker
     }
 
     /// <summary>
-    /// True when capacity is at least 1.7x nominal. False when ship/duration/
-    /// level is unknown. Mirrors Go isDubCap.
+    /// True when capacity is at least 1.7x nominal; false when ship/duration/level unknown.
+    /// Mirrors Go isDubCap.
     /// </summary>
     public bool IsDubCap(CompleteMissionResponse mission)
     {
@@ -304,9 +292,8 @@ public sealed class MissionPacker
     }
 
     /// <summary>
-    /// True when launched inside the 2024-04-10..2024-04-16 bugged window
-    /// (exclusive bounds). Mirrors Go isBuggedCap.
+    /// True when launched inside the 2024-04-10..2024-04-16 bugged window (exclusive). Mirrors Go isBuggedCap.
     /// </summary>
     public bool IsBuggedCap(CompleteMissionResponse mission) =>
-        mission.Info!.StartTimeDerived > BuggedCapLower && mission.Info!.StartTimeDerived < BuggedCapUpper;
+        mission.Info!.StartTimeDerived is > BuggedCapLower and < BuggedCapUpper;
 }

@@ -3,9 +3,8 @@ using System.Globalization;
 namespace EggLedger.Domain.Reports;
 
 /// <summary>
-/// A single mission row, the typed equivalent of the SQLite <c>mission</c> table
-/// columns the report queries read. The browser materializes these from
-/// IndexedDB; the SQL path reads the same columns from SQLite.
+/// A single mission row, typed equivalent of the SQLite <c>mission</c> columns the
+/// report queries read. Browser materializes these from IndexedDB.
 /// </summary>
 public sealed record MissionRowData
 {
@@ -24,10 +23,7 @@ public sealed record MissionRowData
     public bool IsBuggedCap { get; init; }
 }
 
-/// <summary>
-/// A single artifact-drop row, the typed equivalent of the SQLite
-/// <c>artifact_drops</c> table columns the report queries read.
-/// </summary>
+/// <summary>A single artifact-drop row, typed equivalent of the SQLite <c>artifact_drops</c> columns.</summary>
 public sealed record ArtifactDropRowData
 {
     public string PlayerId { get; init; } = "";
@@ -41,16 +37,9 @@ public sealed record ArtifactDropRowData
 }
 
 /// <summary>
-/// SQL-free report execution path for the browser. IndexedDB has no SQL engine,
-/// so this runner takes the SAME ReportDefinition and the SAME materialized row
-/// set the SQL path consumes and produces the SAME ReportResult.
-///
-/// It does so by reusing the validated math in <see cref="ReportExecutor"/>
-/// verbatim: it builds an in-memory <see cref="IMissionDb"/> that answers every
-/// query ReportExecutor issues by evaluating the filter/group semantics of
-/// reports/query.go directly over the typed rows, then hands that DB to a real
-/// ReportExecutor. The weight/label/classify/normalize/pivot/time-fill logic is
-/// therefore identical by construction, not re-derived.
+/// SQL-free report execution path for the browser (IndexedDB has no SQL engine).
+/// Reuses <see cref="ReportExecutor"/> verbatim by wrapping the typed rows in an
+/// in-memory <see cref="IMissionDb"/>, so the report math is identical by construction.
 /// </summary>
 public sealed class InMemoryReportRunner
 {
@@ -62,9 +51,8 @@ public sealed class InMemoryReportRunner
     }
 
     /// <summary>
-    /// Executes the report against the supplied rows. The runner filters by
-    /// <c>def.AccountId</c> internally (the SQL path's <c>m.player_id = ?</c>), so
-    /// callers may pass all rows or only the player's rows.
+    /// Executes the report against the supplied rows. Filters by <c>def.AccountId</c>
+    /// internally, so callers may pass all rows or only the player's rows.
     /// </summary>
     public ReportResult Run(
         ReportDefinition def,

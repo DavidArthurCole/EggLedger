@@ -32,7 +32,7 @@ public class InMemoryReportRunnerTests
     // mirroring the A7 ExecuteTests double.
     private sealed class FakeDb : IMissionDb
     {
-        private readonly List<(string Key, IReadOnlyList<object?[]> Rows)> _byKey = new();
+        private readonly List<(string Key, IReadOnlyList<object?[]> Rows)> _byKey = [];
 
         public FakeDb On(string contains, IReadOnlyList<object?[]> rows)
         {
@@ -57,35 +57,35 @@ public class InMemoryReportRunnerTests
         string id, int ship, int duration, long start, long ret,
         int cap = 1, int nominal = 1, int target = 0, int type = 0,
         int level = 0, bool dub = false, bool bugged = false) => new()
-    {
-        PlayerId = Eid,
-        MissionId = id,
-        Ship = ship,
-        DurationType = duration,
-        Level = level,
-        Target = target,
-        MissionType = type,
-        StartTimestamp = start,
-        ReturnTimestamp = ret,
-        Capacity = cap,
-        NominalCapacity = nominal,
-        IsDubCap = dub,
-        IsBuggedCap = bugged,
-    };
+        {
+            PlayerId = Eid,
+            MissionId = id,
+            Ship = ship,
+            DurationType = duration,
+            Level = level,
+            Target = target,
+            MissionType = type,
+            StartTimestamp = start,
+            ReturnTimestamp = ret,
+            Capacity = cap,
+            NominalCapacity = nominal,
+            IsDubCap = dub,
+            IsBuggedCap = bugged,
+        };
 
     private static ArtifactDropRowData D(
         string mission, int artifactId, int rarity, int tier,
         int dropIndex = 0, double quality = 0, string spec = "Artifact") => new()
-    {
-        PlayerId = Eid,
-        MissionId = mission,
-        DropIndex = dropIndex,
-        ArtifactId = artifactId,
-        Rarity = rarity,
-        Level = tier,
-        Quality = quality,
-        SpecType = spec,
-    };
+        {
+            PlayerId = Eid,
+            MissionId = mission,
+            DropIndex = dropIndex,
+            ArtifactId = artifactId,
+            Rarity = rarity,
+            Level = tier,
+            Quality = quality,
+            SpecType = spec,
+        };
 
     // 1D count over a mission column, descending by count, first-seen tiebreak.
     private static object?[][] Group1D(IEnumerable<MissionRowData> rows, Func<MissionRowData, string> key)
@@ -102,12 +102,11 @@ public class InMemoryReportRunnerTests
             counts.TryGetValue(k, out var cur);
             counts[k] = cur + 1;
         }
-        return order
+        return [.. order
             .Select((k, i) => (k, i, c: counts[k]))
             .OrderByDescending(x => x.c)
             .ThenBy(x => x.i)
-            .Select(x => new object?[] { x.k, x.c })
-            .ToArray();
+            .Select(x => new object?[] { x.k, x.c })];
     }
 
     // 2D count over two mission columns, ascending by raw1 then raw2 (numeric).
@@ -121,11 +120,10 @@ public class InMemoryReportRunnerTests
             counts.TryGetValue(key, out var cur);
             counts[key] = cur + 1;
         }
-        return counts
+        return [.. counts
             .OrderBy(kv => long.Parse(kv.Key.Item1, CultureInfo.InvariantCulture))
             .ThenBy(kv => long.Parse(kv.Key.Item2, CultureInfo.InvariantCulture))
-            .Select(kv => new object?[] { kv.Key.Item1, kv.Key.Item2, kv.Value })
-            .ToArray();
+            .Select(kv => new object?[] { kv.Key.Item1, kv.Key.Item2, kv.Value })];
     }
 
     private static string Ship(MissionRowData m) => m.Ship.ToString(CultureInfo.InvariantCulture);
@@ -147,7 +145,7 @@ public class InMemoryReportRunnerTests
         var memResult = new InMemoryReportRunner(new NoWeights()).Run(def, missions, Array.Empty<ArtifactDropRowData>());
 
         Assert.Equal(sqlResult, memResult);
-        Assert.Equal(new List<long> { 2, 1 }, memResult.Values);
+        Assert.Equal([2, 1], memResult.Values);
         Assert.Equal("Henerprise", memResult.Labels[0]);
     }
 
@@ -169,7 +167,7 @@ public class InMemoryReportRunnerTests
             AccountId = Eid,
             Filters = new ReportFilters
             {
-                And = new() { new FilterCondition { TopLevel = "duration", Op = "=", Val = "0" } },
+                And = [new FilterCondition { TopLevel = "duration", Op = "=", Val = "0" }],
             },
         };
 
@@ -180,7 +178,7 @@ public class InMemoryReportRunnerTests
 
         Assert.Equal(sqlResult, memResult);
         // Both ships have one duration-0 mission; equal counts keep first-seen order.
-        Assert.Equal(new List<long> { 1, 1 }, memResult.Values);
+        Assert.Equal([1, 1], memResult.Values);
     }
 
     [Fact]
@@ -208,10 +206,10 @@ public class InMemoryReportRunnerTests
 
         Assert.Equal(sqlResult, memResult);
         Assert.True(memResult.Is2D);
-        Assert.Equal(new List<string> { "BCR", "Henerprise" }, memResult.RowLabels);
-        Assert.Equal(new List<string> { "Short", "Standard" }, memResult.ColLabels);
+        Assert.Equal(["BCR", "Henerprise"], memResult.RowLabels);
+        Assert.Equal(["Short", "Standard"], memResult.ColLabels);
         // BCR/Short=0, BCR/Standard=1, Hen/Short=1, Hen/Standard=2.
-        Assert.Equal(new List<double> { 0, 1, 1, 2 }, memResult.MatrixValues);
+        Assert.Equal([0, 1, 1, 2], memResult.MatrixValues);
     }
 
     [Fact]
@@ -242,7 +240,7 @@ public class InMemoryReportRunnerTests
 
         Assert.Equal(sqlResult, memResult);
         // rarity 1 -> 2 drops, rarity 3 -> 2 drops; equal, first-seen order is 3 then 1.
-        Assert.Equal(new List<long> { 2, 2 }, memResult.Values);
+        Assert.Equal([2, 2], memResult.Values);
     }
 
     [Fact]
@@ -267,7 +265,7 @@ public class InMemoryReportRunnerTests
             AccountId = Eid,
             Filters = new ReportFilters
             {
-                And = new() { new FilterCondition { TopLevel = "drops", Op = "c", Val = "%_%_3_%" } },
+                And = [new FilterCondition { TopLevel = "drops", Op = "c", Val = "%_%_3_%" }],
             },
         };
 
@@ -312,8 +310,8 @@ public class InMemoryReportRunnerTests
 
         Assert.Equal(sqlResult, memResult);
         // 2023-11 (2 missions), then gap-filled 2023-12 (0), then 2024-01 (1).
-        Assert.Equal(new List<string> { "2023-11", "2023-12", "2024-01" }, memResult.Labels);
-        Assert.Equal(new List<long> { 2, 0, 1 }, memResult.Values);
+        Assert.Equal(["2023-11", "2023-12", "2024-01"], memResult.Labels);
+        Assert.Equal([2, 0, 1], memResult.Values);
     }
 
     [Fact]
@@ -376,15 +374,15 @@ public class InMemoryReportRunnerTests
         // Oracle rows: rawLabel, artifactId, level, cap_weight (grouped by ship/afx/level).
         var sqlDb = new FakeDb().On("cap_weight", new object?[][]
         {
-            new object?[] { "9", 12L, 0L, 2.0 },
-            new object?[] { "3", 13L, 0L, 1.0 },
+            ["9", 12L, 0L, 2.0],
+            ["3", 13L, 0L, 1.0],
         });
         var sqlResult = new ReportExecutor(sqlDb, weights).ExecuteReport(def);
         var memResult = new InMemoryReportRunner(weights).Run(def, missions, drops);
 
         Assert.Equal(sqlResult, memResult);
         Assert.True(memResult.IsFloat);
-        Assert.Equal(new List<double> { 2.0, 1.0 }, memResult.FloatValues);
+        Assert.Equal([2.0, 1.0], memResult.FloatValues);
     }
 
     [Fact]
@@ -423,16 +421,16 @@ public class InMemoryReportRunnerTests
         // Mission b: ship 3, dur 1, one drop afx 12 -> one row cap_weight 1.0.
         var capRows = new object?[][]
         {
-            new object?[] { "9", "0", 12L, 0L, 2.0 },
-            new object?[] { "9", "0", 13L, 0L, 2.0 },
-            new object?[] { "3", "1", 12L, 0L, 1.0 },
+            ["9", "0", 12L, 0L, 2.0],
+            ["9", "0", 13L, 0L, 2.0],
+            ["3", "1", 12L, 0L, 1.0],
         };
         // mission-count query (FROM mission m, no join): one row per mission.
         // ship 9/dur 0 -> 1 mission, ship 3/dur 1 -> 1 mission.
         var missionCountRows = new object?[][]
         {
-            new object?[] { "3", "1", 1L },
-            new object?[] { "9", "0", 1L },
+            ["3", "1", 1L],
+            ["9", "0", 1L],
         };
         var sqlDb = new FakeDb()
             .On("cap_weight", capRows)
@@ -461,12 +459,11 @@ public class InMemoryReportRunnerTests
             counts.TryGetValue(k, out var cur);
             counts[k] = cur + 1;
         }
-        return order
+        return [.. order
             .Select((k, i) => (k, i, c: counts[k]))
             .OrderByDescending(x => x.c)
             .ThenBy(x => x.i)
-            .Select(x => new object?[] { x.k, x.c })
-            .ToArray();
+            .Select(x => new object?[] { x.k, x.c })];
     }
 
     private static string TimeBucketLabel(long unix)

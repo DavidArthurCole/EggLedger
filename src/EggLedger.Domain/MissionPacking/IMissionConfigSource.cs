@@ -3,12 +3,10 @@ using Ei;
 namespace EggLedger.Domain.MissionPacking;
 
 /// <summary>
-/// Small consuming interface for the eiafx mission-parameter data the
-/// nominal-capacity table is built from. Decouples MissionPacking from the
-/// concrete eiafx config loader (ported separately as EggLedger.Domain.Eiafx).
+/// Source of eiafx mission-parameter data for the nominal-capacity table.
+/// Decouples MissionPacking from the concrete eiafx config loader.
 /// </summary>
 public interface IMissionConfigSource
 {
-    /// <summary>The loaded artifacts/mission configuration.</summary>
     ArtifactsConfigurationResponse Config { get; }
 }

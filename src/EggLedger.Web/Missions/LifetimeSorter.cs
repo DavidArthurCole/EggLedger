@@ -1,6 +1,6 @@
 namespace EggLedger.Web.Missions;
 
-/// <summary>Lifetime drop sort method. Port of the Vue lifetimeSortMethod union.</summary>
+/// <summary>Lifetime drop sort method.</summary>
 public enum LifetimeSortMethod
 {
     Default,
@@ -9,20 +9,10 @@ public enum LifetimeSortMethod
     Random,
 }
 
-/// <summary>
-/// Sort/ordering for aggregated lifetime drops. C# port of the sort functions in
-/// www/src/composables/useLifetimeSorting.ts. Reuses <see cref="DropSorter"/> for
-/// the shared comparators (default = sortGroupAlreadyCombed, iv =
-/// inventoryVisualizerSort) and adds the count comparator and the random shuffle
-/// that are unique to the Lifetime tab.
-/// </summary>
+/// <summary>Sort/ordering for aggregated lifetime drops. Reuses DropSorter for shared comparators and adds the count comparator and random shuffle unique to the Lifetime tab.</summary>
 public static class LifetimeSorter
 {
-    /// <summary>
-    /// Parses the persisted sort-method string ("default"/"iv"/"count"/"random").
-    /// Unknown values fall back to <see cref="LifetimeSortMethod.Default"/>,
-    /// matching the Vue switch default.
-    /// </summary>
+    /// <summary>Parses the persisted sort-method string; unknown values fall back to Default.</summary>
     public static LifetimeSortMethod ParseMethod(string? value) => value switch
     {
         "iv" => LifetimeSortMethod.Iv,
@@ -40,11 +30,7 @@ public static class LifetimeSorter
         _ => "default",
     };
 
-    /// <summary>
-    /// Re-sorts every spec-type list in place per the active method, mirroring the
-    /// Vue reSortLifetime (which rebuilds each list with the chosen sortFn). Random
-    /// uses the supplied RNG so callers can seed it for tests.
-    /// </summary>
+    /// <summary>Re-sorts every spec-type list per the active method. Random uses the supplied RNG so callers can seed it for tests.</summary>
     public static void Sort(LifetimeData data, LifetimeSortMethod method, Random? rng = null)
     {
         data.Artifacts = SortList(data.Artifacts, method, rng);
@@ -61,10 +47,7 @@ public static class LifetimeSorter
         _ => DropSorter.SortGroupAlreadyCombed(list),
     };
 
-    /// <summary>
-    /// Port of sortGroupByCount: count desc, then level desc, rarity desc, id desc,
-    /// quality asc. No reverse (unlike sortGroupAlreadyCombed).
-    /// </summary>
+    /// <summary>Count desc, then level/rarity/id desc, quality asc. No reverse (unlike sortGroupAlreadyCombed).</summary>
     public static List<DropLike> SortGroupByCount(IEnumerable<DropLike> collection)
     {
         var indexed = new List<(DropLike Item, int Index)>();
@@ -111,7 +94,7 @@ public static class LifetimeSorter
         return 0;
     }
 
-    /// <summary>Fisher-Yates shuffle. Port of the Vue shuffle (random ordering).</summary>
+    /// <summary>Fisher-Yates shuffle.</summary>
     public static List<DropLike> Shuffle(IEnumerable<DropLike> collection, Random rng)
     {
         var list = new List<DropLike>(collection);

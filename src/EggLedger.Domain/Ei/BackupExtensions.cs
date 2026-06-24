@@ -6,8 +6,7 @@ namespace EggLedger.Domain.Ei;
 public static class BackupExtensions
 {
     /// <summary>
-    /// Sum helper mirroring Go's generic Sum. Maps each element to a double and
-    /// accumulates. Returns 0 for an empty or null sequence.
+    /// Maps each element to a double and accumulates (Go's generic Sum). Returns 0 for empty/null.
     /// </summary>
     public static double Sum<T>(IEnumerable<T>? slice, Func<T, double> toFloat)
     {
@@ -55,11 +54,11 @@ public static class BackupExtensions
         {
             foreach (var er in game.EpicResearchs)
             {
-                if (er.Id.ToLowerInvariant() == "soul_eggs")
+                if (string.Equals(er.Id, "soul_eggs", StringComparison.OrdinalIgnoreCase))
                 {
                     soulEggBonus = er.Level + 10;
                 }
-                else if (er.Id.ToLowerInvariant() == "prophecy_bonus")
+                else if (string.Equals(er.Id, "prophecy_bonus", StringComparison.OrdinalIgnoreCase))
                 {
                     prophecyEggBonus = (er.Level + 5) / 100.0 + 1;
                 }

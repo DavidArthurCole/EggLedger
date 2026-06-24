@@ -1,24 +1,19 @@
 using System.Globalization;
-using Ei;
 using EggLedger.Domain.Ei;
 using EggLedger.Domain.Util;
+using Ei;
 
 namespace EggLedger.Domain.MissionQuery;
 
 /// <summary>
-/// Builds an <see cref="AccountInfo"/> from a first-contact backup. Pure port of
-/// the Go <c>addAccount</c> binding's field shaping (main.go): nickname, earnings
-/// bonus string + role color, soul-egg abbreviation, prophecy-egg count, and the
-/// summed truth-eggs-earned total. Data access (the fetch + persistence) lives in
-/// the Web layer; this is the testable arithmetic.
+/// Builds an <see cref="AccountInfo"/> from a first-contact backup. Port of the
+/// Go addAccount binding's field shaping; data access lives in the Web layer.
 /// </summary>
 public static class AccountFactory
 {
     /// <summary>
     /// Shapes the display fields for an account from its backup. Mirrors the Go
-    /// addAccount binding exactly: EB string formatted to the role precision with
-    /// the order-of-magnitude addendum, color from <see cref="Role.RoleFromEB"/>,
-    /// SE abbreviated, PE as an integer, TE summed across the Virtue EoV slice.
+    /// addAccount binding: TE is summed across the Virtue EoV slice.
     /// </summary>
     public static AccountInfo FromBackup(string eid, Backup backup)
     {

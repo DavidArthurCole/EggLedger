@@ -39,40 +39,40 @@ public sealed class ReportParityTests
         string id, int ship, int duration, long start, long ret,
         int cap = 1, int nominal = 1, int target = 0, int type = 0,
         int level = 0, bool dub = false, bool bugged = false) => new()
-    {
-        PlayerId = Eid,
-        MissionId = id,
-        Ship = ship,
-        DurationType = duration,
-        Level = level,
-        Target = target,
-        MissionType = type,
-        StartTimestamp = start,
-        ReturnTimestamp = ret,
-        Capacity = cap,
-        NominalCapacity = nominal,
-        IsDubCap = dub,
-        IsBuggedCap = bugged,
-    };
+        {
+            PlayerId = Eid,
+            MissionId = id,
+            Ship = ship,
+            DurationType = duration,
+            Level = level,
+            Target = target,
+            MissionType = type,
+            StartTimestamp = start,
+            ReturnTimestamp = ret,
+            Capacity = cap,
+            NominalCapacity = nominal,
+            IsDubCap = dub,
+            IsBuggedCap = bugged,
+        };
 
     private static ArtifactDropRowData D(
         string mission, int artifactId, int rarity, int tier,
         int dropIndex = 0, double quality = 0, string spec = "Artifact") => new()
-    {
-        PlayerId = Eid,
-        MissionId = mission,
-        DropIndex = dropIndex,
-        ArtifactId = artifactId,
-        Rarity = rarity,
-        Level = tier,
-        Quality = quality,
-        SpecType = spec,
-    };
+        {
+            PlayerId = Eid,
+            MissionId = mission,
+            DropIndex = dropIndex,
+            ArtifactId = artifactId,
+            Rarity = rarity,
+            Level = tier,
+            Quality = quality,
+            SpecType = spec,
+        };
 
     // 1758067200 = the mission-type cutoff; keep all fixtures well after it and
     // within distinct months so the time-series buckets are stable.
-    private static List<MissionRowData> Missions() => new()
-    {
+    private static List<MissionRowData> Missions() =>
+    [
         // Distinct per-group counts to avoid SQLite tie-order ambiguity in count-DESC
         // aggregates: ship 1 -> 3 missions, ship 2 -> 2, ship 3 -> 1.
         M("m1", ship: 1, duration: 0, start: 1758100000, ret: 1758100000 + 3600, cap: 10, nominal: 5, type: 0, level: 1),
@@ -81,10 +81,10 @@ public sealed class ReportParityTests
         M("m4", ship: 2, duration: 0, start: 1758300000, ret: 1758300000 + 1800, cap: 6, nominal: 6, type: 0, level: 0),
         M("m5", ship: 2, duration: 1, start: 1763600000, ret: 1763600000 + 3600, cap: 6, nominal: 3, type: 0, level: 1),
         M("m6", ship: 3, duration: 2, start: 1766300000, ret: 1766300000 + 14400, cap: 4, nominal: 2, type: 1, level: 3),
-    };
+    ];
 
-    private static List<ArtifactDropRowData> Drops() => new()
-    {
+    private static List<ArtifactDropRowData> Drops() =>
+    [
         // m1: two drops (rarity 0, 1), artifact ids 12/13.
         D("m1", artifactId: 12, rarity: 0, tier: 1, dropIndex: 0, spec: "Artifact"),
         D("m1", artifactId: 13, rarity: 1, tier: 2, dropIndex: 1, spec: "Stone"),
@@ -99,7 +99,7 @@ public sealed class ReportParityTests
         // m6: two drops rarity 2.
         D("m6", artifactId: 12, rarity: 2, tier: 3, dropIndex: 0, spec: "Artifact"),
         D("m6", artifactId: 14, rarity: 2, tier: 1, dropIndex: 1, spec: "Artifact"),
-    };
+    ];
 
     private static SqliteConnection SeedSqlite(IReadOnlyList<MissionRowData> missions, IReadOnlyList<ArtifactDropRowData> drops)
     {
@@ -192,7 +192,7 @@ public sealed class ReportParityTests
                 AccountId = Eid,
                 Filters = new ReportFilters
                 {
-                    And = new() { new FilterCondition { TopLevel = "duration", Op = "=", Val = "0" } },
+                    And = [new FilterCondition { TopLevel = "duration", Op = "=", Val = "0" }],
                 },
             },
             new NoWeights());
@@ -233,7 +233,7 @@ public sealed class ReportParityTests
                 AccountId = Eid,
                 Filters = new ReportFilters
                 {
-                    And = new() { new FilterCondition { TopLevel = "drops", Op = "c", Val = "%_%_2_%" } },
+                    And = [new FilterCondition { TopLevel = "drops", Op = "c", Val = "%_%_2_%" }],
                 },
             },
             new NoWeights());
@@ -251,7 +251,7 @@ public sealed class ReportParityTests
                 AccountId = Eid,
                 Filters = new ReportFilters
                 {
-                    And = new() { new FilterCondition { TopLevel = "drops", Op = "dnc", Val = "%_%_0_%" } },
+                    And = [new FilterCondition { TopLevel = "drops", Op = "dnc", Val = "%_%_0_%" }],
                 },
             },
             new NoWeights());

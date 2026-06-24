@@ -9,10 +9,8 @@ public readonly record struct PieItem(string Label, double Value);
 public readonly record struct PieSlice(string Label, double Value, double Pct, string Path, string Color);
 
 /// <summary>
-/// Pure pie chart geometry. Port of the must-be-correct parts of
-/// ReportPieChart.vue: the top-N rollup, the slice sweep angles, and the SVG arc
-/// path. The label callout placement and collision spreading stay in the Razor
-/// component (heavy and resize-dependent); this is the golden-tested core.
+/// Pie chart geometry. Port of ReportPieChart.vue: top-N rollup, slice sweep angles,
+/// and the SVG arc path. Label callout placement stays in the Razor component.
 /// </summary>
 public static class PieGeometry
 {
@@ -20,17 +18,15 @@ public static class PieGeometry
     public const int MaxSegments = 10;
 
     /// <summary>
-    /// Builds the pie items for a result, rolling everything past
-    /// <see cref="MaxSegments"/> - 1 into a single "Other" slice (sorted by value
-    /// descending before the cut). Returns an empty list when the total is zero.
-    /// Port of the ReportPieChart items computed.
+    /// Pie items, rolling everything past <see cref="MaxSegments"/> - 1 into one "Other"
+    /// slice (sorted by value desc before the cut); empty when total is zero. Port of ReportPieChart items.
     /// </summary>
     public static List<PieItem> BuildItems(IReadOnlyList<string> labels, IReadOnlyList<double> values)
     {
         double total = values.Sum();
         if (total == 0)
         {
-            return new List<PieItem>();
+            return [];
         }
 
         var items = new List<PieItem>(labels.Count);
@@ -50,10 +46,7 @@ public static class PieGeometry
         return items;
     }
 
-    /// <summary>
-    /// Computes the SVG path for a pie slice from a center, radius, and the start
-    /// and end angles (radians). Port of the ReportPieChart slicePath closure.
-    /// </summary>
+    /// <summary>SVG path for a pie slice from center, radius, and start/end angles (radians). Port of ReportPieChart slicePath.</summary>
     public static string SlicePath(double cx, double cy, double r, double startAngle, double endAngle)
     {
         double sx = cx + Math.Cos(startAngle) * r;
@@ -68,10 +61,8 @@ public static class PieGeometry
     }
 
     /// <summary>
-    /// Builds the full set of colored slices for a result. Colors come from
-    /// <see cref="SliceColors"/> with per-label overrides. Slices start at -90deg
-    /// (12 o'clock) and sweep clockwise proportional to value. Port of the
-    /// ReportPieChart segments computed (geometry + color only).
+    /// Colored slices for a result; colors from <see cref="SliceColors"/> with per-label
+    /// overrides. Slices start at -90deg (12 o'clock) and sweep clockwise by value. Port of ReportPieChart segments.
     /// </summary>
     public static List<PieSlice> BuildSlices(
         IReadOnlyList<string> labels,

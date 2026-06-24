@@ -1,5 +1,5 @@
-using Ei;
 using EggLedger.Domain.MissionQuery;
+using Ei;
 
 namespace EggLedger.Domain.Tests.MissionQuery;
 
@@ -10,15 +10,15 @@ namespace EggLedger.Domain.Tests.MissionQuery;
 internal sealed class FakeMissionStore : IMissionStore
 {
     public IReadOnlyList<string>? CompleteMissionIds { get; set; }
-    public List<KnownAccount> KnownAccounts { get; } = new();
-    public Dictionary<string, PlayerMissionStats?> Stats { get; } = new();
-    public Dictionary<string, List<CompleteMissionResponse>> Streamable { get; } = new();
+    public List<KnownAccount> KnownAccounts { get; } = [];
+    public Dictionary<string, PlayerMissionStats?> Stats { get; } = [];
+    public Dictionary<string, List<CompleteMissionResponse>> Streamable { get; } = [];
     public bool StreamSucceeds { get; set; } = true;
-    public Dictionary<(string, string), CompleteMissionResponse?> CompleteMissions { get; } = new();
-    public Dictionary<string, int?> PendingFilterCols { get; } = new();
-    public Dictionary<string, IReadOnlyList<IMissionRow>?> MissionMeta { get; } = new();
-    public Dictionary<string, IReadOnlyList<CompleteMissionResponse>?> PlayerCompleteMissions { get; } = new();
-    public List<string> BackfillsQueued { get; } = new();
+    public Dictionary<(string, string), CompleteMissionResponse?> CompleteMissions { get; } = [];
+    public Dictionary<string, int?> PendingFilterCols { get; } = [];
+    public Dictionary<string, IReadOnlyList<IMissionRow>?> MissionMeta { get; } = [];
+    public Dictionary<string, IReadOnlyList<CompleteMissionResponse>?> PlayerCompleteMissions { get; } = [];
+    public List<string> BackfillsQueued { get; } = [];
 
     public Task<IReadOnlyList<string>?> GetCompleteMissionIdsAsync(string playerId) =>
         Task.FromResult(CompleteMissionIds);
@@ -68,7 +68,7 @@ internal sealed record FakeMissionRow(string Id) : IMissionRow;
 /// <summary>Quality stub: fixed value per (name,level,rarity) tuple, else 0.</summary>
 internal sealed class FakeQuality : IArtifactQuality
 {
-    public Dictionary<(ArtifactSpec.Name, ArtifactSpec.Level, ArtifactSpec.Rarity), double> Map { get; } = new();
+    public Dictionary<(ArtifactSpec.Name, ArtifactSpec.Level, ArtifactSpec.Rarity), double> Map { get; } = [];
 
     public double BaseQualityFor(ArtifactSpec spec) =>
         Map.TryGetValue((spec.name, spec.level, spec.rarity), out var q) ? q : 0;

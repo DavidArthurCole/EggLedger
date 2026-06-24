@@ -1,10 +1,9 @@
 namespace EggLedger.Desktop.Update;
 
 /// <summary>
-/// The NEW instance's side of the handshake. Ports pingOldReady
-/// (EggLedger/update/update.go): POST http://{addr}/ready?token={token},
-/// best-effort with a few quick retries until a 200 arrives. Returns true once the
-/// old instance acknowledged.
+/// The NEW instance's side of the handshake: POST http://{addr}/ready?token={token},
+/// best-effort with a few quick retries until a 200. Returns true once the old
+/// instance acknowledged.
 /// </summary>
 public sealed class HandshakeClient(HttpClient httpClient)
 {

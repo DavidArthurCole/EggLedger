@@ -3,9 +3,8 @@ using Ei;
 namespace EggLedger.Domain.Eiafx;
 
 /// <summary>
-/// Base-quality lookup. Port of Go eiafx/quality.go. Backed by a lazily-built
-/// map keyed by (name, level, rarity), so O(1) per call. Matches by value, not
-/// pointer identity.
+/// Base-quality lookup. Port of Go eiafx/quality.go, backed by a lazily-built map keyed by
+/// (name, level, rarity) so each call is O(1). Matches by value, not pointer identity.
 /// </summary>
 public static class Quality
 {

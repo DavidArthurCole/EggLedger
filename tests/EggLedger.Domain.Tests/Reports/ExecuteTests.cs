@@ -43,7 +43,7 @@ public class ExecuteTests
     {
         private readonly Dictionary<string, IReadOnlyList<object?[]>> _byPrefix = new(StringComparer.Ordinal);
 
-        public List<(string sql, IReadOnlyList<object?> args)> Calls { get; } = new();
+        public List<(string sql, IReadOnlyList<object?> args)> Calls { get; } = [];
 
         // Match on a unique substring of the query so tests need not reproduce whitespace.
         public FakeDb On(string contains, IReadOnlyList<object?[]> rows)
@@ -84,8 +84,8 @@ public class ExecuteTests
         // ship_type aggregate: raw ship enum values -> ship names via FormatLabel.
         var db = new FakeDb().On("GROUP BY m.ship", new object?[][]
         {
-            new object?[] { "9", 10L },
-            new object?[] { "3", 4L },
+            ["9", 10L],
+            ["3", 4L],
         });
         var ex = new ReportExecutor(db, new NoWeights());
         var def = new ReportDefinition { Mode = "aggregate", GroupBy = "ship_type", Subject = "missions", AccountId = "EI1" };
@@ -94,7 +94,7 @@ public class ExecuteTests
 
         Assert.False(result.Is2D);
         Assert.False(result.IsFloat);
-        Assert.Equal(new List<long> { 10, 4 }, result.Values);
+        Assert.Equal([10, 4], result.Values);
         Assert.Equal("Henerprise", result.Labels[0]); // ship 9
         Assert.Equal("BCR", result.Labels[1]);         // ship 3
         // Base where + account id is the first arg.
@@ -106,9 +106,9 @@ public class ExecuteTests
     {
         var db = new FakeDb().On("GROUP BY m.ship, m.duration_type", new object?[][]
         {
-            new object?[] { "3", "1", 2L },
-            new object?[] { "9", "0", 5L },
-            new object?[] { "9", "1", 7L },
+            ["3", "1", 2L],
+            ["9", "0", 5L],
+            ["9", "1", 7L],
         });
         var ex = new ReportExecutor(db, new NoWeights());
         var def = new ReportDefinition
@@ -123,11 +123,11 @@ public class ExecuteTests
 
         Assert.True(result.Is2D);
         // Rows sorted by raw ship value: 3 (BCR) then 9 (Henerprise).
-        Assert.Equal(new List<string> { "BCR", "Henerprise" }, result.RowLabels);
+        Assert.Equal(["BCR", "Henerprise"], result.RowLabels);
         // Cols sorted by raw duration value: 0 (Short) then 1 (Standard).
-        Assert.Equal(new List<string> { "Short", "Standard" }, result.ColLabels);
+        Assert.Equal(["Short", "Standard"], result.ColLabels);
         // Matrix row-major: [BCR/Short=0, BCR/Standard=2, Hen/Short=5, Hen/Standard=7].
-        Assert.Equal(new List<double> { 0, 2, 5, 7 }, result.MatrixValues);
+        Assert.Equal([0, 2, 5, 7], result.MatrixValues);
     }
 
     [Fact]
@@ -137,8 +137,8 @@ public class ExecuteTests
         var db = new FakeDb().On("cap_weight", new object?[][]
         {
             // rawLabel, artifactId, level, capWeight
-            new object?[] { "9", 1L, 0L, 2.0 },
-            new object?[] { "3", 2L, 0L, 1.0 },
+            ["9", 1L, 0L, 2.0],
+            ["3", 2L, 0L, 1.0],
         });
         var ex = new ReportExecutor(db, new FixedWeights());
         var def = new ReportDefinition
@@ -154,7 +154,7 @@ public class ExecuteTests
 
         Assert.True(result.IsFloat);
         // capWeight * craftingWeight(=1); values sorted descending: 2.0 then 1.0.
-        Assert.Equal(new List<double> { 2.0, 1.0 }, result.FloatValues);
+        Assert.Equal([2.0, 1.0], result.FloatValues);
     }
 
     [Fact]

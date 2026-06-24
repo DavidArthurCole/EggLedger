@@ -45,7 +45,7 @@ public sealed class IndexedDbMissionDbTests
         var result = await sut.RunReportAsync(def, Eid);
 
         Assert.False(result.Is2D);
-        Assert.Equal(new List<long> { 2, 1 }, result.Values);
+        Assert.Equal([2, 1], result.Values);
         Assert.Equal("Henerprise", result.Labels[0]);
         Assert.Equal("BCR", result.Labels[1]);
     }
@@ -57,20 +57,40 @@ public sealed class IndexedDbMissionDbTests
         db.Seed("mission", Mission("a", ship: 9, start: 100));
         db.Seed("artifact_drops", new ArtifactDropRow
         {
-            PlayerId = Eid, MissionId = "a", DropIndex = 0, ArtifactId = 12, Rarity = 3, Level = 2,
+            PlayerId = Eid,
+            MissionId = "a",
+            DropIndex = 0,
+            ArtifactId = 12,
+            Rarity = 3,
+            Level = 2,
         });
         db.Seed("artifact_drops", new ArtifactDropRow
         {
-            PlayerId = Eid, MissionId = "a", DropIndex = 1, ArtifactId = 13, Rarity = 3, Level = 1,
+            PlayerId = Eid,
+            MissionId = "a",
+            DropIndex = 1,
+            ArtifactId = 13,
+            Rarity = 3,
+            Level = 1,
         });
         db.Seed("artifact_drops", new ArtifactDropRow
         {
-            PlayerId = Eid, MissionId = "a", DropIndex = 2, ArtifactId = 14, Rarity = 1, Level = 0,
+            PlayerId = Eid,
+            MissionId = "a",
+            DropIndex = 2,
+            ArtifactId = 14,
+            Rarity = 1,
+            Level = 0,
         });
         // Other player's drop must be ignored.
         db.Seed("artifact_drops", new ArtifactDropRow
         {
-            PlayerId = "EI2", MissionId = "z", DropIndex = 0, ArtifactId = 99, Rarity = 3, Level = 0,
+            PlayerId = "EI2",
+            MissionId = "z",
+            DropIndex = 0,
+            ArtifactId = 99,
+            Rarity = 3,
+            Level = 0,
         });
 
         var sut = new IndexedDbMissionDb(db, new NoWeights());
@@ -85,7 +105,7 @@ public sealed class IndexedDbMissionDbTests
         var result = await sut.RunReportAsync(def, Eid);
 
         // rarity 3 -> 2 drops, rarity 1 -> 1 drop; desc by count.
-        Assert.Equal(new List<long> { 2, 1 }, result.Values);
+        Assert.Equal([2, 1], result.Values);
         Assert.Equal("Legendary", result.Labels[0]); // rarity 3
         Assert.Equal("Rare", result.Labels[1]);       // rarity 1
     }

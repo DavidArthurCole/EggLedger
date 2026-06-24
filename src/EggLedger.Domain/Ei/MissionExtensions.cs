@@ -1,6 +1,6 @@
 using System.Globalization;
-using Ei;
 using EggLedger.Domain.LedgerData;
+using Ei;
 
 namespace EggLedger.Domain.Ei;
 
@@ -47,30 +47,24 @@ public static class MissionExtensions
 
     public static string Display(this MissionInfo.DurationType d)
     {
-        switch (d)
+        return d switch
         {
-            case MissionInfo.DurationType.Tutorial:
-                return "Tutorial";
-            case MissionInfo.DurationType.Short:
-                return "Short";
-            case MissionInfo.DurationType.Long:
-                return "Standard";
-            case MissionInfo.DurationType.Epic:
-                return "Extended";
-        }
-        return "Unknown";
+            MissionInfo.DurationType.Tutorial => "Tutorial",
+            MissionInfo.DurationType.Short => "Short",
+            MissionInfo.DurationType.Long => "Standard",
+            MissionInfo.DurationType.Epic => "Extended",
+            _ => "Unknown",
+        };
     }
 
     public static string Display(this MissionInfo.MissionType t)
     {
-        switch (t)
+        return t switch
         {
-            case MissionInfo.MissionType.Standard:
-                return "Home";
-            case MissionInfo.MissionType.Virtue:
-                return "Virtue";
-        }
-        return "Unknown";
+            MissionInfo.MissionType.Standard => "Home",
+            MissionInfo.MissionType.Virtue => "Virtue",
+            _ => "Unknown",
+        };
     }
 
     public static List<MissionInfo> GetCompletedMissions(this EggIncFirstContactResponse fc)
@@ -89,7 +83,7 @@ public static class MissionExtensions
         foreach (var mission in allMissions)
         {
             var status = mission.status;
-            if (status == MissionInfo.Status.Complete || status == MissionInfo.Status.Archived)
+            if (status is MissionInfo.Status.Complete or MissionInfo.Status.Archived)
             {
                 var id = mission.Identifier;
                 if (seen.Add(id))
@@ -111,9 +105,9 @@ public static class MissionExtensions
             foreach (var mission in afxdb.MissionInfos)
             {
                 var status = mission.status;
-                if (status == MissionInfo.Status.Exploring
-                    || status == MissionInfo.Status.Fueling
-                    || status == MissionInfo.Status.PrepareToLaunch)
+                if (status is MissionInfo.Status.Exploring
+                    or MissionInfo.Status.Fueling
+                    or MissionInfo.Status.PrepareToLaunch)
                 {
                     inProgress.Add(mission);
                 }
@@ -123,10 +117,9 @@ public static class MissionExtensions
     }
 
     private static List<MissionInfo> StableSortByStartTime(List<MissionInfo> missions) =>
-        missions
+        [.. missions
             .Select((m, i) => (m, i))
             .OrderBy(x => x.m.StartTimeDerived)
             .ThenBy(x => x.i)
-            .Select(x => x.m)
-            .ToList();
+            .Select(x => x.m)];
 }

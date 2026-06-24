@@ -9,22 +9,10 @@ namespace EggLedger.Desktop.Update;
 
 /// <summary>
 /// Desktop self-update orchestrator and the live <see cref="IUpdateStatusProvider"/>
-/// the About overlay binds to. Ties together the pure pieces:
-/// <list type="bullet">
-/// <item>version compare (<see cref="SemVersion"/>) for the "is a newer version
-/// available" decision, ported from EggLedger/update/version.go CheckForUpdates;</item>
-/// <item>the GitHub release fetch + binary download (<see cref="GithubReleaseClient"/>);</item>
-/// <item>the token handshake (<see cref="HandshakeListener"/> /
-/// <see cref="HandshakeClient"/>);</item>
-/// <item>the self-rename + old-exit + stale cleanup (<see cref="BinaryReplacement"/>).</item>
-/// </list>
-///
-/// MANUAL-VERIFY: the full self-replace (download the new binary, launch it as
-/// EggLedger_new, hand off over loopback, the new instance renames itself, the old
-/// instance exits after a short delay) is irreducibly cross-process and cannot be
-/// unit-tested. The download, the handshake token check, the version decision, and
-/// the rename/cleanup file moves ARE tested individually. The end-to-end flow is a
-/// manual handoff on Windows.
+/// the About overlay binds to. Ties together version compare, GitHub fetch +
+/// download, the token handshake, and the self-rename/cleanup.
+/// MANUAL-VERIFY: the full cross-process self-replace cannot be unit-tested; the
+/// individual pieces (download, token check, version decision, file moves) are.
 /// </summary>
 public sealed class UpdateService : IUpdateStatusProvider
 {
@@ -57,30 +45,16 @@ public sealed class UpdateService : IUpdateStatusProvider
     private readonly IndexedDbSettings? _settings;
     private readonly Func<DateTimeOffset> _now;
 
-    private UpdatePhase _phase = UpdatePhase.UpToDate;
-    private string? _availableVersion;
-    private string? _releaseNotes;
-    private long _downloaded;
-    private long _total;
-    private string? _message;
-
     /// <param name="exitAction">
-    /// The OLD-instance exit invoked once the new instance has reported in (or the
-    /// handshake wait timed out). In the desktop host this exits the process so the
-    /// new instance can rename EggLedger_new -&gt; EggLedger. Injected so the handoff
-    /// has no untested side effect; tests pass a fake. Defaults to a no-op.
+    /// OLD-instance exit run once the new instance reports in (or the wait times out),
+    /// letting it rename EggLedger_new -&gt; EggLedger. Injected for testing; defaults
+    /// to a no-op.
     /// </param>
     /// <param name="settings">
-    /// Settings store backing the 12h cooldown snapshot (the cached latest tag + the
-    /// last-check timestamp, same keys/format the Go host persists). When null the
-    /// cooldown is disabled and every check polls (matching the pre-snapshot behavior);
-    /// the live desktop host supplies the SQLite-backed store.
+    /// Store backing the 12h cooldown snapshot. Null disables the cooldown so every
+    /// check polls; the live host supplies the SQLite-backed store.
     /// </param>
-    /// <param name="now">
-    /// Wall-clock source for the cooldown decision (ports Go <c>time.Now()</c>).
-    /// Injected so the cooldown is deterministically unit-testable; defaults to the
-    /// real UTC clock.
-    /// </param>
+    /// <param name="now">Wall clock for the cooldown decision (injected for testing).</param>
     public UpdateService(
         GithubReleaseClient github,
         Func<string> runningVersion,
@@ -104,9 +78,8 @@ public sealed class UpdateService : IUpdateStatusProvider
     }
 
     /// <summary>
-    /// Build the argv passed to the freshly launched EggLedger_new instance. Pure +
-    /// testable; mirrors the args HandleDownloadAndInstall constructs
-    /// (--replace-pid, --replace-path, and the handshake pair when a listener is up).
+    /// Build the argv passed to the launched EggLedger_new instance: --replace-pid,
+    /// --replace-path, plus the handshake pair when a listener is up.
     /// </summary>
     public static IReadOnlyList<string> BuildReplaceArgs(int oldPid, string oldPath, string? handshakeAddr, string? handshakeToken)
     {
@@ -123,34 +96,23 @@ public sealed class UpdateService : IUpdateStatusProvider
         return args;
     }
 
-    public UpdatePhase Phase => _phase;
-    public string? AvailableVersion => _availableVersion;
-    public string? ReleaseNotes => _releaseNotes;
-    public long DownloadedBytes => _downloaded;
-    public long TotalBytes => _total;
-    public string? Message => _message;
+    public UpdatePhase Phase { get; private set; } = UpdatePhase.UpToDate;
+    public string? AvailableVersion { get; private set; }
+    public string? ReleaseNotes { get; private set; }
+    public long DownloadedBytes { get; private set; }
+    public long TotalBytes { get; private set; }
+    public string? Message { get; private set; }
 
     public event Action? Changed;
 
     /// <summary>
-    /// Poll GitHub and decide whether a newer version is available. Ports
-    /// CheckForUpdates including the 12h cooldown + stored snapshot from the Go host:
-    /// <list type="number">
-    /// <item>parse the running version;</item>
-    /// <item>if not forced and the stored <c>known_latest_version</c> already parses
-    /// newer than running, skip the remote poll and report Available from the snapshot;</item>
-    /// <item>if not forced and less than <see cref="UpdateCheckInterval"/> has elapsed
-    /// since <c>last_update_check_at</c>, skip the poll entirely (stay UpToDate);</item>
-    /// <item>otherwise fetch latest stable (and pre-releases when running is newer),
-    /// persist the fetched tag + now to the snapshot, and report Available iff
-    /// running &lt; latest.</item>
-    /// </list>
+    /// Poll GitHub and decide whether a newer version is available, with the 12h
+    /// cooldown + stored snapshot: a known-newer stored tag reports Available without
+    /// polling; within the cooldown an unforced check stays UpToDate; otherwise fetch
+    /// latest (and pre-releases when running is newer), persist the snapshot, and
+    /// report Available iff running &lt; latest.
     /// </summary>
-    /// <param name="force">
-    /// Bypass the cooldown and always poll (ports Go <c>_forceUpdateCheck</c> /
-    /// <c>--force-update-check</c>). The About-overlay user check passes true; the
-    /// automatic startup check passes false.
-    /// </param>
+    /// <param name="force">Bypass the cooldown and always poll (About-overlay check passes true).</param>
     public async Task CheckForUpdatesAsync(bool force = false)
     {
         SetPhase(UpdatePhase.Checking);
@@ -169,9 +131,9 @@ public sealed class UpdateService : IUpdateStatusProvider
             && SemVersion.TryParse(snapshot.KnownTag, out var knownVersion) && knownVersion is not null
             && knownVersion.GreaterThan(running))
         {
-            _availableVersion = snapshot.KnownTag;
-            _releaseNotes = snapshot.KnownNotes;
-            _message = null;
+            AvailableVersion = snapshot.KnownTag;
+            ReleaseNotes = snapshot.KnownNotes;
+            Message = null;
             SetPhase(UpdatePhase.Available);
             return;
         }
@@ -180,9 +142,9 @@ public sealed class UpdateService : IUpdateStatusProvider
         // stored known-latest was not newer (handled above), so we are up to date.
         if (!force && snapshot.LastCheckedAt is { } last && _now() - last < UpdateCheckInterval)
         {
-            _availableVersion = null;
-            _releaseNotes = null;
-            _message = null;
+            AvailableVersion = null;
+            ReleaseNotes = null;
+            Message = null;
             SetPhase(UpdatePhase.UpToDate);
             return;
         }
@@ -215,23 +177,21 @@ public sealed class UpdateService : IUpdateStatusProvider
             }
         }
 
-        // Persist the snapshot + bump the last-check timestamp. Mirrors Go
-        // _host.SetUpdateCheck(latestTag, latestReleaseNotes), which writes
-        // known_latest_version, known_latest_release_notes, and last_update_check_at.
+        // Persist the snapshot + bump the last-check timestamp.
         await WriteSnapshotAsync(latestTag, latestNotes).ConfigureAwait(false);
 
         if (running.LessThan(latestVersion))
         {
-            _availableVersion = latestTag;
-            _releaseNotes = latestNotes;
-            _message = null;
+            AvailableVersion = latestTag;
+            ReleaseNotes = latestNotes;
+            Message = null;
             SetPhase(UpdatePhase.Available);
         }
         else
         {
-            _availableVersion = null;
-            _releaseNotes = null;
-            _message = null;
+            AvailableVersion = null;
+            ReleaseNotes = null;
+            Message = null;
             SetPhase(UpdatePhase.UpToDate);
         }
     }
@@ -241,10 +201,8 @@ public sealed class UpdateService : IUpdateStatusProvider
         DateTimeOffset? LastCheckedAt, string? KnownTag, string? KnownNotes);
 
     /// <summary>
-    /// Read the stored cooldown snapshot (last-check timestamp + cached latest tag +
-    /// notes). Mirrors the Go host UpdateCheckSnapshot. Returns an empty snapshot when
-    /// no settings store is wired or a value is missing/unparseable, so a fresh data
-    /// dir always polls.
+    /// Read the stored cooldown snapshot. Returns empty when no store is wired or a
+    /// value is missing/unparseable, so a fresh data dir always polls.
     /// </summary>
     private async Task<UpdateCheckSnapshot> ReadSnapshotAsync()
     {
@@ -268,11 +226,8 @@ public sealed class UpdateService : IUpdateStatusProvider
     }
 
     /// <summary>
-    /// Persist the fetched latest tag + notes and stamp the last-check time to now.
-    /// Mirrors Go SetUpdateCheck: writes <c>known_latest_version</c>,
-    /// <c>known_latest_release_notes</c>, and <c>last_update_check_at</c> as an
-    /// RFC3339Nano-compatible round-trip timestamp (matches the Go on-disk format).
-    /// No-op when no settings store is wired.
+    /// Persist the fetched tag + notes and stamp last-check to now (round-trip
+    /// timestamp matching the Go on-disk format). No-op when no store is wired.
     /// </summary>
     private async Task WriteSnapshotAsync(string latestTag, string latestNotes)
     {
@@ -290,19 +245,15 @@ public sealed class UpdateService : IUpdateStatusProvider
     }
 
     /// <summary>
-    /// Download the release binary for <paramref name="tag"/> and begin the
-    /// self-replace. Ports HandleDownloadAndInstall: download to the _new path, then
-    /// kick off the OLD-instance handoff (start the handshake listener, launch the
-    /// new instance with the token + replace flags, and on a successful /ready ping
-    /// exit this process after the delay so the new instance can rename itself). The
-    /// download + listener setup are testable in pieces; the live two-process
-    /// choreography is MANUAL-VERIFY.
+    /// Download the release binary for tag to the _new path, then begin the
+    /// OLD-instance handoff. MANUAL-VERIFY: the live two-process choreography is not
+    /// unit-tested.
     /// </summary>
     public async Task DownloadAndInstallAsync(string tag)
     {
-        _downloaded = 0;
-        _total = 0;
-        _message = null;
+        DownloadedBytes = 0;
+        TotalBytes = 0;
+        Message = null;
         SetPhase(UpdatePhase.Downloading);
 
         var exePath = _exePath();
@@ -322,11 +273,8 @@ public sealed class UpdateService : IUpdateStatusProvider
         var tempPath = NewBinaryTempPath(exePath);
         TryDelete(tempPath);
 
-        // The Windows asset is the raw binary (downloaded straight to tempPath). The
-        // linux asset is a .tar.gz and the mac assets are .zip; those are downloaded
-        // to a temp archive then the binary is extracted + chmod'd into tempPath.
-        // Mirrors the Windows-raw vs non-Windows-archive branch in
-        // HandleDownloadAndInstall.
+        // Windows asset is the raw binary (straight to tempPath). Linux .tar.gz / mac
+        // .zip assets download to a temp archive, then extract + chmod into tempPath.
         var assetName = GithubReleaseClient.ExpectedAssetName();
         if (ArchiveExtraction.IsArchive(assetName))
         {
@@ -360,33 +308,21 @@ public sealed class UpdateService : IUpdateStatusProvider
             }
         }
 
-        _availableVersion = tag;
+        AvailableVersion = tag;
         SetPhase(UpdatePhase.Ready);
 
-        // Hand off to the freshly downloaded binary. Matches the Go order in
-        // HandleDownloadAndInstall: start the handshake listener, launch the new
-        // instance with the token, wait for /ready, then exit the old instance after
-        // the delay. The handoff blocks on the handshake + exit delay, so run it off
-        // the caller's path (the Go binding likewise returns and lets the select-on-
-        // HandoffChan goroutine exit the old instance).
+        // Hand off: start the listener, launch the new instance with the token, wait
+        // for /ready, then exit after the delay. Blocks on the handshake + exit delay.
         await RunSelfReplaceHandoffAsync(_exitAction, _handshakeTimeout, _exitDelay).ConfigureAwait(false);
     }
 
     /// <summary>
-    /// MANUAL-VERIFY HANDOFF. Launch the downloaded binary as the NEW instance, then
-    /// the OLD instance (this one) hands off and exits so the new instance can rename
-    /// EggLedger_new -&gt; EggLedger. This is the irreducibly cross-process self-replace:
-    /// it starts a second process, opens a loopback handshake listener, waits for the
-    /// new instance's /ready ping, and exits after <see cref="OldExitDelay"/>. The
-    /// constituent pieces (<see cref="BuildReplaceArgs"/>, the handshake token check,
-    /// the rename, the exit delay) are unit-tested; the live two-process choreography
-    /// is verified by hand on Windows and is NOT exercised by the test suite. Returns
-    /// false if the launch failed.
+    /// MANUAL-VERIFY: launch the downloaded binary as the NEW instance, open a
+    /// loopback handshake listener, wait for its /ready ping, and exit after
+    /// <see cref="OldExitDelay"/> so it can rename itself. Returns false if the launch
+    /// failed. The live two-process choreography is not unit-tested.
     /// </summary>
-    /// <param name="exitAction">
-    /// Invoked once the new instance reports in (or the wait times out). In the real
-    /// host this exits the process; injected so the method has no untested side effect.
-    /// </param>
+    /// <param name="exitAction">Run once the new instance reports in or the wait times out (injected for testing).</param>
     public async Task<bool> RunSelfReplaceHandoffAsync(
         Func<Task> exitAction,
         TimeSpan? handshakeTimeout = null,
@@ -439,10 +375,7 @@ public sealed class UpdateService : IUpdateStatusProvider
         return true;
     }
 
-    /// <summary>
-    /// Path of the freshly downloaded binary: &lt;exe&gt;_new (+ .exe on Windows).
-    /// Mirrors the tempBinName logic in HandleDownloadAndInstall.
-    /// </summary>
+    /// <summary>Path of the downloaded binary: &lt;exe&gt;_new (+ .exe on Windows).</summary>
     public static string NewBinaryTempPath(string exePath)
     {
         var dir = Path.GetDirectoryName(exePath) ?? "";
@@ -462,20 +395,20 @@ public sealed class UpdateService : IUpdateStatusProvider
 
     private void OnProgress(long downloaded, long total)
     {
-        _downloaded = downloaded;
-        _total = total;
+        DownloadedBytes = downloaded;
+        TotalBytes = total;
         Changed?.Invoke();
     }
 
     private void SetPhase(UpdatePhase phase)
     {
-        _phase = phase;
+        Phase = phase;
         Changed?.Invoke();
     }
 
     private void Fail(string message)
     {
-        _message = message;
+        Message = message;
         SetPhase(UpdatePhase.Failed);
     }
 

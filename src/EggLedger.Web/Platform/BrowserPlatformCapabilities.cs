@@ -2,13 +2,7 @@ using Microsoft.JSInterop;
 
 namespace EggLedger.Web.Platform;
 
-/// <summary>
-/// Browser implementation of <see cref="IPlatformCapabilities"/>. No OS file
-/// access: file operations route through downloads, the save dialog returns null
-/// (the browser owns the download path), restart is a page reload, and window
-/// size reads the viewport. <see cref="IsDesktop"/> is false so desktop-only
-/// controls stay hidden.
-/// </summary>
+/// <summary>Browser implementation of <see cref="IPlatformCapabilities"/>. No OS file access: file ops route through downloads, save dialog returns null, restart is a reload. <see cref="IsDesktop"/> is false.</summary>
 public sealed class BrowserPlatformCapabilities(IJSRuntime js) : IPlatformCapabilities, IAsyncDisposable
 {
     private const string ModulePath = "./_content/EggLedger.Web/js/platform.js";

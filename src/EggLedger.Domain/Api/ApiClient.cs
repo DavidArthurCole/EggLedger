@@ -1,14 +1,13 @@
 using System.IO.Compression;
-using Ei;
 using EggLedger.Domain.Ei;
+using Ei;
 using ProtoBuf;
 
 namespace EggLedger.Domain.Api;
 
 /// <summary>
-/// Port of Go api/request.go. Pure HTTP+protobuf client against the Egg Inc
-/// API. POSTs base64(protobuf) as form field <c>data</c>, reads a base64 body,
-/// decodes to protobuf. The contract is frozen; defaults match the Go source.
+/// Port of Go api/request.go. POSTs base64(protobuf) as form field <c>data</c>, reads a
+/// base64 body, decodes to protobuf. Contract frozen; defaults match the Go source.
 /// </summary>
 public sealed partial class ApiClient
 {
@@ -47,10 +46,8 @@ public sealed partial class ApiClient
     public Platform Platform { get; }
 
     /// <summary>
-    /// Creates a client. Pass an <see cref="HttpClient"/> (or one built from a
-    /// custom <see cref="HttpMessageHandler"/>) to stub the transport in tests.
-    /// When null, a shared 5s-timeout client is used. Constants can be
-    /// overridden but default exactly to the live-game values.
+    /// Pass an <see cref="HttpClient"/> to stub the transport in tests; null uses a shared
+    /// 5s-timeout client. Constants default to the live-game values.
     /// </summary>
     public ApiClient(
         HttpClient? httpClient = null,
@@ -68,10 +65,7 @@ public sealed partial class ApiClient
         Platform = platform;
     }
 
-    /// <summary>
-    /// Builds a BasicRequestInfo. Platform is sent as its proto enum name
-    /// (e.g. "IOS"), matching Go's Platform.String().
-    /// </summary>
+    /// <summary>Platform is sent as its proto enum name (e.g. "IOS"), matching Go's Platform.String().</summary>
     public BasicRequestInfo NewBasicRequestInfo(string userId) => new()
     {
         EiUserId = userId,
@@ -82,10 +76,8 @@ public sealed partial class ApiClient
     };
 
     /// <summary>
-    /// Marshals the request, base64-encodes it, POSTs it as
-    /// <c>application/x-www-form-urlencoded</c> with form key <c>data</c>, then
-    /// base64-decodes the response body. Throws on non-2xx or transport errors.
-    /// Returns the base64-decoded API response (the "raw payload").
+    /// POSTs base64(protobuf) as form key <c>data</c> and returns the base64-decoded response
+    /// body (the "raw payload"). Throws on non-2xx or transport errors.
     /// </summary>
     public async Task<byte[]> RequestRawPayloadAsync<TReq>(
         string endpoint,
@@ -147,10 +139,8 @@ public sealed partial class ApiClient
     }
 
     /// <summary>
-    /// Decodes a raw payload into <typeparamref name="TMsg"/>. When
-    /// <paramref name="authenticated"/>, the payload is an AuthenticatedMessage
-    /// whose Message may be zlib-compressed (checked via Compressed). Mirrors Go
-    /// DecodeAPIResponse, including the corrupted-UTF-8 error translation.
+    /// Decodes a raw payload into <typeparamref name="TMsg"/>. When authenticated, the payload
+    /// is an AuthenticatedMessage whose Message may be zlib-compressed. Mirrors Go DecodeAPIResponse.
     /// </summary>
     public TMsg DecodeApiResponse<TMsg>(string apiUrl, byte[] payload, bool authenticated)
     {
@@ -178,7 +168,7 @@ public sealed partial class ApiClient
                 $"unmarshaling {apiUrl} response as AuthenticatedMessage: {ChainText(ex)}", ex);
         }
 
-        byte[] msgBytes = authMsg.Message ?? Array.Empty<byte>();
+        byte[] msgBytes = authMsg.Message ?? [];
         if (authMsg.Compressed)
         {
             try
@@ -219,10 +209,8 @@ public sealed partial class ApiClient
     }
 
     /// <summary>
-    /// Flattens an exception chain into "Outer -> Inner -> ..." text. WASM strips
-    /// exception-message resource strings, so a reflection-path failure surfaces as
-    /// the opaque key "Arg_TargetInvocationException" with the real cause one or
-    /// more InnerExceptions down; this makes that cause visible in the UI error.
+    /// Flattens an exception chain into "Outer -> Inner -> ..." text. WASM strips exception-message
+    /// resource strings, so the real cause sits one or more InnerExceptions down; this surfaces it.
     /// </summary>
     private static string ChainText(Exception ex)
     {

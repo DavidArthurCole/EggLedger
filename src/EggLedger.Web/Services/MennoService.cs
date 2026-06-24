@@ -1,35 +1,24 @@
 using System.IO.Compression;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Ei;
 using EggLedger.Domain.Eiafx;
 using EggLedger.Domain.Reports;
 using EggLedger.Domain.Util;
+using Ei;
 
 namespace EggLedger.Web.Services;
 
-/// <summary>
-/// Decode helpers for the Menno community drop-rate payload. Separated from the
-/// HTTP fetch so the typed decode and its loud-failure validation can be unit
-/// tested without a network stub.
-/// </summary>
+/// <summary>Decode helpers for the Menno payload, separated from the HTTP fetch so the typed decode and validation can be unit tested without a network stub.</summary>
 public static class MennoDecode
 {
     private static readonly JsonSerializerOptions Options = new()
     {
         PropertyNameCaseInsensitive = false,
-        // A renamed top-level field is harmless (it just does not bind), but an
-        // unexpected enum-as-string or type mismatch must surface, not be coerced.
+        // A renamed field just fails to bind, but a type mismatch must surface rather than be coerced.
         NumberHandling = JsonNumberHandling.Strict,
     };
 
-    /// <summary>
-    /// Decodes the raw Menno JSON array into typed records and validates that the
-    /// required nested objects bound. Throws <see cref="MennoSchemaException"/>
-    /// when the payload is empty, is not a JSON array, or an item is missing a
-    /// required nested field. This is the loud-failure guarantee: a schema drift
-    /// produces an exception rather than silently zeroed data.
-    /// </summary>
+    /// <summary>Decodes the raw JSON array into typed records and validates required nested objects bound. Throws <see cref="MennoSchemaException"/> on empty/non-array/missing-field, so a schema drift fails loudly.</summary>
     public static List<ConfigurationItem> Decode(ReadOnlySpan<byte> json)
     {
         List<ConfigurationItem>? items;
@@ -54,11 +43,7 @@ public static class MennoDecode
         return items;
     }
 
-    /// <summary>
-    /// Verifies the required nested objects of a single item bound. STJ leaves a
-    /// missing or renamed nested object null; the comparison math dereferences
-    /// these, so a null here is exactly the silent-drop the Go path suffered.
-    /// </summary>
+    /// <summary>Verifies the required nested objects of a single item bound. STJ leaves a missing nested object null and the comparison math dereferences these, so a null here would be a silent drop.</summary>
     private static void Validate(ConfigurationItem item, int index)
     {
         var sc = item.ShipConfiguration
@@ -77,38 +62,17 @@ public static class MennoDecode
         new($"Menno item {index} is missing required field '{field}'; schema may have changed");
 }
 
-/// <summary>
-/// Raised when the Menno payload cannot be decoded into the typed model, or an
-/// item is missing a required field. Surfacing this is the point of the typed
-/// port: the Go loose decode hid these failures.
-/// </summary>
+/// <summary>Raised when the Menno payload cannot be decoded or an item is missing a required field.</summary>
 public sealed class MennoSchemaException : Exception
 {
     public MennoSchemaException(string message) : base(message) { }
     public MennoSchemaException(string message, Exception inner) : base(message, inner) { }
 }
 
-/// <summary>
-/// Community drop-rate stats client. C# port of the Go menno package
-/// (mennodata.go fetch + mennoreports.go ExecuteComparison), scoped to the
-/// browser.
-///
-/// <para>Fetches the gzipped community aggregate from the Azure blob, decodes it
-/// into the strongly-typed <see cref="ConfigurationItem"/> model (failing loudly
-/// on schema drift), and caches it in memory. The Go desktop app cached the
-/// decoded JSON to internal/menno-data.json; the browser has no writable disk, so
-/// the cache is in-memory only and lives for the lifetime of the scoped service.</para>
-///
-/// <para>Scope: read-only consumption (download + decode + ExecuteComparison).
-/// The community-contribution upload flow is a separate feature and is not
-/// ported here.</para>
-/// </summary>
+/// <summary>Community drop-rate stats client: fetches the gzipped aggregate, typed-decodes it (loud on schema drift), and caches it in memory. The browser has no writable disk, so the cache lives only for the scoped service's lifetime. Read-only: no upload flow.</summary>
 public sealed class MennoService
 {
-    /// <summary>
-    /// Azure blob endpoint for the gzipped community aggregate. Mirrors the Go
-    /// constant in mennodata.go.
-    /// </summary>
+    /// <summary>Azure blob endpoint for the gzipped community aggregate.</summary>
     public const string DataUrl =
         "https://eggincdatacollectionsa.blob.core.windows.net/mission-data/all-data.json.gz";
 
@@ -121,13 +85,7 @@ public sealed class MennoService
     /// <summary>True once a successful download has populated the in-memory cache.</summary>
     public bool HasData => _cache is { Count: > 0 };
 
-    /// <summary>
-    /// Ensures the in-memory cache is populated, downloading once. Concurrent
-    /// callers (several Menno-enabled report cards rendering at once) share a single
-    /// in-flight download rather than each hitting the network. Returns immediately
-    /// when the cache is already populated. A failed download is not cached, so a
-    /// later call retries.
-    /// </summary>
+    /// <summary>Ensures the cache is populated, downloading once. Concurrent callers share a single in-flight download. A failed download is not cached, so a later call retries.</summary>
     public Task<IReadOnlyList<ConfigurationItem>> EnsureLoadedAsync(CancellationToken cancellationToken = default)
     {
         if (_cache is { Count: > 0 } cached)
@@ -150,12 +108,7 @@ public sealed class MennoService
         }
     }
 
-    /// <summary>
-    /// Downloads the gzipped Menno aggregate, decompresses it, typed-decodes it
-    /// (loud on schema drift), and stores it in the in-memory cache. Returns the
-    /// decoded items. Throws <see cref="MennoSchemaException"/> on a bad payload;
-    /// network and decompression errors propagate as their native exceptions.
-    /// </summary>
+    /// <summary>Downloads, decompresses, typed-decodes, and caches the aggregate. Throws <see cref="MennoSchemaException"/> on a bad payload; network/decompression errors propagate natively.</summary>
     public async Task<IReadOnlyList<ConfigurationItem>> RefreshAsync(CancellationToken cancellationToken = default)
     {
         await using var compressed = await _http.GetStreamAsync(DataUrl, cancellationToken).ConfigureAwait(false);
@@ -171,17 +124,7 @@ public sealed class MennoService
     /// <summary>The cached items, or null if no successful refresh has run.</summary>
     public IReadOnlyList<ConfigurationItem>? CachedItems => _cache;
 
-    /// <summary>
-    /// Runs a Menno community-data comparison for the given report definition over
-    /// the supplied community items, returning a <see cref="ReportResult"/> matrix
-    /// matching the user's report dimensions. C# port of Go
-    /// menno.ExecuteComparison. Returns null when the report is ineligible (Menno
-    /// disabled, non-artifacts subject, non-comparable group-bys, empty inputs).
-    ///
-    /// <para>rawRowLabels / rawColLabels are the pre-FormatLabel integer strings
-    /// the report executor emits, used to map display cells back to Menno record
-    /// ids without string matching.</para>
-    /// </summary>
+    /// <summary>Runs a community-data comparison, returning a <see cref="ReportResult"/> matrix or null when the report is ineligible. rawRowLabels/rawColLabels are the pre-FormatLabel integer strings used to map cells back to record ids without string matching.</summary>
     public static ReportResult? ExecuteComparison(
         ReportDefinition def,
         IReadOnlyList<ConfigurationItem> items,
@@ -362,19 +305,19 @@ public sealed class MennoService
         {
             RowLabels = rowLabels,
             ColLabels = colLabels,
-            MatrixValues = matrixValues.ToList(),
+            MatrixValues = [.. matrixValues],
             Is2D = true,
             IsFloat = true,
             Weight = def.Weight,
-            RawRowLabels = rawRowLabels.ToList(),
-            RawColLabels = rawColLabels.ToList(),
+            RawRowLabels = [.. rawRowLabels],
+            RawColLabels = [.. rawColLabels],
             AirtimeMatrixValues = airtimeMatrixValues?.ToList(),
         };
     }
 
     private delegate bool MennoMatcher(ConfigurationItem item, string rawVal);
 
-    /// <summary>Builds a cell-matcher for a group-by dimension. Port of Go mennoMatcherFor.</summary>
+    /// <summary>Builds a cell-matcher for a group-by dimension.</summary>
     private static MennoMatcher? MatcherFor(string groupBy) => groupBy switch
     {
         "ship_type" => (item, raw) => TryInt(raw, out var v) && item.ShipConfiguration!.ShipType!.Id == v,
@@ -387,7 +330,7 @@ public sealed class MennoService
         _ => null,
     };
 
-    /// <summary>Set of artifact type ids in a family, or null (match all) when empty. Port of Go familyAFXIDSet.</summary>
+    /// <summary>Set of artifact type ids in a family, or null (match all) when empty.</summary>
     private static HashSet<int>? FamilyAfxIdSet(string familyWeight)
     {
         if (familyWeight == "")
@@ -398,14 +341,10 @@ public sealed class MennoService
         {
             return null;
         }
-        return new HashSet<int>(ids);
+        return [.. ids];
     }
 
-    /// <summary>
-    /// Level-adjusted nominal capacity for a (ship, duration, level). Port of Go
-    /// mennoLevelAdjustedCapacityFor: base + levelCapacityBump * level, with a 4.0
-    /// fallback when the lookup misses or the config is unavailable.
-    /// </summary>
+    /// <summary>Level-adjusted nominal capacity: base + levelCapacityBump * level, with a 4.0 fallback when the lookup misses.</summary>
     private static double LevelAdjustedCapacityFor(int shipId, int durationId, int level)
     {
         var ship = (MissionInfo.Spaceship)shipId;
@@ -431,7 +370,7 @@ public sealed class MennoService
         return 4;
     }
 
-    /// <summary>Nominal flight seconds for a (ship, duration), or 0 if absent. Port of Go mennoDurationSecondsFor.</summary>
+    /// <summary>Nominal flight seconds for a (ship, duration), or 0 if absent.</summary>
     private static double DurationSecondsFor(int shipId, int durationId)
     {
         var ship = (MissionInfo.Spaceship)shipId;

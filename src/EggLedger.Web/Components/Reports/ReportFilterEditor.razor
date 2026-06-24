@@ -1,11 +1,7 @@
 @using EggLedger.Domain.Reports
 
-@*
-    AND-filter editor for the report builder. Port of the AND-conditions portion
-    of useReportFilters.ts / ReportBuilderPanel.vue. Each row picks a field, an
-    operator, and a free-text value. OR groups are deferred (note in plan). Values
-    are free text; the option pickers (select/modal) are simplified to text input.
-*@
+@* AND-filter editor: each row picks a field, operator, and free-text value. OR groups
+   deferred; option pickers (select/modal) simplified to text input. *@
 
 <div class="flex flex-col gap-2">
     <div class="flex items-center justify-between">
@@ -41,7 +37,7 @@
 </div>
 
 @code {
-    /// <summary>The live AND-condition list, mutated in place and surfaced to the parent.</summary>
+    /// <summary>Live AND-condition list, mutated in place and surfaced to the parent.</summary>
     [Parameter, EditorRequired]
     public List<FilterCondition> Conditions { get; set; } = new();
 

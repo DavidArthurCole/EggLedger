@@ -3,11 +3,9 @@ using System.Diagnostics;
 namespace EggLedger.Desktop.Update;
 
 /// <summary>
-/// Seam over checking whether a PID is still alive. Ports the per-OS
-/// waitForProcessExit (EggLedger/update/update_windows.go uses WaitForSingleObject;
-/// update_unix.go polls kill(pid, 0)). .NET's Process API is cross-platform, so a
-/// single managed impl replaces both; the interface keeps it injectable for tests
-/// (current process exists, a bogus PID does not).
+/// Seam over checking whether a PID is still alive. A single managed Process-based
+/// impl replaces the Go per-OS waitForProcessExit; the interface keeps it
+/// injectable for tests.
 /// </summary>
 public interface IProcessProbe
 {
@@ -16,11 +14,9 @@ public interface IProcessProbe
 }
 
 /// <summary>
-/// Default cross-platform process probe. Mirrors the Go semantics: a PID we cannot
-/// open / find is treated as already gone (Exists = false). On Windows a process
-/// that has exited but not yet been reaped may still report HasExited; we honor
-/// HasExited so a finished process is reported gone, matching the authoritative
-/// WaitForSingleObject behavior the Go Windows path relies on.
+/// Default cross-platform process probe. A PID we cannot open/find is treated as
+/// gone (Exists = false); HasExited is honored so a finished-but-unreaped process
+/// reports gone, matching the Go WaitForSingleObject behavior.
 /// </summary>
 public sealed class ProcessProbe : IProcessProbe
 {
@@ -48,10 +44,9 @@ public sealed class ProcessProbe : IProcessProbe
 }
 
 /// <summary>
-/// Polling wait-for-exit built on an <see cref="IProcessProbe"/>. Ports
-/// waitForProcessExit: returns true once the process is gone, or false when the
-/// timeout elapses while it is still alive. A zero timeout is a single immediate
-/// probe (used by the lock-staleness check and stale-binary cleanup).
+/// Polling wait-for-exit over an <see cref="IProcessProbe"/>. Returns true once the
+/// process is gone, false on timeout while still alive. A zero timeout is a single
+/// immediate probe.
 /// </summary>
 public static class ProcessWait
 {

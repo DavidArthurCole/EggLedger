@@ -50,14 +50,14 @@ public class XlsxWriterTests
     {
         var contents = OpenXlsx(BuildXlsx());
         string[] required =
-        {
+        [
             "[Content_Types].xml",
             "_rels/.rels",
             "xl/workbook.xml",
             "xl/_rels/workbook.xml.rels",
             "xl/styles.xml",
             "xl/worksheets/sheet1.xml",
-        };
+        ];
         foreach (var name in required)
         {
             Assert.True(contents.ContainsKey(name), "missing required ZIP entry: " + name);
@@ -69,7 +69,7 @@ public class XlsxWriterTests
     {
         var sheet = OpenXlsx(BuildXlsx())["xl/worksheets/sheet1.xml"];
         string[] wants =
-        {
+        [
             "<cols>",
             "width=\"20.00\"",
             "<sheetData>",
@@ -77,7 +77,7 @@ public class XlsxWriterTests
             "<row r=\"2\">",
             "r=\"A1\"",
             "r=\"B2\"",
-        };
+        ];
         foreach (var w in wants)
         {
             Assert.Contains(w, sheet, StringComparison.Ordinal);

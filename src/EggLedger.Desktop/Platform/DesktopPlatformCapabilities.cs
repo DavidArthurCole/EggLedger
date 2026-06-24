@@ -4,12 +4,10 @@ using EggLedger.Web.Platform;
 namespace EggLedger.Desktop.Platform;
 
 /// <summary>
-/// Native desktop implementation of <see cref="IPlatformCapabilities"/> for the
-/// Photino host. Open + reveal-in-folder shell out via <see cref="IProcessRunner"/>
-/// using the per-OS commands from <see cref="DesktopCommandBuilder"/> (ported from
-/// the Go platform package). The save dialog and window size come from the Photino
-/// window via <see cref="IDesktopWindow"/>. Restart relaunches the current exe then
-/// exits. <see cref="IsDesktop"/> is true so desktop-only UI is enabled.
+/// Native <see cref="IPlatformCapabilities"/> for the Photino host. Open + reveal
+/// shell out via <see cref="IProcessRunner"/> with per-OS commands from
+/// <see cref="DesktopCommandBuilder"/>; save dialog and window size come from the
+/// Photino window. <see cref="IsDesktop"/> is true to enable desktop-only UI.
 /// </summary>
 public sealed class DesktopPlatformCapabilities(IProcessRunner processRunner, IDesktopWindow window) : IPlatformCapabilities
 {
@@ -20,8 +18,7 @@ public sealed class DesktopPlatformCapabilities(IProcessRunner processRunner, ID
 
     public Task OpenFileAsync(string path)
     {
-        // Absolutize before shelling out, matching Go platform's filepath.Abs; the
-        // command builder stays pure so absolutization lives here in the host layer.
+        // Absolutize here (the command builder stays pure), matching Go filepath.Abs.
         var (exe, args) = DesktopCommandBuilder.BuildOpenCommand(CurrentPlatform(), Path.GetFullPath(path));
         return _processRunner.RunAsync(exe, args);
     }
@@ -33,18 +30,14 @@ public sealed class DesktopPlatformCapabilities(IProcessRunner processRunner, ID
     }
 
     /// <summary>
-    /// MANUAL-VERIFY: delegates to the native Photino save dialog. Returns the
-    /// chosen path or null on cancel (the isolated, testable contract; the dialog
-    /// itself is not unit-tested).
+    /// MANUAL-VERIFY: native Photino save dialog. Returns the chosen path or null on
+    /// cancel.
     /// </summary>
     public Task<string?> ChooseSaveFilePathAsync(string defaultName)
         => Task.FromResult(_window.ShowSaveFileDialog(defaultName));
 
     /// <summary>
-    /// Relaunch the current executable then exit. The relaunch command is built from
-    /// the running process path (testable via the runner seam); the actual exit is
-    /// MANUAL-VERIFY. This is only the restart primitive; the self-update download
-    /// and handshake are D4.
+    /// Relaunch the current exe then exit. MANUAL-VERIFY: the exit is not unit-tested.
     /// </summary>
     public async Task RestartAppAsync()
     {

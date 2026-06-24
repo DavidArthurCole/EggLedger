@@ -1,11 +1,6 @@
 @inject NavigationManager Nav
 
-@*
-    Empty-state box shown when a view has no mission data yet. Port of
-    www/src/components/NoDataFallback.vue: directs the user to the Ledger tab to
-    fetch. Vue emits a navigate event; here the Ledger tab is a real route, so the
-    button navigates to "/".
-*@
+@* Empty-state box directing the user to the Ledger tab (route "/") to fetch. *@
 <div class="text-center mt-3 rounded-md border border-red-700 py-2">
     <span class="text-red-700">
         @Message<br />Please <b>Fetch</b> from the

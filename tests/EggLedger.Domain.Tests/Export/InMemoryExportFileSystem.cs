@@ -29,7 +29,7 @@ internal sealed class InMemoryExportFileSystem : IExportFileSystem
             {
                 continue;
             }
-            var rest = path.Substring(prefix.Length);
+            var rest = path[prefix.Length..];
             if (rest.Contains(System.IO.Path.DirectorySeparatorChar))
             {
                 continue;

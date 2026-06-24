@@ -4,9 +4,8 @@ using ProtoBuf;
 namespace EggLedger.Domain.Eiafx;
 
 /// <summary>
-/// Default <see cref="IEiafxConfigSource"/>: decodes the embedded binary
-/// protobuf eiafx-config.bin once, lazily. Wire-equivalent to Go loading
-/// eiafx-config-min.json. No JSON, no file cache, no download.
+/// Default <see cref="IEiafxConfigSource"/>: lazily decodes the embedded eiafx-config.bin once.
+/// Wire-equivalent to Go loading eiafx-config-min.json.
 /// </summary>
 public sealed class EmbeddedEiafxConfigSource : IEiafxConfigSource
 {

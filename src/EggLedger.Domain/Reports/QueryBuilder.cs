@@ -3,16 +3,10 @@ using System.Globalization;
 namespace EggLedger.Domain.Reports;
 
 /// <summary>
-/// Pure SQL/predicate builder for report queries. Port of Go reports/query.go.
-/// Produces parameterized SQL text plus an ordered args list; performs no DB
-/// access. Generated strings are byte-identical to the Go reference.
-///
-/// CONTRACT: this builder must never emit a literal <c>?</c> in the SQL text.
-/// <c>?</c> is reserved as the positional bind placeholder, and the count of
-/// <c>?</c> placeholders must equal the args-list length. The desktop SQLite
-/// adapter (SqliteMissionDb.BindPositional / SqliteIndexedDb.BindArgs) rewrites
-/// each <c>?</c> to a named parameter left-to-right and throws on any count
-/// mismatch, so a stray literal <c>?</c> would corrupt the binding.
+/// SQL/predicate builder for report queries. Port of Go reports/query.go; output is
+/// byte-identical to the Go reference.
+/// Contract: never emit a literal <c>?</c> in SQL text. <c>?</c> is the positional bind
+/// placeholder and its count must equal the args-list length, else the SQLite adapter's binding corrupts.
 /// </summary>
 public static class QueryBuilder
 {
@@ -23,9 +17,8 @@ public static class QueryBuilder
         double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out _);
 
     /// <summary>
-    /// Converts ReportFilters into a parameterized SQL fragment (without the
-    /// leading WHERE keyword). Mission-scope conditions reference m.*, artifact-
-    /// scope conditions reference d.*. Port of Go BuildWhereClause.
+    /// Converts ReportFilters into a parameterized SQL fragment (no leading WHERE).
+    /// Mission conditions reference m.*, artifact conditions d.*. Port of Go BuildWhereClause.
     /// </summary>
     public static (string clause, List<object?> args) BuildWhereClause(ReportFilters filters)
     {
@@ -101,14 +94,14 @@ public static class QueryBuilder
         {
             case "dubcap":
                 return c.Op == "true"
-                    ? ("m.is_dub_cap = 1", new List<object?>())
-                    : ("m.is_dub_cap = 0", new List<object?>());
+                    ? ("m.is_dub_cap = 1", [])
+                    : ("m.is_dub_cap = 0", []);
             case "buggedcap":
                 return c.Op == "true"
-                    ? ("m.is_bugged_cap = 1", new List<object?>())
-                    : ("m.is_bugged_cap = 0", new List<object?>());
+                    ? ("m.is_bugged_cap = 1", [])
+                    : ("m.is_bugged_cap = 0", []);
             case "drops":
-                if (c.Op != "c" && c.Op != "dnc")
+                if (c.Op is not "c" and not "dnc")
                 {
                     return ("", new List<object?>());
                 }
@@ -143,21 +136,15 @@ public static class QueryBuilder
                 return (exists, qargs);
         }
 
-        if (c.TopLevel == "launchDT" || c.TopLevel == "returnDT")
+        if (c.TopLevel is "launchDT" or "returnDT")
         {
             var col = MissionFieldToColumn[c.TopLevel];
-            switch (c.Op)
+            return c.Op switch
             {
-                case ">":
-                case "<":
-                case ">=":
-                case "<=":
-                    return ($"{col} {c.Op} strftime('%s', ?)", new List<object?> { c.Val });
-                case "=":
-                case "d=":
-                    return ($"{col} = strftime('%s', ?)", new List<object?> { c.Val });
-            }
-            return ("", new List<object?>());
+                ">" or "<" or ">=" or "<=" => ($"{col} {c.Op} strftime('%s', ?)", [c.Val]),
+                "=" or "d=" => ($"{col} = strftime('%s', ?)", [c.Val]),
+                _ => ("", []),
+            };
         }
 
         if (MissionFieldToColumn.TryGetValue(c.TopLevel, out var mcol))
@@ -170,10 +157,8 @@ public static class QueryBuilder
                 case "<":
                 case ">=":
                 case "<=":
-                    // Every remaining mission field (ship, duration, level, target,
-                    // type) is an integer column; date fields handled above. Reject
-                    // non-numeric values so a malformed value is a no-op rather than a
-                    // silent zero-match.
+                    // Remaining mission fields are integer columns. Reject non-numeric
+                    // values so a malformed value is a no-op, not a silent zero-match.
                     if (!IsInt(c.Val))
                     {
                         return ("", new List<object?>());
@@ -185,9 +170,8 @@ public static class QueryBuilder
 
         if (ArtifactFieldToColumn.TryGetValue(c.TopLevel, out var acol))
         {
-            // artifact_spec_type is a TEXT column storing the enum String() form, so
-            // its value is text and must NOT be numerically validated. The others are
-            // numeric: artifact_quality is REAL (float), the rest are integers.
+            // artifact_spec_type is TEXT (enum String() form), so not numerically
+            // validated; artifact_quality is REAL, the rest integers.
             switch (c.Op)
             {
                 case "=":
@@ -240,30 +224,25 @@ public static class QueryBuilder
     /// <summary>Returns the strftime format string for a time bucket type. Port of Go TimeBucketFormat.</summary>
     public static string TimeBucketFormat(string timeBucket, string customUnit)
     {
-        switch (timeBucket)
+        return timeBucket switch
         {
-            case "day":
-                return "%Y-%m-%d";
-            case "week":
-                return "%Y-%W";
-            case "month":
-                return "%Y-%m";
-            case "year":
-                return "%Y";
-            case "custom":
-                return customUnit switch
-                {
-                    "week" => "%Y-%W",
-                    "month" => "%Y-%m",
-                    _ => "%Y-%m-%d",
-                };
-        }
-        return "%Y-%m";
+            "day" => "%Y-%m-%d",
+            "week" => "%Y-%W",
+            "month" => "%Y-%m",
+            "year" => "%Y",
+            "custom" => customUnit switch
+            {
+                "week" => "%Y-%W",
+                "month" => "%Y-%m",
+                _ => "%Y-%m-%d",
+            },
+            _ => "%Y-%m",
+        };
     }
 
     /// <summary>
-    /// Returns a SQL condition for the "last N units" window used by custom time
-    /// buckets. Returns ("", null) if not applicable. Port of Go CustomWindowCondition.
+    /// SQL condition for the "last N units" window of custom time buckets; ("", null)
+    /// if not applicable. Port of Go CustomWindowCondition.
     /// </summary>
     public static (string cond, object? modifier) CustomWindowCondition(int n, string unit)
     {
@@ -290,9 +269,8 @@ public static class QueryBuilder
     }
 
     /// <summary>
-    /// Assembles the SELECT/FROM/WHERE/GROUP BY/ORDER BY skeleton shared by every
-    /// report query. Port of Go queryBuilder. Callers pre-format every fragment;
-    /// Build only concatenates, reproducing the exact whitespace of the originals.
+    /// Assembles the SELECT/FROM/WHERE/GROUP BY/ORDER BY skeleton shared by every query.
+    /// Port of Go queryBuilder; Build only concatenates pre-formatted fragments, preserving exact whitespace.
     /// </summary>
     internal struct QueryBuilderSpec
     {
@@ -372,7 +350,7 @@ public static class QueryBuilder
             var (cond, modifier) = CustomWindowCondition(def.CustomBucketN, def.CustomBucketUnit);
             if (cond != "")
             {
-                extraWhere = new List<string> { cond };
+                extraWhere = [cond];
                 args.Add(modifier);
             }
         }
@@ -448,7 +426,7 @@ public static class QueryBuilder
             var (cond, modifier) = CustomWindowCondition(def.CustomBucketN, def.CustomBucketUnit);
             if (cond != "")
             {
-                extraWhere = new List<string> { cond };
+                extraWhere = [cond];
                 outArgs.Add(modifier);
             }
         }
@@ -561,7 +539,7 @@ public static class QueryBuilder
             var (cond, modifier) = CustomWindowCondition(def.CustomBucketN, def.CustomBucketUnit);
             if (cond != "")
             {
-                extraWhere = new List<string> { cond };
+                extraWhere = [cond];
                 args.Add(modifier);
             }
         }
@@ -604,7 +582,7 @@ public static class QueryBuilder
             var (cond, modifier) = CustomWindowCondition(def.CustomBucketN, def.CustomBucketUnit);
             if (cond != "")
             {
-                extraWhere = new List<string> { cond };
+                extraWhere = [cond];
                 args.Add(modifier);
             }
         }

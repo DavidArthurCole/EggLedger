@@ -19,10 +19,10 @@ public sealed class FilterCondition
 public sealed class ReportFilters
 {
     [JsonPropertyName("and")]
-    public List<FilterCondition> And { get; set; } = new();
+    public List<FilterCondition> And { get; set; } = [];
 
     [JsonPropertyName("or")]
-    public List<List<FilterCondition>> Or { get; set; } = new();
+    public List<List<FilterCondition>> Or { get; set; } = [];
 }
 
 /// <summary>Full configuration for a single report. Port of Go reports.ReportDefinition.</summary>
@@ -132,13 +132,13 @@ public sealed class ReportDefinition
 public sealed class ReportResult : IEquatable<ReportResult>
 {
     [JsonPropertyName("labels")]
-    public List<string> Labels { get; set; } = new();
+    public List<string> Labels { get; set; } = [];
 
     [JsonPropertyName("values")]
-    public List<long> Values { get; set; } = new();
+    public List<long> Values { get; set; } = [];
 
     [JsonPropertyName("floatValues")]
-    public List<double> FloatValues { get; set; } = new();
+    public List<double> FloatValues { get; set; } = [];
 
     [JsonPropertyName("isFloat")]
     public bool IsFloat { get; set; }
@@ -147,22 +147,22 @@ public sealed class ReportResult : IEquatable<ReportResult>
     public string Weight { get; set; } = "";
 
     [JsonPropertyName("rowLabels")]
-    public List<string> RowLabels { get; set; } = new();
+    public List<string> RowLabels { get; set; } = [];
 
     [JsonPropertyName("colLabels")]
-    public List<string> ColLabels { get; set; } = new();
+    public List<string> ColLabels { get; set; } = [];
 
     [JsonPropertyName("matrixValues")]
-    public List<double> MatrixValues { get; set; } = new();
+    public List<double> MatrixValues { get; set; } = [];
 
     [JsonPropertyName("is2D")]
     public bool Is2D { get; set; }
 
     [JsonPropertyName("rawRowLabels")]
-    public List<string> RawRowLabels { get; set; } = new();
+    public List<string> RawRowLabels { get; set; } = [];
 
     [JsonPropertyName("rawColLabels")]
-    public List<string> RawColLabels { get; set; } = new();
+    public List<string> RawColLabels { get; set; } = [];
 
     [JsonPropertyName("rawPerMissionValues")]
     public List<double>? RawPerMissionValues { get; set; }
@@ -174,10 +174,8 @@ public sealed class ReportResult : IEquatable<ReportResult>
     public List<long>? MissionCountMatrix { get; set; }
 
     /// <summary>
-    /// Value equality across all result fields, used by the in-memory vs SQL
-    /// parity tests. Lists compare element-wise; null and empty lists are treated
-    /// as distinct only for the nullable optional fields (RawPerMissionValues,
-    /// AirtimeMatrixValues, MissionCountMatrix), matching how each path leaves them.
+    /// Value equality across all fields (in-memory vs SQL parity tests). Null and empty
+    /// lists differ only for the nullable optional fields, matching how each path leaves them.
     /// </summary>
     public bool Equals(ReportResult? other)
     {
@@ -207,8 +205,7 @@ public sealed class ReportResult : IEquatable<ReportResult>
 
     public override bool Equals(object? obj) => Equals(obj as ReportResult);
 
-    // Deliberately coarse (counts only, not contents): cheap and consistent with
-    // Equals, but not suitable as a dictionary/hash-set key. Use only for equality.
+    // Coarse (counts only): consistent with Equals but not a good dictionary key.
     public override int GetHashCode()
     {
         var h = new HashCode();
@@ -242,10 +239,7 @@ public sealed class ReportResult : IEquatable<ReportResult>
 /// <summary>Static report helpers that do not need DB access.</summary>
 public static class Report
 {
-    /// <summary>
-    /// Returns true if the groupBy dimension can be matched against Menno
-    /// community data. Port of Go reports.MennoComparableGroupBy.
-    /// </summary>
+    /// <summary>True if the groupBy can be matched against Menno community data. Port of Go reports.MennoComparableGroupBy.</summary>
     public static bool MennoComparableGroupBy(string groupBy) => groupBy switch
     {
         "ship_type" or "duration_type" or "level" or "mission_target"

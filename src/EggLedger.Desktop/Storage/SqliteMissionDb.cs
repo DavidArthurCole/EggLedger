@@ -1,24 +1,14 @@
-using Microsoft.Data.Sqlite;
 using EggLedger.Domain.Reports;
+using Microsoft.Data.Sqlite;
 
 namespace EggLedger.Desktop.Storage;
 
 /// <summary>
-/// Native <see cref="IMissionDb"/> backed by real SQLite. This is where the SQL
-/// report path goes live on the desktop: <see cref="ReportExecutor"/> emits the
-/// parameterized SQL built by <see cref="QueryBuilder"/> and this executes it
-/// against the <c>mission</c> / <c>artifact_drops</c> tables, returning rows in
-/// the exact positional shape the executor consumes.
-///
-/// The Go reference ran the same SQL through its injected <c>*sql.DB</c>
-/// (reports.SetMissionDB); the C# in-memory path (<see cref="InMemoryMissionDb"/>)
-/// emulates the same query shapes over typed rows. This implementation closes the
-/// loop by running the SQL natively, and is parity-tested against the in-memory
-/// path to guarantee identical output.
-///
-/// Row boxing matches the <see cref="IMissionDb"/> contract: integer columns as
-/// <see cref="long"/>, REAL columns as <see cref="double"/>, text as
-/// <see cref="string"/> (the executor's AsString/AsLong/AsDouble accept all).
+/// Native <see cref="IMissionDb"/> backed by real SQLite: runs the parameterized
+/// SQL from <see cref="ReportExecutor"/> against the mission / artifact_drops tables,
+/// returning rows in the positional shape the executor consumes. Parity-tested
+/// against the in-memory path. Row boxing: integers as long, REAL as double, text as
+/// string.
 /// </summary>
 public sealed class SqliteMissionDb : IMissionDb
 {
@@ -81,11 +71,9 @@ public sealed class SqliteMissionDb : IMissionDb
         return reader.GetString(i);
     }
 
-    // Rewrites the "?" positional placeholders QueryBuilder emits into named
-    // parameters and binds args in order. SQLite's provider does not bind bare "?"
-    // positionally, so we substitute @aN left-to-right. This relies on QueryBuilder
-    // never emitting a literal "?" in SQL text; the placeholder count must equal
-    // args.Count or the query is malformed, so a mismatch throws.
+    // Rewrites "?" placeholders to named @aN params bound in order (the provider
+    // won't bind bare "?"). Relies on QueryBuilder never emitting a literal "?";
+    // a placeholder/arg count mismatch throws.
     private static string BindPositional(string sql, IReadOnlyList<object?> args, SqliteCommand cmd)
     {
         var result = sql;

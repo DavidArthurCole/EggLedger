@@ -1,15 +1,15 @@
 using System.IO.Compression;
 using System.Text;
-using Ei;
 using EggLedger.Domain.Export;
+using Ei;
 
 namespace EggLedger.Domain.Tests.Export;
 
 /// <summary>Port of Go export/export_test.go.</summary>
 public class ExportTests
 {
-    private static List<Mission> TestMissions() => new()
-    {
+    private static List<Mission> TestMissions() =>
+    [
         new Mission
         {
             Id = "test-uuid-001",
@@ -24,7 +24,7 @@ public class ExportTests
             DurationDays = 2.0 / 24.0,
             Capacity = 50,
             TargetArtifact = ArtifactSpec.Name.Unknown,
-            ArtifactNames = new List<string> { "Book of Basan (T4)", "Lunar Totem (T1)" },
+            ArtifactNames = ["Book of Basan (T4)", "Lunar Totem (T1)"],
         },
         new Mission
         {
@@ -40,9 +40,9 @@ public class ExportTests
             DurationDays = 7.0,
             Capacity = 400,
             TargetArtifact = ArtifactSpec.Name.BookOfBasan,
-            ArtifactNames = new List<string> { "Interstellar Compass (T4)" },
+            ArtifactNames = ["Interstellar Compass (T4)"],
         },
-    };
+    ];
 
     private static List<string[]> ParseCsv(byte[] bytes)
     {
@@ -103,7 +103,7 @@ public class ExportTests
             }
         }
         fields.Add(sb.ToString());
-        return fields.ToArray();
+        return [.. fields];
     }
 
     private static string ReadZipEntry(byte[] data, string name)
@@ -129,11 +129,11 @@ public class ExportTests
         var header = records[0];
         Assert.Equal(12, header.Length);
         string[] wantHeaders =
-        {
+        [
             "ID", "Type", "Ship", "Duration Type", "Level",
             "Launched at", "Returned at", "Duration days", "Capacity", "Target",
             "Artifact 1", "Artifact 2",
-        };
+        ];
         for (int i = 0; i < wantHeaders.Length; i++)
         {
             Assert.Equal(wantHeaders[i], header[i]);
@@ -177,7 +177,7 @@ public class ExportTests
                 DurationDays = 1.0 / 24.0,
                 Capacity = 6,
                 TargetArtifact = ArtifactSpec.Name.Unknown,
-                ArtifactNames = new List<string>(),
+                ArtifactNames = [],
             },
         };
 
@@ -194,10 +194,10 @@ public class ExportTests
         Assert.NotEqual("", sheetXml);
 
         string[] wantHeaders =
-        {
+        [
             "ID", "Type", "Ship", "Duration Type", "Level",
             "Launched at", "Returned at", "Duration days", "Capacity", "Target",
-        };
+        ];
         foreach (var h in wantHeaders)
         {
             Assert.Contains("<t>" + h + "</t>", sheetXml, StringComparison.Ordinal);

@@ -1,11 +1,9 @@
 namespace EggLedger.Desktop.Platform;
 
 /// <summary>
-/// Seam over the host window features used by <see cref="DesktopPlatformCapabilities"/>:
-/// reading the current size, showing the native save dialog, and exiting the
-/// process. The real impl wraps the Photino window (native dialogs cannot run
-/// headless, so they are isolated behind this interface and manual-verified);
-/// tests inject a fake.
+/// Seam over host window features (size, native save dialog, process exit). The
+/// real impl wraps the Photino window; native dialogs are isolated here because
+/// they cannot run headless. Tests inject a fake.
 /// </summary>
 public interface IDesktopWindow
 {

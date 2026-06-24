@@ -2,12 +2,8 @@
 @using EggLedger.Web.Data
 @inject IndexedDbReportStore Store
 
-@*
-    Dashboard grid of report cards. Loads the account's reports (optionally
-    filtered to a group), positions each via the golden-tested ReportGridLayout
-    packing, and renders a ReportCard per definition. Drag-and-drop reorder/resize
-    is deferred (static positioning from grid_x/y/w/h via the layout helper).
-*@
+@* Dashboard grid of report cards, positioned via ReportGridLayout packing.
+   Drag-and-drop reorder/resize deferred (static positioning from grid_x/y/w/h). *@
 
 <div class="flex-1 min-h-0 overflow-y-auto py-2 px-3 flex flex-col gap-3">
     @if (_defs.Count == 0)

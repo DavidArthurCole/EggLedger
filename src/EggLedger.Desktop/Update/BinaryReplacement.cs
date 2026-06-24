@@ -3,10 +3,9 @@ using System.Globalization;
 namespace EggLedger.Desktop.Update;
 
 /// <summary>
-/// File-system side of the self-replace ported from EggLedger/update/update.go:
-/// the update lock, rename-with-retry, and stale-binary cleanup. The download +
-/// running the new instance + the cross-process handoff is in
-/// <see cref="UpdateService"/>; this type holds only the testable file moves.
+/// File-system side of the self-replace: update lock, rename-with-retry, stale
+/// cleanup. The download + new-instance launch + cross-process handoff live in
+/// <see cref="UpdateService"/>; this holds only the testable file moves.
 /// </summary>
 public sealed class BinaryReplacement(IProcessProbe probe)
 {
@@ -17,8 +16,7 @@ public sealed class BinaryReplacement(IProcessProbe probe)
 
     /// <summary>
     /// Rename src to dst, retrying to tolerate brief Windows file locks (antivirus,
-    /// indexer) just after a process exits. Ports renameWithRetry. Returns true on
-    /// success.
+    /// indexer) just after a process exits. Returns true on success.
     /// </summary>
     public static bool RenameWithRetry(string src, string dst, int attempts, TimeSpan delay)
     {
@@ -39,10 +37,9 @@ public sealed class BinaryReplacement(IProcessProbe probe)
     }
 
     /// <summary>
-    /// Create the lock file exclusively, writing the current PID. Returns a release
-    /// action and true on success. If the lock exists and the PID inside is still
-    /// alive, returns (null, false). A stale lock (dead PID) is reclaimed. Ports
-    /// acquireUpdateLock.
+    /// Create the lock file exclusively, writing the current PID; returns a release
+    /// action and true on success. A live-PID lock returns (null, false); a stale
+    /// (dead-PID) lock is reclaimed.
     /// </summary>
     public (Action? Release, bool Acquired) AcquireLock(string lockPath)
     {
@@ -100,10 +97,9 @@ public sealed class BinaryReplacement(IProcessProbe probe)
     }
 
     /// <summary>
-    /// Remove leftover EggLedger*_new[.exe] files and a stale lock (dead owner) in
-    /// <paramref name="exeDir"/>. Never deletes <paramref name="selfPath"/> (a
-    /// freshly launched _new instance matches the glob and still needs to rename
-    /// itself). Ports CleanStaleBinaries.
+    /// Remove leftover EggLedger*_new[.exe] files and a stale (dead-owner) lock in
+    /// exeDir. Never deletes selfPath: a freshly launched _new instance matches the
+    /// glob but still needs to rename itself.
     /// </summary>
     public void CleanStaleBinaries(string exeDir, string selfPath)
     {
@@ -145,9 +141,8 @@ public sealed class BinaryReplacement(IProcessProbe probe)
     }
 
     /// <summary>
-    /// True when a and b resolve to the same on-disk file. Ports sameFile (falls
-    /// back to absolute-path comparison when a stat fails). On Windows the path
-    /// compare is case-insensitive.
+    /// True when a and b resolve to the same on-disk file (falls back to abs-path
+    /// compare on stat failure). Case-insensitive on Windows.
     /// </summary>
     public static bool SameFile(string a, string b)
     {

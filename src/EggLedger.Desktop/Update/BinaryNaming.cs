@@ -1,10 +1,9 @@
 namespace EggLedger.Desktop.Update;
 
 /// <summary>
-/// Pure binary-name helpers ported from EggLedger/update/update.go. A freshly
-/// downloaded update binary is named "EggLedger_new[.exe]"; after the old instance
-/// exits the new instance renames itself to the canonical "EggLedger[.exe]" so the
-/// directory keeps a single binary.
+/// Pure binary-name helpers. A downloaded update binary is "EggLedger_new[.exe]";
+/// after the old instance exits the new one renames itself to canonical
+/// "EggLedger[.exe]" so the directory keeps a single binary.
 /// </summary>
 public static class BinaryNaming
 {
@@ -49,11 +48,10 @@ public static class BinaryNaming
     }
 
     /// <summary>
-    /// Decide whether this process should run as the updater that replaces
-    /// EggLedger[.exe]. Trigger if the running binary is named *_new OR the legacy
-    /// --replace-* flags are present. oldPath comes from replacePath when given,
-    /// else derived from the _new name. oldPid is 0 when unknown. Ports
-    /// decideReplace.
+    /// Decide whether this process should run as the updater replacing
+    /// EggLedger[.exe]: triggered if the running binary is named *_new or the
+    /// --replace-* flags are present. oldPath comes from replacePath else the _new
+    /// name; oldPid is 0 when unknown.
     /// </summary>
     public static (bool Run, int OldPid, string OldPath) DecideReplace(
         string self, int replacePid, string replacePath)

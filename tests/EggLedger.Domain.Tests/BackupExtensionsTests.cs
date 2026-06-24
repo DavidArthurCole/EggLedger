@@ -1,5 +1,5 @@
-using Ei;
 using EggLedger.Domain.Ei;
+using Ei;
 
 namespace EggLedger.Domain.Tests;
 
@@ -100,7 +100,7 @@ public class BackupExtensionsTests
         var b = new Backup
         {
             game = game,
-            virtue = new Backup.Virtue { EovEarneds = new uint[] { 100 } },
+            virtue = new Backup.Virtue { EovEarneds = [100] },
         };
         var got = b.GetEarningsBonus();
         Assert.InRange(got, 405000, 406000);

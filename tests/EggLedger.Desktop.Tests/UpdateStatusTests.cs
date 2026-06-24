@@ -46,7 +46,7 @@ public sealed class UpdateStatusTests
     /// </summary>
     private sealed class InMemorySettingsDb : IIndexedDb
     {
-        private readonly Dictionary<string, SettingRow> _rows = new();
+        private readonly Dictionary<string, SettingRow> _rows = [];
 
         public ValueTask PutAsync(string store, object value)
         {
@@ -68,7 +68,7 @@ public sealed class UpdateStatusTests
         }
 
         public ValueTask<T[]> GetAllAsync<T>(string store)
-            => new(_rows.Values.Cast<T>().ToArray());
+            => new([.. _rows.Values.Cast<T>()]);
 
         public ValueTask<T?> GetAsync<T>(string store, object key) => throw new NotSupportedException();
         public ValueTask<T[]> GetAllByIndexAsync<T>(string store, string index, object value) => throw new NotSupportedException();

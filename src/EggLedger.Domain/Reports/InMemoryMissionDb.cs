@@ -3,34 +3,22 @@ using System.Globalization;
 namespace EggLedger.Domain.Reports;
 
 /// <summary>
-/// In-memory <see cref="IMissionDb"/> that answers the queries
-/// <see cref="ReportExecutor"/> issues by evaluating the filter and grouping
-/// semantics of Go reports/query.go directly over typed rows, with no SQL engine.
-///
-/// It does not parse arbitrary SQL. Every query ReportExecutor emits for a given
-/// ReportDefinition is one of a fixed set of shapes; this class recognizes each
-/// shape from stable markers in the generated text (the same technique the A7
-/// FakeDb uses) and computes the result columns the executor expects to Scan.
-/// Returned rows mirror the SQL Scan order and boxing: text columns as string,
-/// counts as long, cap_weight/airtime sums as double.
-///
-/// COUPLED SOURCE OF TRUTH: the marker literals below are the exact SELECT/FROM
-/// aliases and JOIN text that <see cref="QueryBuilder"/> and
-/// <see cref="ReportExecutor"/> emit. If either changes an alias, the JOIN line,
-/// or the airtime SUM expression, update the matching const here in lockstep.
+/// In-memory <see cref="IMissionDb"/> that answers ReportExecutor's queries by
+/// evaluating reports/query.go filter/grouping semantics over typed rows, no SQL engine.
+/// Recognizes each query shape from stable markers in the generated text; returned rows
+/// mirror SQL Scan order/boxing (text as string, counts as long, sums as double).
+/// Coupled source of truth: the marker consts below must track QueryBuilder/ReportExecutor's
+/// exact aliases, JOIN line, and airtime SUM expression in lockstep.
 /// </summary>
 internal sealed class InMemoryMissionDb : IMissionDb
 {
-    // Markers identifying each query shape ReportExecutor/QueryBuilder emit. Keep
-    // in sync with those types (see class summary).
+    // Markers identifying each query shape; keep in sync with QueryBuilder/ReportExecutor.
     private const string CapWeightMarker = "cap_weight";
     private const string BucketMarker = "AS bucket";
     private const string GrpMarker = "AS grp";
     private const string AirtimeSumMarker = "SUM(CAST(m.return_timestamp - m.start_timestamp AS REAL) / 3600.0)";
 
-    // Present only when the artifact_drops JOIN is in the FROM clause. A count or
-    // denom query that is FROM mission m has neither marker, so it groups over
-    // mission rows; a value query that joins artifact_drops has both.
+    // Present only when the artifact_drops JOIN is in the FROM clause.
     private const string ArtifactJoinMarker = "JOIN mission m ON d.mission_id = m.mission_id";
     private const string CountMarker = "COUNT(*)";
     private const string GroupByMarker = "GROUP BY ";
@@ -50,8 +38,8 @@ internal sealed class InMemoryMissionDb : IMissionDb
         IWeightData weights)
     {
         _def = def;
-        _missions = missions.ToList();
-        _drops = drops.ToList();
+        _missions = [.. missions];
+        _drops = [.. drops];
         _weights = weights;
         _dropsByMission = _drops.ToLookup(d => (d.PlayerId, d.MissionId));
     }
@@ -63,11 +51,8 @@ internal sealed class InMemoryMissionDb : IMissionDb
         var hasGrp = sql.Contains(GrpMarker, StringComparison.Ordinal);
         var airtimeDenom = sql.Contains(AirtimeSumMarker, StringComparison.Ordinal);
 
-        // Whether this query joins artifact_drops. Count/denom queries that are
-        // FROM mission m do NOT join and must group over mission rows; value queries
-        // that aggregate drops do. Dispatch on the SQL shape, not on _def.Subject:
-        // a family-weighted report has Subject "artifacts" yet still issues a
-        // FROM-mission mission-count query that must count missions, not drops.
+        // Dispatch on SQL shape, not _def.Subject: a family-weighted report has Subject
+        // "artifacts" but still issues a FROM-mission count query that must count missions.
         var joinDrops = sql.Contains(ArtifactJoinMarker, StringComparison.Ordinal);
 
         if (weighted)
@@ -96,11 +81,8 @@ internal sealed class InMemoryMissionDb : IMissionDb
             return TimeSeriesCount(joinDrops);
         }
 
-        // Remaining shapes select COUNT(*) or an airtime SUM grouped by one or two
-        // plain columns. The executor's main aggregate ("ORDER BY count DESC"), the
-        // pivot count, and the denom/mission-count helpers all land here; they are
-        // distinguished by dimensionality, airtime vs count, and whether the drops
-        // JOIN is present, which is all the result assembly cares about.
+        // Remaining shapes: COUNT(*) or airtime SUM over one/two plain columns,
+        // distinguished by dimensionality, airtime vs count, and the drops JOIN.
         if (airtimeDenom)
         {
             return _def.SecondaryGroupBy != "" && Is2DAirtimeQuery(sql)
@@ -108,8 +90,7 @@ internal sealed class InMemoryMissionDb : IMissionDb
                 : Airtime1D(joinDrops);
         }
 
-        // Plain counts: one or two group columns. Guard the fall-through so an alias
-        // or spacing change in QueryBuilder fails loudly instead of mis-routing.
+        // Plain counts. Guard the fall-through so an alias/spacing change fails loudly.
         if (!sql.Contains(CountMarker, StringComparison.Ordinal)
             || !sql.Contains(GroupByMarker, StringComparison.Ordinal))
         {
@@ -118,9 +99,7 @@ internal sealed class InMemoryMissionDb : IMissionDb
         return Is2DCountQuery(sql) ? Count2D(joinDrops) : Count1D(joinDrops);
     }
 
-    // A 2D count/airtime helper query groups by both dimension columns. The
-    // executor builds these (pivot, denom2D, mission-count) with both GroupByColumn
-    // text casts present in the SELECT list.
+    // A 2D query groups by both dimension columns (both GroupByColumn text casts in SELECT).
     private bool Is2DCountQuery(string sql)
     {
         if (_def.SecondaryGroupBy == "")
@@ -176,9 +155,8 @@ internal sealed class InMemoryMissionDb : IMissionDb
             counts.TryGetValue(key, out var cur);
             counts[key] = cur + 1;
         }
-        // The main aggregate query orders by count DESC (stable on first-seen). The
-        // denom helper has no ORDER BY; the executor only builds a lookup map from
-        // it, so order is irrelevant there. Emitting count-desc is safe for both.
+        // Main aggregate orders by count DESC; the denom helper only feeds a lookup map,
+        // so order is irrelevant there. Count-desc is safe for both.
         var rows = order
             .Select((k, i) => (k, i, c: counts[k]))
             .OrderByDescending(x => x.c)
@@ -204,9 +182,7 @@ internal sealed class InMemoryMissionDb : IMissionDb
             counts.TryGetValue(key, out var cur);
             counts[key] = cur + 1;
         }
-        // Pivot queries order by col1, col2 ascending. PivotAccum re-sorts axes by
-        // raw value, so the row order here does not affect the matrix; emit ascending
-        // for fidelity.
+        // Order ascending for fidelity; PivotAccum re-sorts axes so row order is moot.
         var rows = order
             .OrderBy(k => k, KeyPairComparer(col1, col2))
             .Select(k => new object?[] { k.Item1, k.Item2, counts[k] })
@@ -214,9 +190,8 @@ internal sealed class InMemoryMissionDb : IMissionDb
         return rows;
     }
 
-    // Airtime denom queries are always FROM mission m (no drops join), so they sum
-    // over mission rows. joinDrops is threaded for shape consistency and will be
-    // false for every airtime query the executor emits.
+    // Airtime denom queries are always FROM mission m; joinDrops is threaded for shape
+    // consistency and is false for every airtime query the executor emits.
     private List<object?[]> Airtime1D(bool joinDrops)
     {
         var col = QueryBuilder.GroupByColumn(_def.GroupBy);
@@ -232,7 +207,7 @@ internal sealed class InMemoryMissionDb : IMissionDb
             sums.TryGetValue(key, out var cur);
             sums[key] = cur + ((m.ReturnTimestamp - m.StartTimestamp) / 3600.0);
         }
-        return order.Select(k => new object?[] { k, sums[k] }).ToList();
+        return [.. order.Select(k => new object?[] { k, sums[k] })];
     }
 
     private List<object?[]> Airtime2D(bool joinDrops)
@@ -251,12 +226,11 @@ internal sealed class InMemoryMissionDb : IMissionDb
             sums.TryGetValue(key, out var cur);
             sums[key] = cur + ((m.ReturnTimestamp - m.StartTimestamp) / 3600.0);
         }
-        return order.Select(k => new object?[] { k.Item1, k.Item2, sums[k] }).ToList();
+        return [.. order.Select(k => new object?[] { k.Item1, k.Item2, sums[k] })];
     }
 
-    // Mission rows for an airtime SUM. When the query joins artifact_drops the sum
-    // is over (mission, drop) pairs (a mission contributes once per drop); otherwise
-    // over distinct missions.
+    // Mission rows for an airtime SUM: over (mission, drop) pairs when joining
+    // artifact_drops (a mission contributes once per drop), else distinct missions.
     private IEnumerable<MissionRowData> AirtimeRows(bool joinDrops, string col1, string? col2)
     {
         if (joinDrops
@@ -277,10 +251,9 @@ internal sealed class InMemoryMissionDb : IMissionDb
             counts.TryGetValue(bucket, out var cur);
             counts[bucket] = cur + 1;
         }
-        return counts
+        return [.. counts
             .OrderBy(kv => kv.Key, StringComparer.Ordinal)
-            .Select(kv => new object?[] { kv.Key, kv.Value })
-            .ToList();
+            .Select(kv => new object?[] { kv.Key, kv.Value })];
     }
 
     private List<object?[]> TimePivotCount(bool joinDrops)
@@ -295,17 +268,15 @@ internal sealed class InMemoryMissionDb : IMissionDb
             counts.TryGetValue(key, out var cur);
             counts[key] = cur + 1;
         }
-        return counts
+        return [.. counts
             .OrderBy(kv => kv.Key.Item1, StringComparer.Ordinal)
             .ThenBy(kv => kv.Key.Item2, StringComparer.Ordinal)
-            .Select(kv => new object?[] { kv.Key.Item1, kv.Key.Item2, kv.Value })
-            .ToList();
+            .Select(kv => new object?[] { kv.Key.Item1, kv.Key.Item2, kv.Value })];
     }
 
     private List<object?[]> WeightedAggregate()
     {
         var col = QueryBuilder.GroupByColumn(_def.GroupBy);
-        // GROUP BY groupCol, d.artifact_id, d.level; SUM cap_weight; order cap DESC.
         var groups = new Dictionary<(string, long, long), double>();
         var order = new List<(string, long, long)>();
         foreach (var (m, d) in WeightedJoin())
@@ -344,7 +315,7 @@ internal sealed class InMemoryMissionDb : IMissionDb
             groups.TryGetValue(key, out var cur);
             groups[key] = cur + CapWeight(m);
         }
-        // Order by col1, col2 ascending (raw). PivotAccum re-sorts, so order is moot.
+        // PivotAccum re-sorts, so order is moot.
         var rows = order
             .Select(k => new object?[] { k.Item1, k.Item2, k.Item3, k.Item4, groups[k] })
             .ToList();
@@ -365,8 +336,7 @@ internal sealed class InMemoryMissionDb : IMissionDb
             groups.TryGetValue(key, out var cur);
             groups[key] = cur + CapWeight(m);
         }
-        // ORDER BY bucket ASC. The executor accumulates per bucket; first-seen order
-        // determines the float-series order, so emit bucket-ascending.
+        // Bucket-ascending: first-seen order determines the float-series order.
         var rows = order
             .OrderBy(k => k.Item1, StringComparer.Ordinal)
             .Select(k => new object?[] { k.Item1, k.Item2, k.Item3, groups[k] })
@@ -398,8 +368,7 @@ internal sealed class InMemoryMissionDb : IMissionDb
         return rows;
     }
 
-    // Group keys for a 1D non-time query. joinDrops reflects whether the SQL joins
-    // artifact_drops (per-drop counting) or is FROM mission m (per-mission counting).
+    // Group keys for a 1D non-time query; joinDrops selects per-drop vs per-mission counting.
     private IEnumerable<string> GroupKeys1D(string col, bool joinDrops)
     {
         if (joinDrops || col.StartsWith("d.", StringComparison.Ordinal))
@@ -467,8 +436,7 @@ internal sealed class InMemoryMissionDb : IMissionDb
         }
     }
 
-    // Weighted (family) joins always use the artifact source and apply the family
-    // afx-id filter (d.artifact_id IN (...)).
+    // Weighted (family) joins use the artifact source and apply the family afx-id filter.
     private IEnumerable<(MissionRowData M, ArtifactDropRowData D)> WeightedJoin()
     {
         var family = new HashSet<long>(_weights.FamilyAfxIds(_def.FamilyWeight).Select(i => (long)i));
@@ -484,12 +452,12 @@ internal sealed class InMemoryMissionDb : IMissionDb
     private IEnumerable<(MissionRowData M, ArtifactDropRowData D)> WeightedBucketJoin() =>
         WeightedJoin().Where(p => InCustomWindow(p.M));
 
-    private double CapWeight(MissionRowData m) =>
+    private static double CapWeight(MissionRowData m) =>
         m.NominalCapacity > 0 && m.Capacity > 0
             ? (double)m.NominalCapacity / m.Capacity
             : 1.0;
 
-    private Comparer<(string, string)> KeyPairComparer(string col1, string col2) =>
+    private static Comparer<(string, string)> KeyPairComparer(string col1, string col2) =>
         Comparer<(string A, string B)>.Create((x, y) =>
         {
             var c = CompareCol(col1, x.A, y.A);
@@ -511,8 +479,8 @@ internal sealed class InMemoryMissionDb : IMissionDb
     private string BucketLabel(long unixSeconds) =>
         TimeBucket.Format(_def.TimeBucket, _def.CustomBucketUnit, unixSeconds);
 
-    // Custom "last N units" window from the start_timestamp. Non-custom buckets
-    // have no window. Mirrors CustomWindowCondition + strftime('%s','now',modifier).
+    // Custom "last N units" window on start_timestamp; non-custom buckets have no window.
+    // Mirrors CustomWindowCondition + strftime('%s','now',modifier).
     private bool InCustomWindow(MissionRowData m)
     {
         if (_def.TimeBucket != "custom")
@@ -624,65 +592,47 @@ internal sealed class InMemoryMissionDb : IMissionDb
 
     private static bool IsMissionScope(FilterCondition c) => !IsArtifactScope(c);
 
-    // Evaluates a mission-scope condition. Artifact-scope and no-op conditions
-    // (those QueryBuilder.ConditionToSql would drop) return true here so they do
-    // not exclude a mission on the m.* pass.
+    // Evaluates a mission-scope condition; artifact-scope and no-op conditions return
+    // true so they do not exclude a mission on the m.* pass.
     private bool EvalMission(FilterCondition c, MissionRowData m)
     {
-        switch (c.TopLevel)
+        return c.TopLevel switch
         {
-            case "dubcap":
-                return m.IsDubCap == (c.Op == "true");
-            case "buggedcap":
-                return m.IsBuggedCap == (c.Op == "true");
-            case "drops":
-                return EvalDrops(c, m);
-            case "launchDT":
-                return EvalDate(c, m.StartTimestamp);
-            case "returnDT":
-                return EvalDate(c, m.ReturnTimestamp);
-            case "ship":
-                return CompareNumeric(c, m.Ship);
-            case "duration":
-                return CompareNumeric(c, m.DurationType);
-            case "level":
-                return CompareNumeric(c, m.Level);
-            case "target":
-                return CompareNumeric(c, m.Target);
-            case "type":
-                return CompareNumeric(c, m.MissionType);
-            default:
-                return true;
-        }
+            "dubcap" => m.IsDubCap == (c.Op == "true"),
+            "buggedcap" => m.IsBuggedCap == (c.Op == "true"),
+            "drops" => EvalDrops(c, m),
+            "launchDT" => EvalDate(c, m.StartTimestamp),
+            "returnDT" => EvalDate(c, m.ReturnTimestamp),
+            "ship" => CompareNumeric(c, m.Ship),
+            "duration" => CompareNumeric(c, m.DurationType),
+            "level" => CompareNumeric(c, m.Level),
+            "target" => CompareNumeric(c, m.Target),
+            "type" => CompareNumeric(c, m.MissionType),
+            _ => true,
+        };
     }
 
-    private bool EvalArtifact(FilterCondition c, ArtifactDropRowData d)
+    private static bool EvalArtifact(FilterCondition c, ArtifactDropRowData d)
     {
         // Only comparison ops are valid; ConditionToSql rejects others as no-ops.
         if (c.Op is not ("=" or "!=" or ">" or "<" or ">=" or "<="))
         {
             return true;
         }
-        switch (c.TopLevel)
+        return c.TopLevel switch
         {
-            case "artifact_rarity":
-                return IsInt(c.Val) && CompareLong(c.Op, d.Rarity, long.Parse(c.Val, CultureInfo.InvariantCulture));
-            case "artifact_tier":
-                return IsInt(c.Val) && CompareLong(c.Op, d.Level, long.Parse(c.Val, CultureInfo.InvariantCulture));
-            case "artifact_name":
-                return IsInt(c.Val) && CompareLong(c.Op, d.ArtifactId, long.Parse(c.Val, CultureInfo.InvariantCulture));
-            case "artifact_quality":
-                return IsFloat(c.Val) && CompareDouble(c.Op, d.Quality, double.Parse(c.Val, CultureInfo.InvariantCulture));
-            case "artifact_spec_type":
-                return CompareText(c.Op, d.SpecType, c.Val);
-            default:
-                return true;
-        }
+            "artifact_rarity" => IsInt(c.Val) && CompareLong(c.Op, d.Rarity, long.Parse(c.Val, CultureInfo.InvariantCulture)),
+            "artifact_tier" => IsInt(c.Val) && CompareLong(c.Op, d.Level, long.Parse(c.Val, CultureInfo.InvariantCulture)),
+            "artifact_name" => IsInt(c.Val) && CompareLong(c.Op, d.ArtifactId, long.Parse(c.Val, CultureInfo.InvariantCulture)),
+            "artifact_quality" => IsFloat(c.Val) && CompareDouble(c.Op, d.Quality, double.Parse(c.Val, CultureInfo.InvariantCulture)),
+            "artifact_spec_type" => CompareText(c.Op, d.SpecType, c.Val),
+            _ => true,
+        };
     }
 
     private bool EvalDrops(FilterCondition c, MissionRowData m)
     {
-        if (c.Op != "c" && c.Op != "dnc")
+        if (c.Op is not "c" and not "dnc")
         {
             return true;
         }
@@ -725,7 +675,7 @@ internal sealed class InMemoryMissionDb : IMissionDb
         return CompareLong(c.Op, actual, long.Parse(c.Val, CultureInfo.InvariantCulture));
     }
 
-    private bool EvalDate(FilterCondition c, long actualUnix)
+    private static bool EvalDate(FilterCondition c, long actualUnix)
     {
         long target;
         switch (c.Op)

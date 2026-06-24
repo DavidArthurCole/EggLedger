@@ -4,10 +4,9 @@ using System.Text.Json.Serialization;
 namespace EggLedger.Web.Data;
 
 /// <summary>
-/// Shared serializer options for IndexedDB row DTOs. The explicit
-/// <see cref="JsonPropertyNameAttribute"/> on each property fixes the wire
-/// names to the snake_case keyPaths the JS shim expects; web defaults only
-/// affect read-side casing tolerance.
+/// Shared serializer options for IndexedDB row DTOs. Explicit
+/// <see cref="JsonPropertyNameAttribute"/> fixes wire names to the snake_case
+/// keyPaths the JS shim expects; web defaults only affect read-side casing tolerance.
 /// </summary>
 public static class Rows
 {
@@ -28,10 +27,7 @@ public sealed record MissionRow
     [JsonPropertyName("start_timestamp")]
     public double StartTimestamp { get; init; }
 
-    /// <summary>
-    /// Gzip-compressed protobuf bytes. System.Text.Json serializes byte[] as a
-    /// base64 string, which is the on-wire form the JS shim stores.
-    /// </summary>
+    /// <summary>Gzip-compressed protobuf bytes. Serialized as base64, the on-wire form the JS shim stores.</summary>
     [JsonPropertyName("complete_payload")]
     public byte[] CompletePayload { get; init; } = [];
 
@@ -67,13 +63,9 @@ public sealed record MissionRow
 }
 
 /// <summary>
-/// Mirrors the IndexedDB <c>backup</c> store (keyPath <c>player_id</c>): one
-/// logical row per player. The desktop SQLite table (mission migrations 2 + 3)
-/// renamed the timestamp column to <c>backed_up_at</c> and added a surrogate
-/// <c>id</c> PK plus <c>payload_authenticated</c>; this record carries only the
-/// browser-meaningful fields, so the timestamp serializes to <c>backed_up_at</c>
-/// to line up with that schema, and the extra SQLite columns are assigned by
-/// default / ignored on read.
+/// Mirrors the IndexedDB <c>backup</c> store (keyPath <c>player_id</c>): one row per player.
+/// The timestamp serializes to <c>backed_up_at</c> to line up with the desktop SQLite schema;
+/// the extra SQLite columns (surrogate id, payload_authenticated) are ignored here.
 /// </summary>
 public sealed record BackupRow
 {
@@ -92,11 +84,7 @@ public sealed record BackupRow
 /// </summary>
 public sealed record ArtifactDropRow
 {
-    /// <summary>
-    /// Auto-incremented primary key. Left null on insert so IndexedDB assigns it;
-    /// the per-property ignore-when-null keeps it off the wire without affecting
-    /// other nullable fields.
-    /// </summary>
+    /// <summary>Auto-incremented PK. Left null on insert so IndexedDB assigns it; ignore-when-null keeps it off the wire.</summary>
     [JsonPropertyName("id")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public long? Id { get; init; }

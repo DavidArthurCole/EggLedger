@@ -3,10 +3,7 @@ using Microsoft.JSInterop;
 
 namespace EggLedger.Web.Services;
 
-/// <summary>
-/// Serves export bytes as a browser download via the wwwroot/js/download.js ES module,
-/// importing it lazily on first use and caching the reference.
-/// </summary>
+/// <summary>Serves export bytes as a browser download via the download.js ES module, imported lazily and cached.</summary>
 public sealed class DownloadService(IJSRuntime js) : IDownloadService, IAsyncDisposable
 {
     private const string ModulePath = "./_content/EggLedger.Web/js/download.js";
@@ -20,11 +17,9 @@ public sealed class DownloadService(IJSRuntime js) : IDownloadService, IAsyncDis
     private async ValueTask<IJSObjectReference> ModuleAsync()
         => _module ??= await _js.InvokeAsync<IJSObjectReference>("import", ModulePath);
 
-    /// <summary>Downloads the missions as a CSV file named <paramref name="filename"/>.</summary>
     public async ValueTask DownloadCsvAsync(IReadOnlyList<Mission> missions, string filename)
         => await DownloadAsync(MissionExport.MissionsToCsvBytes(missions), filename, CsvMime);
 
-    /// <summary>Downloads the missions as an XLSX file named <paramref name="filename"/>.</summary>
     public async ValueTask DownloadXlsxAsync(IReadOnlyList<Mission> missions, string filename)
         => await DownloadAsync(MissionExport.MissionsToXlsxBytes(missions), filename, XlsxMime);
 

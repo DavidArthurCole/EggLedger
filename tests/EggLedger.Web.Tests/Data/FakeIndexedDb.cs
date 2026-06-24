@@ -15,7 +15,7 @@ public sealed class FakeIndexedDb : IIndexedDb
     // The JS shim serializes every transaction on one browser thread; the lock
     // models that so concurrent fetch workers cannot corrupt a store list.
     private readonly Lock _gate = new();
-    private readonly Dictionary<string, List<object>> _stores = new();
+    private readonly Dictionary<string, List<object>> _stores = [];
 
     /// <summary>Seeds one row into a store (always appends, no upsert).</summary>
     public void Seed(string store, object row)
@@ -24,7 +24,7 @@ public sealed class FakeIndexedDb : IIndexedDb
         {
             if (!_stores.TryGetValue(store, out var list))
             {
-                list = new List<object>();
+                list = [];
                 _stores[store] = list;
             }
             list.Add(row);
@@ -47,7 +47,7 @@ public sealed class FakeIndexedDb : IIndexedDb
         {
             if (!_stores.TryGetValue(store, out var list))
             {
-                return new ValueTask<T[]>(Array.Empty<T>());
+                return new ValueTask<T[]>([]);
             }
 
             var matches = list.OfType<T>()
@@ -63,9 +63,9 @@ public sealed class FakeIndexedDb : IIndexedDb
         {
             if (!_stores.TryGetValue(store, out var list))
             {
-                return new ValueTask<T[]>(Array.Empty<T>());
+                return new ValueTask<T[]>([]);
             }
-            return new ValueTask<T[]>(list.OfType<T>().ToArray());
+            return new ValueTask<T[]>([.. list.OfType<T>()]);
         }
     }
 
@@ -111,7 +111,7 @@ public sealed class FakeIndexedDb : IIndexedDb
     {
         if (!_stores.TryGetValue(store, out var list))
         {
-            list = new List<object>();
+            list = [];
             _stores[store] = list;
         }
 

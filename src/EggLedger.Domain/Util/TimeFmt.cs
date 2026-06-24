@@ -2,9 +2,7 @@ using System.Globalization;
 
 namespace EggLedger.Domain.Util;
 
-/// <summary>
-/// Time formatting helpers. C# Domain port of Go util/timefmt.go. Pure.
-/// </summary>
+/// <summary>Time formatting helpers. Go port of util/timefmt.go.</summary>
 public static class TimeFmt
 {
     /// <summary>Converts an instant to fractional Unix seconds (Go TimeToUnix).</summary>
@@ -25,9 +23,8 @@ public static class TimeFmt
     }
 
     /// <summary>
-    /// Renders a coarse relative-time string ("just now", "5 minutes ago", ...)
-    /// using the same bucket boundaries and singular/plural quirks as Go
-    /// HumanizeTime. <paramref name="now"/> defaults to the current UTC time.
+    /// Renders a coarse relative-time string using the same bucket boundaries and
+    /// plural quirks as Go HumanizeTime. <paramref name="now"/> defaults to current UTC.
     /// </summary>
     public static string HumanizeTime(DateTimeOffset t, DateTimeOffset? now = null)
     {

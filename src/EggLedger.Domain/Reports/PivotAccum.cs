@@ -1,9 +1,8 @@
 namespace EggLedger.Domain.Reports;
 
 /// <summary>
-/// Shared 2D pivot collection machinery. Port of Go reports/pivot.go. Pure.
-/// Cells are accumulated with +=; callers whose query guarantees one row per
-/// (row, col) pair via GROUP BY get the same result as plain assignment.
+/// Shared 2D pivot collection machinery. Port of Go reports/pivot.go. Cells accumulate
+/// with +=; with a GROUP BY guaranteeing one row per (row, col) this equals plain assignment.
 /// </summary>
 internal sealed class PivotAccum
 {
@@ -16,7 +15,7 @@ internal sealed class PivotAccum
     private sealed class PivotAxis
     {
         private readonly HashSet<string> _seen = new(StringComparer.Ordinal);
-        public List<LabelEntry> Entries { get; } = new();
+        public List<LabelEntry> Entries { get; } = [];
 
         public void Add(string display, string rawVal)
         {
@@ -28,10 +27,7 @@ internal sealed class PivotAccum
         }
     }
 
-    /// <summary>
-    /// Registers a row label, a col label, and accumulates val into the cell at
-    /// their intersection (keyed by display labels).
-    /// </summary>
+    /// <summary>Registers row/col labels and accumulates val into the cell at their intersection (keyed by display).</summary>
     public void Add(string rowDisplay, string rowRaw, string colDisplay, string colRaw, double val)
     {
         _rows.Add(rowDisplay, rowRaw);
@@ -53,9 +49,8 @@ internal sealed class PivotAccum
         double[] Matrix);
 
     /// <summary>
-    /// Sorts the requested axes (by LabelSortLess on raw values) and flattens cells
-    /// into a row-major matrix indexed r*nC+c. When sortRows is false the row axis
-    /// stays in insertion order. Port of Go pivotAccum.finalize.
+    /// Sorts requested axes (LabelSortLess on raw values) and flattens cells into a
+    /// row-major matrix (r*nC+c); unsorted axes stay in insertion order. Port of Go pivotAccum.finalize.
     /// </summary>
     public Finalized Finalize(bool sortRows, bool sortCols, string rowGroupBy, string colGroupBy)
     {

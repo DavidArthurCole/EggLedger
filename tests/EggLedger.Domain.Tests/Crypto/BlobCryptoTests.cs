@@ -55,7 +55,7 @@ public class BlobCryptoTests
     public void EncryptDecrypt_EmptyPlaintext_RoundTrips()
     {
         var fx = LoadFixture();
-        var blob = BlobCrypto.Encrypt(fx.Key, Array.Empty<byte>());
+        var blob = BlobCrypto.Encrypt(fx.Key, []);
         Assert.Empty(BlobCrypto.Decrypt(fx.Key, blob));
     }
 

@@ -1,9 +1,9 @@
 using System.IO.Compression;
-using Ei;
 using EggLedger.Domain.Api;
 using EggLedger.Web.Data;
 using EggLedger.Web.Services;
 using EggLedger.Web.Tests.Data;
+using Ei;
 using ProtoBuf;
 
 namespace EggLedger.Web.Tests.Services;
@@ -109,7 +109,7 @@ public sealed class FetchServiceTests
         private readonly Func<string, string?> _completeMission;
 
         public int FirstContactHits;
-        public readonly List<string> CompleteMissionRequests = new();
+        public readonly List<string> CompleteMissionRequests = [];
 
         public RoutingHandler(string firstContactBody, Func<string, string?> completeMission)
         {

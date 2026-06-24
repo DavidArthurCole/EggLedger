@@ -1,5 +1,5 @@
-using Ei;
 using EggLedger.Domain.Ei;
+using Ei;
 
 namespace EggLedger.Domain.Tests;
 

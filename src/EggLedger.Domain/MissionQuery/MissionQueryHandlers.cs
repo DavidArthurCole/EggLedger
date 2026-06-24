@@ -1,13 +1,11 @@
-using Ei;
 using EggLedger.Domain.Ei;
+using Ei;
 
 namespace EggLedger.Domain.MissionQuery;
 
 /// <summary>
-/// Port of Go package missionquery (missionquery.go + drops.go). Handler logic
-/// only: filtering, drop shaping, fast/slow-path selection. All data access
-/// goes through the injected <see cref="IMissionStore"/>; artifact base quality
-/// through <see cref="IArtifactQuality"/>. SQL is not ported.
+/// Port of Go package missionquery (missionquery.go + drops.go). Handler logic only;
+/// data access via <see cref="IMissionStore"/>, base quality via <see cref="IArtifactQuality"/>. SQL not ported.
 /// </summary>
 public sealed class MissionQueryHandlers
 {
@@ -25,9 +23,8 @@ public sealed class MissionQueryHandlers
         _store.GetCompleteMissionIdsAsync(playerId);
 
     /// <summary>
-    /// Port of GetExistingData. Joins known accounts with their mission stats,
-    /// dropping accounts with no stored missions (count == 0) or whose stats
-    /// errored. Order follows the known-account list.
+    /// Port of GetExistingData. Joins known accounts with their stats, dropping
+    /// accounts with no stored missions or whose stats errored. Order follows the known-account list.
     /// </summary>
     public async Task<List<DatabaseAccount>> GetExistingDataAsync()
     {
@@ -37,7 +34,6 @@ public sealed class MissionQueryHandlers
             var stats = await _store.GetPlayerMissionStatsAsync(acct.Id);
             if (stats is null)
             {
-                // Go logs the error and continues without appending.
                 continue;
             }
             if (stats.Value.Count > 0)
@@ -80,7 +76,6 @@ public sealed class MissionQueryHandlers
         }
 
         // Kick a one-time background backfill so the next call uses the fast path.
-        // Only when the count succeeded (pending != null) and there is work.
         if (pending is > 0)
         {
             _store.QueueFilterColBackfill(eid);
@@ -90,10 +85,8 @@ public sealed class MissionQueryHandlers
     }
 
     /// <summary>
-    /// Port of GetDurationConfigs. Shapes eiafx mission parameters into the
-    /// per-ship duration config list. The parameter table is supplied by the
-    /// caller (eiafx.Config.MissionParameters in Go) to avoid a hard dependency
-    /// on the concurrently ported eiafx loader.
+    /// Port of GetDurationConfigs. Shapes eiafx mission parameters into the per-ship
+    /// duration config list; the parameter table is supplied by the caller.
     /// </summary>
     public static List<PossibleMission> GetDurationConfigs(
         IEnumerable<ArtifactsConfigurationResponse.MissionParameters> missionParameters)
@@ -120,8 +113,8 @@ public sealed class MissionQueryHandlers
     }
 
     /// <summary>
-    /// Port of GetAllPlayerDrops. Maps missionId -> drops for every stored
-    /// mission, streaming one at a time. Null on store error.
+    /// Port of GetAllPlayerDrops. Maps missionId to drops for every stored mission,
+    /// streaming one at a time. Null on store error.
     /// </summary>
     public async Task<Dictionary<string, List<MissionDrop>>?> GetAllPlayerDropsAsync(string playerId)
     {
@@ -143,10 +136,7 @@ public sealed class MissionQueryHandlers
         return ok ? result : null;
     }
 
-    /// <summary>
-    /// Port of GetShipDrops. Drops for one mission. Null on error or cache miss
-    /// (Go returns nil for both).
-    /// </summary>
+    /// <summary>Port of GetShipDrops. Drops for one mission. Null on error or cache miss.</summary>
     public async Task<List<MissionDrop>?> GetShipDropsAsync(string playerId, string missionId)
     {
         var cm = await _store.GetCompleteMissionAsync(playerId, missionId);
@@ -167,9 +157,8 @@ public sealed class MissionQueryHandlers
     }
 
     /// <summary>
-    /// Shared drop-shaping logic from drops.go (identical in GetShipDrops and
-    /// GetAllPlayerDrops). Builds a MissionDrop and classifies SpecType by proto
-    /// name, attaching the effect string for Stones/Artifacts only.
+    /// Shared drop-shaping logic from drops.go. Classifies SpecType by proto name;
+    /// effect string attached for Stones/Artifacts only.
     /// </summary>
     private MissionDrop ShapeDrop(ArtifactSpec spec)
     {

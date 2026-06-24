@@ -3,13 +3,8 @@
 @using EggLedger.Domain.Reports
 @using EggLedger.Domain.Reports.Charts
 
-@*
-    Multi-series line chart over a 2D result (rows = buckets, cols = series).
-    Port of ReportMultiLineChart.vue. Per-series points and hue-spread colors come
-    from the golden-tested ChartGeometry helper. Legend below the plot; hover
-    crosshair simplified to per-point titles. SVG <text> via MarkupString (Razor
-    reserves the bare <text> tag).
-*@
+@* Multi-series line chart over a 2D result (rows = buckets, cols = series); geometry
+   from ChartGeometry. SVG <text> via MarkupString (Razor reserves the bare <text> tag). *@
 
 <div class="h-full w-full flex flex-col gap-1">
     <div class="flex-1 min-h-0">
@@ -130,10 +125,7 @@
         return ChartGeometry.ThinLabels(first);
     }
 
-    /// <summary>
-    /// Three y-axis ticks honoring pct / integer / float label formatting. Port of
-    /// the ReportMultiLineChart yTicks computed (pct uses toFixed(0)).
-    /// </summary>
+    /// <summary>Three y-axis ticks honoring pct / integer / float label formatting.</summary>
     private List<YTick> BuildTicks(double max)
     {
         if (max == 0)

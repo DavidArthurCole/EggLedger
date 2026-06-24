@@ -2,10 +2,7 @@ using EggLedger.Domain.Crypto;
 
 namespace EggLedger.Web.Services;
 
-/// <summary>
-/// In-process AES-256-GCM via the managed <see cref="BlobCrypto"/>. Used by the
-/// desktop host, where System.Security.Cryptography.AesGcm is available.
-/// </summary>
+/// <summary>In-process AES-256-GCM via managed <see cref="BlobCrypto"/>, for the desktop host where AesGcm is available.</summary>
 public sealed class LocalBlobCipher : IBlobCipher
 {
     public ValueTask<string> EncryptAsync(string hexKey, byte[] plaintext, CancellationToken ct = default) =>
