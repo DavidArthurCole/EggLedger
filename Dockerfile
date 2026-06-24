@@ -3,7 +3,7 @@
 # Single self-contained build: docker build -t eggledger:latest .
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
-COPY global.json nuget.config Directory.Build.props EggLedger.Csharp.slnx ./
+COPY global.json nuget.config Directory.Build.props .editorconfig EggLedger.Csharp.slnx ./
 COPY src/ src/
 RUN dotnet publish src/EggLedger.Web.Wasm/EggLedger.Web.Wasm.csproj -c Release -o /app
 
