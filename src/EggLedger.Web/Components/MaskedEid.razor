@@ -1,0 +1,32 @@
+@using EggLedger.Web.State
+@inject ScreenshotSafetyState ScreenshotSafety
+@implements IDisposable
+
+@*
+    Renders an EID, masked when screenshot-safety is on. Matches the Vue mask:
+    the "EI" prefix stays visible and the 16 digits are replaced by a solid bar
+    (an inline block using the current text color), so screenshots leak nothing.
+    When masking is off, the raw EID renders as text.
+*@
+@if (ScreenshotSafety.Enabled && IsEid(Value))
+{
+    <span>EI</span><span class="inline-block rounded-sm bg-current select-none align-[-0.05em]" style="width: 16ch; height: 0.8em;"></span>
+}
+else
+{
+    @Value
+}
+
+@code {
+    [Parameter]
+    public string Value { get; set; } = "";
+
+    protected override void OnInitialized() => ScreenshotSafety.Changed += OnChanged;
+
+    public void Dispose() => ScreenshotSafety.Changed -= OnChanged;
+
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    private static bool IsEid(string s) =>
+        s.Length == 18 && s.StartsWith("EI", StringComparison.Ordinal) && s.AsSpan(2).IndexOfAnyExceptInRange('0', '9') < 0;
+}

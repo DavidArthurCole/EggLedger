@@ -384,10 +384,17 @@
         try
         {
             // Accounts first (reports reference account ids).
-            var remoteAccounts = await Cloud.GetBlobAsync<List<AccountInfo>>(_session, CloudSyncBlobs.AccountsBlob);
-            foreach (var acct in remoteAccounts)
+            try
             {
-                await Accounts.AddKnownAccountAsync(acct);
+                var remoteAccounts = await Cloud.GetBlobAsync<List<AccountInfo>>(_session, CloudSyncBlobs.AccountsBlob);
+                foreach (var acct in remoteAccounts)
+                {
+                    await Accounts.AddKnownAccountAsync(acct);
+                }
+            }
+            catch (CloudSyncException)
+            {
+                // Nothing synced yet for accounts; skip (match Go warn-and-continue).
             }
 
             try

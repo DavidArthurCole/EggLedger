@@ -195,7 +195,24 @@
 
         var progress = new Progress<FetchProgress>(p =>
         {
-            _progress = p;
+            // Per-mission segment events (Cache/Fetch/Decode/Store) carry no counts;
+            // they must not clobber the running Total/Finished/Failed/Retried shown
+            // in the counter. Carry the last-known counts forward on those events.
+            bool segmentOnly = p.Segment is not null;
+            if (segmentOnly && _progress is not null)
+            {
+                _progress = p with
+                {
+                    Total = _progress.Total,
+                    Finished = _progress.Finished,
+                    Failed = _progress.Failed,
+                    Retried = _progress.Retried,
+                };
+            }
+            else
+            {
+                _progress = p;
+            }
             AppStateSvc.PipelineState = p.State;
             InvokeAsync(StateHasChanged);
         });

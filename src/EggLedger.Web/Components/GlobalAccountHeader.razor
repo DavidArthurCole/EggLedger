@@ -3,7 +3,6 @@
 @implements IDisposable
 @inject ActiveAccount Active
 @inject AppStateService AppStateSvc
-@inject ScreenshotSafetyState ScreenshotSafety
 
 <div class="relative">
     <button type="button"
@@ -35,7 +34,7 @@
                         }
                     </span>
                     <span class="flex-1 min-w-0 flex flex-col gap-0.5">
-                        <span class="text-gray-400">@ScreenshotSafety.Mask(acct.Id)</span>
+                        <span class="text-gray-400"><MaskedEid Value="@acct.Id" /></span>
                         <span class="flex items-center gap-1.5">
                             <span class="font-medium" style="color: #@acct.AccountColor">@acct.Nickname</span>
                             <span class="text-gray-500">@acct.EBString</span>
@@ -62,7 +61,6 @@
     {
         Active.Changed += OnStateChanged;
         AppStateSvc.Changed += OnStateChanged;
-        ScreenshotSafety.Changed += OnStateChanged;
         RefreshActive();
     }
 
@@ -87,6 +85,5 @@
     {
         Active.Changed -= OnStateChanged;
         AppStateSvc.Changed -= OnStateChanged;
-        ScreenshotSafety.Changed -= OnStateChanged;
     }
 }

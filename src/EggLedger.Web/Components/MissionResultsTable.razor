@@ -85,7 +85,7 @@ else
                                                                     }
                                                                     @if (ViewMissionTimes)
                                                                     {
-                                                                        <span class="@RowColor(m, true)"> @TimeLabel(m)</span>
+                                                                        <span class="@RowColor(m, true)">@(" " + TimeLabel(m))</span>
                                                                     }
                                                                     <span class="text-gray-400 ml-0_5rem">
                                                                         <span class="@DurationClass(m)">@m.ShipString</span>
@@ -93,7 +93,7 @@ else
                                                                         {
                                                                             <span> (@m.Level<span class="text-goldenstar">&#9733;</span>)</span>
                                                                         }
-                                                                        <TargetDisplay Target="m.Target" />
+                                                                        <TargetDisplay Target="@m.Target" />
                                                                     </span>
                                                                 </button>
                                                             </div>

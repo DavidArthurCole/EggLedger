@@ -29,8 +29,16 @@ public sealed class SubtleCryptoBlobCipher : IBlobCipher
 
     public async ValueTask<byte[]> DecryptAsync(string hexKey, string b64, CancellationToken ct = default)
     {
+        if (string.IsNullOrEmpty(b64))
+        {
+            throw new InvalidOperationException("decrypt: empty ciphertext (nothing synced yet?)");
+        }
         var module = await ModuleAsync();
-        string plaintextB64 = await module.InvokeAsync<string>("decrypt", ct, hexKey, b64);
+        string? plaintextB64 = await module.InvokeAsync<string>("decrypt", ct, hexKey, b64);
+        if (plaintextB64 is null)
+        {
+            throw new InvalidOperationException("decrypt: SubtleCrypto returned no data");
+        }
         return Convert.FromBase64String(plaintextB64);
     }
 }

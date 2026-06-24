@@ -2,8 +2,8 @@
 @using EggLedger.Web.Missions
 
 @* Select-based AND-only filter UI. Port of the mission-scoped slice of
-   FullFilter.vue / FilterSelect.vue. The OR-sibling UI and the Modal value
-   pickers (Target / Drops) are deferred; Modal rows render a disabled note. *@
+   FullFilter.vue / FilterSelect.vue. Target / Drops use a native select sourced
+   from FilterOptions (type-ahead searchable). The OR-sibling UI is deferred. *@
 
 <div class="max-h-60 overflow-y-auto">
     @for (int i = 0; i < _rows.Count; i++)
@@ -75,7 +75,14 @@
                             break;
 
                         case FilterValueKind.Modal:
-                            <span class="text-gray-400 mt-0_5rem mr-1rem">@def.Label picker not yet available</span>
+                            <select class="filter-select border-gray-300 text-gray-400" value="@row.Val"
+                                    @onchange="@(e => OnValChanged(index, e.Value?.ToString()))">
+                                <option value="" class="filter-select-option">Select @def.Label...</option>
+                                @foreach (var opt in OptionsFor(def))
+                                {
+                                    <option value="@opt.Value" class="filter-select-option @opt.StyleClass">@opt.Text</option>
+                                }
+                            </select>
                             break;
                     }
                 }
@@ -212,13 +219,13 @@
 
     private async Task ApplyAsync()
     {
-        // Skip Modal rows (their value picker is deferred) and the trailing
-        // empty grow-row; everything else is a real AND condition.
+        // Skip the trailing empty grow-row and any row without a value; everything
+        // else (including Target/Drops modal-kind selects) is a real AND condition.
         var filters = new List<FilterCondition>();
         foreach (var row in _rows)
         {
             var def = FilterFields.GetReportField(row.TopLevel);
-            if (def is null || def.ValueKind == FilterValueKind.Modal)
+            if (def is null)
             {
                 continue;
             }

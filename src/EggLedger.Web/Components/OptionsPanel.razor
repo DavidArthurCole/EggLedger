@@ -104,12 +104,6 @@
                @onchange="e => SetAsync(SettingsModel.KeyCollapseOlderSections, b => Model.CollapseOlderSections = b, e)" />
         <label for="collapseOlderSectionsCheckbox" class="ext-opt-label">Collapse all but the most recent year section by default</label>
     </div>
-    <div class="mt-0_5rem">
-        <input id="autoRefreshMennoCheckbox" type="checkbox" class="ext-opt-check mr-0_5rem"
-               checked="@Model.AutoRefreshMenno"
-               @onchange="e => SetAsync(SettingsModel.KeyAutoRefreshMenno, b => Model.AutoRefreshMenno = b, e)" />
-        <label for="autoRefreshMennoCheckbox" class="ext-opt-label">Automatically refresh Menno data once weekly</label>
-    </div>
 </div>
 
 @code {

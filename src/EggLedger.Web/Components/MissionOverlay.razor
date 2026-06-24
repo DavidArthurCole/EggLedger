@@ -8,7 +8,7 @@
    <dialog> via dialog.js. Shows ShipDisplay + prev/next nav + close. Multi mode
    is deferred. *@
 
-<dialog @ref="_dialog" class="mission-overlay w-60vw max-h-95vh bg-dark rounded-lg relative flex flex-col" @oncancel="OnCancel" @oncancel:preventDefault="false">
+<dialog @ref="_dialog" class="mission-overlay w-60vw max-h-95vh bg-dark rounded-lg relative flex flex-col" @oncancel="OnCancel" @oncancel:preventDefault="false" @onclose="OnCancel">
     <button class="absolute top-2 right-2 z-10 rounded-md text-gray-400 hover:text-gray-200 focus:outline-none" type="button" @onclick="CloseAsync" aria-label="Close">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />

@@ -191,7 +191,15 @@ public sealed class CloudSyncService
 
         var env = await resp.Content.ReadFromJsonAsync<GetBlobResponse>(Json, cancellationToken).ConfigureAwait(false)
             ?? throw new CloudSyncException($"getBlob {name}: malformed response");
-        var plaintext = await _cipher.DecryptAsync(session.EncryptionKey, env.Ciphertext, cancellationToken).ConfigureAwait(false);
+        byte[] plaintext;
+        try
+        {
+            plaintext = await _cipher.DecryptAsync(session.EncryptionKey, env.Ciphertext, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not CloudSyncException)
+        {
+            throw new CloudSyncException($"getBlob {name}: decrypt failed: {ex.Message}", ex);
+        }
 
         var value = JsonSerializer.Deserialize<T>(plaintext, Json);
         if (value is null)
