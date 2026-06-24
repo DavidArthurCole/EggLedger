@@ -29,6 +29,7 @@ else
         {
             int yearIndex = yi;
             var year = Grouping.Arrays.Year[yearIndex];
+            <div>
             <span class="text-lg font-bold mr-0_5rem ledger-underline">@year.Year</span>
             <button type="button" class="tb-c text-lg toggle-link" @onclick="@(() => ToggleYear(yearIndex))">
                 @(year.Enabled ? "Collapse" : "Expand")
@@ -112,6 +113,7 @@ else
                     <hr class="pt-3rem pb-3rem invisible mt-1" />
                 }
             }
+            </div>
         }
     </div>
 }

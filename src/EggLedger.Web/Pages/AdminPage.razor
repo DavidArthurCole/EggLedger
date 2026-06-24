@@ -1,0 +1,100 @@
+@page "/admin"
+@using EggLedger.Web.Services
+@using EggLedger.Web.Settings
+@using EggLedger.Web.State
+@inject AdminService Admin
+@inject CloudSessionStore SessionStore
+@inject AdminState AdminState
+
+<PageTitle>EggLedger - Admin</PageTitle>
+
+<section class="view-layout overflow-auto">
+    @if (_token is null) {
+        <p class="text-gray-400 italic mt-0_5rem">Connect cloud sync on the Settings tab to access admin.</p>
+    } else if (!_isAdmin) {
+        <p class="text-red-700 italic mt-0_5rem">Admin access required.</p>
+    } else {
+        <span class="section-heading">Traffic (last hour)</span>
+        @if (_metrics is { Minutes.Count: > 0 }) {
+            <div class="flex items-end gap-px h-24 mt-0_5rem bg-darkest rounded-md p-2">
+                @{ var max = Math.Max(1, _metrics.Minutes.Max(m => m.Total)); }
+                @foreach (var m in _metrics.Minutes) {
+                    <div class="flex-1 bg-blue-500 rounded-sm" style="height: @(m.Total * 100 / max)%" title="@m.Total req"></div>
+                }
+            </div>
+            <div class="text-xs text-gray-500 mt-1">@_metrics.Minutes.Sum(m => m.Total) requests in the last 60 minutes</div>
+
+            <span class="section-heading mt-1rem">Requests by endpoint</span>
+            <table class="w-full text-xs text-gray-400 mt-0_5rem tabular-nums">
+                <tbody>
+                    @foreach (var p in _metrics.Paths) {
+                        <tr><td class="font-mono py-0.5">@p.Path</td><td class="text-right">@p.Count</td></tr>
+                    }
+                </tbody>
+            </table>
+        } else {
+            <p class="text-gray-500 italic mt-0_5rem">No traffic recorded yet.</p>
+        }
+
+        <span class="section-heading mt-1rem">Users (@(_users?.Count ?? 0))</span>
+        <table class="w-full text-sm text-gray-400 mt-0_5rem tabular-nums">
+            <thead>
+                <tr class="text-gray-500 text-xs">
+                    <th class="text-left py-1">User</th>
+                    <th class="text-left">Discord ID</th>
+                    <th class="text-right">Blobs</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var u in _users ?? []) {
+                    <tr class="border-t border-gray-700/50">
+                        <td class="py-1 font-medium">@u.Username @(u.IsAdmin ? "(admin)" : "")</td>
+                        <td class="font-mono text-xs text-gray-600">@u.DiscordId</td>
+                        <td class="text-right">@u.BlobCount</td>
+                        <td class="text-right">
+                            @if (!u.IsAdmin) {
+                                <button type="button" class="text-xs text-red-400 hover:text-red-300"
+                                        @onclick="() => DeleteUser(u.DiscordId)">Delete</button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        @if (_error.Length > 0) {
+            <p class="text-red-500 text-xs mt-0_5rem">@_error</p>
+        }
+    }
+</section>
+
+@code {
+    private string? _token;
+    private bool _isAdmin;
+    private IReadOnlyList<AdminUser>? _users;
+    private AdminMetrics? _metrics;
+    private string _error = "";
+
+    protected override async Task OnInitializedAsync() {
+        var session = await SessionStore.GetSessionAsync();
+        _token = session?.Token;
+        if (_token is null) return;
+
+        _isAdmin = await Admin.IsAdminAsync(_token);
+        AdminState.IsAdmin = _isAdmin;
+        if (_isAdmin) await RefreshAsync();
+    }
+
+    private async Task RefreshAsync() {
+        if (_token is null) return;
+        _users = await Admin.GetUsersAsync(_token);
+        _metrics = await Admin.GetMetricsAsync(_token);
+        StateHasChanged();
+    }
+
+    private async Task DeleteUser(string discordId) {
+        if (_token is null) return;
+        if (await Admin.DeleteUserAsync(_token, discordId)) await RefreshAsync();
+        else _error = $"failed to delete {discordId}";
+    }
+}

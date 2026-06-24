@@ -63,6 +63,8 @@ public static class WebServiceRegistration {
         // (JS interop) cipher; desktop overrides with the managed LocalBlobCipher.
         services.AddScoped<IBlobCipher, SubtleCryptoBlobCipher>();
         services.AddScoped<CloudSyncService>();
+        services.AddScoped<AdminService>();
+        services.AddScoped<AdminState>();
         services.AddScoped<EggLedger.Web.Settings.CloudSessionStore>();
 
         // Shell state and the platform capability seam. Desktop overrides the browser impl with a native one.

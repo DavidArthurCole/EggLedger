@@ -1,13 +1,18 @@
 @inherits LayoutComponentBase
 @using EggLedger.Web.Components
+@using EggLedger.Web.Services
 @using EggLedger.Web.Settings
 @using EggLedger.Web.State
+@implements IDisposable
 @inject AppStateService AppStateSvc
 @inject ScreenshotSafetyState ScreenshotSafety
 @inject EggLedger.Web.Data.IndexedDbSettings Settings
+@inject AdminState AdminState
+@inject AdminService Admin
+@inject CloudSessionStore SessionStore
 
 <div class="h-full flex flex-col space-y-3 pb-3 bg-darker">
-    <TabBar Tabs="_tabs">
+    <TabBar Tabs="Tabs">
         <Right>
             <GlobalAccountHeader />
         </Right>
@@ -26,17 +31,7 @@
 </div>
 
 @code {
-    protected override async Task OnInitializedAsync()
-    {
-        // Seed the shared mask-EID toggle at startup so masking components reflect it on first render.
-        var settings = await Settings.GetAllSettingsAsync();
-        if (settings.TryGetValue(SettingsModel.KeyScreenshotSafety, out var v))
-        {
-            ScreenshotSafety.Enabled = v == "true";
-        }
-    }
-
-    private static readonly IReadOnlyList<TabBar.TabItem> _tabs =
+    private static readonly TabBar.TabItem[] _baseTabs =
     [
         new("Ledger", "/"),
         new("Mission Data", "/missions"),
@@ -45,4 +40,25 @@
         new("Settings", "/settings"),
         new("About", "/about"),
     ];
+
+    private IReadOnlyList<TabBar.TabItem> Tabs =>
+        AdminState.IsAdmin ? [.. _baseTabs, new("Admin", "/admin")] : _baseTabs;
+
+    protected override async Task OnInitializedAsync() {
+        AdminState.Changed += OnAdminChanged;
+
+        // Seed the shared mask-EID toggle so masking components reflect it on first render.
+        var settings = await Settings.GetAllSettingsAsync();
+        if (settings.TryGetValue(SettingsModel.KeyScreenshotSafety, out var v))
+            ScreenshotSafety.Enabled = v == "true";
+
+        // Resolve admin status once so the Admin tab can appear without visiting it.
+        var session = await SessionStore.GetSessionAsync();
+        if (session?.Token is { } token)
+            AdminState.IsAdmin = await Admin.IsAdminAsync(token);
+    }
+
+    private void OnAdminChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => AdminState.Changed -= OnAdminChanged;
 }
