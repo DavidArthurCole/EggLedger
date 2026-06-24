@@ -101,10 +101,10 @@ app.UseForwardedHeaders();
 app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
-// No UseAntiforgery: this host has no server-side form posts (the UI is fully interactive
-// over the circuit; the OAuth callback is a GET). UseAntiforgery + a stale browser token
-// from a prior DataProtection key threw AntiforgeryValidationException and crashed the
-// render. Dropping it removes that failure class with no security loss here.
+// Required: MapRazorComponents marks endpoints with anti-forgery metadata, so the
+// middleware must be present. Keys persist to Postgres (stable key ring), so the earlier
+// stale-cookie decrypt failure is resolved.
+app.UseAntiforgery();
 
 // Reverse-proxy the egg-api prefix to auxbrain server-side (replaces the nginx CORS dodge).
 app.Map("/egg-api/{**rest}", async (HttpContext ctx, IHttpClientFactory factory, string rest) => {
