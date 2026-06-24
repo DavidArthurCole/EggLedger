@@ -55,5 +55,10 @@
 </html>
 
 @code {
-    private static readonly Microsoft.AspNetCore.Components.Web.InteractiveServerRenderMode RenderMode = new(prerender: false);
+    // Prerender ON (the template default). The earlier prerender:false was to dodge
+    // JS-interop-during-prerender, but on this server host storage is Postgres (no IndexedDB
+    // JS interop on init), so prerender is safe. Prerender gives the interactive roots an SSR
+    // placeholder to attach to; without it the second interactive root (component 1) had no
+    // DOM anchor on batch 2 -> insertBefore parentNode null. Default InteractiveServer.
+    private static readonly Microsoft.AspNetCore.Components.Web.InteractiveServerRenderMode RenderMode = new();
 }
