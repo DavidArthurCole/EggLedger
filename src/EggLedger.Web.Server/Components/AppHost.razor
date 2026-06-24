@@ -32,6 +32,12 @@
 
     <link rel="stylesheet" href="_content/EggLedger.Web/tailwind.css" />
     <link rel="stylesheet" href="_content/EggLedger.Web/css/app.css" />
+    <style>
+        /* Hidden until Blazor sets display:block on a circuit error (template default). */
+        #blazor-error-ui { display: none; position: fixed; bottom: 0; left: 0; right: 0;
+            background: #b91c1c; color: #fff; padding: 0.6rem 1rem; z-index: 1000; }
+        #blazor-error-ui .reload, #blazor-error-ui .dismiss { color: #fff; margin-left: 0.75rem; cursor: pointer; }
+    </style>
     <HeadOutlet @rendermode="@RenderMode" />
 </head>
 <body>
