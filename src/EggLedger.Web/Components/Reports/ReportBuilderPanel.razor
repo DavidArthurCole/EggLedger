@@ -1,6 +1,10 @@
 @using EggLedger.Domain.Reports
+@using EggLedger.Web.Components
 @using EggLedger.Web.Data
+@using EggLedger.Web.Missions
+@using WebCondition = EggLedger.Web.Missions.FilterCondition
 @inject IndexedDbReportStore Store
+@inject MissionConfigProvider Config
 @inject IJSRuntime Js
 
 @* Report builder dialog (native <dialog>). Builds a ReportDefinition, auto-classifies
@@ -129,7 +133,16 @@
                     <ReportGridSizePicker @bind-Width="_form.GridW" @bind-Height="_form.GridH" />
                 </div>
 
-                <ReportFilterEditor Conditions="_form.AndConditions" ConditionsChanged="StateHasChanged" />
+                <div class="flex flex-col gap-1">
+                    <span class="text-xs text-gray-400">Filters</span>
+                    <MissionFilterBar @ref="_filterBar"
+                                      @key="_filterBarKey"
+                                      FieldCtx="Config.FieldCtx"
+                                      IncludeArtifactFields="true"
+                                      ShowApply="false"
+                                      InitialAnd="_initialAnd"
+                                      InitialOr="_initialOr" />
+                </div>
 
                 <div class="flex items-center gap-2">
                     <input id="mennoEnabledCheck" type="checkbox" class="ext-opt-check" @bind="_form.MennoEnabled" />
@@ -163,6 +176,11 @@
     private long _createdAt;
     private int _sortOrder;
 
+    private MissionFilterBar? _filterBar;
+    private int _filterBarKey;
+    private IReadOnlyList<WebCondition>? _initialAnd;
+    private IReadOnlyList<IReadOnlyList<WebCondition>?>? _initialOr;
+
     private sealed class FormModel
     {
         public string Name { get; set; } = "";
@@ -179,7 +197,6 @@
         public int GridH { get; set; } = 2;
         public int MinSampleSize { get; set; }
         public bool MennoEnabled { get; set; }
-        public List<FilterCondition> AndConditions { get; set; } = new();
     }
 
     public async Task OpenForCreateAsync()
@@ -188,6 +205,9 @@
         _editingGroupId = "";
         _createdAt = 0;
         _sortOrder = 0;
+        _initialAnd = null;
+        _initialOr = null;
+        _filterBarKey++;
         _form = new FormModel();
         StateHasChanged();
         await JsOpenAsync();
@@ -199,6 +219,11 @@
         _editingGroupId = def.GroupId ?? "";
         _createdAt = def.CreatedAt;
         _sortOrder = def.SortOrder;
+        _initialAnd = def.Filters.And.Select(ToWeb).ToList();
+        _initialOr = def.Filters.Or
+            .Select(g => (IReadOnlyList<WebCondition>?)g.Select(ToWeb).ToList())
+            .ToList();
+        _filterBarKey++;
         _form = new FormModel
         {
             Name = def.Name,
@@ -215,7 +240,6 @@
             GridH = def.GridH == 0 ? 2 : def.GridH,
             MinSampleSize = def.MinSampleSize,
             MennoEnabled = def.MennoEnabled,
-            AndConditions = def.Filters.And.Select(c => new FilterCondition { TopLevel = c.TopLevel, Op = c.Op, Val = c.Val }).ToList(),
         };
         StateHasChanged();
         await JsOpenAsync();
@@ -246,12 +270,23 @@
         await Saved.InvokeAsync();
     }
 
+    private static WebCondition ToWeb(EggLedger.Domain.Reports.FilterCondition c) => new(c.TopLevel, c.Op, c.Val);
+
+    private static EggLedger.Domain.Reports.FilterCondition ToReport(WebCondition c) =>
+        new() { TopLevel = c.TopLevel, Op = c.Op, Val = c.Val };
+
     private ReportDefinition BuildDefinition(FormModel f)
     {
-        var keptConditions = f.AndConditions
-            .Where(c => !string.IsNullOrEmpty(c.TopLevel) && !string.IsNullOrEmpty(c.Op))
-            .Select(c => new FilterCondition { TopLevel = c.TopLevel, Op = c.Op, Val = c.Val })
-            .ToList();
+        var legacy = _filterBar?.BuildFilter();
+        var reportFilters = new ReportFilters();
+        if (legacy is not null)
+        {
+            reportFilters.And = legacy.And.Select(ToReport).ToList();
+            reportFilters.Or = legacy.Or
+                .Where(g => g is { Count: > 0 })
+                .Select(g => g!.Select(ToReport).ToList())
+                .ToList();
+        }
 
         return new ReportDefinition
         {
@@ -271,7 +306,7 @@
             GridH = f.GridH,
             MinSampleSize = f.MinSampleSize,
             MennoEnabled = f.MennoEnabled,
-            Filters = new ReportFilters { And = keptConditions },
+            Filters = reportFilters,
             GroupId = _editingId is null ? (GroupId ?? "") : _editingGroupId,
             SortOrder = _sortOrder,
             CreatedAt = _createdAt,

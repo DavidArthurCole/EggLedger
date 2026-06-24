@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <Description>EggLedger Blazor Server host. Runs the EggLedger.Web RCL UI server-side over a SignalR circuit, so decode and crypto use native APIs (no /decode wire). Folds in the sync server in later migration phases.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\EggLedger.Web\EggLedger.Web.csproj" />
+    <ProjectReference Include="..\EggLedger.Domain\EggLedger.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Synckit.Core" Version="0.1.0-preview.1" />
+    <PackageReference Include="Synckit.Auth" Version="0.1.0-preview.1" />
+    <PackageReference Include="Synckit.Bot" Version="0.1.0-preview.1" />
+    <PackageReference Include="Synckit.Contract" Version="0.1.0-preview.1" />
+    <PackageReference Include="Synckit.Db" Version="0.1.0-preview.1" />
+    <PackageReference Include="Npgsql" Version="10.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Migrations\*.sql" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

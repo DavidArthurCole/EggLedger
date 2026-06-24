@@ -2,6 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/EggLedger.Domain/EggLedger.Domain.csproj" />
     <Project Path="src/EggLedger.Web/EggLedger.Web.csproj" />
+    <Project Path="src/EggLedger.Web.Server/EggLedger.Web.Server.csproj" />
     <Project Path="src/EggLedger.Web.Wasm/EggLedger.Web.Wasm.csproj" />
     <Project Path="src/EggLedger.Desktop/EggLedger.Desktop.csproj" />
   </Folder>

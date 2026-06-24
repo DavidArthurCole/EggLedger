@@ -10,13 +10,30 @@
 @* Browser adaptation of the desktop ExportManagementPanel: manages per-account stored data (count, last fetch, export-to-download, delete) since the browser has no on-disk export files. *@
 <div class="mt-4">
     <span class="section-heading">Stored Account Data</span>
-    @if (Accounts.Count == 0)
+    @if (Accounts.Count == 0 && Fetching is null)
     {
         <p class="mt-2 text-xs text-gray-500 italic">No accounts with stored missions yet. Add an account above and fetch.</p>
     }
     else
     {
         <ul class="mt-2 space-y-2">
+            @if (Fetching is { } f && !Accounts.Any(a => a.Id == f.Id))
+            {
+                <li class="p-2 border border-yellow-700/60 rounded-md bg-darkest animate-pulse">
+                    <div class="flex items-baseline gap-2 flex-wrap">
+                        <span class="font-bold" style="color: #@f.Color">@f.Nickname</span>
+                        <span class="font-mono text-xs text-gray-600"><MaskedEid Value="@f.Id" /></span>
+                    </div>
+                    <div class="flex items-center gap-1 mt-1 text-xs text-yellow-400">
+                        <span>Fetching missions...</span>
+                        @if (f.Total > 0)
+                        {
+                            <span class="text-gray-600">&middot;</span>
+                            <span class="text-gray-400 tabular-nums">@f.Finished / @f.Total</span>
+                        }
+                    </div>
+                </li>
+            }
             @foreach (var acct in Sorted)
             {
                 <li class="p-2 border border-gray-700 rounded-md bg-darkest">
@@ -63,6 +80,12 @@
     /// <summary>Raised after a delete so the parent can reload the lists.</summary>
     [Parameter]
     public EventCallback Changed { get; set; }
+
+    /// <summary>An account currently being fetched, shown as an ephemeral loading card until its data lands.</summary>
+    [Parameter]
+    public FetchingCard? Fetching { get; set; }
+
+    public sealed record FetchingCard(string Id, string Nickname, string Color, int Finished, int Total);
 
     private static double NowUnix => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 

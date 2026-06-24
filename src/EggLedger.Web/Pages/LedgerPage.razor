@@ -57,7 +57,7 @@
 
     @if (_progress is not null && !_idle || _terminalState is not null)
     {
-        <div class="min-h-14 px-2 py-1 text-xs text-gray-500 bg-darkest rounded-md tabular-nums">
+        <div class="w-full max-w-2xl mx-auto min-h-14 px-2 py-1 text-xs text-gray-500 bg-darkest rounded-md tabular-nums">
             @switch (_displayState)
             {
                 case AppState.FetchingSave:
@@ -113,7 +113,7 @@
     }
 
     <div class="w-full max-w-2xl mx-auto flex flex-col gap-3">
-        <AccountDataPanel Accounts="_existing" Changed="ReloadAsync" />
+        <AccountDataPanel Accounts="_existing" Changed="ReloadAsync" Fetching="FetchingCardInfo" />
     </div>
 </section>
 
@@ -134,6 +134,12 @@
             or AppState.Success or AppState.Failed or AppState.Interrupted;
 
     private AppState? _displayState => _terminalState ?? _progress?.State;
+
+    // Ephemeral loading card for the account being fetched, until its stored data lands.
+    private AccountDataPanel.FetchingCard? FetchingCardInfo =>
+        !_idle && Active.ActiveAccountId is { } id && _activeInfo is { } info
+            ? new AccountDataPanel.FetchingCard(id, info.Nickname, info.AccountColor, _progress?.Finished ?? 0, _progress?.Total ?? 0)
+            : null;
 
     private int Percent =>
         _progress is { Total: > 0 } p ? (int)Math.Round((double)p.Finished / p.Total * 100) : 0;

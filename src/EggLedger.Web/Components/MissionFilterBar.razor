@@ -29,9 +29,12 @@
                         @onclick="() => AddOr(index)">OR</button>
             }
 
-            <button type="button" title="Remove filter condition" aria-label="Remove"
-                    class="mr-1rem flex items-center justify-center text-red-700 text-lg max-w-6 max-h-6 min-w-6 min-h-6 border border-red-700 rounded-md bg-transparent mt-0_5rem filter-button"
-                    @onclick="() => RemoveRow(index)">&times;</button>
+            @if (FieldOf(row.Cond) is not null)
+            {
+                <button type="button" title="Remove filter condition" aria-label="Remove"
+                        class="mr-1rem flex items-center justify-center text-red-700 text-lg max-w-6 max-h-6 min-w-6 min-h-6 border border-red-700 rounded-md bg-transparent mt-0_5rem filter-button"
+                        @onclick="() => RemoveRow(index)">&times;</button>
+            }
 
             @RenderWarning(row.Cond)
         </div>
@@ -55,16 +58,19 @@
     }
 </div>
 
-<hr class="mt-1rem w-full" />
+@if (ShowApply)
+{
+    <hr class="mt-1rem w-full" />
 
-<button type="button" class="apply-filter-button" disabled="@Applying" @onclick="ApplyAsync">Apply Filter</button>
-@if (Applying)
-{
-    <span class="text-green-700 mt-0_5rem"><i>Applying filter, please wait...</i></span>
-}
-else if (LastResultText is { Length: > 0 })
-{
-    <span class="text-gray-500 mt-0_5rem"><i>@LastResultText</i></span>
+    <button type="button" class="apply-filter-button" disabled="@Applying" @onclick="ApplyAsync">Apply Filter</button>
+    @if (Applying)
+    {
+        <span class="text-green-700 mt-0_5rem"><i>Applying filter, please wait...</i></span>
+    }
+    else if (LastResultText is { Length: > 0 })
+    {
+        <span class="text-gray-500 mt-0_5rem"><i>@LastResultText</i></span>
+    }
 }
 
 @code {
@@ -73,6 +79,16 @@ else if (LastResultText is { Length: > 0 })
     [Parameter] public string LastResultText { get; set; } = "";
     [Parameter] public EventCallback<LegacyFilter> OnApply { get; set; }
     [Parameter] public bool IsLifetime { get; set; }
+
+    /// <summary>Show the Apply button + status. Off when embedded in a dialog that saves on its own submit.</summary>
+    [Parameter] public bool ShowApply { get; set; } = true;
+
+    /// <summary>Include artifact-scope fields (name/rarity/tier/spec type/quality). On for Reports, off for Mission Data.</summary>
+    [Parameter] public bool IncludeArtifactFields { get; set; }
+
+    /// <summary>Seed rows from an existing filter (Reports edit). Mission Data leaves these null (transient).</summary>
+    [Parameter] public IReadOnlyList<FilterCondition>? InitialAnd { get; set; }
+    [Parameter] public IReadOnlyList<IReadOnlyList<FilterCondition>?>? InitialOr { get; set; }
 
     /// <summary>The legacy AND list + parallel per-index OR-sibling lists the matcher consumes.</summary>
     public sealed record LegacyFilter(
@@ -91,9 +107,37 @@ else if (LastResultText is { Length: > 0 })
 
     protected override void OnInitialized()
     {
-        _fields = FilterFields.ReportMissionFields();
-        if (_rows.Count == 0)
+        _fields = IncludeArtifactFields
+            ? [.. FilterFields.ReportFilterFields]
+            : FilterFields.ReportMissionFields();
+
+        if (InitialAnd is { Count: > 0 })
+        {
+            for (var i = 0; i < InitialAnd.Count; i++)
+            {
+                var row = new Row();
+                Copy(InitialAnd[i], row.Cond);
+                var siblings = InitialOr is not null && i < InitialOr.Count ? InitialOr[i] : null;
+                if (siblings is not null)
+                    foreach (var s in siblings)
+                    {
+                        var sc = new FilterCondition();
+                        Copy(s, sc);
+                        row.Or.Add(sc);
+                    }
+                _rows.Add(row);
+            }
+        }
+
+        if (_rows.Count == 0 || !string.IsNullOrEmpty(_rows[^1].Cond.TopLevel))
             _rows.Add(new Row());
+    }
+
+    private static void Copy(FilterCondition from, FilterCondition to)
+    {
+        to.TopLevel = from.TopLevel;
+        to.Op = from.Op;
+        to.Val = from.Val;
     }
 
     private List<FilterFieldDef> TopLevelFields => _fields;
@@ -295,7 +339,8 @@ else if (LastResultText is { Length: > 0 })
 
     private void RemoveOr(int index, int orIndex) => _rows[index].Or.RemoveAt(orIndex);
 
-    private async Task ApplyAsync()
+    /// <summary>Current filter as the legacy (and, orFilters) shape. Incomplete rows dropped. For embedded use (read on the host's save).</summary>
+    public LegacyFilter BuildFilter()
     {
         var and = new List<FilterCondition>();
         var or = new List<IReadOnlyList<FilterCondition>?>();
@@ -309,8 +354,10 @@ else if (LastResultText is { Length: > 0 })
             or.Add(siblings.Count > 0 ? siblings : null);
         }
 
-        await OnApply.InvokeAsync(new LegacyFilter(and, or));
+        return new LegacyFilter(and, or);
     }
+
+    private async Task ApplyAsync() => await OnApply.InvokeAsync(BuildFilter());
 
     private static FilterCondition Clone(FilterCondition c) => new(c.TopLevel, c.Op, c.Val);
 }

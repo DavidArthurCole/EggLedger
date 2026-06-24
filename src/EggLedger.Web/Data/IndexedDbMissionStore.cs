@@ -106,16 +106,27 @@ public sealed class IndexedDbMissionStore : IMissionStore {
 
     /// <summary>Slow path: every decoded mission for the player, ordered by start_timestamp. Null on a decode error.</summary>
     public async Task<IReadOnlyList<CompleteMissionResponse>?> GetPlayerCompleteMissionsAsync(string eid) {
-        var rows = await PlayerRowsAsync(eid);
-        var result = new List<CompleteMissionResponse>(rows.Count);
+        var rows = (await PlayerRowsAsync(eid)).OrderBy(r => r.StartTimestamp).ToList();
         try {
-            foreach (var row in rows.OrderBy(r => r.StartTimestamp)) {
-                result.Add(await DecodeAsync(row).ConfigureAwait(false));
+            // Decode is a server round-trip per mission in WASM; sequential over a full
+            // history was ~20s. Run in bounded-concurrency batches, preserving order.
+            var result = new CompleteMissionResponse[rows.Count];
+            const int batch = 16;
+            for (int start = 0; start < rows.Count; start += batch) {
+                int end = Math.Min(start + batch, rows.Count);
+                var tasks = new Task[end - start];
+                for (int i = start; i < end; i++) {
+                    int idx = i;
+                    tasks[idx - start] = Assign(idx);
+                }
+                await Task.WhenAll(tasks).ConfigureAwait(false);
             }
+            return result;
+
+            async Task Assign(int idx) => result[idx] = await DecodeAsync(rows[idx]).ConfigureAwait(false);
         } catch {
             return null;
         }
-        return result;
     }
 
     /// <summary>Compiles a decoded mission into a display row (slow path).</summary>
