@@ -454,11 +454,10 @@ input[type=number] {
 .mission-item-3 {
   flex: 0 0 calc(33.33% - 10px);
   box-sizing: border-box;
-  /* Skip layout/paint for off-screen mission rows (Chromium/lorca). Large
-     accounts can expand thousands of rows; this bounds render cost without
-     changing behavior. contain-intrinsic-size keeps the scrollbar stable. */
-  content-visibility: auto;
-  contain-intrinsic-size: auto 24px;
+  /* content-visibility:auto was a WASM/lorca paint optimization. It detaches
+     off-screen nodes the Blazor Server renderer still tries to patch, causing
+     "insertBefore parentNode null" circuit crashes once a large mission list
+     renders. Removed for the server host. */
 }
 
 .overlay-mission,
