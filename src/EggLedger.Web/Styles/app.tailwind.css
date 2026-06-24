@@ -464,6 +464,20 @@ input[type=number] {
   background: transparent;
 }
 
+/* SearchablePicker renders as a native top-layer <dialog>, so it escapes any
+   transformed/contained ancestor. UA-center it and dim the ::backdrop instead of
+   the panel. max-h keeps the option list scrollable on short viewports. */
+dialog.popup-selector-inner {
+  margin: auto;
+  max-height: 85vh;
+  max-width: 90vw;
+  overflow: visible;
+}
+
+dialog.popup-selector-inner::backdrop {
+  background: rgba(0, 0, 0, 0.7);
+}
+
 .tooltip-custom {
   @apply relative inline-block;
 }

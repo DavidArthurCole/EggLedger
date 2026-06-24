@@ -10,17 +10,33 @@ public delegate Task<IReadOnlyList<MissionDrop>?> ShipDropsFetcher(string accoun
 
 /// <summary>Tests a DatabaseMission against a typed MissionFilter (OR of AND-groups). Pure except Drops, which is async (fetched per mission). Date compares are same-day Equals with inclusive GE/LE. The legacy string entry points convert via FilterCodec and run through the same core.</summary>
 public sealed class MissionFilterMatcher {
-    private readonly IReadOnlyList<PossibleMission> _durationConfigs;
     private readonly string _accountId;
     private readonly ShipDropsFetcher _fetchDrops;
+
+    // Ship -> config, and ship -> (duration -> config), built once. The drop-filter
+    // path hits these per mission; linear scans there were O(ships*durations) per
+    // mission over the whole history.
+    private readonly Dictionary<int, PossibleMission> _shipConfigs;
+    private readonly Dictionary<int, Dictionary<int, DurationConfig>> _durByShip;
 
     public MissionFilterMatcher(
         IReadOnlyList<PossibleMission> durationConfigs,
         string? accountId,
         ShipDropsFetcher fetchDrops) {
-        _durationConfigs = durationConfigs;
         _accountId = accountId ?? "";
         _fetchDrops = fetchDrops;
+
+        _shipConfigs = [];
+        _durByShip = [];
+        foreach (var pm in durationConfigs) {
+            int ship = Convert.ToInt32(pm.Ship, CultureInfo.InvariantCulture);
+            _shipConfigs[ship] = pm;
+            var durs = new Dictionary<int, DurationConfig>();
+            foreach (var d in pm.Durations) {
+                durs[Convert.ToInt32(d.DurationType, CultureInfo.InvariantCulture)] = d;
+            }
+            _durByShip[ship] = durs;
+        }
     }
 
     /// <summary>Unix seconds -> local DateTime.</summary>
@@ -185,22 +201,12 @@ public sealed class MissionFilterMatcher {
         return op == FilterOperator.NotContains ? !anySatisfies : anySatisfies;
     }
 
-    private PossibleMission? FindShipConfig(int ship) {
-        foreach (var pm in _durationConfigs) {
-            if (Convert.ToInt32(pm.Ship, CultureInfo.InvariantCulture) == ship) {
-                return pm;
-            }
-        }
-        return null;
-    }
+    private PossibleMission? FindShipConfig(int ship) =>
+        _shipConfigs.GetValueOrDefault(ship);
 
-    private static DurationConfig? FindDurConfig(PossibleMission ship, int duration) {
-        foreach (var d in ship.Durations) {
-            if (Convert.ToInt32(d.DurationType, CultureInfo.InvariantCulture) == duration) {
-                return d;
-            }
-        }
-        return null;
+    private DurationConfig? FindDurConfig(PossibleMission ship, int duration) {
+        int shipKey = Convert.ToInt32(ship.Ship, CultureInfo.InvariantCulture);
+        return _durByShip.TryGetValue(shipKey, out var durs) && durs.TryGetValue(duration, out var d) ? d : null;
     }
 
     // Compat shim for the legacy string filter API (the existing UI + tests).

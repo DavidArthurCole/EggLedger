@@ -94,6 +94,12 @@
     private MissionFilterMatcher? _matcher;
     private MissionOverlay? _overlay;
 
+    // All drops for the active account, keyed by mission id. Loaded once on first
+    // drop-filter so the matcher reads from memory instead of decoding per mission
+    // (per-mission decode is a server round-trip in WASM: thousands of them froze
+    // drop filtering). Null = not loaded yet.
+    private Dictionary<string, List<MissionDrop>>? _allDrops;
+
     protected override async Task OnInitializedAsync()
     {
         Active.Changed += OnAccountChanged;
@@ -119,6 +125,7 @@
 
         _loading = true;
         _resultText = "";
+        _allDrops = null;
         StateHasChanged();
 
         var rows = await Queries.ViewMissionsOfEidAsync(id);
@@ -140,8 +147,12 @@
         StateHasChanged();
     }
 
-    private async Task<IReadOnlyList<MissionDrop>?> DropsFetcher(string accountId, string missionId) =>
-        await Queries.GetShipDropsAsync(accountId, missionId);
+    // Serves drops from the one-shot all-drops cache; loads it on first use.
+    private async Task<IReadOnlyList<MissionDrop>?> DropsFetcher(string accountId, string missionId)
+    {
+        _allDrops ??= await Queries.GetAllPlayerDropsAsync(accountId) ?? [];
+        return _allDrops.TryGetValue(missionId, out var drops) ? drops : [];
+    }
 
     private void Regroup()
     {
@@ -149,7 +160,7 @@
         _grouping = MissionGrouper.Group(_tabFiltered, MissionFilterMatcher.LedgerDate, collapseOlderSections: true);
     }
 
-    private async Task ApplyFilterAsync(EggLedger.Web.Missions.Model.MissionFilter filter)
+    private async Task ApplyFilterAsync(MissionFilterBar.LegacyFilter filter)
     {
         if (_allMissions is null || _matcher is null)
         {
@@ -162,7 +173,7 @@
         var result = new List<DatabaseMission>();
         foreach (var mission in _allMissions)
         {
-            if (await _matcher.MatchesAsync(mission, filter))
+            if (await _matcher.MissionMatchesFilterAsync(mission, filter.And, filter.Or))
             {
                 result.Add(mission);
             }
