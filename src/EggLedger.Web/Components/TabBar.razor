@@ -6,7 +6,7 @@
     <div class="h-full flex items-end w-full mx-auto px-4 gap-x-1.5 bg-dark border-b border-gray-300">
         @foreach (var tab in Tabs)
         {
-            <a href="@tab.Href"
+            <a @key="tab.Href" href="@tab.Href"
                class="@TabClass(tab.Href)"
                @onclick:preventDefault="false">
                 @tab.Label
