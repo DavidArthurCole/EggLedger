@@ -25,13 +25,14 @@ jobs:
           key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
           restore-keys: ${{ runner.os }}-nuget-
 
-      # SyncKit.* comes from GitHub Packages. Authenticate the committed github source with
-      # the workflow token (read:packages is implied by packages: read).
+      # SyncKit.* lives on GitHub Packages. The GitHub NuGet feed requires auth even for
+      # public packages, and the per-run GITHUB_TOKEN only reads THIS repo's packages, so
+      # use an account-level PAT (read:packages) stored as the PACKAGES_PAT secret.
       - name: Authenticate GitHub Packages
         run: |
           dotnet nuget update source github \
-            --username ${{ github.actor }} \
-            --password ${{ secrets.GITHUB_TOKEN }} \
+            --username DavidArthurCole \
+            --password ${{ secrets.PACKAGES_PAT }} \
             --store-password-in-clear-text \
             --configfile nuget.config
 

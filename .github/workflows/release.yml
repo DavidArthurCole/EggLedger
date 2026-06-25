@@ -10,7 +10,8 @@ permissions:
 
 jobs:
   # Build the Blazor Server image and push to GHCR. The Dockerfile restores SyncKit.* from
-  # GitHub Packages using a build secret; the workflow GITHUB_TOKEN supplies read:packages.
+  # GitHub Packages using a build secret; PACKAGES_PAT (account-level read:packages) supplies
+  # cross-repo read. GHCR push uses the per-run GITHUB_TOKEN (same-repo, sufficient).
   # frame pulls the prebuilt image (no build, no PAT on the host).
   docker:
     runs-on: ubuntu-latest
@@ -34,7 +35,7 @@ jobs:
           context: .
           push: true
           secrets: |
-            github_token=${{ secrets.GITHUB_TOKEN }}
+            github_token=${{ secrets.PACKAGES_PAT }}
           tags: |
             ${{ steps.img.outputs.name }}:${{ github.ref_name }}
             ${{ steps.img.outputs.name }}:latest
