@@ -13,7 +13,7 @@
 
 @if (_open)
 {
-    <div class="popup-selector-main overlay-@OverlayKind" @onclick="Close">
+    <dialog open class="popup-selector-main overlay-@OverlayKind" @onclick="Close">
         <div class="popup-selector-inner" @onclick:stopPropagation="true"
              @onkeydown="OnKeyDown" @onkeydown:preventDefault="_preventKey">
             <button type="button" class="close-button" @onclick="Close" aria-label="Close">
@@ -51,7 +51,7 @@
                 <div class="flex items-center gap-1.5 px-1 pt-1 pb-0.5 text-xs text-gray-400 border-t border-gray-600 mr-1rem">@Footer</div>
             }
         </div>
-    </div>
+    </dialog>
 }
 
 @code {

@@ -8,7 +8,7 @@
 #   docker build --secret id=github_token,env=GITHUB_PACKAGES_PAT -t eggledger:latest .
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
-COPY global.json nuget.config Directory.Build.props .editorconfig EggLedger.Csharp.slnx ./
+COPY global.json nuget.config Directory.Build.props .editorconfig EggLedger.slnx ./
 COPY src/ src/
 # Inject the GitHub Packages credential for restore only (never baked into a layer): rewrite
 # the github source with the token, restore, then the config is discarded with the build stage.

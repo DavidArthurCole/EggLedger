@@ -348,8 +348,18 @@ input[type=number] {
   @apply text-green-600;
 }
 
+/* Rendered as <dialog open> so the browser promotes it to the top layer, escaping every
+   ancestor's overflow/stacking/paint-order (the mission list used to bleed through). Reset
+   the dialog UA box (margin/border/padding/max-size) and fill the viewport ourselves. */
 .popup-selector-main {
-  @apply h-full w-full z-40 fixed top-0 left-0 right-0 bottom-0 flex items-center justify-center;
+  @apply h-full w-full fixed top-0 left-0 right-0 bottom-0 flex items-center justify-center;
+  margin: 0;
+  max-width: 100vw;
+  max-height: 100vh;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  z-index: 1000;
 }
 
 /* Shared form control for the Report Builder so every select/input matches the

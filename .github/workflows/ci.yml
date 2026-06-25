@@ -35,4 +35,4 @@ jobs:
             --store-password-in-clear-text \
             --configfile nuget.config
 
-      - run: dotnet test EggLedger.Csharp.slnx -c Release
+      - run: dotnet test EggLedger.slnx -c Release
