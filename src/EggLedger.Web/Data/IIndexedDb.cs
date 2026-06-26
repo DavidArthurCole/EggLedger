@@ -1,6 +1,6 @@
 namespace EggLedger.Web.Data;
 
-/// <summary>Async key-value/object-store access over the browser IndexedDB shim. One instance backs every persistence store.</summary>
+/// <summary>Object-store access over the browser IndexedDB shim. One instance backs every persistence store.</summary>
 public interface IIndexedDb {
     ValueTask PutAsync(string store, object value);
 

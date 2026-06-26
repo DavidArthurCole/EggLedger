@@ -2,35 +2,27 @@ using Microsoft.Data.Sqlite;
 
 namespace EggLedger.Desktop.Storage;
 
-/// <summary>
-/// Owns one open <see cref="SqliteConnection"/> for a database file, applying the
-/// pragmas (foreign_keys ON, WAL, busy_timeout) and embedded migrations. A single
-/// long-lived connection is held for the app lifetime; Microsoft.Data.Sqlite
-/// serializes commands on it, matching the Go single-handle model. Tests pass a
-/// shared in-memory data source so the schema survives between operations.
-/// </summary>
+/// <summary>Owns one long-lived <see cref="SqliteConnection"/> per database file.</summary>
+/// <remarks>
+/// Microsoft.Data.Sqlite serializes commands on the held connection, matching the Go
+/// single-handle model. Tests pass a shared in-memory data source so the schema
+/// survives between operations.
+/// </remarks>
 public sealed class SqliteDatabase : IDisposable {
     private SqliteDatabase(SqliteConnection connection) {
         Connection = connection;
     }
 
-    /// <summary>The open connection. Callers create commands against it directly.</summary>
     public SqliteConnection Connection { get; }
 
-    /// <summary>
-    /// Opens (creating the parent dir) the mission DB at <paramref name="path"/>,
-    /// applies pragmas, and migrates to schema v9.
-    /// </summary>
+    /// <summary>Opens the mission DB at <paramref name="path"/> and migrates to schema v9.</summary>
     public static SqliteDatabase OpenMissionDb(string path) {
         var db = Open(path);
         SqliteMigrationRunner.MigrateMissionDb(db.Connection);
         return db;
     }
 
-    /// <summary>
-    /// Opens (creating the parent dir) the report DB at <paramref name="path"/>,
-    /// applies pragmas, and migrates to schema v12.
-    /// </summary>
+    /// <summary>Opens the report DB at <paramref name="path"/> and migrates to schema v12.</summary>
     public static SqliteDatabase OpenReportDb(string path) {
         var db = Open(path);
         SqliteMigrationRunner.MigrateReportDb(db.Connection);
@@ -38,9 +30,8 @@ public sealed class SqliteDatabase : IDisposable {
     }
 
     /// <summary>
-    /// Opens a connection at the raw data source string (a file path or
-    /// <c>:memory:</c>) with the standard pragmas applied, without running any
-    /// migrations. Used by tests and by the factory methods above.
+    /// Opens a connection at the raw data source (file path or <c>:memory:</c>) with
+    /// standard pragmas, no migrations. Used by tests and the factory methods above.
     /// </summary>
     public static SqliteDatabase Open(string path) {
         if (path != ":memory:" && !path.StartsWith("Data Source", StringComparison.OrdinalIgnoreCase)) {

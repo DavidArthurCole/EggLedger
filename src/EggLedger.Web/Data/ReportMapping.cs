@@ -5,8 +5,7 @@ namespace EggLedger.Web.Data;
 
 /// <summary>
 /// Pure conversions between the persisted <see cref="ReportRow"/> (snake_case wire)
-/// and the <see cref="ReportDefinition"/> the report engine and builder use.
-/// Port of Go reportdb/converters. All methods are pure.
+/// and the <see cref="ReportDefinition"/> the engine and builder use (Go reportdb/converters).
 /// </summary>
 public static class ReportMapping {
     private static readonly JsonSerializerOptions FilterOptions = new(JsonSerializerDefaults.Web);
@@ -97,7 +96,6 @@ public static class ReportMapping {
         }
     }
 
-    /// <summary>Serializes structured filters back to compact JSON.</summary>
     public static string SerializeFilters(ReportFilters filters) =>
         JsonSerializer.Serialize(filters, FilterOptions);
 }

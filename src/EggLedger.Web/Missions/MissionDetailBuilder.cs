@@ -4,14 +4,12 @@ using EggLedger.Web.Services;
 
 namespace EggLedger.Web.Missions;
 
-/// <summary>Menno community-data summary attached to a viewed mission (configs + total drop count).</summary>
 public sealed class MissionMennoData {
     public int TotalDropsCount { get; set; }
     public IReadOnlyList<ConfigurationItem> Configs { get; set; } =
         Array.Empty<ConfigurationItem>();
 }
 
-/// <summary>Computed detail for one viewed mission: drop lists grouped + sorted, metadata (capacity modifier, prev/next ids, dates) derived once.</summary>
 public sealed class ViewMissionData {
     public DatabaseMission MissionInfo { get; set; } = new();
     public List<DropLike> Artifacts { get; set; } = [];
@@ -41,7 +39,7 @@ public static class MissionDetailBuilder {
         SpecType = d.SpecType,
     };
 
-    /// <summary>Builds the base ViewMissionData: split drops by spec type, group + sort each list, derive dates, capacity modifier, prev/next ids. Initially grouped with sortedGroupedSpecType; ApplySortMethod re-sorts per the active method.</summary>
+    /// <summary>Splits drops by spec type, groups + sorts each, derives dates/capacity modifier/prev-next ids. Initial sort is sortedGroupedSpecType; ApplySortMethod re-sorts per the active method.</summary>
     public static ViewMissionData BuildBase(
         DatabaseMission missionInfo,
         IReadOnlyList<MissionDrop> allDrops,

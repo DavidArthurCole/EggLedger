@@ -4,12 +4,13 @@ using Microsoft.AspNetCore.Components.Authorization;
 namespace EggLedger.Web.Server.Storage;
 
 /// <summary>
-/// Resolves the authenticated Discord user id for the current circuit from the framework
-/// AuthenticationState (cookie-auth principal). Read by <see cref="PostgresIndexedDb"/> on
-/// each op so storage is scoped to the right tenant. <see cref="GetDiscordIdAsync"/> is the
-/// tolerant accessor (null when unauthenticated, used by reads); <see cref="RequireAsync"/>
-/// throws (used by writes). The data UI is gated behind an authenticated principal.
+/// Resolves the circuit's Discord user id from the framework AuthenticationState, read per op by
+/// <see cref="PostgresIndexedDb"/> to scope storage to the right tenant.
 /// </summary>
+/// <remarks>
+/// <see cref="GetDiscordIdAsync"/> is tolerant (null when unauthenticated, for reads);
+/// <see cref="RequireAsync"/> throws (for writes).
+/// </remarks>
 public sealed class CurrentUser(AuthenticationStateProvider auth) {
     public async Task<string?> GetDiscordIdAsync() {
         var state = await auth.GetAuthenticationStateAsync().ConfigureAwait(false);

@@ -9,13 +9,13 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace EggLedger.Web;
 
-/// <summary>Shared DI registration for the Blazor UI, used by both WASM and the desktop host. Host-specific bits (HttpClient base, platform capabilities, storage) are supplied or overridden by the caller.</summary>
+/// <summary>Shared DI registration for the Blazor UI. Host-specific bits (HttpClient base, platform capabilities, storage) are supplied or overridden by the caller.</summary>
 public static class WebServiceRegistration {
-    /// <summary>Register host-agnostic UI services plus browser defaults. A desktop host calls this then overrides storage (D2) and platform capabilities (D3).</summary>
+    /// <summary>Registers host-agnostic UI services plus browser defaults. Desktop overrides storage and platform capabilities.</summary>
     public static IServiceCollection AddEggLedgerWeb(this IServiceCollection services, Uri httpBaseAddress) {
         services.AddScoped(_ => new HttpClient { BaseAddress = httpBaseAddress });
 
-        // IndexedDB persistence. The desktop host (D2) swaps these for native SQLite-backed stores.
+        // Desktop swaps these for native SQLite-backed stores.
         services.AddScoped<IIndexedDb, IndexedDb>();
         services.AddScoped<IndexedDbSettings>();
         services.AddScoped<IndexedDbAccountStore>();
@@ -28,54 +28,45 @@ public static class WebServiceRegistration {
         services.AddScoped<IndexedDbMissionDb>();
         services.AddScoped<IReportRunner>(sp => sp.GetRequiredService<IndexedDbMissionDb>());
 
-        // Mission query handler layer over the store, with eiafx-backed quality.
         services.AddScoped<IArtifactQuality>(_ => EiafxQualityAdapter.Instance);
         services.AddScoped<MissionQueryHandlers>();
 
-        // Shared, read-only mission filter configuration for the Mission Data tab.
         services.AddScoped<EggLedger.Web.Missions.MissionConfigProvider>();
 
-        // Egg Inc API client. CORS blocks calling auxbrain directly, so the prefix is a
-        // same-origin path the host reverse-proxies upstream (resolved against the HttpClient BaseAddress).
+        // CORS blocks auxbrain directly; the prefix is a same-origin path the host reverse-proxies upstream.
         services.AddScoped(sp => new ApiClient(sp.GetRequiredService<HttpClient>(), apiPrefix: "/egg-api"));
 
-        // Decode seam: default in-process protobuf-net decode. WASM overrides with a
-        // server-delegating decoder (protobuf-net cannot emit in the browser); desktop keeps the local path.
+        // Decode seam: default in-process protobuf-net. WASM overrides with a server-delegating decoder (protobuf-net cannot emit in the browser).
         services.AddScoped<IApiPayloadDecoder>(sp => new LocalApiPayloadDecoder(sp.GetRequiredService<ApiClient>()));
 
         services.AddScoped<FetchService>();
         services.AddScoped<AddAccountService>();
 
-        // CSV/XLSX export download. UI binds IDownloadService so desktop can swap a save-to-disk
-        // sink (D5); the concrete impl is also resolvable for IAsyncDisposable cleanup.
+        // UI binds IDownloadService so desktop can swap a save-to-disk sink; the concrete impl stays resolvable for IAsyncDisposable cleanup.
         services.AddScoped<DownloadService>();
         services.AddScoped<IDownloadService>(sp => sp.GetRequiredService<DownloadService>());
 
-        // Report weights backed by the canonical eiafx data; stateless shared instance.
         services.AddScoped<IWeightData>(_ => EiafxWeightData.Instance);
 
-        // Menno community drop-rate stats client (read-only, in-memory cache).
         services.AddScoped<MennoService>();
 
-        // Cloud sync: Discord OAuth + AES-encrypted blobs. Redirect is behind INavigation for testability.
+        // Redirect is behind INavigation for testability.
         services.AddScoped<INavigation, BlazorNavigation>();
-        // Blob crypto seam: WASM has no managed AES-GCM, so default is the SubtleCrypto
-        // (JS interop) cipher; desktop overrides with the managed LocalBlobCipher.
+        // Blob crypto seam: WASM has no managed AES-GCM, so default is SubtleCrypto via JS interop; desktop overrides with the managed LocalBlobCipher.
         services.AddScoped<IBlobCipher, SubtleCryptoBlobCipher>();
         services.AddScoped<CloudSyncService>();
         services.AddScoped<AdminService>();
         services.AddScoped<AdminState>();
         services.AddScoped<EggLedger.Web.Settings.CloudSessionStore>();
 
-        // Shell state and the platform capability seam. Desktop overrides the browser impl with a native one.
+        // Desktop overrides the browser platform impl with a native one.
         services.AddScoped<ActiveAccount>();
         services.AddScoped<ScreenshotSafetyState>();
         services.AddScoped<AppStateService>();
         services.AddScoped<AccountLoader>();
         services.AddScoped<IPlatformCapabilities, BrowserPlatformCapabilities>();
 
-        // Update-status surface for the About overlay. Browser default is the no-op; desktop
-        // overrides with the live updater. Overlay is gated on IsDesktop regardless.
+        // Browser default is the no-op; desktop overrides with the live updater.
         services.AddScoped<IUpdateStatusProvider, NoOpUpdateStatusProvider>();
 
         return services;

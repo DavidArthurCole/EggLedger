@@ -77,8 +77,8 @@ public sealed class CloudSyncService {
     public async Task DisconnectAsync(string token, CancellationToken cancellationToken = default) {
         using var req = new HttpRequestMessage(HttpMethod.Delete, $"{ApiPrefix}/auth/session");
         req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        // Server always 204; errors are non-fatal, so the response is ignored.
         using var resp = await _http.SendAsync(req, cancellationToken).ConfigureAwait(false);
-        // Server always 204; errors are non-fatal.
     }
 
     /// <summary>Sets the bearer header, sends the request, and applies the shared 401 check. Callers own the returned response and remaining status handling.</summary>

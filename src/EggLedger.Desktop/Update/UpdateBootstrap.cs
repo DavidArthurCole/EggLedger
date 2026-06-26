@@ -1,13 +1,7 @@
 namespace EggLedger.Desktop.Update;
 
-/// <summary>
-/// Startup update plumbing run before the UI: parse --replace-* / --handshake-*
-/// flags, clean stale binaries, and (when this process is the launched
-/// EggLedger_new) run the takeover that renames itself to canonical EggLedger[.exe]
-/// once the old instance exits.
-/// MANUAL-VERIFY: the takeover only runs in a real second process; the pieces it
-/// calls are unit-tested but the two-process orchestration is verified by hand.
-/// </summary>
+/// <summary>Startup update plumbing run before the UI: parse --replace-* / --handshake-* flags, clean stale binaries, and (when this process is the launched EggLedger_new) run the takeover that renames itself to canonical EggLedger[.exe] once the old instance exits.</summary>
+/// <remarks>MANUAL-VERIFY: the takeover only runs in a real second process; the pieces it calls are unit-tested but the two-process orchestration is verified by hand.</remarks>
 public sealed class UpdateBootstrap(IProcessProbe probe, BinaryReplacement replacement) {
     private readonly IProcessProbe _probe = probe;
     private readonly BinaryReplacement _replacement = replacement;
@@ -15,10 +9,7 @@ public sealed class UpdateBootstrap(IProcessProbe probe, BinaryReplacement repla
     /// <summary>Parsed --replace-* / --handshake-* flags.</summary>
     public readonly record struct ReplaceArgs(int ReplacePid, string ReplacePath, string HandshakePort, string HandshakeToken);
 
-    /// <summary>
-    /// Parse the updater flags out of argv. Accepts both "--flag=value" and
-    /// "--flag value" forms. Unknown args are ignored (Photino consumes the rest).
-    /// </summary>
+    /// <summary>Parse the updater flags out of argv. Accepts both "--flag=value" and "--flag value" forms; unknown args are ignored (Photino consumes the rest).</summary>
     public static ReplaceArgs ParseArgs(string[] args) {
         var pid = 0;
         var path = "";
@@ -83,11 +74,8 @@ public sealed class UpdateBootstrap(IProcessProbe probe, BinaryReplacement repla
         return true;
     }
 
-    /// <summary>
-    /// New-instance takeover: ping the old instance, wait for it to exit, then
-    /// rename self to the canonical path. Ports runTakeover. The ping uses a
-    /// short-lived HttpClient; failures are tolerated (best-effort, like Go).
-    /// </summary>
+    /// <summary>New-instance takeover: ping the old instance, wait for it to exit, then rename self to the canonical path.</summary>
+    /// <remarks>The ping uses a short-lived HttpClient; failures are tolerated (best-effort, like Go).</remarks>
     public void RunTakeover(string self, int oldPid, string oldPath, string handshakePort, string handshakeToken) {
         if (!string.IsNullOrEmpty(handshakePort) && !string.IsNullOrEmpty(handshakeToken)) {
             using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };

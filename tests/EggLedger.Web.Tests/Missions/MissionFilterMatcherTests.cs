@@ -5,12 +5,7 @@ using Ei;
 
 namespace EggLedger.Web.Tests.Missions;
 
-/// <summary>
-/// Golden tests for <see cref="MissionFilterMatcher"/> derived by tracing the Vue
-/// useFilterMatching.ts predicate. Covers each field type, each operator, the
-/// date reference-equality quirk, the dub/bugged-cap operator-as-value path, the
-/// drops contains / does-not-contain logic, and the AND/OR and-only semantics.
-/// </summary>
+/// <summary>Golden parity with the Vue useFilterMatching.ts predicate.</summary>
 public sealed class MissionFilterMatcherTests {
     private static DatabaseMission Mission(
         MissionInfo.Spaceship? ship = MissionInfo.Spaceship.ChickenOne,
@@ -45,8 +40,7 @@ public sealed class MissionFilterMatcherTests {
     private static IReadOnlyList<IReadOnlyList<FilterCondition>?> NoOr() =>
         Array.Empty<IReadOnlyList<FilterCondition>?>();
 
-    // ship: numeric field, loose == / != against string value.
-
+    // ship: numeric field, loose == / != against a string value.
     [Theory]
     [InlineData(MissionInfo.Spaceship.ChickenOne, "=", "0", true)]
     [InlineData(MissionInfo.Spaceship.ChickenNine, "=", "0", false)]
@@ -89,8 +83,7 @@ public sealed class MissionFilterMatcherTests {
         Assert.Equal(expected, await Matcher().TestMissionAgainstFilterAsync(m, C("target", op, val)));
     }
 
-    // dubcap / buggedcap: filter.val IS the operator ("true"/"false"); value is null.
-
+    // dubcap / buggedcap: filter.val IS the operator ("true"/"false"); the value slot is null.
     [Theory]
     [InlineData(true, "true", true)]
     [InlineData(false, "true", false)]
@@ -111,9 +104,8 @@ public sealed class MissionFilterMatcherTests {
         Assert.Equal(expected, await Matcher().TestMissionAgainstFilterAsync(m, C("buggedcap", "=", val)));
     }
 
-    // Date fields. JS quirks: "=" never matches (distinct Date objects);
-    // "<"/">" coerce to ms; "<="/">=" fall through to the no-op default (pass).
-
+    // Date fields. The redesigned matcher compares calendar days; the old JS port had
+    // "=" never-match and "<="/">=" no-op bugs, both fixed here.
     private static long Unix(int y, int mo, int d) {
         var dt = new DateTime(y, mo, d, 12, 0, 0, DateTimeKind.Local);
         return ((DateTimeOffset)dt).ToUnixTimeSeconds();
@@ -121,8 +113,7 @@ public sealed class MissionFilterMatcherTests {
 
     [Fact]
     public async Task LaunchDate_EqualsMatchesSameDay() {
-        // The Mission Data bar emits "d=" (same-day); the redesigned matcher now
-        // compares calendar days correctly instead of the old never-match bug.
+        // The Mission Data bar emits "d=" (same-day).
         var m = Mission(launchDT: Unix(2024, 6, 1));
         Assert.True(await Matcher().TestMissionAgainstFilterAsync(m, C("launchDT", "d=", "2024-06-01")));
         var other = Mission(launchDT: Unix(2024, 6, 2));
@@ -132,7 +123,6 @@ public sealed class MissionFilterMatcherTests {
     [Fact]
     public async Task LaunchDate_AfterMatchesLaterMission() {
         var m = Mission(launchDT: Unix(2024, 6, 2));
-        // mission ms > filter midnight -> ">" passes.
         Assert.True(await Matcher().TestMissionAgainstFilterAsync(m, C("launchDT", ">", "2024-06-01")));
         var earlier = Mission(launchDT: Unix(2024, 5, 31));
         Assert.False(await Matcher().TestMissionAgainstFilterAsync(earlier, C("launchDT", ">", "2024-06-01")));
@@ -146,7 +136,6 @@ public sealed class MissionFilterMatcherTests {
 
     [Fact]
     public async Task LaunchDate_OnOrBefore_IsInclusive() {
-        // "<=" now compares inclusively (fixed from the old no-op-always-pass bug).
         var after = Mission(launchDT: Unix(2024, 12, 31));
         Assert.False(await Matcher().TestMissionAgainstFilterAsync(after, C("launchDT", "<=", "2024-01-01")));
         var onBoundary = Mission(launchDT: Unix(2024, 1, 1));
@@ -168,8 +157,7 @@ public sealed class MissionFilterMatcherTests {
         Assert.False(await Matcher().TestMissionAgainstFilterAsync(m, C("ship", "", "1")));
     }
 
-    // Drops: "c" contains, "dnc" does not contain. Bypass segments are "%".
-
+    // Drops: "c" contains, "dnc" does not contain. Wildcard segments are "%".
     private static IReadOnlyList<PossibleMission> DropConfigs() => new[]
     {
         new PossibleMission
@@ -192,7 +180,7 @@ public sealed class MissionFilterMatcherTests {
             (_, _) => Task.FromResult<IReadOnlyList<MissionDrop>?>(drops),
             DropConfigs());
         var m = Mission();
-        // value name_level_rarity_quality
+        // drop value is name_level_rarity_quality
         Assert.True(await matcher.TestMissionAgainstFilterAsync(m, C("drops", "c", "40_2_1_3")));
         Assert.False(await matcher.TestMissionAgainstFilterAsync(m, C("drops", "c", "41_2_1_3")));
     }
@@ -231,12 +219,10 @@ public sealed class MissionFilterMatcherTests {
     [Fact]
     public async Task Drops_QualityOutOfRange_Fails() {
         var drops = new List<MissionDrop> { Drop(40, 2, 1) };
-        // level 0 -> maxQual = 5; filter quality 9 > 5 -> filterPassed false.
+        // level 0 caps quality at 5; filter quality 9 is out of range.
         var matcher = Matcher((_, _) => Task.FromResult<IReadOnlyList<MissionDrop>?>(drops), DropConfigs());
         Assert.False(await matcher.TestMissionAgainstFilterAsync(Mission(), C("drops", "c", "40_2_1_9")));
     }
-
-    // AND / OR (and-only) semantics.
 
     [Fact]
     public async Task MissionMatches_AllAndConditionsMustPass() {
@@ -251,10 +237,10 @@ public sealed class MissionFilterMatcherTests {
     [Fact]
     public async Task MissionMatches_OrSiblingRescuesFailingAnd() {
         var m = Mission(ship: MissionInfo.Spaceship.ChickenOne, level: 3);
-        var filters = new[] { C("level", "=", "4") }; // fails
+        var filters = new[] { C("level", "=", "4") };
         var or = new IReadOnlyList<FilterCondition>?[]
         {
-            new[] { C("level", "=", "3") }, // rescues
+            new[] { C("level", "=", "3") },
         };
         Assert.True(await Matcher().MissionMatchesFilterAsync(m, filters, or));
     }

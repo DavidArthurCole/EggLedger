@@ -105,11 +105,9 @@ public class WeightTests {
         Assert.Equal("MEDIUM", Weight.ClassifyWeight(def));
     }
 
-    // dateFilterWindowDays is private in the port; exercise it via ClassifyWeight
-    // outcomes that depend on its value (mirrors the Go behavioral coverage).
+    // dateFilterWindowDays is private; exercised via ClassifyWeight outcomes (mirrors Go).
     [Fact]
     public void DateWindow_NoFilter_TreatedAsLarge_TimeSeriesHeavy() {
-        // 1D time series, non-custom, no date filter -> HEAVY (window = 9999).
         var def = new ReportDefinition { Mode = "time_series", GroupBy = "time_bucket", TimeBucket = "month" };
         Assert.Equal("HEAVY", Weight.ClassifyWeight(def));
     }

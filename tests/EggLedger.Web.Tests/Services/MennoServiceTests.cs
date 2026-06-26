@@ -44,8 +44,6 @@ public sealed class MennoServiceTests {
         return new MennoService(http);
     }
 
-    // ----- Typed decode -----
-
     [Fact]
     public async Task Refresh_DecodesFixture_PopulatesTypedFields() {
         var service = Make(FixtureBytes("menno-sample.json"), out var handler);
@@ -121,8 +119,6 @@ public sealed class MennoServiceTests {
         Assert.False(service.HasData);
         Assert.Null(service.CachedItems);
     }
-
-    // ----- ExecuteComparison golden math -----
 
     private static ReportDefinition ShipDurationDef(string normalizeBy = "", string familyWeight = "") => new() {
         MennoEnabled = true,

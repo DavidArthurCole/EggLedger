@@ -8,7 +8,6 @@ namespace EggLedger.Domain.Eiafx;
 /// Wire-equivalent to Go loading eiafx-config-min.json.
 /// </summary>
 public sealed class EmbeddedEiafxConfigSource : IEiafxConfigSource {
-    /// <summary>Shared default instance.</summary>
     public static readonly EmbeddedEiafxConfigSource Instance = new();
 
     private const string ResourceName = "EggLedger.Domain.Resources.eiafx-config.bin";

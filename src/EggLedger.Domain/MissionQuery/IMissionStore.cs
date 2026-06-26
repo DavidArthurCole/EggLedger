@@ -44,10 +44,9 @@ public interface IMissionStore {
     Task<IReadOnlyList<CompleteMissionResponse>?> GetPlayerCompleteMissionsAsync(string eid);
 
     /// <summary>
-    /// Stored artifact-drop rows for the player, read directly from the drops store
-    /// (no per-mission decode). Used by the Lifetime tab so it does not re-decode the
-    /// entire mission history (in the browser each decode is a server round-trip).
-    /// Null on error.
+    /// Stored artifact-drop rows for the player, read directly from the drops store (no
+    /// per-mission decode); the Lifetime tab avoids re-decoding the whole history, which in
+    /// the browser is a server round-trip per decode. Null on error.
     /// </summary>
     Task<IReadOnlyList<StoredDrop>?> GetStoredPlayerDropsAsync(string playerId);
 

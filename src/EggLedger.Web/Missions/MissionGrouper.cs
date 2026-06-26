@@ -2,19 +2,16 @@ using EggLedger.Domain.MissionPacking;
 
 namespace EggLedger.Web.Missions;
 
-/// <summary>A year section with its collapse state.</summary>
 public sealed class GroupedYear {
     public int Year { get; set; }
     public bool Enabled { get; set; }
 }
 
-/// <summary>A month section with its collapse state.</summary>
 public sealed class GroupedMonth {
     public int Month { get; set; }
     public bool Enabled { get; set; }
 }
 
-/// <summary>A day section with its collapse state.</summary>
 public sealed class GroupedDay {
     public int Day { get; set; }
     public bool Enabled { get; set; }
@@ -27,10 +24,6 @@ public sealed class GroupedArrays {
     public List<List<List<GroupedDay>>> Day { get; set; } = [];
 }
 
-/// <summary>
-/// Result of grouping: the nested mission matrix plus its parallel collapse-state
-/// arrays and the "all visible" flag.
-/// </summary>
 public sealed class MissionGrouping {
     /// <summary>year -> month -> day -> missions, all date axes descending.</summary>
     public List<List<List<List<DatabaseMission>>>> Missions { get; init; } = [];
@@ -38,7 +31,7 @@ public sealed class MissionGrouping {
     public bool AllVisible { get; init; }
 }
 
-/// <summary>Groups missions by launch date into year/month/day sections. Single O(N) pass; axes sort descending; per-day lists reversed (matching the Vue .reverse()). When collapseOlderSections is set only the newest year (index 0) is enabled.</summary>
+/// <summary>Groups missions by launch date into year/month/day sections: single O(N) pass, axes descending, per-day lists reversed (Vue .reverse()). When collapseOlderSections is set only the newest year (index 0) is enabled.</summary>
 public static class MissionGrouper {
     public static MissionGrouping Group(
         IReadOnlyList<DatabaseMission>? missions,
@@ -48,7 +41,6 @@ public static class MissionGrouper {
             return new MissionGrouping { AllVisible = true };
         }
 
-        // year -> month -> day -> missions; axes are explicitly sorted descending below.
         var dateMap = new Dictionary<int, Dictionary<int, Dictionary<int, List<DatabaseMission>>>>();
         foreach (var mission in missions) {
             var d = ledgerDate(mission.LaunchDT);

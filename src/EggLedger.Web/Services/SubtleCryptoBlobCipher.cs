@@ -2,7 +2,7 @@ using Microsoft.JSInterop;
 
 namespace EggLedger.Web.Services;
 
-/// <summary>AES-256-GCM via the browser SubtleCrypto API, for the WASM host where AesGcm is unsupported. Wire format matches <see cref="LocalBlobCipher"/>: base64(nonce || ciphertext || tag). Plaintext crosses the JS boundary as base64 to avoid byte[] marshalling quirks.</summary>
+/// <summary>AES-256-GCM via browser SubtleCrypto, for the WASM host where AesGcm is unsupported. Wire format matches <see cref="LocalBlobCipher"/>: base64(nonce || ciphertext || tag); plaintext crosses the JS boundary as base64 to avoid byte[] marshalling quirks.</summary>
 public sealed class SubtleCryptoBlobCipher : IBlobCipher {
     private readonly IJSRuntime _js;
     private IJSObjectReference? _module;

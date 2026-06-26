@@ -46,7 +46,6 @@ public sealed class FetchService {
                 Retried = Volatile.Read(ref retried),
             });
 
-        // First contact.
         Report(AppState.FetchingSave);
         EggIncFirstContactResponse fc;
         try {
@@ -131,8 +130,8 @@ public sealed class FetchService {
             }
         }
 
+        // Export is DownloadService's job; this state is reported only for parity with the Go state machine.
         Report(AppState.ExportingData);
-        // Export is DownloadService's job; the fetch service stops at persistence. State reported for parity with the Go state machine.
 
         Report(AppState.Success);
         return AppState.Success;
@@ -154,13 +153,12 @@ public sealed class FetchService {
             try {
                 await _store.InsertBackupAsync(playerId, lastBackupTime, payload, BackupMinGap).ConfigureAwait(false);
             } catch {
-                // Intentionally ignored (log-and-continue).
             }
         }
         return fc;
     }
 
-    /// <summary>Fans out bounded-concurrency tasks over the mission set, gated by a SemaphoreSlim. No per-batch sleep: the browser has no shared rate limiter. Returns true if cancellation was observed.</summary>
+    /// <summary>Fans out SemaphoreSlim-gated tasks over the mission set; returns true if cancellation was observed. No per-batch sleep: the browser has no shared rate limiter.</summary>
     private async Task<bool> RunWorkersAsync(
         string playerId,
         IReadOnlyList<(string Id, double Start)> missions,
@@ -185,7 +183,7 @@ public sealed class FetchService {
                 try {
                     await FetchOneMissionAsync(playerId, id, start, progress, cancellationToken).ConfigureAwait(false);
                 } catch (OperationCanceledException) {
-                    // Non-success; the outer cancellation check turns the run into Interrupted.
+                    // Outer cancellation check turns the run into Interrupted.
                     onError(new FailedMission(id, start));
                 } catch {
                     onError(new FailedMission(id, start));
@@ -199,7 +197,7 @@ public sealed class FetchService {
         try {
             await Task.WhenAll(tasks).ConfigureAwait(false);
         } catch (OperationCanceledException) {
-            // Pending Task.Run bodies cancelled before starting; handled below.
+            // Pending Task.Run bodies cancelled before starting; reflected in the return below.
         }
 
         return cancellationToken.IsCancellationRequested;

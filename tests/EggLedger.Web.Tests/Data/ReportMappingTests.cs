@@ -2,11 +2,7 @@ using EggLedger.Web.Data;
 
 namespace EggLedger.Web.Tests.Data;
 
-/// <summary>
-/// Tests the ReportRow &lt;-&gt; ReportDefinition mapping the builder and engine
-/// rely on: full round-trip, filters JSON parse/serialize, and the column
-/// defaults applied when building a row from a sparse definition.
-/// </summary>
+/// <summary>Covers the ReportRow &lt;-&gt; ReportDefinition mapping the builder and engine rely on.</summary>
 public sealed class ReportMappingTests {
     [Fact]
     public void RoundTrips_AllScalarFields() {
@@ -78,9 +74,7 @@ public sealed class ReportMappingTests {
 
     [Fact]
     public void GroupId_SurvivesEditShapedRoundTrip() {
-        // An edit loads a persisted row, then re-saves it. The builder preserves the
-        // report's existing GroupId on edit (no clobber to ""), so the mapping must
-        // carry GroupId through ToDefinition -> ToRow unchanged.
+        // Edit re-saves a persisted row; the mapping must carry GroupId through ToDefinition -> ToRow unchanged.
         var row = new ReportRow { Id = "r1", Name = "Report", GroupId = "g42" };
         var def = ReportMapping.ToDefinition(row);
         Assert.Equal("g42", def.GroupId);

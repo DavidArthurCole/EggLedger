@@ -38,10 +38,11 @@ public static class Api {
                     var ip = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
                     var ua = ctx.Request.Headers.UserAgent.ToString();
                     var now = TimeProvider.System.GetUtcNow().ToUnixTimeSeconds();
+                    // Logging the probe must never break the response.
                     _ = Task.Run(async () => {
                         try {
                             await spam.RecordAsync(ip, ctx.Request.Method, ctx.Request.Path.Value ?? "", ua, now);
-                        } catch { /* logging the probe must never break the response */ }
+                        } catch { }
                     });
                 }
             }

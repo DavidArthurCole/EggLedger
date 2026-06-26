@@ -5,16 +5,12 @@ using Microsoft.Data.Sqlite;
 namespace EggLedger.Desktop.Tests;
 
 /// <summary>
-/// THE D2 PARITY GATE. Loads the same mission + artifact-drop fixtures into a real
-/// SQLite mission DB and runs report definitions two ways:
-///   1. SQL path: ReportExecutor over SqliteMissionDb (the live native path).
-///   2. In-memory path: InMemoryReportRunner over typed rows (the browser path).
-/// Both MUST produce an identical ReportResult (value equality via
-/// ReportResult.Equals). Shapes cover 1D aggregate, mission-scope filter, 2D
-/// pivot, drops EXISTS-subquery, drops-subject aggregate, time-bucketed series,
-/// normalized (launches), and family-weighted aggregate, so the SQL WHERE clause,
-/// the artifact_drops JOIN, the EXISTS subquery, strftime bucketing, and the
-/// weighted cap_weight SUM are all exercised.
+/// D2 parity gate. Same fixtures run two ways must produce an identical ReportResult:
+/// the SQL path (ReportExecutor over SqliteMissionDb) and the in-memory path
+/// (InMemoryReportRunner over typed rows). Shapes cover 1D/2D aggregate, mission and
+/// drops-EXISTS filters, drops-subject, time buckets, normalized, and family-weighted,
+/// exercising the WHERE clause, artifact_drops JOIN, EXISTS subquery, strftime
+/// bucketing, and weighted cap_weight SUM.
 /// </summary>
 public sealed class ReportParityTests {
     private const string Eid = "EI1";

@@ -4,9 +4,8 @@ using Ei;
 namespace EggLedger.Domain.Tests;
 
 /// <summary>
-/// Port of Go missionpacking/missionpacking_test.go. Golden values identical to
-/// the Go reference. Uses the embedded eiafx-config.bin via
-/// EmbeddedMissionConfigSource (same data the Go tests load via eiafx.LoadConfig).
+/// Port of Go missionpacking/missionpacking_test.go; golden values identical. Uses
+/// the embedded eiafx-config.bin (same data Go loads via eiafx.LoadConfig).
 /// </summary>
 public class MissionPackerTests {
     private static readonly MissionPacker Packer = new(new EmbeddedMissionConfigSource());
@@ -18,8 +17,6 @@ public class MissionPackerTests {
         Assert.True(Packer.TryGetShipCapacities(ship, dur, out var caps));
         return caps[level];
     }
-
-    // isBuggedCap
 
     [Fact]
     public void IsBuggedCap_InsideRange() {
@@ -45,8 +42,6 @@ public class MissionPackerTests {
     public void IsBuggedCap_AtUpperBound() {
         Assert.False(Packer.IsBuggedCap(MakeTimestampMission(1713286800)));
     }
-
-    // isDubCap
 
     private static CompleteMissionResponse MakeDubCapMission(
         MissionInfo.Spaceship ship, MissionInfo.DurationType dur, uint level, uint capacity) =>
@@ -91,8 +86,6 @@ public class MissionPackerTests {
         Assert.True(Packer.IsDubCap(MakeDubCapMission(ship, dur, 0, (uint)(nominal * 1.8f))));
     }
 
-    // durationStringFromSecs
-
     [Theory]
     [InlineData(0, "0m")]
     [InlineData(30, "30s")]
@@ -102,8 +95,6 @@ public class MissionPackerTests {
     public void DurationStringFromSecs(double secs, string want) {
         Assert.Equal(want, MissionPacker.DurationStringFromSecs(secs));
     }
-
-    // ComputeMissionFilterCols
 
     private static CompleteMissionResponse MakeFullMissionResponse(
         MissionInfo.Spaceship ship, MissionInfo.DurationType dur, uint level, uint capacity, double durSecs) =>
@@ -180,8 +171,6 @@ public class MissionPackerTests {
         Assert.Equal((int)targetArtifact, cols.Target);
     }
 
-    // MissionMetaToDBMission
-
     [Fact]
     public void MissionMetaToDBMission_Basic() {
         var meta = new MissionMeta {
@@ -253,8 +242,6 @@ public class MissionPackerTests {
         Assert.Equal("Virtue", dm.MissionTypeString);
     }
 
-    // CompileMissionInformation
-
     [Fact]
     public void CompileMissionInformation_NoMissionTypeField() {
         var resp = new CompleteMissionResponse {
@@ -266,7 +253,7 @@ public class MissionPackerTests {
                 StartTimeDerived = 1000000,
                 DurationSeconds = 300,
                 Identifier = "test-no-type",
-                // MissionType field intentionally omitted - proto default is 0 (Standard)
+                // MissionType omitted: proto default 0 is Standard.
             },
         };
 

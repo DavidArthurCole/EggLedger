@@ -3,7 +3,7 @@ using EggLedger.Web.Data;
 
 namespace EggLedger.Web.State;
 
-/// <summary>Loads persisted accounts + active id into shared state once, and persists the active id on selection change.</summary>
+/// <summary>Loads persisted accounts + active id into shared state once, persisting the active id on change.</summary>
 public sealed class AccountLoader : IDisposable {
     private readonly IndexedDbAccountStore _store;
     private readonly AppStateService _appState;
@@ -19,10 +19,10 @@ public sealed class AccountLoader : IDisposable {
         _active = active;
     }
 
-    /// <summary>The full account list last loaded, richest form (SE/PE/TE included).</summary>
+    /// <summary>Richest form of the last-loaded list (SE/PE/TE included).</summary>
     public IReadOnlyList<AccountInfo> Accounts { get; private set; } = [];
 
-    /// <summary>Loads accounts + active id and wires persist-on-change. Idempotent: later calls re-read the list without re-subscribing.</summary>
+    /// <summary>Idempotent: later calls re-read the list without re-subscribing.</summary>
     public async Task EnsureLoadedAsync() {
         if (!_subscribed) {
             _active.Changed += OnActiveChanged;
@@ -42,7 +42,6 @@ public sealed class AccountLoader : IDisposable {
         }
     }
 
-    /// <summary>Re-reads the account list into <see cref="AppStateService"/>.</summary>
     public async Task RefreshAsync() {
         Accounts = await _store.GetKnownAccountsAsync().ConfigureAwait(false);
         _appState.KnownAccounts = Accounts.Select(a => a.ToKnownAccount()).ToList();
@@ -52,7 +51,7 @@ public sealed class AccountLoader : IDisposable {
         if (_persisting) {
             return;
         }
-        // Fire-and-forget persist; in-memory state is already updated.
+        // Fire-and-forget; in-memory state is already updated.
         _ = _store.SetActiveAccountIdAsync(_active.ActiveAccountId ?? "");
     }
 

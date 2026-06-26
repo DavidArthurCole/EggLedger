@@ -7,9 +7,8 @@ namespace EggLedger.Domain.Tests.Crypto;
 
 /// <summary>
 /// Cross-decrypt acceptance for the AES-256-GCM blob contract (Go
-/// cloudsync.encryptBlob/decryptBlob). The golden blob was produced by a Go
-/// program using the same algorithm as blob.go with a pinned 12-byte nonce; see
-/// Fixtures/crypto/go-blob-fixture.json (generated via aesgen scratch dir).
+/// cloudsync.encryptBlob/decryptBlob). Golden blob in Fixtures/crypto/go-blob-fixture.json
+/// was produced by Go with a pinned 12-byte nonce.
 /// </summary>
 public class BlobCryptoTests {
     private sealed record Fixture(
@@ -36,7 +35,6 @@ public class BlobCryptoTests {
         Assert.Equal(Convert.FromBase64String(fx.PlaintextBase64), plaintext);
     }
 
-    // C#-encrypt -> C#-decrypt round-trip.
     [Fact]
     public void EncryptDecrypt_RoundTrips() {
         var fx = LoadFixture();

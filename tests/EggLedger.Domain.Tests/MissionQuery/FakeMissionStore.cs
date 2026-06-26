@@ -3,10 +3,7 @@ using Ei;
 
 namespace EggLedger.Domain.Tests.MissionQuery;
 
-/// <summary>
-/// In-memory IMissionStore double. Holds known data; records the backfill kick.
-/// Null-typed fields simulate Go store errors.
-/// </summary>
+/// <summary>In-memory IMissionStore double; null-typed fields simulate Go store errors.</summary>
 internal sealed class FakeMissionStore : IMissionStore {
     public IReadOnlyList<string>? CompleteMissionIds { get; set; }
     public List<KnownAccount> KnownAccounts { get; } = [];

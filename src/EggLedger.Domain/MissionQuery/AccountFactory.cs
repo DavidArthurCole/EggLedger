@@ -10,10 +10,7 @@ namespace EggLedger.Domain.MissionQuery;
 /// Go addAccount binding's field shaping; data access lives in the Web layer.
 /// </summary>
 public static class AccountFactory {
-    /// <summary>
-    /// Shapes the display fields for an account from its backup. Mirrors the Go
-    /// addAccount binding: TE is summed across the Virtue EoV slice.
-    /// </summary>
+    /// <summary>Mirrors the Go addAccount binding: TE is summed across the Virtue EoV slice.</summary>
     public static AccountInfo FromBackup(string eid, Backup backup) {
         string nickname = backup.UserName;
         double eb = backup.GetEarningsBonus();

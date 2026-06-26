@@ -14,9 +14,9 @@ public sealed class DropLike {
     public int Count { get; set; }
 }
 
-/// <summary>Drop combining + sorting for the mission-detail overlay. Comparators golden-matched to useMissionSorting.ts (field precedence and the trailing .reverse() in sortGroupAlreadyCombed).</summary>
+/// <summary>Drop combining + sorting for the mission-detail overlay. Comparators golden-matched to useMissionSorting.ts (field precedence, trailing .reverse() in sortGroupAlreadyCombed).</summary>
 public static class DropSorter {
-    /// <summary>Combines identical drops, counting duplicates. Key is name_level_specType_rarity; returns representatives in first-seen order.</summary>
+    /// <summary>Combines identical drops, counting duplicates. Key is name_level_specType_rarity; representatives in first-seen order.</summary>
     public static List<DropLike> GroupedSpecType(IEnumerable<DropLike> collection) {
         var map = new Dictionary<string, DropLike>();
         var order = new List<string>();
@@ -44,7 +44,6 @@ public static class DropSorter {
         return list;
     }
 
-    /// <summary>Group then sortGroupAlreadyCombed.</summary>
     public static List<DropLike> SortedGroupedSpecType(IEnumerable<DropLike> collection) =>
         SortGroupAlreadyCombed(GroupedSpecType(collection));
 

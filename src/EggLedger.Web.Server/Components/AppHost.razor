@@ -1,10 +1,8 @@
 @using EggLedger.Web
 @using Microsoft.AspNetCore.Components.Web
 
-@* Root document for the modern Blazor Server host. The RCL's App (a Router) renders
-   with InteractiveServer + prerender:false so component init (which touches IndexedDB
-   via JS interop) only runs once the circuit + JS are live. Identity flows into the circuit
-   via cookie auth + the framework AuthenticationStateProvider. *@
+@* Root document for the Blazor Server host. Identity flows into the circuit via cookie
+   auth + the framework AuthenticationStateProvider. *@
 
 <!DOCTYPE html>
 <html lang="en">
@@ -55,10 +53,8 @@
 </html>
 
 @code {
-    // Prerender ON (the template default). The earlier prerender:false was to dodge
-    // JS-interop-during-prerender, but on this server host storage is Postgres (no IndexedDB
-    // JS interop on init), so prerender is safe. Prerender gives the interactive roots an SSR
-    // placeholder to attach to; without it the second interactive root (component 1) had no
-    // DOM anchor on batch 2 -> insertBefore parentNode null. Default InteractiveServer.
+    // Prerender ON: storage is Postgres (no IndexedDB JS interop on init), so the old
+    // prerender:false dodge is unneeded. Prerender gives interactive roots an SSR anchor;
+    // without it the second root hit insertBefore parentNode null on batch 2.
     private static readonly Microsoft.AspNetCore.Components.Web.InteractiveServerRenderMode RenderMode = new();
 }

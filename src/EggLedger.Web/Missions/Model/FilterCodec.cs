@@ -6,7 +6,7 @@ using WebCondition = EggLedger.Web.Missions.FilterCondition;
 namespace EggLedger.Web.Missions.Model;
 
 // Bridges the persisted/Go-interop string filter shape and the typed MissionFilter; legacy strings live only here and in option-list encodings.
-// Operators: = != > < >= <=, d= (same-day), true/false (bool, in Val), c/dnc (drops contains/not). Drops Val glob: name_level_rarity_quality with % wildcards.
+// Operators: = != > < >= <=, d= (same-day), true/false (bool in Val), c/dnc (drops contains/not); drops Val glob is name_level_rarity_quality with % wildcards.
 public static class FilterCodec {
     public static MissionFilter FromLegacy(ReportFilters legacy) {
         var groups = new List<FilterGroup>();

@@ -2,14 +2,12 @@ using EggLedger.Domain.MissionQuery;
 
 namespace EggLedger.Web.Missions;
 
-/// <summary>Context the field option-sources draw from.</summary>
 public sealed class FilterFieldCtx {
     public IReadOnlyList<PossibleTarget> PossibleTargets { get; init; } = Array.Empty<PossibleTarget>();
     public IReadOnlyList<PossibleArtifact> ArtifactConfigs { get; init; } = Array.Empty<PossibleArtifact>();
     public double MaxQuality { get; init; }
 }
 
-/// <summary>Definition of a filter field: key, label, scope, value-picker kind, operator list, optional option source.</summary>
 public sealed class FilterFieldDef {
     public string Key { get; init; } = "";
     public string Label { get; init; } = "";

@@ -28,7 +28,7 @@ public sealed class AccountFactoryTests {
 
         var acct = AccountFactory.FromBackup(Eid, backup);
 
-        // 1.5e9 abbreviates to "1.50B" via the shared Format.AbbreviateFloat table.
+        // 1.5e9 abbreviates to "1.50B" via Format.AbbreviateFloat.
         Assert.Equal("1.50B", acct.SeString);
         Assert.Equal(42, acct.PeCount);
     }
@@ -60,9 +60,8 @@ public sealed class AccountFactoryTests {
 
     [Fact]
     public void EbStringMatchesRoleFromEbShaping() {
-        // A base game with no SE/PE/TE produces a small EB; the string is the
-        // role-precision-formatted value plus the OOM addendum. Assert it is
-        // non-empty and free of a leading sign, i.e. it round-trips the shaping.
+        // Small EB renders as role-precision value plus OOM addendum; assert it is
+        // non-empty and not the bare "0", confirming the shaping ran.
         var backup = new Backup {
             UserName = "Eve",
             game = new Backup.Game { SoulEggsD = 250, EggsOfProphecy = 1 },

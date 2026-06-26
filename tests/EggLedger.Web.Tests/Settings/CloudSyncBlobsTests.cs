@@ -118,14 +118,18 @@ public sealed class CloudSyncBlobsTests {
             [
                 new CloudReportGroup { Id = "g1" },
                 new CloudReportGroup { Id = "g2" },
-                new CloudReportGroup { Id = "g2" }, // duplicate
-                new CloudReportGroup { Id = "" },    // blank skipped
+                // Duplicate.
+                new CloudReportGroup { Id = "g2" },
+                // Blank, skipped.
+                new CloudReportGroup { Id = "" },
             ],
             Reports =
             [
                 new ReportDefinition { Id = "r1" },
-                new ReportDefinition { Id = "r2" }, // already exists locally
-                new ReportDefinition { Id = "" },   // blank skipped
+                // Already exists locally.
+                new ReportDefinition { Id = "r2" },
+                // Blank, skipped.
+                new ReportDefinition { Id = "" },
             ],
         };
 

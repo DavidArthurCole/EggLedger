@@ -8,17 +8,14 @@ using Npgsql;
 namespace EggLedger.Web.Server.Storage;
 
 /// <summary>
-/// On a user's first login to the unified host, restores their accounts + settings + reports
-/// from the cloud blobs the old sync server already holds (encrypted in the blobs table). The
-/// new per-user Postgres store starts empty, so without this returning users would lose their
-/// synced data. Mission history is NOT in any blob (only the first-contact backup is), so it is
-/// not backfilled - the user re-fetches once on the new host.
-///
-/// Guard: runs only when the user has NO known accounts yet. Settings get written early by the
-/// app, so "settings empty" is a false fresh-store signal; "no accounts" is the real one.
-/// Reads ciphertext + the user's encryption key from Postgres and decrypts in process via
-/// IBlobCipher (managed AES-GCM); no HTTP, no Bearer token.
+/// First login to the unified host: restores accounts + settings + reports from the old sync
+/// server's encrypted blobs so returning users don't lose synced data on the empty Postgres store.
 /// </summary>
+/// <remarks>
+/// Mission history is not in any blob (only the first-contact backup is), so the user re-fetches
+/// once. Guard is "no known accounts yet"; settings-empty is unreliable since the app writes
+/// settings early. Decrypts in process via IBlobCipher (managed AES-GCM); no HTTP, no Bearer.
+/// </remarks>
 public sealed class FirstLoginBackfill(
     NpgsqlDataSource source,
     CurrentUser user,

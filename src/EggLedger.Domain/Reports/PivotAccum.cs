@@ -1,8 +1,8 @@
 namespace EggLedger.Domain.Reports;
 
 /// <summary>
-/// Shared 2D pivot collection machinery. Port of Go reports/pivot.go. Cells accumulate
-/// with +=; with a GROUP BY guaranteeing one row per (row, col) this equals plain assignment.
+/// Shared 2D pivot collection. Port of Go reports/pivot.go. Cells accumulate with +=;
+/// a GROUP BY guaranteeing one row per (row, col) makes that equal plain assignment.
 /// </summary>
 internal sealed class PivotAccum {
     private readonly PivotAxis _rows = new();
@@ -23,7 +23,6 @@ internal sealed class PivotAccum {
         }
     }
 
-    /// <summary>Registers row/col labels and accumulates val into the cell at their intersection (keyed by display).</summary>
     public void Add(string rowDisplay, string rowRaw, string colDisplay, string colRaw, double val) {
         _rows.Add(rowDisplay, rowRaw);
         _cols.Add(colDisplay, colRaw);

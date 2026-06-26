@@ -2,10 +2,7 @@ using EggLedger.Domain.Reports.Charts;
 
 namespace EggLedger.Domain.Tests.Reports;
 
-/// <summary>
-/// Golden tests for the slice-color math. Reference values produced by running
-/// the Vue useSliceColors.ts functions in Node against the same inputs.
-/// </summary>
+// Golden for the slice-color math; reference values from running Vue useSliceColors.ts in Node.
 public class SliceColorsTests {
     [Fact]
     public void HexToHsl_MatchesVue() {

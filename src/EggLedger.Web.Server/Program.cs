@@ -56,10 +56,8 @@ if (hasDb) {
             o.XmlRepository = new EggLedger.Web.Server.Auth.PostgresXmlRepository(dataSource));
 }
 
-// Self-origin base for the shared UI's HttpClient (egg-api proxy + same-origin calls).
-// Server-side HttpClient self-base: the app calling its own /api/v1 + /egg-api in process.
-// Default to the bound listen address (ASPNETCORE_URLS), with 0.0.0.0/[::] rewritten to
-// localhost, so it works in-container without a hardcoded port. Overridable via config.
+// Self-origin base for the shared UI's HttpClient (in-process /api/v1 + /egg-api calls).
+// Defaults to the bound listen address with 0.0.0.0/[::] rewritten to localhost.
 var selfBase = new Uri(builder.Configuration["SelfBaseAddress"] ?? SelfBaseFromUrls());
 builder.Services.AddEggLedgerWeb(selfBase);
 
@@ -72,16 +70,13 @@ static string SelfBaseFromUrls() {
     return first.Replace("0.0.0.0", "localhost").Replace("[::]", "localhost").Replace("+", "localhost");
 }
 
-// Server-side overrides of the WASM-only seams:
-// - decode default is already LocalApiPayloadDecoder (native protobuf-net; emit is
-//   allowed off the browser), so no decode override is needed - the /decode wire is gone.
-// - blob crypto: WASM uses SubtleCrypto; the server has managed AES-GCM.
+// Override the WASM blob-crypto seam: WASM used SubtleCrypto, the server uses managed
+// AES-GCM. Decode needs no override (LocalApiPayloadDecoder is already the default).
 builder.Services.RemoveAll<IBlobCipher>();
 builder.Services.AddScoped<IBlobCipher, LocalBlobCipher>();
 
-// Phase 3: server-side per-user storage. CurrentUser is populated per circuit from the
-// session cookie; PostgresIndexedDb scopes every store op to that user. Only when a DB
-// is configured - dev without DB keeps the browser IndexedDB path.
+// Server-side per-user storage, only when a DB is configured (dev without DB keeps the
+// browser IndexedDB path). PostgresIndexedDb scopes every op to the circuit's CurrentUser.
 builder.Services.AddScoped<EggLedger.Web.Server.Storage.CurrentUser>();
 if (hasDb) {
     builder.Services.AddScoped<ISessionStore>(sp =>
@@ -103,8 +98,7 @@ app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
 // Required: MapRazorComponents marks endpoints with anti-forgery metadata, so the
-// middleware must be present. Keys persist to Postgres (stable key ring), so the earlier
-// stale-cookie decrypt failure is resolved.
+// middleware must be present. Keys persist to Postgres for a stable key ring.
 app.UseAntiforgery();
 
 // Reverse-proxy the egg-api prefix to auxbrain server-side (replaces the nginx CORS dodge).

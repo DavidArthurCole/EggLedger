@@ -2,20 +2,18 @@ using EggLedger.Domain.MissionPacking;
 
 namespace EggLedger.Web.Missions;
 
-/// <summary>Multi-view selection mode for the mission list (off/row/free).</summary>
 public enum MultiViewMode {
     Off,
     Row,
     Free,
 }
 
-/// <summary>Drop sort method for the mission overlay (default/iv).</summary>
 public enum MissionSortMethod {
     Default,
     Iv,
 }
 
-/// <summary>Mission-list display preferences plus mission-type tab filtering. Display flags default to and (de)serialize exactly as the Go storage settings do.</summary>
+/// <summary>Display flags default to and (de)serialize exactly as the Go storage settings do.</summary>
 public sealed class MissionViewOptions {
     // Vue defaults (useMissionViewOptions.ts).
     public bool ViewByDate { get; set; }

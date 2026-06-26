@@ -97,8 +97,8 @@ public sealed class MissionQueryHandlers {
     }
 
     /// <summary>
-    /// Port of GetAllPlayerDrops. Maps missionId to drops for every stored mission,
-    /// streaming one at a time. Null on store error.
+    /// Port of GetAllPlayerDrops. Maps missionId to drops from pre-extracted drop rows.
+    /// Null on store error.
     /// </summary>
     public async Task<Dictionary<string, List<MissionDrop>>?> GetAllPlayerDropsAsync(string playerId) {
         // Read pre-extracted drop rows instead of re-decoding every mission. In the

@@ -19,7 +19,7 @@ public enum SegmentStatus {
     Skipped,
 }
 
-/// <summary>One progress event: an overall state transition, a mission counter snapshot, or a per-mission segment update, collapsed into a single <see cref="System.IProgress{T}"/> channel.</summary>
+/// <summary>One progress event collapsing a state transition, a counter snapshot, or a per-mission segment update into a single <see cref="System.IProgress{T}"/> channel.</summary>
 public sealed record FetchProgress {
     public required AppState State { get; init; }
 

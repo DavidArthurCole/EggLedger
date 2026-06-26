@@ -2,10 +2,7 @@ using EggLedger.Domain.Reports.Charts;
 
 namespace EggLedger.Domain.Tests.Reports;
 
-/// <summary>
-/// Golden tests for the shared line-family geometry, mirroring
-/// ReportLineChart.vue / ReportMultiLineChart.vue. Reference values from Node.
-/// </summary>
+// Golden for the shared line-family geometry; mirrors ReportLineChart.vue / ReportMultiLineChart.vue. Reference values from Node.
 public class ChartGeometryTests {
     [Fact]
     public void Values_SelectsFloatOrIntSeries() {
@@ -36,7 +33,8 @@ public class ChartGeometryTests {
         var path = ChartGeometry.AreaPath(pts, 130);
         Assert.StartsWith("M36,70", path);
         Assert.EndsWith("Z", path);
-        Assert.Contains(",70", path); // baseline at PAD_TOP + yRange = 70
+        // 70 is the baseline y (PAD_TOP + yRange).
+        Assert.Contains(",70", path);
     }
 
     [Theory]
@@ -99,10 +97,7 @@ public class ChartGeometryTests {
 
     [Fact]
     public void SeriesColors_GroupedBarOverload_MatchesInlineGeometry() {
-        // Golden for the grouped-bar consolidation: display columns spread over the
-        // RAW column count (denominator 4, not the 3 display columns) and "Other"
-        // paints the fixed gray. Reference values come from the prior inline
-        // ColColors with base #6366f1 (h ~= 239, s ~= 84%).
+        // Grouped-bar golden: display columns spread over the RAW column count (denominator 4, not 3) and "Other" paints fixed gray. Reference from the prior inline ColColors, base #6366f1 (h ~= 239, s ~= 84%).
         var cols = new[] { "A", "B", "Other" };
         var colors = ChartGeometry.SeriesColors(
             cols,

@@ -25,8 +25,8 @@ internal static class EnumNames {
     }
 
     /// <summary>
-    /// Reverse lookup: proto name -> enum value. Mirrors Go's *_value map.
-    /// Returns false when the name is not a defined enum member.
+    /// Reverse lookup proto name -> enum value, mirroring Go's *_value map. Returns false for
+    /// names that are not defined enum members.
     /// </summary>
     public static bool TryValue<TEnum>(string protoName, out TEnum value) where TEnum : struct, Enum {
         var map = NameMap(typeof(TEnum));

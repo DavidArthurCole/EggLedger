@@ -2,11 +2,7 @@ using EggLedger.Web.Missions;
 
 namespace EggLedger.Web.Tests.Missions;
 
-/// <summary>
-/// Golden tests for <see cref="FilterFields"/> derived from
-/// www/src/utils/filterFields.ts: the field set, default operators, and scope
-/// partitioning.
-/// </summary>
+/// <summary>Golden parity with www/src/utils/filterFields.ts.</summary>
 public sealed class FilterFieldsTests {
     [Fact]
     public void ReportFilterFields_HasExpectedKeysInOrder() {
@@ -30,8 +26,7 @@ public sealed class FilterFieldsTests {
         Assert.Equal("true", FilterFields.DefaultOpForField(FilterFields.GetReportField("dubcap")!));
         Assert.Equal("c", FilterFields.DefaultOpForField(FilterFields.GetReportField("drops")!));
         Assert.Equal("=", FilterFields.DefaultOpForField(FilterFields.GetReportField("ship")!));
-        // Mission Data bar date "on" must default to "d=" (day-equality), not "=".
-        // A date "=" reference-compares and never matches in MissionFilterMatcher.
+        // Date "on" must default to "d=", since a date "=" never matches in MissionFilterMatcher.
         Assert.Equal("d=", FilterFields.DefaultOpForField(FilterFields.GetReportField("launchDT")!));
         Assert.Equal("d=", FilterFields.DefaultOpForField(FilterFields.GetReportField("returnDT")!));
     }
@@ -40,10 +35,9 @@ public sealed class FilterFieldsTests {
     public void MissionBarOpsFor_DateFields_UseDayEqOnOperator() {
         var ops = FilterFields.MissionBarOpsFor(FilterFields.GetReportField("launchDT")!);
         Assert.Equal(new[] { "d=", "<", ">" }, ops.Select(o => o.Value).ToArray());
-        // "on" is the day-equality operator the matcher's d= branch handles.
         Assert.Equal("d=", ops.First(o => o.Label == "on").Value);
 
-        // Non-date fields keep their own ops unchanged (Reports field set intact).
+        // Non-date fields keep their own ops unchanged.
         var shipOps = FilterFields.MissionBarOpsFor(FilterFields.GetReportField("ship")!);
         Assert.Same(FilterFields.GetReportField("ship")!.Ops, shipOps);
     }

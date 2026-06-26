@@ -3,12 +3,9 @@ using EggLedger.Web.Platform;
 
 namespace EggLedger.Desktop.Platform;
 
-/// <summary>
-/// Native <see cref="IPlatformCapabilities"/> for the Photino host. Open + reveal
-/// shell out via <see cref="IProcessRunner"/> with per-OS commands from
-/// <see cref="DesktopCommandBuilder"/>; save dialog and window size come from the
-/// Photino window. <see cref="IsDesktop"/> is true to enable desktop-only UI.
-/// </summary>
+/// <summary>Native <see cref="IPlatformCapabilities"/> for the Photino host.</summary>
+/// <remarks>Open + reveal shell out via <see cref="IProcessRunner"/> with per-OS commands from
+/// <see cref="DesktopCommandBuilder"/>; save dialog and window size come from the Photino window.</remarks>
 public sealed class DesktopPlatformCapabilities(IProcessRunner processRunner, IDesktopWindow window) : IPlatformCapabilities {
     private readonly IProcessRunner _processRunner = processRunner;
     private readonly IDesktopWindow _window = window;
@@ -26,10 +23,7 @@ public sealed class DesktopPlatformCapabilities(IProcessRunner processRunner, ID
         return _processRunner.RunAsync(exe, args);
     }
 
-    /// <summary>
-    /// MANUAL-VERIFY: native Photino save dialog. Returns the chosen path or null on
-    /// cancel.
-    /// </summary>
+    /// <summary>MANUAL-VERIFY: native Photino save dialog. Returns the chosen path or null on cancel.</summary>
     public Task<string?> ChooseSaveFilePathAsync(string defaultName)
         => Task.FromResult(_window.ShowSaveFileDialog(defaultName));
 

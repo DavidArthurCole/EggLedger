@@ -3,12 +3,12 @@ using System.Globalization;
 namespace EggLedger.Domain.Reports;
 
 /// <summary>
-/// In-memory <see cref="IMissionDb"/> that answers ReportExecutor's queries by
-/// evaluating reports/query.go filter/grouping semantics over typed rows, no SQL engine.
-/// Recognizes each query shape from stable markers in the generated text; returned rows
-/// mirror SQL Scan order/boxing (text as string, counts as long, sums as double).
-/// Coupled source of truth: the marker consts below must track QueryBuilder/ReportExecutor's
-/// exact aliases, JOIN line, and airtime SUM expression in lockstep.
+/// In-memory <see cref="IMissionDb"/> answering ReportExecutor's queries by evaluating
+/// reports/query.go filter/grouping semantics over typed rows (no SQL engine); query shape
+/// is recognized from stable text markers and returned rows mirror SQL Scan order/boxing
+/// (text as string, counts as long, sums as double).
+/// The marker consts below MUST track QueryBuilder/ReportExecutor's exact aliases, JOIN line,
+/// and airtime SUM expression in lockstep or shape detection silently misfires.
 /// </summary>
 internal sealed class InMemoryMissionDb : IMissionDb {
     // Markers identifying each query shape; keep in sync with QueryBuilder/ReportExecutor.
@@ -564,7 +564,8 @@ internal sealed class InMemoryMissionDb : IMissionDb {
             return true;
         }
         if (!IsInt(c.Val)) {
-            return true; // no-op condition, does not exclude
+            // no-op condition, does not exclude
+            return true;
         }
         return CompareLong(c.Op, actual, long.Parse(c.Val, CultureInfo.InvariantCulture));
     }

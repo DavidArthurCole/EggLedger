@@ -2,10 +2,7 @@ using EggLedger.Domain.Reports;
 
 namespace EggLedger.Domain.Tests.Reports;
 
-/// <summary>
-/// Golden tests for the grid packing math, mirroring the Vue
-/// utils/reportGridLayout.ts behavior (CSS grid auto-placement, row direction).
-/// </summary>
+// Golden for the grid packing math; mirrors Vue utils/reportGridLayout.ts (CSS grid auto-placement, row direction).
 public class ReportGridLayoutTests {
     private static ReportDefinition Def(int w, int h) => new() { GridW = w, GridH = h };
 
@@ -81,9 +78,7 @@ public class ReportGridLayoutTests {
 
     [Fact]
     public void FindInsertIndexForZone_PlacesDraggedCardIntoTrailingGap() {
-        // Layout: [3-wide][3-wide][2-wide]. Removing the 2-wide (idx 2) leaves a
-        // trailing gap at cols 7-8 on row 1. Resolving the drag for that zone
-        // should map back to an in-range insert position.
+        // Layout [3][3][2]; removing the 2-wide leaves a trailing gap at cols 7-8 row 1. The drag for that zone must map to an in-range insert position.
         var defs = new[] { Def(3, 1), Def(3, 1), Def(2, 1) };
         var zones = ReportGridLayout.ComputeEmptyZones(defs.Where((_, i) => i != 2).ToList());
         Assert.NotEmpty(zones);

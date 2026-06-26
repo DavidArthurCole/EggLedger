@@ -3,14 +3,9 @@ using EggLedger.Web.Missions;
 
 namespace EggLedger.Web.Tests.Missions;
 
-/// <summary>
-/// Golden tests for <see cref="MissionGrouper"/> derived from
-/// www/src/composables/useMissionListGrouping.ts: year/month/day descending
-/// grouping, per-day reverse, collapse state, and the all-visible flag.
-/// </summary>
+/// <summary>Golden parity with www/src/composables/useMissionListGrouping.ts.</summary>
 public sealed class MissionGrouperTests {
-    // Deterministic ledgerDate that treats LaunchDT as already-encoded yyyymmdd
-    // so tests do not depend on the local time zone.
+    // Treats LaunchDT as already-encoded yyyymmdd so tests do not depend on the local time zone.
     private static DateTime FakeLedgerDate(long encoded) {
         int y = (int)(encoded / 10000);
         int mo = (int)(encoded / 100 % 100);
@@ -57,7 +52,6 @@ public sealed class MissionGrouperTests {
         };
         var g = MissionGrouper.Group(missions, FakeLedgerDate, collapseOlderSections: false);
         Assert.Equal([3, 1], [.. g.Arrays.Month[0].Select(m => m.Month)]);
-        // March has two days 15 then 10.
         Assert.Equal([15, 10], [.. g.Arrays.Day[0][0].Select(d => d.Day)]);
     }
 

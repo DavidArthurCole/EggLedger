@@ -12,7 +12,6 @@ public static class LedgerData {
 
     private static readonly Lazy<LedgerDisplayData> _config = new(LoadEmbedded);
 
-    /// <summary>The active display data, loaded lazily from the embedded resource.</summary>
     public static LedgerDisplayData Config => _config.Value;
 
     private static LedgerDisplayData LoadEmbedded() {

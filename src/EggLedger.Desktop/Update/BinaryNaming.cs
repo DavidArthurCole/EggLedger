@@ -42,11 +42,10 @@ public static class BinaryNaming {
     }
 
     /// <summary>
-    /// Decide whether this process should run as the updater replacing
-    /// EggLedger[.exe]: triggered if the running binary is named *_new or the
-    /// --replace-* flags are present. oldPath comes from replacePath else the _new
-    /// name; oldPid is 0 when unknown.
+    /// Decide whether to run as the updater replacing EggLedger[.exe]: triggered by a
+    /// *_new binary name or the --replace-* flags.
     /// </summary>
+    /// <remarks>oldPath comes from replacePath else the _new name; oldPid is 0 when unknown.</remarks>
     public static (bool Run, int OldPid, string OldPath) DecideReplace(
         string self, int replacePid, string replacePath) {
         var hasFlags = replacePid != 0 && !string.IsNullOrEmpty(replacePath);

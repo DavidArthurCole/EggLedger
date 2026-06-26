@@ -2,9 +2,8 @@ using System.Collections.Concurrent;
 
 namespace EggLedger.Web.Server.Sync.Admin;
 
-// In-process API-rate metrics: a 60-slot ring of per-minute request buckets (last
-// hour) plus a lifetime per-path tally. Singleton, thread-safe via Interlocked.
-// No DB; resets on restart. Ported from the EggIncognito ApiMetrics design.
+// In-process API-rate metrics: a 60-slot ring of per-minute request buckets (last hour)
+// plus a lifetime per-path tally. Singleton, thread-safe via Interlocked; resets on restart.
 public sealed class ApiMetrics(TimeProvider time) {
     public const int Minutes = 60;
 

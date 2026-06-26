@@ -7,10 +7,8 @@ using Ei;
 namespace EggLedger.Web.Data;
 
 /// <summary>
-/// IndexedDB-backed <see cref="IMissionStore"/> (C# port of Go missionquery over SQLite).
-/// Per-player reads use the <c>player_id</c> index. Stored <c>complete_payload</c> is
-/// gzip(raw API response): gunzip, decode as an AuthenticatedMessage, then restore
-/// StartTimeDerived from the row's start_timestamp.
+/// IndexedDB-backed <see cref="IMissionStore"/> (Go missionquery over SQLite). Stored
+/// <c>complete_payload</c> is gzip(raw API response); see <see cref="DecodeAsync"/> for read-back.
 /// </summary>
 public sealed class IndexedDbMissionStore : IMissionStore {
     private const string MissionStore = "mission";
@@ -63,7 +61,7 @@ public sealed class IndexedDbMissionStore : IMissionStore {
         var rows = await PlayerRowsAsync(playerId);
         foreach (var row in rows.OrderBy(r => r.StartTimestamp)) {
             CompleteMissionResponse cm;
-            // Only a decode failure is a store error; let consumer-callback bugs surface.
+            // Only decode failure is a store error; consumer-callback bugs must surface.
             try {
                 cm = await DecodeAsync(row).ConfigureAwait(false);
             } catch {
@@ -108,8 +106,8 @@ public sealed class IndexedDbMissionStore : IMissionStore {
     public async Task<IReadOnlyList<CompleteMissionResponse>?> GetPlayerCompleteMissionsAsync(string eid) {
         var rows = (await PlayerRowsAsync(eid)).OrderBy(r => r.StartTimestamp).ToList();
         try {
-            // Decode is a server round-trip per mission in WASM; sequential over a full
-            // history was ~20s. Run in bounded-concurrency batches, preserving order.
+            // Decode is a server round-trip per mission in WASM; bounded-concurrency
+            // batches (order preserved) over sequential ~20s on a full history.
             var result = new CompleteMissionResponse[rows.Count];
             const int batch = 16;
             for (int start = 0; start < rows.Count; start += batch) {
@@ -173,10 +171,9 @@ public sealed class IndexedDbMissionStore : IMissionStore {
     };
 
     /// <summary>
-    /// Inserts the first-contact backup (Go db.InsertBackup): raw payload gzipped.
-    /// When <paramref name="minimumGap"/> is positive and the existing backup is
-    /// newer than that gap, the write is skipped (the 12h dedup). The browser
-    /// <c>backup</c> store keys on <c>player_id</c> alone, so there is one row per player.
+    /// First-contact backup, raw payload gzipped (Go db.InsertBackup). A positive
+    /// <paramref name="minimumGap"/> skips the write when the existing backup is newer
+    /// than the gap (the 12h dedup); the <c>backup</c> store keys on <c>player_id</c>, one row per player.
     /// </summary>
     public async Task InsertBackupAsync(string playerId, double timestamp, byte[] rawPayload, TimeSpan minimumGap) {
         if (minimumGap > TimeSpan.Zero) {
@@ -200,7 +197,7 @@ public sealed class IndexedDbMissionStore : IMissionStore {
     /// <summary>
     /// Inserts one fetched mission plus its artifact_drops rows. <paramref name="rawPayload"/>
     /// is the raw AuthenticatedMessage wire, gzipped into <c>complete_payload</c> exactly as
-    /// <see cref="GetCompleteMissionAsync"/> reads it back. Filter columns precomputed by the caller.
+    /// <see cref="GetCompleteMissionAsync"/> reads it back.
     /// </summary>
     public async Task InsertCompleteMissionAsync(
         string playerId,

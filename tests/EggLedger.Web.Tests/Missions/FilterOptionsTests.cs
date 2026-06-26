@@ -3,11 +3,7 @@ using EggLedger.Web.Missions;
 
 namespace EggLedger.Web.Tests.Missions;
 
-/// <summary>
-/// Golden tests for <see cref="FilterOptions"/> derived from
-/// www/src/utils/filterOptions.ts: option counts, value encodings, dedup/sort,
-/// and the drop-option wildcard rows.
-/// </summary>
+/// <summary>Golden parity with www/src/utils/filterOptions.ts.</summary>
 public sealed class FilterOptionsTests {
     [Fact]
     public void ShipOptions_ElevenShipsValuedByIndex() {
@@ -96,7 +92,7 @@ public sealed class FilterOptionsTests {
         // Alphabetical by representative display text.
         Assert.Equal("Alpha", opts[0].Text);
         Assert.Equal("5", opts[0].Value);
-        // Zeta family: lowest level (0) representative wins.
+        // Zeta family: the lowest-level representative wins.
         Assert.Equal("Zeta Low", opts[1].Text);
         Assert.Equal("10", opts[1].Value);
     }
@@ -118,7 +114,7 @@ public sealed class FilterOptionsTests {
             new PossibleArtifact { Name = 41, ProtoName = "TOO_RARE", DisplayName = "Too Rare", Level = 0, Rarity = 0, BaseQuality = 999 },
         };
         var opts = FilterOptions.GetDropFilterOptions(arts, maxQuality: 100, advanced: false);
-        // Trio + one in-range artifact (the 999-quality one is filtered out).
+        // Trio plus one in-range artifact; the 999-quality one is filtered out.
         Assert.Equal(4, opts.Count);
         var basan = opts[3];
         Assert.Equal("40_1_0_3", basan.Value);

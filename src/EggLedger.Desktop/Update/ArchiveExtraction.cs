@@ -5,31 +5,28 @@ using System.Runtime.InteropServices;
 namespace EggLedger.Desktop.Update;
 
 /// <summary>
-/// Pulls the EggLedger binary out of a downloaded release archive. Windows assets
-/// are raw (no extraction); linux .tar.gz and mac .zip need the binary extracted and
-/// given the executable bit on unix before it can launch as EggLedger_new.
+/// Pulls the EggLedger binary out of a downloaded release archive. Windows assets are
+/// raw; linux .tar.gz and mac .zip need extraction plus the unix executable bit before
+/// launching as EggLedger_new.
 /// </summary>
 public static class ArchiveExtraction {
-    /// <summary>Executable file mode Go applies to the extracted binary (0755 / rwxr-xr-x).</summary>
+    /// <summary>Executable mode Go applies to the extracted binary (0755 / rwxr-xr-x).</summary>
     private const UnixFileMode ExecutableMode =
         UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute
         | UnixFileMode.GroupRead | UnixFileMode.GroupExecute
         | UnixFileMode.OtherRead | UnixFileMode.OtherExecute;
 
     /// <summary>
-    /// True when <paramref name="assetName"/> is an archive that needs extraction
-    /// (.tar.gz / .zip) rather than the raw Windows binary. Mirrors the suffix branch
-    /// in HandleDownloadAndInstall (Windows raw vs non-Windows archive).
+    /// True when the asset is a .tar.gz / .zip needing extraction, not the raw Windows
+    /// binary. Mirrors the suffix branch in HandleDownloadAndInstall.
     /// </summary>
     public static bool IsArchive(string assetName) =>
         assetName.EndsWith(".tar.gz", StringComparison.Ordinal)
         || assetName.EndsWith(".zip", StringComparison.Ordinal);
 
     /// <summary>
-    /// Extract the binary from <paramref name="archivePath"/> to
-    /// <paramref name="destPath"/>, then set the executable bit on unix. Dispatches by
-    /// suffix the same way Go's extractBinaryFromArchive does. Ports
-    /// extractBinaryFromArchive + the os.Chmod(tempPath, 0755) that follows it.
+    /// Extract the binary by suffix, then set the unix executable bit. Ports
+    /// extractBinaryFromArchive + the following os.Chmod(tempPath, 0755).
     /// </summary>
     public static void Extract(string archivePath, string destPath) {
         if (archivePath.EndsWith(".tar.gz", StringComparison.Ordinal)) {
@@ -43,10 +40,7 @@ public static class ArchiveExtraction {
         SetExecutableBit(destPath);
     }
 
-    /// <summary>
-    /// Extract the first regular, non-empty file from a .tar.gz to
-    /// <paramref name="destPath"/>. Ports extractFromTarGz.
-    /// </summary>
+    /// <summary>Extract the first regular non-empty file from a .tar.gz. Ports extractFromTarGz.</summary>
     private static void ExtractFromTarGz(string archivePath, string destPath) {
         using var file = File.OpenRead(archivePath);
         using var gz = new GZipStream(file, CompressionMode.Decompress);
@@ -69,9 +63,8 @@ public static class ArchiveExtraction {
     }
 
     /// <summary>
-    /// Extract the EggLedger binary from a .zip. Prefers an entry under a MacOS/ path
-    /// (macOS app-bundle layout), then falls back to the first extensionless file.
-    /// Ports extractFromZip.
+    /// Extract from a .zip, preferring a MacOS/ app-bundle entry then the first
+    /// extensionless file. Ports extractFromZip.
     /// </summary>
     private static void ExtractFromZip(string archivePath, string destPath) {
         using var zip = ZipFile.OpenRead(archivePath);
@@ -113,8 +106,8 @@ public static class ArchiveExtraction {
         entry.FullName.EndsWith('/') || string.IsNullOrEmpty(entry.Name);
 
     /// <summary>
-    /// Set the 0755 executable bit on unix. No-op on Windows, where File.SetUnixFileMode
-    /// is unsupported and throws. Matches Go's os.Chmod(tempPath, 0755) after extraction.
+    /// Set the 0755 bit on unix; no-op on Windows where SetUnixFileMode throws. Matches
+    /// Go's os.Chmod(tempPath, 0755).
     /// </summary>
     private static void SetExecutableBit(string path) {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {

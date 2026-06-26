@@ -1,13 +1,11 @@
 using System.Globalization;
 
+// Contract: never emit a literal `?` in SQL text. `?` is the positional bind placeholder;
+// its count must equal the args-list length or the SQLite adapter's binding corrupts.
+
 namespace EggLedger.Domain.Reports;
 
-/// <summary>
-/// SQL/predicate builder for report queries. Port of Go reports/query.go; output is
-/// byte-identical to the Go reference.
-/// Contract: never emit a literal <c>?</c> in SQL text. <c>?</c> is the positional bind
-/// placeholder and its count must equal the args-list length, else the SQLite adapter's binding corrupts.
-/// </summary>
+/// <summary>SQL/predicate builder for report queries. Port of Go reports/query.go; output is byte-identical to the Go reference.</summary>
 public static class QueryBuilder {
     private static bool IsInt(string s) =>
         long.TryParse(s, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out _);
@@ -16,8 +14,8 @@ public static class QueryBuilder {
         double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out _);
 
     /// <summary>
-    /// Converts ReportFilters into a parameterized SQL fragment (no leading WHERE).
-    /// Mission conditions reference m.*, artifact conditions d.*. Port of Go BuildWhereClause.
+    /// Parameterized SQL fragment (no leading WHERE); mission conditions reference m.*,
+    /// artifact conditions d.*. Port of Go BuildWhereClause.
     /// </summary>
     public static (string clause, List<object?> args) BuildWhereClause(ReportFilters filters) {
         var clauses = new List<string>();

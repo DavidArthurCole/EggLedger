@@ -3,9 +3,8 @@ using EggLedger.Domain.MissionQuery;
 
 namespace EggLedger.Web.State;
 
-/// <summary>Pure presentation helpers for the Ledger tab, extracted so the .razor stays thin and the logic is unit-testable.</summary>
 public static class LedgerFormatting {
-    /// <summary>Accounts ordered by stored mission count, descending. Stable for equal counts (preserves input order).</summary>
+    /// <summary>By mission count descending, stable for equal counts (preserves input order).</summary>
     public static IReadOnlyList<DatabaseAccount> SortByMissionCountDescending(IEnumerable<DatabaseAccount> accounts) =>
         accounts
             .Select((acct, index) => (acct, index))
@@ -14,7 +13,7 @@ public static class LedgerFormatting {
             .Select(x => x.acct)
             .ToList();
 
-    /// <summary>Relative "X ago" label from a unix-seconds timestamp; empty for missing/future, else the two coarsest non-zero units.</summary>
+    /// <summary>Relative "X ago" label; empty for missing/future, else the two coarsest non-zero units.</summary>
     public static string FormatTimeSince(double returnUnixSeconds, double nowUnixSeconds) {
         if (returnUnixSeconds == 0) {
             return "";
@@ -36,7 +35,7 @@ public static class LedgerFormatting {
         return $"{minutes}m ago";
     }
 
-    /// <summary>Filters accounts by case-insensitive substring against id or nickname; a blank query returns input unchanged.</summary>
+    /// <summary>Case-insensitive substring match on id or nickname; blank query returns input unchanged.</summary>
     public static IReadOnlyList<DatabaseAccount> FilterAccounts(IReadOnlyList<DatabaseAccount> accounts, string? query) {
         if (string.IsNullOrEmpty(query)) {
             return accounts;
@@ -49,11 +48,10 @@ public static class LedgerFormatting {
             .ToList();
     }
 
-    /// <summary>Trim + uppercase an EID.</summary>
     public static string NormalizeEid(string? eid) =>
         (eid ?? "").Trim().ToUpper(CultureInfo.InvariantCulture);
 
-    /// <summary>Validation message for a normalized candidate EID, or empty when valid (empty input yields empty, no error).</summary>
+    /// <summary>Validation message for a normalized EID, or empty when valid (empty input is valid, no error).</summary>
     public static string EidProblem(string normalizedEid) {
         string v = normalizedEid;
         if (v == "") {
@@ -74,7 +72,6 @@ public static class LedgerFormatting {
         return "";
     }
 
-    /// <summary>True when the normalized EID is non-empty and has no problem.</summary>
     public static bool IsEidValid(string normalizedEid) =>
         normalizedEid != "" && EidProblem(normalizedEid) == "";
 

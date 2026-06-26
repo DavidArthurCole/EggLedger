@@ -29,9 +29,11 @@ public sealed class CloudSyncServiceTests {
         private readonly Dictionary<string, string> _blobs = [];
 
         public string? PendingState;
-        public PollResponse? PollPayload; // null => still pending (202)
+        // null => still pending (202).
+        public PollResponse? PollPayload;
         public string ExpectedBearer = Token;
-        public bool RejectAuth; // force 401 on authed routes
+        // Force 401 on authed routes.
+        public bool RejectAuth;
         public int PutHits;
         public int GetHits;
 
@@ -110,8 +112,6 @@ public sealed class CloudSyncServiceTests {
         var http = new HttpClient(server) { BaseAddress = Origin };
         return new CloudSyncService(http, nav ?? new FakeNavigation(), new LocalBlobCipher());
     }
-
-    // ----- Step 1: blob round-trip -----
 
     [Fact]
     public async Task PutThenGet_RoundTripsThroughBlobCrypto() {
@@ -195,8 +195,6 @@ public sealed class CloudSyncServiceTests {
         await svc.DeleteAccountAsync(session);
         Assert.Empty(server.Blobs);
     }
-
-    // ----- Step 2: auth poll state machine + redirect -----
 
     [Fact]
     public async Task BeginAuth_RedirectsBrowserAndReturnsState() {
@@ -285,8 +283,6 @@ public sealed class CloudSyncServiceTests {
         await svc.DisconnectAsync(Token);
         Assert.Equal($"Bearer {Token}", server.LastAuth);
     }
-
-    // ----- Reachability probe (/verify) -----
 
     [Fact]
     public async Task CheckReachable_Ok_ReturnsTrue() {

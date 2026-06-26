@@ -2,10 +2,7 @@ using EggLedger.Domain.Export;
 
 namespace EggLedger.Domain.Tests.Export;
 
-/// <summary>
-/// In-memory IExportFileSystem double for export-management tests. Keys are full
-/// paths built with the same Path.Combine the production code uses.
-/// </summary>
+/// <summary>In-memory IExportFileSystem double; keys are full Path.Combine paths.</summary>
 internal sealed class InMemoryExportFileSystem : IExportFileSystem {
     private readonly Dictionary<string, long> _files = new(StringComparer.Ordinal);
 

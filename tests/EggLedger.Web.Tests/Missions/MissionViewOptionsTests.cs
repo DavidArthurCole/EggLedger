@@ -3,11 +3,7 @@ using EggLedger.Web.Missions;
 
 namespace EggLedger.Web.Tests.Missions;
 
-/// <summary>
-/// Golden tests for <see cref="MissionViewOptions"/> derived from
-/// www/src/composables/useMissionViewOptions.ts: defaults, mission-type tab
-/// filtering, hasBothMissionTypes, and settings (de)serialization.
-/// </summary>
+/// <summary>Golden parity with www/src/composables/useMissionViewOptions.ts.</summary>
 public sealed class MissionViewOptionsTests {
     private static DatabaseMission M(int type, string id) => new() { MissionType = type, MissiondId = id };
 

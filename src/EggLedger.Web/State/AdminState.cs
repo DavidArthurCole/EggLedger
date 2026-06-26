@@ -1,7 +1,6 @@
 namespace EggLedger.Web.State;
 
-// Whether the current cloud session is an admin (gates the Admin tab). Resolved
-// once at shell startup from the sync server; raises Changed so the tab appears.
+// Gates the Admin tab. Resolved once at shell startup from the sync server.
 public sealed class AdminState {
     public bool IsAdmin {
         get;

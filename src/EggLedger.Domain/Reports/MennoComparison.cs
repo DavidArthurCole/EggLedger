@@ -6,7 +6,6 @@ namespace EggLedger.Domain.Reports;
 /// a 2D heatmap (every other display mode ignores Menno).
 /// </summary>
 public static class MennoComparison {
-    /// <summary>The three supported compare modes.</summary>
     public const string SideBySide = "side_by_side";
     public const string Ratio = "ratio";
     public const string DualValue = "dual_value";

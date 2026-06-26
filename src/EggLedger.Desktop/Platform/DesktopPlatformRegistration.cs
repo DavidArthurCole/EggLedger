@@ -5,10 +5,8 @@ using Photino.NET;
 
 namespace EggLedger.Desktop.Platform;
 
-/// <summary>
-/// Registers the native desktop <see cref="IPlatformCapabilities"/>, replacing the
-/// browser no-op stub. Call AFTER AddEggLedgerWeb so this override wins.
-/// </summary>
+/// <summary>Registers the native desktop <see cref="IPlatformCapabilities"/>, replacing the
+/// browser no-op stub. Call AFTER AddEggLedgerWeb so this override wins.</summary>
 public static class DesktopPlatformRegistration {
     /// <summary>
     /// Swaps in the native impl over <paramref name="window"/>, registering the

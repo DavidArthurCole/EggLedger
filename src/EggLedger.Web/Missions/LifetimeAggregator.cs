@@ -2,7 +2,6 @@ using EggLedger.Domain.MissionQuery;
 
 namespace EggLedger.Web.Missions;
 
-/// <summary>Aggregated lifetime drops for one account: four spec-type drop lists of grouped representatives plus the contributing mission count.</summary>
 public sealed class LifetimeData {
     public int MissionCount { get; set; }
     public List<DropLike> Artifacts { get; set; } = [];
@@ -11,9 +10,9 @@ public sealed class LifetimeData {
     public List<DropLike> Ingredients { get; set; } = [];
 }
 
-/// <summary>Pure lifetime drop aggregation: folds every mission's drops into four spec-type buckets, combining identical drops and summing counts. CAUTION: SpecType must be exactly "Artifact"/"Stone"/"StoneFragment"/"Ingredient" (matched verbatim from MissionQueryHandlers.ShapeDrop) or drops are silently filtered out.</summary>
+/// <summary>Folds every mission's drops into four spec-type buckets, combining identical drops. CAUTION: SpecType must be exactly "Artifact"/"Stone"/"StoneFragment"/"Ingredient" (verbatim from MissionQueryHandlers.ShapeDrop) or drops are silently filtered out.</summary>
 public static class LifetimeAggregator {
-    /// <summary>Aggregates the per-mission drop dictionary into the four spec-type buckets. Merge key is id_level_rarity within a bucket; first occurrence is the representative, later identical drops bump Count. MissionCount is the dictionary entry count, so pass only the missions you intend to include.</summary>
+    /// <summary>Merge key is id_level_rarity per bucket; first occurrence is the representative, later identical drops bump Count. MissionCount is the dictionary entry count, so pass only the missions you intend to include.</summary>
     public static LifetimeData Aggregate(IReadOnlyDictionary<string, List<MissionDrop>> dropsByMission) {
         var artifacts = new Bucket();
         var stones = new Bucket();

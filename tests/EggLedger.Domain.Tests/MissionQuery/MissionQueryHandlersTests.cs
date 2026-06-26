@@ -19,8 +19,6 @@ public class MissionQueryHandlersTests {
         return cm;
     }
 
-    // GetMissionIds
-
     [Fact]
     public async Task GetMissionIds_ReturnsStoreValue() {
         var (h, store, _) = NewSut();
@@ -35,8 +33,6 @@ public class MissionQueryHandlersTests {
         Assert.Null(await h.GetMissionIdsAsync("p"));
     }
 
-    // GetExistingData
-
     [Fact]
     public async Task GetExistingData_DropsZeroCountAndErrors() {
         var (h, store, _) = NewSut();
@@ -44,8 +40,8 @@ public class MissionQueryHandlersTests {
         store.KnownAccounts.Add(new KnownAccount { Id = "b", Nickname = "B" });
         store.KnownAccounts.Add(new KnownAccount { Id = "c", Nickname = "C" });
         store.Stats["a"] = new PlayerMissionStats(5, 123.0);
-        store.Stats["b"] = new PlayerMissionStats(0, 0); // dropped: count 0
-        store.Stats["c"] = null;                          // dropped: stats error
+        store.Stats["b"] = new PlayerMissionStats(0, 0);
+        store.Stats["c"] = null;
 
         var got = await h.GetExistingDataAsync();
 
@@ -71,15 +67,13 @@ public class MissionQueryHandlersTests {
         Assert.Equal(new[] { "x", "y" }, got.Select(a => a.Id));
     }
 
-    // ViewMissionsOfEid fast/slow path
-
     [Fact]
     public async Task ViewMissionsOfEid_FastPath_WhenNoPending() {
         var (h, store, _) = NewSut();
         var rows = new IMissionRow[] { new FakeMissionRow("m1") };
         store.PendingFilterCols["eid"] = 0;
         store.MissionMeta["eid"] = rows;
-        // slow-path data present but must NOT be used.
+        // Slow-path data present but must not be used.
         store.PlayerCompleteMissions["eid"] = new[] { Mission("ignored") };
 
         var got = await h.ViewMissionsOfEidAsync("eid");
@@ -105,7 +99,7 @@ public class MissionQueryHandlersTests {
     [Fact]
     public async Task ViewMissionsOfEid_SlowPath_NullCountSuppressesBackfill() {
         var (h, store, _) = NewSut();
-        // null count = Go countErr != nil: slow path, no backfill kick.
+        // Null count mirrors Go countErr != nil: slow path, no backfill kick.
         store.PendingFilterCols["eid"] = null;
         store.PlayerCompleteMissions["eid"] = new[] { Mission("m1") };
 
@@ -120,13 +114,11 @@ public class MissionQueryHandlersTests {
     public async Task ViewMissionsOfEid_SlowPath_NullOnStoreError() {
         var (h, store, _) = NewSut();
         store.PendingFilterCols["eid"] = 1;
-        store.PlayerCompleteMissions["eid"] = null; // store error
+        store.PlayerCompleteMissions["eid"] = null;
 
         Assert.Null(await h.ViewMissionsOfEidAsync("eid"));
         Assert.Empty(store.BackfillsQueued);
     }
-
-    // GetDurationConfigs
 
     [Fact]
     public void GetDurationConfigs_ShapesShipsAndDurations() {
@@ -168,12 +160,9 @@ public class MissionQueryHandlersTests {
         Assert.Equal(0, got[0].Durations[0].MaxLevels);
     }
 
-    // GetShipDrops + drop shaping
-
     [Fact]
     public async Task GetShipDrops_NullOnCacheMiss() {
         var (h, _, _) = NewSut();
-        // no entry => GetCompleteMission returns null
         Assert.Null(await h.GetShipDropsAsync("p", "m"));
     }
 
@@ -197,7 +186,6 @@ public class MissionQueryHandlersTests {
         Assert.NotNull(drops);
         Assert.Equal(4, drops!.Count);
 
-        // Artifact
         Assert.Equal("Artifact", drops[0].SpecType);
         Assert.Equal((int)ArtifactSpec.Name.TachyonDeflector, drops[0].Id);
         Assert.Equal("TACHYON_DEFLECTOR", drops[0].Name);
@@ -208,17 +196,15 @@ public class MissionQueryHandlersTests {
         Assert.Equal(artifact.CombinedEffectString(), drops[0].EffectString);
         Assert.NotEqual("", drops[0].EffectString);
 
-        // Stone: effect string set
+        // Stone has an effect string; fragment and ingredient do not.
         Assert.Equal("Stone", drops[1].SpecType);
         Assert.Equal("TACHYON_STONE", drops[1].Name);
         Assert.Equal(stone.CombinedEffectString(), drops[1].EffectString);
 
-        // Fragment: no effect string
         Assert.Equal("StoneFragment", drops[2].SpecType);
         Assert.Equal("TACHYON_STONE_FRAGMENT", drops[2].Name);
         Assert.Equal("", drops[2].EffectString);
 
-        // Ingredient: no effect string
         Assert.Equal("Ingredient", drops[3].SpecType);
         Assert.Equal("GOLD_METEORITE", drops[3].Name);
         Assert.Equal("", drops[3].EffectString);
@@ -239,12 +225,10 @@ public class MissionQueryHandlersTests {
         Assert.Equal(spec.CasedName(), drops![0].GameName);
     }
 
-    // GetAllPlayerDrops
-
     [Fact]
     public async Task GetAllPlayerDrops_MapsMissionIdsToDrops() {
         var (h, store, _) = NewSut();
-        // Stored drop rows (no decode): mission m1 = a fragment; m2 = gold + fragment.
+        // Stored drop rows (no decode): m1 = one fragment; m2 = gold + fragment.
         int frag = (int)ArtifactSpec.Name.TachyonStoneFragment;
         int gold = (int)ArtifactSpec.Name.GoldMeteorite;
         store.StoredDrops["p"] =
@@ -279,7 +263,7 @@ public class MissionQueryHandlersTests {
     [Fact]
     public async Task GetAllPlayerDrops_NullOnStoreError() {
         var (h, _, _) = NewSut();
-        // No StoredDrops entry for "p" -> fake returns null -> handler returns null.
+        // No StoredDrops entry -> fake returns null -> handler returns null.
         Assert.Null(await h.GetAllPlayerDropsAsync("p"));
     }
 }

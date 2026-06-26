@@ -97,9 +97,8 @@ public sealed class GithubReleaseClient(HttpClient httpClient) {
     }
 
     /// <summary>
-    /// Resolve the browser_download_url for the current platform's asset in
-    /// release <paramref name="tag"/> (GET /releases/tags/{tag}). Ports
-    /// getUpdateAssetURL. Returns null when the asset is missing.
+    /// Resolve the browser_download_url for this platform's asset in release
+    /// <paramref name="tag"/>. Ports getUpdateAssetURL; null when the asset is missing.
     /// </summary>
     public async Task<string?> GetUpdateAssetUrlAsync(string tag, CancellationToken cancel = default) {
         var url = $"https://api.github.com/repos/{GithubRepo}/releases/tags/{tag}";
@@ -128,9 +127,8 @@ public sealed class GithubReleaseClient(HttpClient httpClient) {
     }
 
     /// <summary>
-    /// Stream the asset at <paramref name="assetUrl"/> to <paramref name="destPath"/>,
-    /// reporting (downloaded, total) roughly every 64KB. Ports downloadUpdate.
-    /// Throws on non-success, truncated download, or write failure.
+    /// Stream the asset to <paramref name="destPath"/>, reporting (downloaded, total)
+    /// roughly every 64KB. Ports downloadUpdate; throws on non-success or truncated download.
     /// </summary>
     public async Task DownloadAsync(
         string assetUrl,

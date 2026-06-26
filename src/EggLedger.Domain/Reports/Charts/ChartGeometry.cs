@@ -3,10 +3,8 @@ using System.Text.RegularExpressions;
 
 namespace EggLedger.Domain.Reports.Charts;
 
-/// <summary>A plotted point with its source label and value.</summary>
 public readonly record struct ChartPoint(double X, double Y, string Label, double Value);
 
-/// <summary>A horizontal grid line tick: its y position and formatted label.</summary>
 public readonly record struct YTick(double Y, string Label);
 
 /// <summary>
@@ -26,7 +24,7 @@ public static partial class ChartGeometry {
         "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
     ];
 
-    /// <summary>Value series: float values when IsFloat, else integer values widened. Port of ReportLineChart values.</summary>
+    /// <summary>Float values when IsFloat, else integers widened. Port of ReportLineChart values.</summary>
     public static List<double> Values(IReadOnlyList<long> values, IReadOnlyList<double> floatValues, bool isFloat) =>
         isFloat
             ? [.. floatValues]

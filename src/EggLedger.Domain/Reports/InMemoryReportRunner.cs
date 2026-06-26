@@ -22,7 +22,7 @@ public sealed record MissionRowData {
     public bool IsBuggedCap { get; init; }
 }
 
-/// <summary>A single artifact-drop row, typed equivalent of the SQLite <c>artifact_drops</c> columns.</summary>
+/// <summary>Typed equivalent of the SQLite <c>artifact_drops</c> columns.</summary>
 public sealed record ArtifactDropRowData {
     public string PlayerId { get; init; } = "";
     public string MissionId { get; init; } = "";

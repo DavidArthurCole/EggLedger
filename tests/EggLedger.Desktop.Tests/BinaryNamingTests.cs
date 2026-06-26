@@ -68,8 +68,7 @@ public sealed class BinaryNamingTests {
     [InlineData("/opt/egg/EggLedger", "/opt/egg/EggLedger_new")]
     public void NewBinaryTempPath_AppendsSuffix(string exePath, string expectedWindows) {
         var actual = UpdateService.NewBinaryTempPath(exePath);
-        // On Windows the _new binary always gets .exe; the expected value here is the
-        // Windows form. On non-Windows it has no extension. Assert the base name.
+        // expectedWindows is the .exe form; non-Windows has no extension.
         var actualBase = Path.GetFileName(actual);
         if (OperatingSystem.IsWindows()) {
             Assert.Equal(Path.GetFileName(expectedWindows.EndsWith(".exe") ? expectedWindows : expectedWindows + ".exe"), actualBase);

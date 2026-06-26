@@ -4,10 +4,8 @@ using EggLedger.Web.Missions;
 namespace EggLedger.Web.Tests.Missions;
 
 /// <summary>
-/// Golden tests for <see cref="LifetimeAggregator"/> derived from the mergeItems /
-/// bucket logic in www/src/views/LifetimeDataView.vue. Centres on the
-/// empty-artifacts history: a representative non-empty input MUST produce
-/// non-empty grouped output, and drops must land in the right spec-type bucket.
+/// Golden parity with the mergeItems/bucket logic in www/src/views/LifetimeDataView.vue.
+/// Guards the empty-artifacts history: real input must produce non-empty buckets.
 /// </summary>
 public sealed class LifetimeAggregatorTests {
     private static MissionDrop Drop(
@@ -39,8 +37,7 @@ public sealed class LifetimeAggregatorTests {
 
     [Fact]
     public void Aggregate_RepresentativeInput_ProducesNonEmptyGroups() {
-        // The historical empty-artifacts guard: a real spread of spec types must
-        // aggregate to NON-EMPTY grouped lists, one per bucket.
+        // Guards the empty-artifacts regression: a real spread of spec types must produce one non-empty list per bucket.
         var input = Missions(
             ("m1", new[]
             {
@@ -65,7 +62,7 @@ public sealed class LifetimeAggregatorTests {
 
     [Fact]
     public void Aggregate_CombinesIdenticalDropsAndSumsCount() {
-        // Same id+level+rarity across two missions -> one representative, count 2.
+        // Same id+level+rarity across two missions merges to one representative, count 2.
         var input = Missions(
             ("m1", new[] { Drop(1, "Artifact", level: 5, rarity: 2) }),
             ("m2", new[] { Drop(1, "Artifact", level: 5, rarity: 2) }));
@@ -78,8 +75,7 @@ public sealed class LifetimeAggregatorTests {
 
     [Fact]
     public void Aggregate_MergeKeyIsIdLevelRarity_NotName() {
-        // The Vue key is id_level_rarity (NOT name, NOT specType). Same id but
-        // different level => two representatives.
+        // The Vue merge key is id_level_rarity, not name or specType, so same id different level splits.
         var input = Missions(
             ("m1", new[]
             {
@@ -129,7 +125,7 @@ public sealed class LifetimeAggregatorTests {
 
     [Fact]
     public void Aggregate_UnknownSpecType_IsDropped() {
-        // A spec type the Vue split would not match falls through (no bucket).
+        // A spec type the Vue split does not match has no bucket.
         var input = Missions(("m1", new[] { Drop(1, "Mystery") }));
 
         var result = LifetimeAggregator.Aggregate(input);

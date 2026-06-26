@@ -4,9 +4,9 @@ using EggLedger.Domain.Reports.Charts;
 
 namespace EggLedger.Web.Settings;
 
-/// <summary>Pure color math for the Settings color picker. Reuses <see cref="SliceColors"/> for hex/HSL conversions, adapting its [0..1] S/L to the picker's integer percentages at the boundary.</summary>
+/// <summary>Color math for the Settings picker. Reuses <see cref="SliceColors"/>, adapting its [0..1] S/L to the picker's integer percentages.</summary>
 public static partial class ColorPickerMath {
-    /// <summary>The 24 preset swatches, in grid order.</summary>
+    /// <summary>24 preset swatches, in grid order.</summary>
     public static readonly IReadOnlyList<string> PresetColors =
     [
         "#f43f5e", "#ef4444", "#f97316", "#f59e0b",
@@ -17,7 +17,7 @@ public static partial class ColorPickerMath {
         "#60a5fa", "#34d399", "#f9a8d4", "#ffffff",
     ];
 
-    /// <summary>Fallback color used when input is unparseable.</summary>
+    /// <summary>Used when input is unparseable.</summary>
     public const string Fallback = "#6366f1";
 
     [GeneratedRegex("^#[0-9a-fA-F]{6}$")]
@@ -26,14 +26,13 @@ public static partial class ColorPickerMath {
     [GeneratedRegex(@"hsl\(\s*([\d.]+)\s*,\s*([\d.]+)%\s*,\s*([\d.]+)%\s*\)")]
     private static partial Regex HslRegexGen();
 
-    /// <summary>True for a valid <c>#rrggbb</c> string.</summary>
     public static bool IsValidHex(string? value) =>
         value is not null && HexRegexGen().IsMatch(value);
 
-    /// <summary>Integer-percentage HSL: hue in [0, 360], saturation/lightness in [0, 100].</summary>
+    /// <summary>Integer-percentage HSL: hue [0, 360], saturation/lightness [0, 100].</summary>
     public readonly record struct HslInt(int H, int S, int L);
 
-    /// <summary>Parses any supported color string to <c>#rrggbb</c>: a hex literal (lowered), an <c>hsl(h, s%, l%)</c> string, else the fallback.</summary>
+    /// <summary>To <c>#rrggbb</c>: a hex literal (lowered), an <c>hsl(h, s%, l%)</c> string, else the fallback.</summary>
     public static string NormalizeToHex(string? value) {
         if (value is null) {
             return Fallback;
@@ -51,11 +50,11 @@ public static partial class ColorPickerMath {
         return Fallback;
     }
 
-    /// <summary>Converts integer-percentage HSL to <c>#rrggbb</c> via <see cref="SliceColors.HslToHex"/> (S/L scaled to [0..1]).</summary>
+    /// <summary>S/L scaled to [0..1] for <see cref="SliceColors.HslToHex"/>.</summary>
     public static string HslToHex(double h, double s, double l) =>
         SliceColors.HslToHex(h, s / 100.0, l / 100.0);
 
-    /// <summary>Parses <c>#rrggbb</c> to integer-percentage HSL, rounding h/s/l to integers.</summary>
+    /// <summary>Rounds h/s/l to integers.</summary>
     public static HslInt HexToHslInt(string hex) {
         var (h, s, l) = SliceColors.HexToHsl(hex);
         return new HslInt(

@@ -2,9 +2,8 @@
 @using EggLedger.Web.Layout
 @using Microsoft.AspNetCore.Components.Authorization
 
-@* Router over the shared RCL: its @page components are the routable set. Rendered
-   interactively (prerender off) by AppHost. Data pages need an authenticated Discord
-   principal (storage is per-user); unauthenticated users see the connect prompt. *@
+@* Router over the shared RCL: its @page components are the routable set. Data pages need an
+   authenticated Discord principal (per-user storage); others see the connect prompt. *@
 <CascadingAuthenticationState>
     <Router AppAssembly="@typeof(App).Assembly">
         <Found Context="routeData">

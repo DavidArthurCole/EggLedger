@@ -5,11 +5,9 @@ using EggLedger.Web.Platform;
 namespace EggLedger.Desktop.Tests;
 
 /// <summary>
-/// DesktopDownloadService save-to-disk behavior over a fake IPlatformCapabilities.
-/// Asserts the chosen path receives the Domain export bytes on success, that a
-/// cancelled dialog (null path) writes nothing, and that the saved file is revealed.
-/// The bytes are compared against the Domain producers (not re-derived). The native
-/// dialog and the OS reveal are faked; the real ones are MANUAL-VERIFY (D5 Step 3).
+/// DesktopDownloadService over a fake IPlatformCapabilities: the chosen path gets the
+/// Domain export bytes (compared against the producers, not re-derived) and is revealed,
+/// a cancelled dialog writes nothing. Real dialog/reveal are manual-verify.
 /// </summary>
 public sealed class DesktopDownloadServiceTests : IDisposable {
     private readonly string _tempDir =

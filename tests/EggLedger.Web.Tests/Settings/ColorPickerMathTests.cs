@@ -89,7 +89,7 @@ public sealed class ColorPickerMathTests {
     public void DotPosition_OffsetForSaturation() {
         // Hue 90 places the dot to the right ((h-90) shift puts the angle at 0).
         var (left, top) = ColorPickerMath.DotPosition(90, 100);
-        Assert.Equal(95, left, 3); // 50 + 45
+        Assert.Equal(95, left, 3);
         Assert.Equal(50, top, 3);
     }
 }

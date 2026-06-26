@@ -1,6 +1,5 @@
-@* Shown to unauthenticated users. A plain anchor to the server login endpoint, which 302s
-   to Discord. No Blazor-circuit navigation (that tore the circuit down mid-redirect and
-   spammed render/cancel errors). The callback signs the cookie; the app reloads authed. *@
+@* Unauthenticated prompt. Uses a plain anchor (not Blazor-circuit navigation, which tore the
+   circuit down mid-redirect) to the login endpoint that 302s to Discord. *@
 <div class="flex flex-col items-center justify-center gap-4 py-16 text-center">
     <h1 class="text-xl font-semibold text-gray-200">Connect your Discord account</h1>
     <p class="max-w-md text-sm text-gray-400">

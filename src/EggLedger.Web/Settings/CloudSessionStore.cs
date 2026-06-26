@@ -14,7 +14,7 @@ public sealed class CloudSessionStore {
     public const string KeyLastPullAt = "cloud_last_pull_at";
     public const string KeyAutoSync = "cloud_auto_sync";
 
-    /// <summary>Browser-only: poll state token saved before the Discord redirect so the reloaded SPA can resume polling. No desktop equivalent.</summary>
+    /// <summary>Browser-only: poll state saved before the Discord redirect so the reloaded SPA resumes polling.</summary>
     public const string KeyPendingAuthState = "cloud_pending_auth_state";
 
     private readonly IndexedDbSettings _settings;
@@ -23,7 +23,7 @@ public sealed class CloudSessionStore {
         _settings = settings;
     }
 
-    /// <summary>The persisted session, or null when no token is stored (disconnected).</summary>
+    /// <summary>Persisted session, or null when no token is stored (disconnected).</summary>
     public async Task<CloudSession?> GetSessionAsync() {
         var all = await _settings.GetAllSettingsAsync();
         if (!all.TryGetValue(KeyToken, out var token) || string.IsNullOrEmpty(token)) {
@@ -36,7 +36,6 @@ public sealed class CloudSessionStore {
             all.GetValueOrDefault(KeyEncryptionKey, ""));
     }
 
-    /// <summary>Persists a freshly authed session (token + identity + key).</summary>
     public async Task SaveSessionAsync(CloudSession session) {
         await _settings.SetSettingsAsync(new Dictionary<string, string> {
             [KeyToken] = session.Token,
@@ -46,7 +45,7 @@ public sealed class CloudSessionStore {
         });
     }
 
-    /// <summary>Clears the session creds (disconnect). Timestamps are left as-is.</summary>
+    /// <summary>Clears session creds (disconnect). Timestamps are left as-is.</summary>
     public async Task ClearSessionAsync() {
         await _settings.SetSettingsAsync(new Dictionary<string, string> {
             [KeyToken] = "",

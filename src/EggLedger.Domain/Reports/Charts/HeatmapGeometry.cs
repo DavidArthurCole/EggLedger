@@ -2,7 +2,6 @@ using System.Globalization;
 
 namespace EggLedger.Domain.Reports.Charts;
 
-/// <summary>A heatmap cell's computed background and text color.</summary>
 public readonly record struct HeatmapCellStyle(string BackgroundColor, string Color);
 
 /// <summary>

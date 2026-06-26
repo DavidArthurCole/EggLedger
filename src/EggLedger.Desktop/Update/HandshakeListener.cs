@@ -4,11 +4,10 @@ namespace EggLedger.Desktop.Update;
 
 /// <summary>
 /// Loopback-only HTTP listener owned by the OLD instance during a self-update. A
-/// POST to /ready with the matching token signals <see cref="Served"/> exactly once
-/// (CompareAndSwap-gated); a wrong/missing token is rejected with 403 and never
-/// signals. MANUAL-VERIFY: the token check is unit-tested but the cross-process part
-/// is not.
+/// matching-token POST to /ready signals <see cref="Served"/> once (CAS-gated); a
+/// wrong/missing token gets 403 and never signals.
 /// </summary>
+/// <remarks>MANUAL-VERIFY: the token check is unit-tested but the cross-process part is not.</remarks>
 public sealed class HandshakeListener : IDisposable {
     private readonly HttpListener _listener;
     private readonly string _token;

@@ -2,11 +2,7 @@ using EggLedger.Domain.Reports.Charts;
 
 namespace EggLedger.Domain.Tests.Reports;
 
-/// <summary>
-/// Golden tests for the heatmap cell math, mirroring ReportHeatmap.vue:
-/// intensity, color blend, luminance text choice, display formatting. Reference
-/// values from Node.
-/// </summary>
+// Golden for the heatmap cell math; mirrors ReportHeatmap.vue (intensity, blend, luminance, formatting). Reference values from Node.
 public class HeatmapGeometryTests {
     [Fact]
     public void CellIntensity_DefaultIsValueOverMax() {

@@ -11,7 +11,6 @@ public readonly record struct EmptyZone(int ColStart, int ColEnd, int RowStart, 
 /// replicates CSS grid auto-placement (row direction, no dense) for card placement, drop zones, and insertion order.
 /// </summary>
 public static class ReportGridLayout {
-    /// <summary>Number of columns in the report grid.</summary>
     public const int GridCols = 8;
 
     /// <summary>Gap between grid cells, in pixels.</summary>

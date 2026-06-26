@@ -4,11 +4,9 @@ using EggLedger.Desktop.Platform;
 namespace EggLedger.Desktop.Tests;
 
 /// <summary>
-/// DesktopPlatformCapabilities behavior over fake seams. The native save dialog and
-/// the actual process launch / process exit cannot run headlessly, so they are
-/// faked: these tests assert the command the runner was asked to run, the
-/// dialog-cancel contract, window-size passthrough, and that restart relaunches the
-/// exe then exits. The real dialog and real relaunch are MANUAL-VERIFY.
+/// DesktopPlatformCapabilities over fake seams: asserts the built command, the
+/// dialog-cancel contract, window-size passthrough, and restart relaunch-then-exit.
+/// The real dialog and relaunch are manual-verify.
 /// </summary>
 public sealed class DesktopPlatformCapabilitiesTests {
     private sealed class FakeProcessRunner : IProcessRunner {
@@ -98,8 +96,7 @@ public sealed class DesktopPlatformCapabilitiesTests {
 
         await caps.RestartAppAsync();
 
-        // The running test host has a process path, so the relaunch command is built
-        // and recorded; the exit is faked. (The real relaunch+exit is MANUAL-VERIFY.)
+        // Test host has a process path, so the relaunch command is recorded; exit is faked.
         var call = Assert.Single(runner.Calls);
         Assert.Equal(Environment.ProcessPath, call.Exe);
         Assert.Empty(call.Args);

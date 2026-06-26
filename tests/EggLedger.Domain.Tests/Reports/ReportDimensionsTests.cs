@@ -2,10 +2,7 @@ using EggLedger.Domain.Reports;
 
 namespace EggLedger.Domain.Tests.Reports;
 
-/// <summary>
-/// Golden tests for the dimension tables, asserting the value/label/scope set
-/// matches the Vue utils/reportDimensions.ts source of truth.
-/// </summary>
+// Pins value/label/scope against Vue utils/reportDimensions.ts, the source of truth.
 public class ReportDimensionsTests {
     [Fact]
     public void Mission_HasExpectedValuesAndLabels() {

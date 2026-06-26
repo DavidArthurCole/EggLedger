@@ -2,7 +2,7 @@ using Microsoft.JSInterop;
 
 namespace EggLedger.Web.Platform;
 
-/// <summary>Browser implementation of <see cref="IPlatformCapabilities"/>. No OS file access: file ops route through downloads, save dialog returns null, restart is a reload. <see cref="IsDesktop"/> is false.</summary>
+/// <summary>Browser <see cref="IPlatformCapabilities"/>. No OS file access: file ops are no-ops, restart is a reload.</summary>
 public sealed class BrowserPlatformCapabilities(IJSRuntime js) : IPlatformCapabilities, IAsyncDisposable {
     private const string ModulePath = "./_content/EggLedger.Web/js/platform.js";
 
@@ -15,22 +15,19 @@ public sealed class BrowserPlatformCapabilities(IJSRuntime js) : IPlatformCapabi
 
     public bool IsDesktop => false;
 
-    /// <summary>No-op: the browser cannot open arbitrary OS files.</summary>
     public Task OpenFileAsync(string path) => Task.CompletedTask;
 
-    /// <summary>No-op: the browser cannot reveal files in the OS file manager.</summary>
     public Task OpenFileInFolderAsync(string path) => Task.CompletedTask;
 
     /// <summary>Always null: downloads go to the browser's own download path.</summary>
     public Task<string?> ChooseSaveFilePathAsync(string defaultName) => Task.FromResult<string?>(null);
 
-    /// <summary>Reload the page; the closest browser analogue of a restart.</summary>
+    /// <summary>Reloads the page; the closest browser analogue of a restart.</summary>
     public async Task RestartAppAsync() {
         var module = await ModuleAsync();
         await module.InvokeVoidAsync("reload");
     }
 
-    /// <summary>Read the viewport size.</summary>
     public async Task<(int w, int h)> GetWindowSizeAsync() {
         var module = await ModuleAsync();
         var dims = await module.InvokeAsync<int[]>("windowSize");

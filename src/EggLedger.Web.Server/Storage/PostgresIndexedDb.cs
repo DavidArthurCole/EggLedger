@@ -7,16 +7,14 @@ using NpgsqlTypes;
 namespace EggLedger.Web.Server.Storage;
 
 /// <summary>
-/// Postgres implementation of <see cref="IIndexedDb"/> for the Blazor Server host,
-/// scoped to one Discord user. Each logical store maps to an <c>el_*</c> table whose
-/// columns are the snake_case JSON property names of the row record; rows round-trip
-/// through a <see cref="JsonElement"/> (same contract as the desktop SqliteIndexedDb).
-///
-/// Multi-tenant: EVERY query is scoped by <c>discord_id = @user</c> and every insert
-/// carries it. The scope is injected centrally here (one code path) so a row can never
-/// cross users. Registered scoped per circuit; the user id is read per op from
-/// <see cref="CurrentUser"/> (the cookie-auth principal flowed into the circuit).
+/// Postgres <see cref="IIndexedDb"/> for the Blazor Server host. Each store maps to an
+/// <c>el_*</c> table; rows round-trip through JSON, same contract as desktop SqliteIndexedDb.
 /// </summary>
+/// <remarks>
+/// Multi-tenant invariant: EVERY query is scoped by <c>discord_id = @user</c> and every
+/// insert carries it, injected centrally here so a row can never cross users. User id is
+/// read per op from <see cref="CurrentUser"/>.
+/// </remarks>
 public sealed class PostgresIndexedDb : IIndexedDb {
     private readonly NpgsqlDataSource _source;
     private readonly CurrentUser _user;

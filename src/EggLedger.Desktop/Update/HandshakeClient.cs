@@ -1,17 +1,15 @@
 namespace EggLedger.Desktop.Update;
 
 /// <summary>
-/// The NEW instance's side of the handshake: POST http://{addr}/ready?token={token},
-/// best-effort with a few quick retries until a 200. Returns true once the old
-/// instance acknowledged.
+/// New instance's side of the handshake: POST /ready?token to the old instance,
+/// best-effort with a few quick retries until a 200.
 /// </summary>
 public sealed class HandshakeClient(HttpClient httpClient) {
     private readonly HttpClient _httpClient = httpClient;
 
     /// <summary>
-    /// Tell the old instance (listening on <paramref name="addr"/>) that the new
-    /// instance is up. Up to 5 attempts with 300ms spacing, mirroring Go. Returns
-    /// true if a 200 was received.
+    /// Tell the old instance on <paramref name="addr"/> the new one is up. Up to 5
+    /// attempts at 300ms spacing (mirroring Go); true if a 200 was received.
     /// </summary>
     public async Task<bool> PingOldReadyAsync(string addr, string token, CancellationToken cancel = default) {
         var url = $"http://{addr}/ready?token={token}";

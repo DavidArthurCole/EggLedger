@@ -3,13 +3,11 @@ using EggLedger.Domain.Reports;
 
 namespace EggLedger.Domain.Tests.Reports;
 
-// Parity oracle for the SQL-free browser path. For each report definition we run
-// BOTH execution paths over ONE source of truth (typed rows):
-//   - SQL path: the existing ReportExecutor over a FakeDb seeded with the grouped
-//     rows SQLite would return, derived from the typed rows by a small explicit
-//     oracle here (independent of InMemoryMissionDb's internal grouping).
-//   - In-memory path: InMemoryReportRunner over the same typed rows.
-// The two ReportResults must be equal.
+// Parity oracle for the SQL-free browser path. Each test runs both paths over one set of
+// typed rows and asserts equal ReportResults:
+//   - SQL: ReportExecutor over a FakeDb seeded with the grouped rows SQLite would return,
+//     derived here by an explicit oracle (independent of InMemoryMissionDb grouping).
+//   - In-memory: InMemoryReportRunner over the same typed rows.
 public class InMemoryReportRunnerTests {
     private const string Eid = "EI1";
 
@@ -25,8 +23,7 @@ public class InMemoryReportRunnerTests {
         public IReadOnlyList<int> FamilyAfxIds(string familyId) => _ids;
     }
 
-    // FakeDb that matches a query by a unique substring and serves canned rows,
-    // mirroring the A7 ExecuteTests double.
+    // Matches a query by unique substring and serves canned rows, mirroring the ExecuteTests double.
     private sealed class FakeDb : IMissionDb {
         private readonly List<(string Key, IReadOnlyList<object?[]> Rows)> _byKey = [];
 
@@ -205,7 +202,7 @@ public class InMemoryReportRunnerTests {
             D("a", artifactId: 13, rarity: 3, tier: 1, dropIndex: 1),
             D("b", artifactId: 14, rarity: 1, tier: 0),
             D("b", artifactId: 15, rarity: 1, tier: 0, dropIndex: 2),
-            D("b", artifactId: 16, rarity: 0, tier: 0, dropIndex: -1), // excluded
+            D("b", artifactId: 16, rarity: 0, tier: 0, dropIndex: -1),
         };
         var def = new ReportDefinition { Mode = "aggregate", GroupBy = "rarity", Subject = "artifacts", AccountId = Eid };
 
@@ -305,10 +302,11 @@ public class InMemoryReportRunnerTests {
             NormalizeBy = "launches",
         };
 
+        // Trailing newline distinguishes the main aggregate (has ORDER BY) from the denom1D count.
         var grouped = Group1D(missions, Ship);
         var sqlDb = new FakeDb()
-            .On("GROUP BY m.ship\n", grouped)        // main aggregate (has ORDER BY)
-            .On("GROUP BY m.ship", grouped);          // denom1D count (no ORDER BY)
+            .On("GROUP BY m.ship\n", grouped)
+            .On("GROUP BY m.ship", grouped);
         var sqlResult = new ReportExecutor(sqlDb, new NoWeights()).ExecuteReport(def);
         var memResult = new InMemoryReportRunner(new NoWeights()).Run(def, missions, Array.Empty<ArtifactDropRowData>());
 
@@ -322,14 +320,15 @@ public class InMemoryReportRunnerTests {
         // Family weight restricts to artifact ids {12, 13}; cap_weight = nominal/cap.
         var missions = new List<MissionRowData>
         {
-            M("a", ship: 9, duration: 0, start: 1, ret: 2, cap: 4, nominal: 8),   // cap_weight 2.0
-            M("b", ship: 3, duration: 0, start: 1, ret: 2, cap: 4, nominal: 4),   // cap_weight 1.0
+            M("a", ship: 9, duration: 0, start: 1, ret: 2, cap: 4, nominal: 8),
+            M("b", ship: 3, duration: 0, start: 1, ret: 2, cap: 4, nominal: 4),
         };
         var drops = new List<ArtifactDropRowData>
         {
             D("a", artifactId: 12, rarity: 3, tier: 0),
             D("b", artifactId: 13, rarity: 1, tier: 0),
-            D("b", artifactId: 99, rarity: 0, tier: 0), // outside family, excluded
+            // artifact 99 is outside the family, excluded.
+            D("b", artifactId: 99, rarity: 0, tier: 0),
         };
         var weights = new FixedFamily(12, 13);
         var def = new ReportDefinition {
@@ -356,20 +355,17 @@ public class InMemoryReportRunnerTests {
 
     [Fact]
     public void Parity_FamilyWeightedPivot_MissionCountCountsMissionsNotDrops() {
-        // Family-weighted PIVOT over mission-scope dimensions (ship x duration).
-        // Mission "a" carries TWO in-family drops. The mission-count matrix query is
-        // FROM mission m with NO drops join, so it must count mission "a" ONCE, not
-        // twice. The old code routed Count2D through the per-drop join (Subject is
-        // "artifacts" for any family-weighted report), inflating the count.
+        // Regression: family-weighted pivot mission-count is FROM mission m (no drops join),
+        // so mission "a" with two in-family drops must count once, not twice via the per-drop join.
         var missions = new List<MissionRowData>
         {
-            M("a", ship: 9, duration: 0, start: 1, ret: 3, cap: 4, nominal: 8),   // cap_weight 2.0
-            M("b", ship: 3, duration: 1, start: 1, ret: 3, cap: 4, nominal: 4),   // cap_weight 1.0
+            M("a", ship: 9, duration: 0, start: 1, ret: 3, cap: 4, nominal: 8),
+            M("b", ship: 3, duration: 1, start: 1, ret: 3, cap: 4, nominal: 4),
         };
         var drops = new List<ArtifactDropRowData>
         {
             D("a", artifactId: 12, rarity: 3, tier: 0, dropIndex: 0),
-            D("a", artifactId: 13, rarity: 1, tier: 0, dropIndex: 1),  // second in-family drop on mission a
+            D("a", artifactId: 13, rarity: 1, tier: 0, dropIndex: 1),
             D("b", artifactId: 12, rarity: 0, tier: 0, dropIndex: 0),
         };
         var weights = new FixedFamily(12, 13);
@@ -382,10 +378,8 @@ public class InMemoryReportRunnerTests {
             AccountId = Eid,
         };
 
-        // SQL oracle, hand-rolled independently of InMemoryMissionDb grouping:
-        // cap_weight value query (artifact join), grouped by ship, duration, afx, level.
-        // Mission a: ship 9, dur 0, two drops afx 12/13 -> two rows each cap_weight 2.0.
-        // Mission b: ship 3, dur 1, one drop afx 12 -> one row cap_weight 1.0.
+        // Hand-rolled cap_weight oracle (artifact join, grouped by ship/dur/afx/level): mission a
+        // contributes two rows at 2.0 (drops 12, 13), mission b one row at 1.0 (drop 12).
         var capRows = new object?[][]
         {
             ["9", "0", 12L, 0L, 2.0],
@@ -393,7 +387,6 @@ public class InMemoryReportRunnerTests {
             ["3", "1", 12L, 0L, 1.0],
         };
         // mission-count query (FROM mission m, no join): one row per mission.
-        // ship 9/dur 0 -> 1 mission, ship 3/dur 1 -> 1 mission.
         var missionCountRows = new object?[][]
         {
             ["3", "1", 1L],

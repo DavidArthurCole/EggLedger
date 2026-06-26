@@ -3,7 +3,7 @@ using EggLedger.Domain.MissionQuery;
 
 namespace EggLedger.Web.Missions;
 
-/// <summary>Pure filter value-option builders, golden-matched to filterOptions.ts (option order, value encoding, dedup and sort rules). MissionFilterMatcher validates against these.</summary>
+/// <summary>Filter value-option builders, golden-matched to filterOptions.ts (option order, value encoding, dedup/sort rules). MissionFilterMatcher validates against these.</summary>
 public static class FilterOptions {
     private static readonly string[] ShipNames =
     [
@@ -164,7 +164,7 @@ public static class FilterOptions {
         _ => "",
     };
 
-    /// <summary>Drop filter value options. Insertion order preserved ("Any Rare/Epic/Legendary" trio first, then per family/tier in first-seen order). Value encoding is name_level_rarity_baseQuality; "%" marks a wildcard segment.</summary>
+    /// <summary>Insertion order preserved: "Any Rare/Epic/Legendary" trio first, then per family/tier in first-seen order. Value encoding is name_level_rarity_baseQuality, "%" marks a wildcard segment.</summary>
     public static List<FilterOption> GetDropFilterOptions(
         IReadOnlyList<PossibleArtifact> artifactConfigs,
         double maxQuality,

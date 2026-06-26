@@ -81,7 +81,8 @@ public static class EiafxData {
                 memo[key] = 1.0;
                 return 1.0;
             }
-            memo[key] = 0; // cycle sentinel: prevents infinite recursion if data has a cycle
+            // cycle sentinel: prevents infinite recursion if data has a cycle
+            memo[key] = 0;
             var w = 0.0;
             foreach (var ing in t.Recipe) {
                 w += ing.Count * ComputeWeight(ing.AfxId, ing.AfxLevel);

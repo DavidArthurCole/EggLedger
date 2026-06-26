@@ -7,22 +7,17 @@ using EggLedger.Web.Platform;
 
 namespace EggLedger.Desktop.Update;
 
-/// <summary>
-/// Desktop self-update orchestrator and the live <see cref="IUpdateStatusProvider"/>
-/// the About overlay binds to. Ties together version compare, GitHub fetch +
-/// download, the token handshake, and the self-rename/cleanup.
-/// MANUAL-VERIFY: the full cross-process self-replace cannot be unit-tested; the
-/// individual pieces (download, token check, version decision, file moves) are.
-/// </summary>
+/// <summary>Desktop self-update orchestrator and the live <see cref="IUpdateStatusProvider"/> the About overlay binds to.</summary>
+/// <remarks>
+/// Ties together version compare, GitHub fetch + download, the token handshake, and the self-rename/cleanup.
+/// MANUAL-VERIFY: the full cross-process self-replace cannot be unit-tested; the individual pieces (download, token check, version decision, file moves) are.
+/// </remarks>
 public sealed class UpdateService : IUpdateStatusProvider {
     /// <summary>How long the old instance waits before exiting after handoff. Matches Go (5s).</summary>
     public static readonly TimeSpan OldExitDelay = TimeSpan.FromSeconds(5);
 
-    /// <summary>
-    /// The update-check cooldown. Matches Go <c>_updateCheckInterval</c> (12h): within
-    /// this window an unforced check skips the GitHub poll and decides from the stored
-    /// snapshot.
-    /// </summary>
+    /// <summary>Update-check cooldown. Matches Go <c>_updateCheckInterval</c> (12h).</summary>
+    /// <remarks>Within this window an unforced check skips the GitHub poll and decides from the stored snapshot.</remarks>
     public static readonly TimeSpan UpdateCheckInterval = TimeSpan.FromHours(12);
 
     /// <summary>Settings key for the last-check timestamp. Matches Go (RFC3339Nano string).</summary>
@@ -45,13 +40,10 @@ public sealed class UpdateService : IUpdateStatusProvider {
     private readonly Func<DateTimeOffset> _now;
 
     /// <param name="exitAction">
-    /// OLD-instance exit run once the new instance reports in (or the wait times out),
-    /// letting it rename EggLedger_new -&gt; EggLedger. Injected for testing; defaults
-    /// to a no-op.
+    /// OLD-instance exit run once the new instance reports in (or the wait times out), letting it rename EggLedger_new -&gt; EggLedger. Defaults to a no-op.
     /// </param>
     /// <param name="settings">
-    /// Store backing the 12h cooldown snapshot. Null disables the cooldown so every
-    /// check polls; the live host supplies the SQLite-backed store.
+    /// Store backing the 12h cooldown snapshot. Null disables the cooldown so every check polls; the live host supplies the SQLite-backed store.
     /// </param>
     /// <param name="now">Wall clock for the cooldown decision (injected for testing).</param>
     public UpdateService(
@@ -75,10 +67,7 @@ public sealed class UpdateService : IUpdateStatusProvider {
         _now = now ?? (() => DateTimeOffset.UtcNow);
     }
 
-    /// <summary>
-    /// Build the argv passed to the launched EggLedger_new instance: --replace-pid,
-    /// --replace-path, plus the handshake pair when a listener is up.
-    /// </summary>
+    /// <summary>Build the argv passed to the launched EggLedger_new instance: --replace-pid, --replace-path, plus the handshake pair when a listener is up.</summary>
     public static IReadOnlyList<string> BuildReplaceArgs(int oldPid, string oldPath, string? handshakeAddr, string? handshakeToken) {
         var args = new List<string>
         {
@@ -101,13 +90,11 @@ public sealed class UpdateService : IUpdateStatusProvider {
 
     public event Action? Changed;
 
-    /// <summary>
-    /// Poll GitHub and decide whether a newer version is available, with the 12h
-    /// cooldown + stored snapshot: a known-newer stored tag reports Available without
-    /// polling; within the cooldown an unforced check stays UpToDate; otherwise fetch
-    /// latest (and pre-releases when running is newer), persist the snapshot, and
-    /// report Available iff running &lt; latest.
-    /// </summary>
+    /// <summary>Poll GitHub and decide whether a newer version is available, gated by the 12h cooldown + stored snapshot.</summary>
+    /// <remarks>
+    /// A known-newer stored tag reports Available without polling; within the cooldown an unforced check stays UpToDate.
+    /// Otherwise fetch latest (and pre-releases when running is newer), persist the snapshot, and report Available iff running &lt; latest.
+    /// </remarks>
     /// <param name="force">Bypass the cooldown and always poll (About-overlay check passes true).</param>
     public async Task CheckForUpdatesAsync(bool force = false) {
         SetPhase(UpdatePhase.Checking);
@@ -185,10 +172,7 @@ public sealed class UpdateService : IUpdateStatusProvider {
     private readonly record struct UpdateCheckSnapshot(
         DateTimeOffset? LastCheckedAt, string? KnownTag, string? KnownNotes);
 
-    /// <summary>
-    /// Read the stored cooldown snapshot. Returns empty when no store is wired or a
-    /// value is missing/unparseable, so a fresh data dir always polls.
-    /// </summary>
+    /// <summary>Read the stored cooldown snapshot. Returns empty when no store is wired or a value is missing/unparseable, so a fresh data dir always polls.</summary>
     private async Task<UpdateCheckSnapshot> ReadSnapshotAsync() {
         if (_settings is null) {
             return default;
@@ -207,10 +191,7 @@ public sealed class UpdateService : IUpdateStatusProvider {
         return new UpdateCheckSnapshot(lastCheckedAt, knownTag, knownNotes);
     }
 
-    /// <summary>
-    /// Persist the fetched tag + notes and stamp last-check to now (round-trip
-    /// timestamp matching the Go on-disk format). No-op when no store is wired.
-    /// </summary>
+    /// <summary>Persist the fetched tag + notes and stamp last-check to now (round-trip timestamp matching the Go on-disk format). No-op when no store is wired.</summary>
     private async Task WriteSnapshotAsync(string latestTag, string latestNotes) {
         if (_settings is null) {
             return;
@@ -223,11 +204,8 @@ public sealed class UpdateService : IUpdateStatusProvider {
         }).ConfigureAwait(false);
     }
 
-    /// <summary>
-    /// Download the release binary for tag to the _new path, then begin the
-    /// OLD-instance handoff. MANUAL-VERIFY: the live two-process choreography is not
-    /// unit-tested.
-    /// </summary>
+    /// <summary>Download the release binary for tag to the _new path, then begin the OLD-instance handoff.</summary>
+    /// <remarks>MANUAL-VERIFY: the live two-process choreography is not unit-tested.</remarks>
     public async Task DownloadAndInstallAsync(string tag) {
         DownloadedBytes = 0;
         TotalBytes = 0;
@@ -283,12 +261,8 @@ public sealed class UpdateService : IUpdateStatusProvider {
         await RunSelfReplaceHandoffAsync(_exitAction, _handshakeTimeout, _exitDelay).ConfigureAwait(false);
     }
 
-    /// <summary>
-    /// MANUAL-VERIFY: launch the downloaded binary as the NEW instance, open a
-    /// loopback handshake listener, wait for its /ready ping, and exit after
-    /// <see cref="OldExitDelay"/> so it can rename itself. Returns false if the launch
-    /// failed. The live two-process choreography is not unit-tested.
-    /// </summary>
+    /// <summary>Launch the downloaded binary as the NEW instance, open a loopback handshake listener, wait for its /ready ping, and exit after <see cref="OldExitDelay"/> so it can rename itself. Returns false if the launch failed.</summary>
+    /// <remarks>MANUAL-VERIFY: the live two-process choreography is not unit-tested.</remarks>
     /// <param name="exitAction">Run once the new instance reports in or the wait times out (injected for testing).</param>
     public async Task<bool> RunSelfReplaceHandoffAsync(
         Func<Task> exitAction,

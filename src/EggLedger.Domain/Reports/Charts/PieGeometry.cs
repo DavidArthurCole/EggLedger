@@ -2,10 +2,8 @@ using System.Globalization;
 
 namespace EggLedger.Domain.Reports.Charts;
 
-/// <summary>A pie chart item after the top-N + "Other" rollup.</summary>
 public readonly record struct PieItem(string Label, double Value);
 
-/// <summary>A computed pie slice: its arc path, color, and percentage.</summary>
 public readonly record struct PieSlice(string Label, double Value, double Pct, string Path, string Color);
 
 /// <summary>
@@ -13,7 +11,6 @@ public readonly record struct PieSlice(string Label, double Value, double Pct, s
 /// and the SVG arc path. Label callout placement stays in the Razor component.
 /// </summary>
 public static class PieGeometry {
-    /// <summary>Maximum number of slices before the rest roll into "Other".</summary>
     public const int MaxSegments = 10;
 
     /// <summary>

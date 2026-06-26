@@ -5,7 +5,6 @@ namespace EggLedger.Web.Data;
 /// <summary>
 /// Browser report execution over IndexedDB. No SQL engine, so it materializes the
 /// player's mission and drop rows and runs them through <see cref="InMemoryReportRunner"/>.
-/// Deliberately does not implement the SQL <see cref="IMissionDb"/> contract (kept for a future server backend).
 /// </summary>
 public sealed class IndexedDbMissionDb : IReportRunner {
     private const string MissionStore = "mission";
@@ -21,8 +20,8 @@ public sealed class IndexedDbMissionDb : IReportRunner {
     }
 
     /// <summary>
-    /// Runs the report for the account id. Mission rows from the <c>player_id</c> index;
-    /// drop rows read store-wide and filtered to the player (browser DB is single-account).
+    /// Mission rows come from the <c>player_id</c> index; drop rows read store-wide
+    /// and filtered to the player (browser DB is single-account).
     /// </summary>
     public async Task<ReportResult> RunReportAsync(ReportDefinition def, string accountId) {
         var missionRows = await _db.GetAllByIndexAsync<MissionRow>(MissionStore, PlayerIdIndex, accountId);

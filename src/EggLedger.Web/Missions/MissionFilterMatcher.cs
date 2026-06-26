@@ -5,17 +5,15 @@ using EggLedger.Web.Missions.Model;
 
 namespace EggLedger.Web.Missions;
 
-/// <summary>Fetches the drops for a mission (seam for the Vue getShipDrops bridge). Returns null on cache miss / error, treated as "no match".</summary>
+/// <summary>Drops fetcher seam (Vue getShipDrops bridge). null on cache miss/error, treated as "no match".</summary>
 public delegate Task<IReadOnlyList<MissionDrop>?> ShipDropsFetcher(string accountId, string missionId);
 
-/// <summary>Tests a DatabaseMission against a typed MissionFilter (OR of AND-groups). Pure except Drops, which is async (fetched per mission). Date compares are same-day Equals with inclusive GE/LE. The legacy string entry points convert via FilterCodec and run through the same core.</summary>
+/// <summary>Tests a mission against a typed MissionFilter (OR of AND-groups). Pure except Drops (async, fetched per mission); date compares are same-day Equals with inclusive GE/LE.</summary>
 public sealed class MissionFilterMatcher {
     private readonly string _accountId;
     private readonly ShipDropsFetcher _fetchDrops;
 
-    // Ship -> config, and ship -> (duration -> config), built once. The drop-filter
-    // path hits these per mission; linear scans there were O(ships*durations) per
-    // mission over the whole history.
+    // Built-once lookups; the drop-filter path hits these per mission, where linear scans were O(ships*durations).
     private readonly Dictionary<int, PossibleMission> _shipConfigs;
     private readonly Dictionary<int, Dictionary<int, DurationConfig>> _durByShip;
 
@@ -39,11 +37,10 @@ public sealed class MissionFilterMatcher {
         }
     }
 
-    /// <summary>Unix seconds -> local DateTime.</summary>
     public static DateTime LedgerDate(long timestampSeconds) =>
         DateTimeOffset.FromUnixTimeSeconds(timestampSeconds).LocalDateTime;
 
-    // OR over groups, AND within a group. Empty filter matches everything. Drop conditions run last so cheap fields short-circuit before the async fetch.
+    // OR over groups, AND within a group; empty filter matches everything. Drop conditions run last so cheap fields short-circuit before the async fetch.
     public async Task<bool> MatchesAsync(DatabaseMission mission, MissionFilter filter) {
         if (filter.IsEmpty) {
             return true;

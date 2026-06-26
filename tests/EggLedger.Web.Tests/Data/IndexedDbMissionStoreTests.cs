@@ -22,9 +22,8 @@ public sealed class IndexedDbMissionStoreTests {
     };
 
     /// <summary>
-    /// Builds a stored complete_payload: an AuthenticatedMessage wrapping the
-    /// serialized CompleteMissionResponse, gzipped. Mirrors the on-disk format
-    /// the Go fetch pipeline writes (raw API response, DB-gzipped).
+    /// Builds a stored complete_payload (gzipped AuthenticatedMessage wrapping a
+    /// serialized CompleteMissionResponse), mirroring the on-disk format the Go fetch pipeline writes.
     /// </summary>
     private static byte[] PackPayload(CompleteMissionResponse resp) {
         using var inner = new MemoryStream();
@@ -64,8 +63,8 @@ public sealed class IndexedDbMissionStoreTests {
     [Fact]
     public async Task GetPlayerMissionStatsAsync_CountsAndMaxReturn() {
         var (store, db) = Make();
-        db.Seed("mission", MissionMeta("EI1", "m1", start: 100)); // return 200
-        db.Seed("mission", MissionMeta("EI1", "m2", start: 500)); // return 600
+        db.Seed("mission", MissionMeta("EI1", "m1", start: 100));
+        db.Seed("mission", MissionMeta("EI1", "m2", start: 500));
         db.Seed("mission", MissionMeta("EI2", "x", start: 999));
 
         var stats = await store.GetPlayerMissionStatsAsync("EI1");
@@ -121,7 +120,7 @@ public sealed class IndexedDbMissionStoreTests {
         Assert.Equal(MissionInfo.Spaceship.Henerprise, got.Info.Ship);
         Assert.Single(got.Artifacts);
         Assert.Equal(ArtifactSpec.Name.TachyonDeflector, got.Artifacts[0].Spec!.name);
-        // StartTimeDerived restored from the row, not the payload.
+        // StartTimeDerived is restored from the row, not the payload.
         Assert.Equal(12345, got.Info.StartTimeDerived);
     }
 

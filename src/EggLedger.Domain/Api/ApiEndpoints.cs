@@ -7,10 +7,10 @@ namespace EggLedger.Domain.Api;
 /// authenticated complete-mission.
 /// </summary>
 public sealed partial class ApiClient {
-    /// <summary>Unauthenticated endpoint returning the player backup.</summary>
+    /// <summary>Unauthenticated; returns the player backup.</summary>
     public const string FirstContactEndpoint = "/ei/bot_first_contact";
 
-    /// <summary>Authenticated endpoint returning a completed mission.</summary>
+    /// <summary>Authenticated; returns a completed mission.</summary>
     public const string CompleteMissionEndpoint = "/ei_afx/complete_mission";
 
     /// <summary>

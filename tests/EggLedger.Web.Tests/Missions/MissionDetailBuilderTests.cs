@@ -5,11 +5,7 @@ using Ei;
 
 namespace EggLedger.Web.Tests.Missions;
 
-/// <summary>
-/// Golden tests for <see cref="MissionDetailBuilder"/> derived from the pure core
-/// of www/src/composables/useMissionDetail.ts: drop splitting/grouping, capacity
-/// modifier, prev/next ids, and the menno key derivation.
-/// </summary>
+/// <summary>Golden parity with the pure core of www/src/composables/useMissionDetail.ts.</summary>
 public sealed class MissionDetailBuilderTests {
     private static MissionDrop Drop(string spec, int id = 1, int level = 0, int rarity = 0) =>
         new() { SpecType = spec, Id = id, Level = level, Rarity = rarity };
@@ -40,7 +36,7 @@ public sealed class MissionDetailBuilderTests {
             Drop("Artifact"),
         };
         var data = MissionDetailBuilder.BuildBase(M("m1"), drops, Array.Empty<DatabaseMission>(), extendedInfo: false);
-        Assert.Single(data.Artifacts); // two identical artifacts grouped to one (count 2)
+        Assert.Single(data.Artifacts);
         Assert.Equal(2, data.Artifacts[0].Count);
         Assert.Single(data.Stones);
         Assert.Single(data.StoneFragments);
@@ -114,7 +110,7 @@ public sealed class MissionDetailBuilderTests {
         };
         var data = MissionDetailBuilder.BuildBase(M("m1"), drops, Array.Empty<DatabaseMission>(), false);
         MissionDetailBuilder.ApplySortMethod(data, MissionSortMethod.Default);
-        // sortGroupAlreadyCombed: level asc -> id 1 (level 0) first.
+        // sortGroupAlreadyCombed nets level asc, so level 0 sorts first.
         Assert.Equal(0, data.Artifacts[0].Level);
         Assert.Equal(1, data.Artifacts[1].Level);
     }

@@ -1,10 +1,7 @@
 namespace EggLedger.Desktop.Platform;
 
-/// <summary>
-/// Seam over host window features (size, native save dialog, process exit). The
-/// real impl wraps the Photino window; native dialogs are isolated here because
-/// they cannot run headless. Tests inject a fake.
-/// </summary>
+/// <summary>Seam over host window features (size, native save dialog, process exit).</summary>
+/// <remarks>Native dialogs are isolated here because they cannot run headless; tests inject a fake.</remarks>
 public interface IDesktopWindow {
     /// <summary>Current window size in pixels.</summary>
     (int Width, int Height) GetSize();

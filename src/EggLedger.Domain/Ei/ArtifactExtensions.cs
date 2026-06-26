@@ -11,9 +11,7 @@ namespace EggLedger.Domain.Ei;
 public static class ArtifactExtensions {
     private static LedgerDisplayData Config => LedgerData.LedgerData.Config;
 
-    // ArtifactSpec.Name (enum) methods.
-
-    /// <summary>GameName is in all caps. Use CasedName for cased version.</summary>
+    /// <summary>All caps. Use CasedName for cased version.</summary>
     public static string GameName(this ArtifactSpec.Name a) {
         string name = EnumNames.ProtoName(a).Replace("_", " ");
         switch (a) {
@@ -78,8 +76,6 @@ public static class ArtifactExtensions {
         }
         return ArtifactSpec.Name.Unknown;
     }
-
-    // ArtifactSpec (message) methods.
 
     public static string GenericBenefitString(this ArtifactSpec a) {
         if (!a.ShouldSerializename()) {
@@ -153,7 +149,7 @@ public static class ArtifactExtensions {
         return includeSpace ? tierName + " " : tierName;
     }
 
-    /// <summary>GameName is in all caps. Use CasedName for cased version.</summary>
+    /// <summary>All caps. Use CasedName for cased version.</summary>
     public static string GameName(this ArtifactSpec a) {
         string baseName = "";
         switch (a.name) {
@@ -358,8 +354,6 @@ public static class ArtifactExtensions {
         }
         return s;
     }
-
-    // ArtifactSpec.Rarity and ArtifactSpec.Type display.
 
     public static string Display(this ArtifactSpec.Rarity r) {
         return r switch {

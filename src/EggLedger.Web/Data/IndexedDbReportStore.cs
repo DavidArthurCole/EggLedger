@@ -3,9 +3,8 @@ using System.Text.Json;
 namespace EggLedger.Web.Data;
 
 /// <summary>
-/// IndexedDB-backed reports CRUD (C# port of Go reportdb crud + groups). Uses the
-/// <c>reports</c> and <c>report_groups</c> stores (keyPath <c>id</c>, index <c>account_id</c>).
-/// No SQL; ordering and the account/global union are reproduced in memory.
+/// IndexedDB-backed reports CRUD (Go reportdb crud + groups). No SQL: ordering and
+/// the account/global union are reproduced in memory.
 /// </summary>
 public sealed class IndexedDbReportStore {
     private const string ReportsStore = "reports";
@@ -26,9 +25,8 @@ public sealed class IndexedDbReportStore {
     }
 
     /// <summary>
-    /// Valid filters JSON, substituting the empty default when blank. Non-blank is
-    /// parsed and re-serialized compactly (key order preserved). Invalid JSON throws,
-    /// matching Go's marshal error that aborts the write.
+    /// Empty default when blank, else parsed and re-serialized compactly (key order kept).
+    /// Invalid JSON throws, matching Go's marshal error that aborts the write.
     /// </summary>
     public static string NormalizeFiltersJson(string? s) {
         if (string.IsNullOrWhiteSpace(s)) {

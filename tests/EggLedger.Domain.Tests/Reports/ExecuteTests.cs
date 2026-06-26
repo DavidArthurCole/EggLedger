@@ -81,9 +81,9 @@ public class ExecuteTests {
         Assert.False(result.Is2D);
         Assert.False(result.IsFloat);
         Assert.Equal([10, 4], result.Values);
-        Assert.Equal("Henerprise", result.Labels[0]); // ship 9
-        Assert.Equal("BCR", result.Labels[1]);         // ship 3
-        // Base where + account id is the first arg.
+        // ship 9 -> Henerprise, ship 3 -> BCR.
+        Assert.Equal("Henerprise", result.Labels[0]);
+        Assert.Equal("BCR", result.Labels[1]);
         Assert.Equal("EI1", db.Calls[0].args[0]);
     }
 
@@ -117,9 +117,9 @@ public class ExecuteTests {
     [Fact]
     public void ExecuteReport_FamilyWeighted_UsesWeightedPath() {
         // FamilyWeight set + non-empty FamilyAfxIds routes to the weighted aggregate.
+        // Oracle rows: rawLabel, artifactId, level, capWeight.
         var db = new FakeDb().On("cap_weight", new object?[][]
         {
-            // rawLabel, artifactId, level, capWeight
             ["9", 1L, 0L, 2.0],
             ["3", 2L, 0L, 1.0],
         });

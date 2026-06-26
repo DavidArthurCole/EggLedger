@@ -166,7 +166,8 @@ public static class TimeFill {
     /// </summary>
     private static DateTime SQLiteWeekStart(int year, int week) {
         var jan1 = new DateTime(year, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-        var jan1MondayOffset = ((int)jan1.DayOfWeek + 6) % 7; // Monday=0 ... Sunday=6
+        // Monday=0 ... Sunday=6
+        var jan1MondayOffset = ((int)jan1.DayOfWeek + 6) % 7;
         var dayOfYear = (week * 7) - jan1MondayOffset + 1;
         if (dayOfYear < 1) {
             dayOfYear = 1;

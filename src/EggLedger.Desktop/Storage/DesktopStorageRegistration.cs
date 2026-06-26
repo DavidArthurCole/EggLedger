@@ -6,17 +6,15 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace EggLedger.Desktop.Storage;
 
-/// <summary>
-/// Registers the native SQLite storage backend, replacing the browser IndexedDB
-/// services behind the same interfaces. Call AFTER AddEggLedgerWeb so overrides win.
-/// Swaps IIndexedDb -&gt; SqliteIndexedDb and IReportRunner -&gt; SqliteReportRunner;
-/// the other stores are unchanged because they funnel through IIndexedDb.
-/// </summary>
+/// <summary>Registers the native SQLite storage backend behind the browser IndexedDB interfaces.</summary>
+/// <remarks>
+/// Call AFTER AddEggLedgerWeb so overrides win. Swaps IIndexedDb and IReportRunner;
+/// other stores are unchanged because they funnel through IIndexedDb.
+/// </remarks>
 public static class DesktopStorageRegistration {
     /// <summary>
     /// Opens the mission and report SQLite DBs under <paramref name="dataRootDir"/>
-    /// (migrating to v9 / v12) and registers the SQLite services as singletons so
-    /// the held connections live for the app lifetime.
+    /// (migrating to v9 / v12) and registers them as singletons for the app lifetime.
     /// </summary>
     public static IServiceCollection AddDesktopSqliteStorage(this IServiceCollection services, string dataRootDir) {
         var internalDir = StoragePaths.ResolveInternalDir(dataRootDir);

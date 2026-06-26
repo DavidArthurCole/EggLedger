@@ -1,6 +1,5 @@
 namespace EggLedger.Web.Missions;
 
-/// <summary>Lifetime drop sort method.</summary>
 public enum LifetimeSortMethod {
     Default,
     Iv,
@@ -8,9 +7,9 @@ public enum LifetimeSortMethod {
     Random,
 }
 
-/// <summary>Sort/ordering for aggregated lifetime drops. Reuses DropSorter for shared comparators and adds the count comparator and random shuffle unique to the Lifetime tab.</summary>
+/// <summary>Sort/ordering for aggregated lifetime drops. Reuses DropSorter comparators; adds the count comparator and random shuffle unique to the Lifetime tab.</summary>
 public static class LifetimeSorter {
-    /// <summary>Parses the persisted sort-method string; unknown values fall back to Default.</summary>
+    /// <summary>Unknown values fall back to Default.</summary>
     public static LifetimeSortMethod ParseMethod(string? value) => value switch {
         "iv" => LifetimeSortMethod.Iv,
         "count" => LifetimeSortMethod.Count,
@@ -18,7 +17,6 @@ public static class LifetimeSorter {
         _ => LifetimeSortMethod.Default,
     };
 
-    /// <summary>Serializes a method back to the persisted string.</summary>
     public static string MethodString(LifetimeSortMethod method) => method switch {
         LifetimeSortMethod.Iv => "iv",
         LifetimeSortMethod.Count => "count",

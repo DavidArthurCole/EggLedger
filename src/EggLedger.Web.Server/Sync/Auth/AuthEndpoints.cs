@@ -10,6 +10,9 @@ using SyncKit.Auth;
 
 namespace EggLedger.Web.Server.Sync.Auth;
 
+// Go parity: the original server swallowed DB errors on these auth writes (fire-and-forget),
+// so the catch blocks below intentionally ignore failures to keep behavior byte-identical.
+
 public sealed record DiscordInitResponse(
     [property: JsonPropertyName("url")] string Url,
     [property: JsonPropertyName("state")] string State);
@@ -55,7 +58,7 @@ public sealed class AuthEndpoints(NpgsqlDataSource source) {
             "INSERT INTO pending_auth (state, expires_at) VALUES ($1, $2) ON CONFLICT (state) DO UPDATE SET expires_at = EXCLUDED.expires_at");
         cmd.Parameters.AddWithValue(state);
         cmd.Parameters.AddWithValue(Now() + 600);
-        try { await cmd.ExecuteNonQueryAsync(ctx.RequestAborted); } catch { /* match Go fire-and-forget */ }
+        try { await cmd.ExecuteNonQueryAsync(ctx.RequestAborted); } catch { }
         return (url, state);
     }
 
@@ -100,24 +103,25 @@ public sealed class AuthEndpoints(NpgsqlDataSource source) {
             u.Parameters.AddWithValue(Now());
             u.Parameters.AddWithValue(user.Username);
             u.Parameters.AddWithValue(user.AvatarUrl);
-            try { await u.ExecuteNonQueryAsync(); } catch { /* match Go: error ignored */ }
+            try { await u.ExecuteNonQueryAsync(); } catch { }
         }
 
         string encKey = "";
         await using (var sel = source.CreateCommand("SELECT encryption_key FROM users WHERE discord_id = $1")) {
             sel.Parameters.AddWithValue(user.Id);
+            // On error encKey stays empty and is regenerated below (Go parity).
             try {
                 var result = await sel.ExecuteScalarAsync();
                 if (result is string s)
                     encKey = s;
-            } catch { /* match Go: Scan error ignored, encKey stays empty -> regenerate */ }
+            } catch { }
         }
         if (string.IsNullOrEmpty(encKey)) {
             encKey = DiscordOAuth.GenerateEncryptionKey();
             await using var upd = source.CreateCommand("UPDATE users SET encryption_key = $1 WHERE discord_id = $2");
             upd.Parameters.AddWithValue(encKey);
             upd.Parameters.AddWithValue(user.Id);
-            try { await upd.ExecuteNonQueryAsync(); } catch { /* match Go: error ignored */ }
+            try { await upd.ExecuteNonQueryAsync(); } catch { }
         }
 
         await using (var ins = source.CreateCommand(
@@ -143,6 +147,7 @@ public sealed class AuthEndpoints(NpgsqlDataSource source) {
         long expiresAt = 0;
         string username = "", avatarUrl = "", encryptionKey = "";
         var found = false;
+        // On error, found stays false and the caller returns 404 (Go parity).
         try {
             await using var cmd = source.CreateCommand(
                 "SELECT session_token, expires_at, username, avatar_url, encryption_key FROM pending_auth WHERE state = $1");
@@ -156,7 +161,7 @@ public sealed class AuthEndpoints(NpgsqlDataSource source) {
                 avatarUrl = reader.IsDBNull(3) ? "" : reader.GetString(3);
                 encryptionKey = reader.IsDBNull(4) ? "" : reader.GetString(4);
             }
-        } catch { /* treat as not found, match Go */ }
+        } catch { }
 
         if (!found || Now() > expiresAt) {
             await WriteTextAsync(ctx, StatusCodes.Status404NotFound, "not found\n");
@@ -168,7 +173,7 @@ public sealed class AuthEndpoints(NpgsqlDataSource source) {
         }
         await using (var del = source.CreateCommand("DELETE FROM pending_auth WHERE state = $1")) {
             del.Parameters.AddWithValue(state);
-            try { await del.ExecuteNonQueryAsync(ctx.RequestAborted); } catch { /* match Go fire-and-forget */ }
+            try { await del.ExecuteNonQueryAsync(ctx.RequestAborted); } catch { }
         }
         await WriteJsonAsync(ctx, new PollResponse(token, username, avatarUrl, encryptionKey));
     }
@@ -181,7 +186,7 @@ public sealed class AuthEndpoints(NpgsqlDataSource source) {
         if (token.Length > 0) {
             await using var cmd = source.CreateCommand("DELETE FROM sessions WHERE token = $1");
             cmd.Parameters.AddWithValue(token);
-            try { await cmd.ExecuteNonQueryAsync(ctx.RequestAborted); } catch { /* match Go fire-and-forget */ }
+            try { await cmd.ExecuteNonQueryAsync(ctx.RequestAborted); } catch { }
         }
         ctx.Response.StatusCode = StatusCodes.Status204NoContent;
     }

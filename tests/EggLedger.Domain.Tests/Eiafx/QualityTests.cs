@@ -33,9 +33,8 @@ public class QualityTests {
         Assert.Equal(0d, Quality.BaseQualityFor(bad));
     }
 
-    // Golden: every (name, level, rarity, base_quality) row in the .fields
-    // fixture (emitted from the Go config) must reproduce exactly from the
-    // embedded .bin decode. Proves byte-identical config across languages.
+    // Golden: every row in the Go-emitted .fields fixture must reproduce from the
+    // embedded .bin decode, proving byte-identical config across languages.
     [Fact]
     public void BaseQualityFor_MatchesGoldenFields() {
         var path = Path.Combine(AppContext.BaseDirectory, "Fixtures", "eiafx-config-fixture.fields");

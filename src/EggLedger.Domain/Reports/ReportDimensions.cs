@@ -12,11 +12,8 @@ public enum DimensionScope {
 /// </summary>
 public sealed record ReportDimension(string Value, string Label, DimensionScope Scope);
 
-/// <summary>
-/// Static dimension tables and lookups for the report builders. Port of Vue reportDimensions.ts.
-/// </summary>
+/// <summary>Static dimension tables and lookups for the report builders. Port of Vue reportDimensions.ts.</summary>
 public static class ReportDimensions {
-    /// <summary>Mission-scoped group-by dimensions.</summary>
     public static readonly IReadOnlyList<ReportDimension> Mission = new[]
     {
         new ReportDimension("ship_type", "Ship Type", DimensionScope.Mission),
@@ -26,7 +23,6 @@ public static class ReportDimensions {
         new ReportDimension("mission_target", "Mission Target", DimensionScope.Mission),
     };
 
-    /// <summary>Artifact-scoped group-by dimensions.</summary>
     public static readonly IReadOnlyList<ReportDimension> Artifact = new[]
     {
         new ReportDimension("artifact_name", "Artifact Name", DimensionScope.Artifact),
@@ -35,11 +31,10 @@ public static class ReportDimensions {
         new ReportDimension("spec_type", "Spec Type", DimensionScope.Artifact),
     };
 
-    /// <summary>All group-by dimensions, mission dimensions first.</summary>
+    /// <summary>Mission dimensions first.</summary>
     public static readonly IReadOnlyList<ReportDimension> All =
         Mission.Concat(Artifact).ToList();
 
-    /// <summary>Set of artifact dimension value keys, for scope checks.</summary>
     public static readonly IReadOnlySet<string> ArtifactKeys =
         Artifact.Select(d => d.Value).ToHashSet(StringComparer.Ordinal);
 

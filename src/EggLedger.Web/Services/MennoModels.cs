@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace EggLedger.Web.Services;
 
-/// <summary>Strongly-typed Menno community drop-rate DTOs. Every field the comparison math reads is typed and <see cref="MennoDecode.Validate"/> rejects unbound required nested objects, so a schema drift fails loudly instead of yielding silent zeros.</summary>
+/// <summary>Menno community drop-rate DTOs. <see cref="MennoDecode.Validate"/> rejects unbound required nested objects so schema drift fails loudly instead of yielding silent zeros.</summary>
 public sealed record IdNamePair {
     [JsonPropertyName("id")]
     public int Id { get; init; }
@@ -11,7 +11,6 @@ public sealed record IdNamePair {
     public string Name { get; init; } = "";
 }
 
-/// <summary>Ship-side configuration of a community drop record.</summary>
 public sealed record ShipConfiguration {
     [JsonPropertyName("shipType")]
     public IdNamePair? ShipType { get; init; }
@@ -26,7 +25,6 @@ public sealed record ShipConfiguration {
     public IdNamePair? TargetArtifact { get; init; }
 }
 
-/// <summary>Artifact-side configuration of a community drop record.</summary>
 public sealed record ArtifactConfiguration {
     [JsonPropertyName("artifactType")]
     public IdNamePair? ArtifactType { get; init; }
@@ -38,7 +36,7 @@ public sealed record ArtifactConfiguration {
     public int ArtifactLevel { get; init; }
 }
 
-/// <summary>One community aggregate record: a ship+artifact configuration and its total drops. The endpoint returns a raw JSON array of these.</summary>
+/// <summary>One aggregate record; the endpoint returns a raw JSON array of these.</summary>
 public sealed record ConfigurationItem {
     [JsonPropertyName("shipConfiguration")]
     public ShipConfiguration? ShipConfiguration { get; init; }

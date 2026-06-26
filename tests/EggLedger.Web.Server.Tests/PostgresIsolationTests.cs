@@ -8,10 +8,8 @@ using Npgsql;
 namespace EggLedger.Web.Server.Tests;
 
 /// <summary>
-/// Cross-user isolation for PostgresIndexedDb: user A must never read user B's rows. The
-/// security-critical check for the multi-tenant store. Runs ONLY when EGGLEDGER_TEST_DB_URL
-/// points at a DISPOSABLE Postgres (the test creates a unique schema, runs there, drops it).
-/// Never touches the prod eggledger database. Skipped (not failed) when the env var is unset.
+/// Security-critical cross-user isolation for the multi-tenant PostgresIndexedDb: user A must never read user B's rows.
+/// Runs only against a disposable Postgres at EGGLEDGER_TEST_DB_URL (unique schema created and dropped, never prod); skipped when the env var is unset.
 /// </summary>
 public sealed class PostgresIsolationTests {
     private static string? TestDbUrl => Environment.GetEnvironmentVariable("EGGLEDGER_TEST_DB_URL");

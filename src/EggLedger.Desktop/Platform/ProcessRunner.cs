@@ -2,10 +2,8 @@ using System.Diagnostics;
 
 namespace EggLedger.Desktop.Platform;
 
-/// <summary>
-/// Real <see cref="IProcessRunner"/>: starts the process detached without waiting.
-/// UseShellExecute is false so args are passed verbatim.
-/// </summary>
+/// <summary>Starts the process detached without waiting. UseShellExecute is false so args
+/// are passed verbatim.</summary>
 public sealed class ProcessRunner : IProcessRunner {
     public Task RunAsync(string exe, IReadOnlyList<string> args) {
         var psi = new ProcessStartInfo {

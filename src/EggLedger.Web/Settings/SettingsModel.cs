@@ -2,9 +2,9 @@ using System.Globalization;
 
 namespace EggLedger.Web.Settings;
 
-/// <summary>Settings-tab model: defaults, Go setting keys, and (de)serialization. Values persist as string key/value via <c>IndexedDbSettings</c> using the Go keys so behavior matches across builds.</summary>
+/// <summary>Settings-tab model. Persists as string key/value via <c>IndexedDbSettings</c> using the Go keys so behavior matches across builds.</summary>
 public sealed class SettingsModel {
-    // Setting keys (match the Go storage.go dbSet calls).
+    // Keys match the Go storage.go dbSet calls.
 
     public const string KeyAutoRefreshMenno = "auto_refresh_menno_pref";
     public const string KeyRetryFailedMissions = "retry_failed_missions";
@@ -18,26 +18,24 @@ public sealed class SettingsModel {
     public const string KeyAutoExportXlsx = "auto_export_xlsx";
     public const string KeyWorkerCountWarningRead = "worker_count_warning_read";
 
-    // Worker-count bounds (clamped on read).
+    // Clamped on read.
 
     public const int MinWorkerCount = 1;
     public const int MaxWorkerCount = 10;
 
-    // Settings-tab fields with their defaults.
-
-    /// <summary>Refresh Menno community data once weekly. Default false.</summary>
+    /// <summary>Refresh Menno community data once weekly.</summary>
     public bool AutoRefreshMenno { get; set; }
 
-    /// <summary>Auto-retry missions that fail during a fetch. Default false.</summary>
+    /// <summary>Auto-retry missions that fail during a fetch.</summary>
     public bool AutoRetry { get; set; }
 
-    /// <summary>Hide per-mission timeout errors in the fetch log. Default false.</summary>
+    /// <summary>Hide per-mission timeout errors in the fetch log.</summary>
     public bool HideTimeoutErrors { get; set; }
 
-    /// <summary>Parallel download workers, 1..10. Go default 1 (clamped on read).</summary>
+    /// <summary>Parallel download workers, 1..10. Go default 1.</summary>
     public int WorkerCount { get; set; } = MinWorkerCount;
 
-    /// <summary>Mask player EIDs on screen. Default false.</summary>
+    /// <summary>Mask player EIDs on screen.</summary>
     public bool ScreenshotSafety { get; set; }
 
     /// <summary>Show individual mission progress while fetching. Go default true.</summary>
@@ -46,7 +44,7 @@ public sealed class SettingsModel {
     /// <summary>Collapse all but the most recent year section. Go default true.</summary>
     public bool CollapseOlderSections { get; set; } = true;
 
-    /// <summary>Advanced drop filter (machine-local preference). Default false.</summary>
+    /// <summary>Machine-local preference.</summary>
     public bool AdvancedDropFilter { get; set; }
 
     /// <summary>Auto-export CSV on fetch. Go default true (on for existing installs).</summary>
@@ -55,15 +53,14 @@ public sealed class SettingsModel {
     /// <summary>Auto-export XLSX on fetch. Go default true (on for existing installs).</summary>
     public bool AutoExportXlsx { get; set; } = true;
 
-    /// <summary>Whether the worker-count warning has been dismissed. Default false.</summary>
+    /// <summary>Whether the worker-count warning has been dismissed.</summary>
     public bool WorkerCountWarningRead { get; set; }
 
-    /// <summary>Clamps a worker count to [1, 10].</summary>
     public static int ClampWorkerCount(int n) => n < MinWorkerCount ? MinWorkerCount
         : n > MaxWorkerCount ? MaxWorkerCount
         : n;
 
-    /// <summary>Hydrates the model from a settings map. Missing keys keep the Go defaults; worker count is clamped to [1, 10].</summary>
+    /// <summary>Missing keys keep the Go defaults; worker count is clamped to [1, 10].</summary>
     public void LoadFrom(IReadOnlyDictionary<string, string> settings) {
         AutoRefreshMenno = Bool(settings, KeyAutoRefreshMenno, AutoRefreshMenno);
         AutoRetry = Bool(settings, KeyRetryFailedMissions, AutoRetry);

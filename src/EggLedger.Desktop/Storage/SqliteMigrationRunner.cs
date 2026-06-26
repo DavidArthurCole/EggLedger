@@ -5,13 +5,13 @@ using Microsoft.Data.Sqlite;
 
 namespace EggLedger.Desktop.Storage;
 
-/// <summary>
-/// Applies embedded SQL migrations in numeric order, tracking the applied version
-/// via <c>PRAGMA user_version</c>. Port of the Go golang-migrate runner; a re-run
-/// is a no-op once user_version equals the target. Resources are named
+/// <summary>Applies embedded SQL migrations in numeric order, tracking applied version via <c>PRAGMA user_version</c>.</summary>
+/// <remarks>
+/// Port of the Go golang-migrate runner; a re-run is a no-op once user_version equals
+/// the target. Resources are named
 /// <c>EggLedger.Desktop.Storage.Migrations.&lt;Set&gt;.&lt;N&gt;_&lt;name&gt;.up.sql</c>;
 /// each file runs in one transaction so a partial failure rolls back.
-/// </summary>
+/// </remarks>
 public static class SqliteMigrationRunner {
     /// <summary>Mission DB target schema version (Go db._schemaVersion = 9).</summary>
     public const int MissionTargetVersion = 9;
@@ -22,17 +22,15 @@ public static class SqliteMigrationRunner {
     private static readonly Regex FileNamePattern =
         new(@"\.Migrations\.(?<set>[^.]+)\.(?<num>\d+)_", RegexOptions.Compiled);
 
-    /// <summary>Applies mission-set migrations up to the target. Idempotent.</summary>
     public static void MigrateMissionDb(SqliteConnection connection) =>
         Migrate(connection, "Mission", MissionTargetVersion);
 
-    /// <summary>Applies report-set migrations up to the target. Idempotent.</summary>
     public static void MigrateReportDb(SqliteConnection connection) =>
         Migrate(connection, "Report", ReportTargetVersion);
 
     /// <summary>
-    /// Runs the named set, applying only files numbered above the current
-    /// user_version and up to targetVersion, in ascending order.
+    /// Applies only files numbered above the current user_version and up to
+    /// targetVersion, in ascending order.
     /// </summary>
     public static void Migrate(SqliteConnection connection, string set, int targetVersion) {
         var migrations = LoadMigrations(set);

@@ -3,10 +3,9 @@ using EggLedger.Desktop.Update;
 namespace EggLedger.Desktop.Tests;
 
 /// <summary>
-/// Loopback + token tests for the update handshake (EggLedger/update/update_handshake.go
-/// + pingOldReady). A real 127.0.0.1 listener is started; the client pings it. The
-/// cross-PROCESS part is manual-verify, but the token check + request/response shape
-/// are exercised here, mirroring the Go TestHandshakeReadyPing case.
+/// Loopback + token tests for the update handshake (Go update_handshake.go,
+/// TestHandshakeReadyPing). A real 127.0.0.1 listener is pinged; the cross-process part
+/// is manual-verify, but the token check and request/response shape run here.
 /// </summary>
 public sealed class HandshakeTests {
     [Fact]

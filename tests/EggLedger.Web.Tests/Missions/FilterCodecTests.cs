@@ -80,10 +80,10 @@ public class FilterCodecTests {
         var legacy = new ReportFilters {
             And =
             [
-                R("", "=", "1"),          // no field
-                R("nonsense", "=", "1"),  // unknown field
-                R("ship", "=", "notanint"), // unparseable value
-                R("ship", "=", "1"),      // valid
+                R("", "=", "1"),
+                R("nonsense", "=", "1"),
+                R("ship", "=", "notanint"),
+                R("ship", "=", "1"),
             ],
         };
         var typed = FilterCodec.FromLegacy(legacy);

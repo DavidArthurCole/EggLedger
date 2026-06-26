@@ -3,16 +3,13 @@ using EggLedger.Web.Data;
 namespace EggLedger.Web.Tests.Data;
 
 /// <summary>
-/// In-memory <see cref="IIndexedDb"/> double. Holds one list of rows per store
-/// and serves the index queries the store under test actually issues. Models the
-/// <c>player_id</c> index on the <c>mission</c> store and the <c>account_id</c>
-/// index on the <c>reports</c>/<c>report_groups</c> stores. Stores with a known
-/// string keyPath (<c>reports</c>, <c>report_groups</c>) upsert on
-/// <see cref="PutAsync"/> and support <see cref="GetAsync"/>/<see cref="DeleteAsync"/>.
+/// In-memory <see cref="IIndexedDb"/> double: one list of rows per store, serving the
+/// index queries the stores under test issue (player_id on mission, account_id on reports/report_groups).
+/// Stores with a known string keyPath upsert on Put and support Get/Delete.
 /// </summary>
 public sealed class FakeIndexedDb : IIndexedDb {
-    // The JS shim serializes every transaction on one browser thread; the lock
-    // models that so concurrent fetch workers cannot corrupt a store list.
+    // Models the JS shim serializing every transaction on one browser thread, so concurrent
+    // fetch workers cannot corrupt a store list.
     private readonly Lock _gate = new();
     private readonly Dictionary<string, List<object>> _stores = [];
 
@@ -59,9 +56,8 @@ public sealed class FakeIndexedDb : IIndexedDb {
     }
 
     /// <summary>
-    /// Resolves a row's index value. Supports the <c>player_id</c> index on
-    /// <see cref="MissionRow"/>; throws for any other index so unmodelled queries
-    /// fail loudly rather than silently returning nothing.
+    /// Resolves a row's index value. Throws for any unmodelled index so those queries fail loudly
+    /// rather than silently returning nothing.
     /// </summary>
     private static object? IndexValue<T>(T row, string index) => (row, index) switch {
         (MissionRow m, "player_id") => m.PlayerId,
@@ -81,8 +77,7 @@ public sealed class FakeIndexedDb : IIndexedDb {
         int n = 0;
         lock (_gate) {
             foreach (var v in values) {
-                // Route through PutLocked so keyed stores upsert (matches the JS
-                // shim's putMany, which is a per-row put on a keyPath store).
+                // PutLocked so keyed stores upsert, matching the JS shim's per-row putMany.
                 PutLocked(store, v);
                 n++;
             }

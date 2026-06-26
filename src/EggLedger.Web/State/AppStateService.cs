@@ -3,21 +3,19 @@ using EggLedger.Web.Services;
 
 namespace EggLedger.Web.State;
 
-/// <summary>Broad app/UI state. Named distinctly from the fetch pipeline enum <see cref="EggLedger.Web.Services.AppState"/> to avoid the clash.</summary>
+/// <summary>Broad app/UI state. Named to avoid the clash with the fetch pipeline enum <see cref="EggLedger.Web.Services.AppState"/>.</summary>
 public sealed class AppStateService {
-    /// <summary>Compiled app version string.</summary>
     public string AppVersion {
         get;
         set => Set(ref field, value);
     } = "";
 
-    /// <summary>Known accounts loaded from the mission store.</summary>
     public IReadOnlyList<KnownAccount> KnownAccounts {
         get;
         set => Set(ref field, value);
     } = [];
 
-    /// <summary>Active tab label (matches the tab bar labels).</summary>
+    /// <summary>Active tab label, matching the tab bar labels.</summary>
     public string ActiveTab {
         get;
         set => Set(ref field, value);
@@ -29,7 +27,6 @@ public sealed class AppStateService {
         set => Set(ref field, value);
     }
 
-    /// <summary>Raised whenever any tracked field changes.</summary>
     public event Action? Changed;
 
     private void Set<T>(ref T field, T value) {

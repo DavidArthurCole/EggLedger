@@ -3,11 +3,11 @@ using EggLedger.Web.Data;
 
 namespace EggLedger.Desktop.Storage;
 
-/// <summary>
-/// Desktop <see cref="IReportRunner"/> running the live SQL path: ReportExecutor
-/// over SqliteMissionDb. The browser uses the in-memory IndexedDbMissionDb runner;
-/// both produce identical ReportResult output (parity-tested).
-/// </summary>
+/// <summary>Desktop <see cref="IReportRunner"/>: ReportExecutor over SqliteMissionDb (the live SQL path).</summary>
+/// <remarks>
+/// The browser uses the in-memory IndexedDbMissionDb runner; both produce identical
+/// ReportResult output (parity-tested).
+/// </remarks>
 public sealed class SqliteReportRunner : IReportRunner {
     private readonly SqliteMissionDb _db;
     private readonly IWeightData _weights;

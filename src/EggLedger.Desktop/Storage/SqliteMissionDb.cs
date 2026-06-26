@@ -3,13 +3,12 @@ using Microsoft.Data.Sqlite;
 
 namespace EggLedger.Desktop.Storage;
 
-/// <summary>
-/// Native <see cref="IMissionDb"/> backed by real SQLite: runs the parameterized
-/// SQL from <see cref="ReportExecutor"/> against the mission / artifact_drops tables,
-/// returning rows in the positional shape the executor consumes. Parity-tested
-/// against the in-memory path. Row boxing: integers as long, REAL as double, text as
-/// string.
-/// </summary>
+/// <summary>Native <see cref="IMissionDb"/> backed by real SQLite, parity-tested against the in-memory path.</summary>
+/// <remarks>
+/// Runs the parameterized SQL from <see cref="ReportExecutor"/> against the mission /
+/// artifact_drops tables, returning rows in the positional shape the executor
+/// consumes. Row boxing: integers as long, REAL as double, text as string.
+/// </remarks>
 public sealed class SqliteMissionDb : IMissionDb {
     private readonly SqliteConnection _connection;
 

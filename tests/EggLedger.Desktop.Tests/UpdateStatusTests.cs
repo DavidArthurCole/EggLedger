@@ -1,3 +1,5 @@
+using System.Formats.Tar;
+using System.IO.Compression;
 using EggLedger.Desktop.Platform;
 using EggLedger.Desktop.Update;
 using EggLedger.Web.Data;
@@ -6,8 +8,8 @@ using EggLedger.Web.Platform;
 namespace EggLedger.Desktop.Tests;
 
 /// <summary>
-/// Update-status file round-trip (mirrors Go TestUpdateStatusRoundTrip) plus the
-/// CheckForUpdates decision driven through a stubbed GitHub client.
+/// Status-file round-trip mirrors Go TestUpdateStatusRoundTrip; the rest drive
+/// CheckForUpdates through a stubbed GitHub client.
 /// </summary>
 public sealed class UpdateStatusTests {
     private sealed class RecordingRunner : IProcessRunner {
@@ -19,6 +21,31 @@ public sealed class UpdateStatusTests {
             Args = args;
             return Task.CompletedTask;
         }
+    }
+
+    // A valid release asset for the current platform: tar.gz/zip carry an "EggLedger" binary
+    // entry; Windows ships the raw exe bytes. Feeding zero bytes makes the archive extractor throw.
+    private static byte[] AssetPayload(string assetName) {
+        var binary = new byte[1024];
+        if (assetName.EndsWith(".tar.gz", StringComparison.Ordinal)) {
+            using var ms = new MemoryStream();
+            using (var gz = new GZipStream(ms, CompressionLevel.Fastest, leaveOpen: true))
+            using (var tar = new TarWriter(gz, TarEntryFormat.Pax)) {
+                tar.WriteEntry(new PaxTarEntry(TarEntryType.RegularFile, "EggLedger") {
+                    DataStream = new MemoryStream(binary),
+                });
+            }
+            return ms.ToArray();
+        }
+        if (assetName.EndsWith(".zip", StringComparison.Ordinal)) {
+            using var ms = new MemoryStream();
+            using (var zip = new ZipArchive(ms, ZipArchiveMode.Create, leaveOpen: true)) {
+                using var s = zip.CreateEntry("EggLedger").Open();
+                s.Write(binary);
+            }
+            return ms.ToArray();
+        }
+        return binary;
     }
 
     private static GithubReleaseClient Github(Func<HttpRequestMessage, HttpResponseMessage> responder)
@@ -35,9 +62,8 @@ public sealed class UpdateStatusTests {
     }
 
     /// <summary>
-    /// Minimal in-memory <see cref="IIndexedDb"/> over the settings store only, so the
-    /// cooldown snapshot can be exercised without SQLite. Supports the GetAll + keyed
-    /// upsert the settings wrapper uses; any other operation throws.
+    /// In-memory <see cref="IIndexedDb"/> over the settings store only, so the cooldown
+    /// snapshot runs without SQLite. Supports GetAll + keyed upsert; anything else throws.
     /// </summary>
     private sealed class InMemorySettingsDb : IIndexedDb {
         private readonly Dictionary<string, SettingRow> _rows = [];
@@ -73,7 +99,6 @@ public sealed class UpdateStatusTests {
         var dir = Path.Combine(Path.GetTempPath(), "egg-status-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dir);
         try {
-            // No file -> null.
             Assert.Null(UpdateStatusFile.ReadAndClear(dir));
 
             UpdateStatusFile.Write(dir, new UpdateStatus { Success = true, ToVersion = "2.2.0" });
@@ -83,7 +108,6 @@ public sealed class UpdateStatusTests {
             Assert.True(s!.Success);
             Assert.Equal("2.2.0", s.ToVersion);
 
-            // Cleared after read.
             Assert.Null(UpdateStatusFile.ReadAndClear(dir));
         } finally {
             Directory.Delete(dir, recursive: true);
@@ -159,7 +183,7 @@ public sealed class UpdateStatusTests {
         try {
             var want = GithubReleaseClient.ExpectedAssetName();
             var assetJson = $$"""{"assets":[{"name":"{{want}}","browser_download_url":"https://x/{{want}}"}]}""";
-            var payload = new byte[1024];
+            var payload = AssetPayload(want);
             var github = Github(req =>
                 req.RequestUri!.AbsoluteUri.Contains("releases/tags")
                     ? StubHttpMessageHandler.Json(assetJson)
@@ -178,18 +202,16 @@ public sealed class UpdateStatusTests {
 
     [Fact]
     public async Task DownloadAndInstall_ReachesHandoff_LaunchesNewAndExits() {
-        // Proves the wiring that was missing: DownloadAndInstall now reaches the
-        // self-replace handoff (launches the _new binary with the replace flags +
-        // handshake token) and, after the handshake wait + exit delay, runs the
-        // injected old-instance exit. Real spawn/handshake/exit stay manual-verify;
-        // here the runner + exit are fakes and the handshake just times out fast.
+        // DownloadAndInstall reaches the self-replace handoff and, after the handshake
+        // wait + exit delay, runs the injected exit. Runner + exit are fakes here, the
+        // handshake just times out fast; real spawn/handshake/exit stay manual-verify.
         var exeDir = Path.Combine(Path.GetTempPath(), "egg-dl-handoff-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(exeDir);
         var exePath = Path.Combine(exeDir, OperatingSystem.IsWindows() ? "EggLedger.exe" : "EggLedger");
         try {
             var want = GithubReleaseClient.ExpectedAssetName();
             var assetJson = $$"""{"assets":[{"name":"{{want}}","browser_download_url":"https://x/{{want}}"}]}""";
-            var payload = new byte[1024];
+            var payload = AssetPayload(want);
             var github = Github(req =>
                 req.RequestUri!.AbsoluteUri.Contains("releases/tags")
                     ? StubHttpMessageHandler.Json(assetJson)
@@ -212,7 +234,6 @@ public sealed class UpdateStatusTests {
             await svc.DownloadAndInstallAsync("2.2.0");
 
             Assert.Equal(UpdatePhase.Ready, svc.Phase);
-            // The handoff launched the downloaded _new binary with the replace flags.
             var tempPath = UpdateService.NewBinaryTempPath(exePath);
             Assert.Equal(tempPath, runner.Exe);
             Assert.NotNull(runner.Args);
@@ -220,7 +241,6 @@ public sealed class UpdateStatusTests {
             Assert.Contains(runner.Args!, a => a.StartsWith("--replace-path=", StringComparison.Ordinal));
             Assert.Contains(runner.Args!, a => a.StartsWith("--handshake-port=", StringComparison.Ordinal));
             Assert.Contains(runner.Args!, a => a.StartsWith("--handshake-token=", StringComparison.Ordinal));
-            // After the handshake wait + exit delay, the injected old-instance exit ran.
             Assert.True(exited, "DownloadAndInstall should reach the handoff and run the exit action");
         } finally {
             Directory.Delete(exeDir, recursive: true);
@@ -303,7 +323,6 @@ public sealed class UpdateStatusTests {
 
         await svc.CheckForUpdatesAsync();
 
-        // The stored known-latest drives the decision; no network poll.
         Assert.Equal(0, handler.Calls);
         Assert.Equal(UpdatePhase.Available, svc.Phase);
         Assert.Equal("2.5.0", svc.AvailableVersion);

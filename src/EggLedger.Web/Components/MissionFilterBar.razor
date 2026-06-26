@@ -160,8 +160,9 @@
     private bool RowIncomplete(FilterCondition c)
     {
         var def = FieldOf(c);
+        // Nothing picked yet: not flagged.
         if (def is null)
-            return false; // nothing picked yet: not flagged
+            return false;
         return !RowComplete(c);
     }
 
@@ -173,7 +174,7 @@
         return !RowComplete(or[^1]);
     }
 
-    // -- value-control rendering --
+    // value-control rendering
 
     private RenderFragment RenderConditionControls(FilterCondition c, Action changed) => __builder =>
     {
@@ -339,7 +340,7 @@
 
     private void RemoveOr(int index, int orIndex) => _rows[index].Or.RemoveAt(orIndex);
 
-    /// <summary>Current filter as the legacy (and, orFilters) shape. Incomplete rows dropped. For embedded use (read on the host's save).</summary>
+    /// <summary>Current filter as the legacy (and, orFilters) shape, incomplete rows dropped. For embedded use, read on the host's save.</summary>
     public LegacyFilter BuildFilter()
     {
         var and = new List<FilterCondition>();

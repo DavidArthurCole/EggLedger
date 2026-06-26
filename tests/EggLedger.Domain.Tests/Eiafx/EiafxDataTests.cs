@@ -4,9 +4,8 @@ using EggLedger.Domain.Reports;
 namespace EggLedger.Domain.Tests.Eiafx;
 
 /// <summary>
-/// Golden tests for the eiafx crafting-weight / family data. Ports Go
-/// eiafx/data_test.go and pins additional hand-computed values so the recursive
-/// weight expansion is locked.
+/// Golden tests for eiafx crafting-weight / family data. Ports Go eiafx/data_test.go
+/// plus hand-computed values that lock the recursive weight expansion.
 /// </summary>
 public class EiafxDataTests {
     [Fact]
@@ -30,8 +29,7 @@ public class EiafxDataTests {
         Assert.Equal(20.0, EiafxData.CraftingWeights[(1, 0)]);
     }
 
-    // Port of Go TestCraftingWeights_CrossFamily.
-    // Puzzle Cube T3: afx_id=23, afx_level=2.
+    // Port of Go TestCraftingWeights_CrossFamily. Puzzle Cube T3 {23,2}:
     // 7x {23,1}(weight 3) + 2x {8,0} gusset base (weight 1) = 23.
     [Fact]
     public void CraftingWeights_CrossFamily_Is23() {
@@ -45,18 +43,15 @@ public class EiafxDataTests {
         Assert.Equal(3.0, EiafxData.CraftingWeights[(23, 1)]);
     }
 
-    // Solar titanium T2: afx_id=43, afx_level=1. Recipe: 10x {43,0}(base=1) = 10.
-    // T3: afx_id=43, afx_level=2. Recipe: 12x {43,1}(=10) = 120.
+    // Solar titanium T2 {43,1}: 10x {43,0}(base=1) = 10. T3 {43,2}: 12x {43,1} = 120.
     [Fact]
     public void CraftingWeights_SolarTitaniumChain() {
         Assert.Equal(10.0, EiafxData.CraftingWeights[(43, 1)]);
         Assert.Equal(120.0, EiafxData.CraftingWeights[(43, 2)]);
     }
 
-    // Lunar totem T3: afx_id=0, afx_level=3.
-    // Recipe: 6x {0,2} + 1x {43,1}.
-    //   {0,0}=1; {0,1}=3x{0,0}=3; {0,2}=6x{0,1}=18; {43,1}=10.
-    //   => 6*18 + 1*10 = 118.
+    // Lunar totem T3 {0,3}: 6x {0,2} + 1x {43,1}, where {0,2}=18 and {43,1}=10,
+    // so 6*18 + 10 = 118.
     [Fact]
     public void CraftingWeights_LunarTotemT3_Is118() {
         Assert.Equal(118.0, EiafxData.CraftingWeights[(0, 3)]);

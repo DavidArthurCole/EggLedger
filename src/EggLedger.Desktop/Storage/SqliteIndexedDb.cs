@@ -5,13 +5,12 @@ using Microsoft.Data.Sqlite;
 
 namespace EggLedger.Desktop.Storage;
 
-/// <summary>
-/// Native SQLite implementation of <see cref="IIndexedDb"/> (the browser uses a
-/// JS-interop wrapper). Each logical store maps to a table whose columns are the
-/// snake_case JSON property names of the row record; rows round-trip through a
-/// <see cref="JsonElement"/>. Operations dispatch to the mission or report DB by
-/// store name.
-/// </summary>
+/// <summary>Native SQLite <see cref="IIndexedDb"/> (the browser uses a JS-interop wrapper).</summary>
+/// <remarks>
+/// Each logical store maps to a table whose columns are the snake_case JSON property
+/// names of the row record; rows round-trip through a <see cref="JsonElement"/>.
+/// Operations dispatch to the mission or report DB by store name.
+/// </remarks>
 public sealed class SqliteIndexedDb : IIndexedDb {
     private readonly SqliteDatabase _missionDb;
     private readonly SqliteDatabase _reportDb;

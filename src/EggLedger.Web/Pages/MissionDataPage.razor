@@ -125,10 +125,8 @@
     private MissionFilterMatcher? _matcher;
     private MissionOverlay? _overlay;
 
-    // All drops for the active account, keyed by mission id. Loaded once on first
-    // drop-filter so the matcher reads from memory instead of decoding per mission
-    // (per-mission decode is a server round-trip in WASM: thousands of them froze
-    // drop filtering). Null = not loaded yet.
+    // All drops keyed by mission id, loaded once on first drop-filter so the matcher
+    // reads memory instead of decoding per mission. Null = not loaded yet.
     private Dictionary<string, List<MissionDrop>>? _allDrops;
 
     protected override async Task OnInitializedAsync()
@@ -248,7 +246,6 @@
         bool value = e.Value is bool b ? b : bool.TryParse(e.Value?.ToString(), out var parsed) && parsed;
         apply(value);
         await Settings.SetSettingAsync(key, value ? "true" : "false");
-        // ViewByDate affects the day-collapse rows, so re-render the table.
         StateHasChanged();
     }
 

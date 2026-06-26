@@ -4,9 +4,9 @@ using System.Text.Json.Serialization;
 namespace EggLedger.Web.Data;
 
 /// <summary>
-/// Shared serializer options for IndexedDB row DTOs. Explicit
-/// <see cref="JsonPropertyNameAttribute"/> fixes wire names to the snake_case
-/// keyPaths the JS shim expects; web defaults only affect read-side casing tolerance.
+/// Shared serializer options for IndexedDB row DTOs. Per-property
+/// <see cref="JsonPropertyNameAttribute"/> fixes wire names to the snake_case keyPaths
+/// the JS shim expects; web defaults only affect read-side casing tolerance.
 /// </summary>
 public static class Rows {
     public static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);

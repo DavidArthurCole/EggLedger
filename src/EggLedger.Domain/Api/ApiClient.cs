@@ -10,38 +10,29 @@ namespace EggLedger.Domain.Api;
 /// base64 body, decodes to protobuf. Contract frozen; defaults match the Go source.
 /// </summary>
 public sealed partial class ApiClient {
-    /// <summary>Default game client version string. Must track the live game.</summary>
+    // The four Default* client identifiers below must track the live game.
     public const string DefaultAppVersion = "1.35.7";
 
-    /// <summary>Default game client build string. Must track the live game.</summary>
     public const string DefaultAppBuild = "111343";
 
-    /// <summary>Default numeric client version. Must track the live game.</summary>
     public const uint DefaultClientVersion = 72;
 
-    /// <summary>Default reported platform.</summary>
     public const Platform DefaultPlatform = Platform.Ios;
 
-    /// <summary>Default API host prefix.</summary>
     public const string DefaultApiPrefix = "https://ctx-dot-auxbrainhome.appspot.com";
 
     private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(5);
 
     private readonly HttpClient _client;
 
-    /// <summary>Host prefix every endpoint is appended to.</summary>
     public string ApiPrefix { get; }
 
-    /// <summary>Client version string sent in BasicRequestInfo.Version.</summary>
     public string AppVersion { get; }
 
-    /// <summary>Client build string sent in BasicRequestInfo.Build.</summary>
     public string AppBuild { get; }
 
-    /// <summary>Numeric client version sent in request messages.</summary>
     public uint ClientVersion { get; }
 
-    /// <summary>Platform reported to the API.</summary>
     public Platform Platform { get; }
 
     /// <summary>

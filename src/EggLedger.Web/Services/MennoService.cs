@@ -8,7 +8,7 @@ using Ei;
 
 namespace EggLedger.Web.Services;
 
-/// <summary>Decode helpers for the Menno payload, separated from the HTTP fetch so the typed decode and validation can be unit tested without a network stub.</summary>
+/// <summary>Decode helpers for the Menno payload, split from the HTTP fetch so decode and validation are unit-testable without a network stub.</summary>
 public static class MennoDecode {
     private static readonly JsonSerializerOptions Options = new() {
         PropertyNameCaseInsensitive = false,
@@ -16,7 +16,7 @@ public static class MennoDecode {
         NumberHandling = JsonNumberHandling.Strict,
     };
 
-    /// <summary>Decodes the raw JSON array into typed records and validates required nested objects bound. Throws <see cref="MennoSchemaException"/> on empty/non-array/missing-field, so a schema drift fails loudly.</summary>
+    /// <summary>Decodes the raw JSON array into typed records, validating required nested objects bound. Throws <see cref="MennoSchemaException"/> on empty/non-array/missing-field so schema drift fails loudly.</summary>
     public static List<ConfigurationItem> Decode(ReadOnlySpan<byte> json) {
         List<ConfigurationItem>? items;
         try {
@@ -35,7 +35,7 @@ public static class MennoDecode {
         return items;
     }
 
-    /// <summary>Verifies the required nested objects of a single item bound. STJ leaves a missing nested object null and the comparison math dereferences these, so a null here would be a silent drop.</summary>
+    /// <summary>STJ leaves a missing nested object null and the comparison math dereferences these, so an unbound required object would be a silent drop.</summary>
     private static void Validate(ConfigurationItem item, int index) {
         var sc = item.ShipConfiguration
             ?? throw Missing(index, "shipConfiguration");
@@ -59,9 +59,8 @@ public sealed class MennoSchemaException : Exception {
     public MennoSchemaException(string message, Exception inner) : base(message, inner) { }
 }
 
-/// <summary>Community drop-rate stats client: fetches the gzipped aggregate, typed-decodes it (loud on schema drift), and caches it in memory. The browser has no writable disk, so the cache lives only for the scoped service's lifetime. Read-only: no upload flow.</summary>
+/// <summary>Community drop-rate stats client: fetches the gzipped aggregate, typed-decodes it, and caches it in memory. Read-only; the cache lives only for the scoped service's lifetime since the browser has no writable disk.</summary>
 public sealed class MennoService {
-    /// <summary>Azure blob endpoint for the gzipped community aggregate.</summary>
     public const string DataUrl =
         "https://eggincdatacollectionsa.blob.core.windows.net/mission-data/all-data.json.gz";
 
@@ -71,10 +70,9 @@ public sealed class MennoService {
 
     public MennoService(HttpClient http) => _http = http;
 
-    /// <summary>True once a successful download has populated the in-memory cache.</summary>
     public bool HasData => _cache is { Count: > 0 };
 
-    /// <summary>Ensures the cache is populated, downloading once. Concurrent callers share a single in-flight download. A failed download is not cached, so a later call retries.</summary>
+    /// <summary>Concurrent callers share a single in-flight download; a failed download is not cached, so a later call retries.</summary>
     public Task<IReadOnlyList<ConfigurationItem>> EnsureLoadedAsync(CancellationToken cancellationToken = default) {
         if (_cache is { Count: > 0 } cached) {
             return Task.FromResult<IReadOnlyList<ConfigurationItem>>(cached);
@@ -91,7 +89,7 @@ public sealed class MennoService {
         }
     }
 
-    /// <summary>Downloads, decompresses, typed-decodes, and caches the aggregate. Throws <see cref="MennoSchemaException"/> on a bad payload; network/decompression errors propagate natively.</summary>
+    /// <summary>Throws <see cref="MennoSchemaException"/> on a bad payload; network/decompression errors propagate natively.</summary>
     public async Task<IReadOnlyList<ConfigurationItem>> RefreshAsync(CancellationToken cancellationToken = default) {
         await using var compressed = await _http.GetStreamAsync(DataUrl, cancellationToken).ConfigureAwait(false);
         await using var gz = new GZipStream(compressed, CompressionMode.Decompress);
@@ -103,13 +101,12 @@ public sealed class MennoService {
         return items;
     }
 
-    /// <summary>The cached items, or null if no successful refresh has run.</summary>
     public IReadOnlyList<ConfigurationItem>? CachedItems => _cache;
 
     /// <summary>Sentinel target id for "no target set" missions in the community data.</summary>
     public const int NoTarget = 10000;
 
-    /// <summary>Community records matching one mission's ship config (ship/duration/level/target). Mirrors mennodata.go GetData: if nothing matches a real target, retries with the no-target sentinel.</summary>
+    /// <summary>Mirrors mennodata.go GetData: if nothing matches a real target, retries with the no-target sentinel.</summary>
     public IReadOnlyList<ConfigurationItem> GetData(int shipId, int durationId, int level, int targetId) {
         if (_cache is not { Count: > 0 } items) {
             return Array.Empty<ConfigurationItem>();
@@ -295,7 +292,6 @@ public sealed class MennoService {
 
     private delegate bool MennoMatcher(ConfigurationItem item, string rawVal);
 
-    /// <summary>Builds a cell-matcher for a group-by dimension.</summary>
     private static MennoMatcher? MatcherFor(string groupBy) => groupBy switch {
         "ship_type" => (item, raw) => TryInt(raw, out var v) && item.ShipConfiguration!.ShipType!.Id == v,
         "duration_type" => (item, raw) => TryInt(raw, out var v) && item.ShipConfiguration!.ShipDurationType!.Id == v,
@@ -307,7 +303,7 @@ public sealed class MennoService {
         _ => null,
     };
 
-    /// <summary>Set of artifact type ids in a family, or null (match all) when empty.</summary>
+    /// <summary>Null means match all (empty or unknown family weight).</summary>
     private static HashSet<int>? FamilyAfxIdSet(string familyWeight) {
         if (familyWeight == "") {
             return null;

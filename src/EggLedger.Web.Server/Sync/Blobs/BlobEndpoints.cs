@@ -5,6 +5,8 @@ using Npgsql;
 
 namespace EggLedger.Web.Server.Sync.Blobs;
 
+// Go parity: the original server swallowed DB errors on best-effort writes (fire-and-forget);
+// the catch blocks below ignore failures to stay behavior-identical.
 public sealed class BlobEndpoints(NpgsqlDataSource source) {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
     private static long Now() => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
@@ -36,7 +38,7 @@ public sealed class BlobEndpoints(NpgsqlDataSource source) {
         await using (var u = source.CreateCommand("INSERT INTO users (discord_id, created_at) VALUES ($1, $2) ON CONFLICT DO NOTHING")) {
             u.Parameters.AddWithValue(discordId);
             u.Parameters.AddWithValue(Now());
-            try { await u.ExecuteNonQueryAsync(ctx.RequestAborted); } catch { /* match Go fire-and-forget */ }
+            try { await u.ExecuteNonQueryAsync(ctx.RequestAborted); } catch { }
         }
         try {
             await using var cmd = source.CreateCommand(
@@ -92,7 +94,7 @@ public sealed class BlobEndpoints(NpgsqlDataSource source) {
         await using var cmd = source.CreateCommand("DELETE FROM blobs WHERE discord_id = $1 AND name = $2");
         cmd.Parameters.AddWithValue(discordId);
         cmd.Parameters.AddWithValue(name);
-        try { await cmd.ExecuteNonQueryAsync(ctx.RequestAborted); } catch { /* match Go fire-and-forget */ }
+        try { await cmd.ExecuteNonQueryAsync(ctx.RequestAborted); } catch { }
         ctx.Response.StatusCode = StatusCodes.Status204NoContent;
     }
 
@@ -100,7 +102,7 @@ public sealed class BlobEndpoints(NpgsqlDataSource source) {
         var discordId = DiscordId(ctx);
         await using var cmd = source.CreateCommand("DELETE FROM users WHERE discord_id = $1");
         cmd.Parameters.AddWithValue(discordId);
-        try { await cmd.ExecuteNonQueryAsync(ctx.RequestAborted); } catch { /* match Go fire-and-forget */ }
+        try { await cmd.ExecuteNonQueryAsync(ctx.RequestAborted); } catch { }
         ctx.Response.StatusCode = StatusCodes.Status204NoContent;
     }
 }
