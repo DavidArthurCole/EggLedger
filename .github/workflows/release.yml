@@ -5,10 +5,88 @@ on:
     tags: ["v*"]
 
 permissions:
-  contents: read
+  contents: write
   packages: write
 
 jobs:
+  # Self-contained single-file desktop builds per RID (mirrors the old Go matrix). The Windows
+  # exe is signed via Azure Trusted Signing when the AZURE_* secrets are present; all artifacts
+  # attach to the GitHub release. Desktop pulls no SyncKit, so no PAT here.
+  desktop:
+    name: Desktop (${{ matrix.rid }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: linux-x64
+            os: ubuntu-latest
+            asset: EggLedger-linux-x64.tar.gz
+          - rid: osx-x64
+            os: macos-latest
+            asset: EggLedger-osx-x64.tar.gz
+          - rid: osx-arm64
+            os: macos-latest
+            asset: EggLedger-osx-arm64.tar.gz
+          - rid: win-x64
+            os: windows-latest
+            asset: EggLedger-win-x64.zip
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Publish
+        shell: bash
+        run: |
+          dotnet publish src/EggLedger.Desktop/EggLedger.Desktop.csproj \
+            -c Release -r ${{ matrix.rid }} --self-contained true \
+            -o publish/${{ matrix.rid }}
+
+      # Sign the Windows exe with Azure Trusted Signing. Gated on the secret being present so
+      # forks / unsigned dry-runs still build (just unsigned).
+      - name: Check signing prerequisites
+        id: signing
+        if: matrix.rid == 'win-x64'
+        shell: bash
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+        run: |
+          if [ -n "$AZURE_CLIENT_ID" ]; then echo "available=true" >> "$GITHUB_OUTPUT"; else echo "available=false" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Sign Windows executable
+        if: matrix.rid == 'win-x64' && steps.signing.outputs.available == 'true'
+        uses: azure/trusted-signing-action@v0.5.0
+        with:
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          endpoint: ${{ secrets.AZURE_TRUSTED_SIGNING_ENDPOINT }}
+          trusted-signing-account-name: ${{ secrets.AZURE_TRUSTED_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ secrets.AZURE_TRUSTED_SIGNING_CERT_PROFILE }}
+          files-folder: publish/win-x64
+          files-folder-filter: exe
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
+      - name: Package
+        shell: bash
+        run: |
+          cd publish/${{ matrix.rid }}
+          if [[ "${{ matrix.rid }}" == win-* ]]; then
+            7z a "../../${{ matrix.asset }}" .
+          else
+            tar -czf "../../${{ matrix.asset }}" .
+          fi
+
+      - name: Attach to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ matrix.asset }}
+
   # Build the Blazor Server image and push to GHCR. The Dockerfile restores SyncKit.* from
   # GitHub Packages using a build secret; PACKAGES_PAT (account-level read:packages) supplies
   # cross-repo read. GHCR push uses the per-run GITHUB_TOKEN (same-repo, sufficient).

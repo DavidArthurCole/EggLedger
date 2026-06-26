@@ -36,6 +36,33 @@
             <p class="text-gray-500 italic mt-0_5rem">No traffic recorded yet.</p>
         }
 
+        @if (_metrics is { Spam.Count: > 0 }) {
+            <span class="section-heading mt-1rem">Potentially identified spam (@_metrics.Spam.Count)</span>
+            <div class="text-xs text-gray-500 mt-0_5rem">Invalid /api/v1 requests (no matching route). Likely scanners probing for other software.</div>
+            <table class="w-full text-xs text-gray-400 mt-0_5rem tabular-nums">
+                <thead>
+                    <tr class="text-gray-500">
+                        <th class="text-left py-1">IP</th>
+                        <th class="text-left">Request</th>
+                        <th class="text-left">User-Agent</th>
+                        <th class="text-right">Hits</th>
+                        <th class="text-right">Last seen</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var s in _metrics.Spam) {
+                        <tr class="border-t border-gray-700/50">
+                            <td class="py-1 font-mono">@s.Ip</td>
+                            <td class="font-mono">@s.Method @s.Path</td>
+                            <td class="truncate max-w-xs text-gray-600" title="@s.UserAgent">@s.UserAgent</td>
+                            <td class="text-right">@s.Hits</td>
+                            <td class="text-right text-gray-600">@FormatEpoch(s.LastSeen)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+
         <span class="section-heading mt-1rem">Users (@(_users?.Count ?? 0))</span>
         <table class="w-full text-sm text-gray-400 mt-0_5rem tabular-nums">
             <thead>
@@ -91,6 +118,9 @@
         _metrics = await Admin.GetMetricsAsync(_token);
         StateHasChanged();
     }
+
+    private static string FormatEpoch(long unixSeconds) =>
+        DateTimeOffset.FromUnixTimeSeconds(unixSeconds).ToLocalTime().ToString("yyyy-MM-dd HH:mm");
 
     private async Task DeleteUser(string discordId) {
         if (_token is null) return;

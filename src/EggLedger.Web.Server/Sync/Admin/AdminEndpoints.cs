@@ -6,7 +6,7 @@ namespace EggLedger.Web.Server.Sync.Admin;
 
 // Admin-only management API, gated by the ADMIN_DISCORD_IDS allowlist. Every
 // handler runs behind RequireAuth (sets X-Discord-ID), then checks the allowlist.
-public sealed class AdminEndpoints(NpgsqlDataSource source, ApiMetrics metrics, IReadOnlySet<string> adminIds) {
+public sealed class AdminEndpoints(NpgsqlDataSource source, ApiMetrics metrics, SpamLog spam, IReadOnlySet<string> adminIds) {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
     private static string DiscordId(HttpContext ctx) => ctx.Request.Headers["X-Discord-ID"].ToString();
@@ -57,6 +57,7 @@ public sealed class AdminEndpoints(NpgsqlDataSource source, ApiMetrics metrics, 
         await JsonAsync(ctx, new {
             minutes = metrics.SnapshotMinutes(),
             paths = metrics.SnapshotPaths(),
+            spam = await spam.SnapshotAsync(),
         });
     }
 

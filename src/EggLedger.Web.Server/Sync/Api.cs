@@ -23,12 +23,27 @@ public static class Api {
         var menno = new MennoEndpoint(new HttpClient(), cfg.MennoFunctionKey, AppConfig.MennoUpstreamUrl);
         var store = new SessionStore(source);
         var metrics = new Admin.ApiMetrics(TimeProvider.System);
-        var admin = new Admin.AdminEndpoints(source, metrics, cfg.AdminDiscordIds);
+        var spam = new Admin.SpamLog(source);
+        var admin = new Admin.AdminEndpoints(source, metrics, spam, cfg.AdminDiscordIds);
 
-        // Count every /api/v1 request for the admin traffic charts.
+        // Routing must run before the metrics middleware so ctx.GetEndpoint() reflects
+        // whether a route matched. Valid /api/v1 hits are count-only; unmatched ones (404
+        // probes) get the client logged to el_api_spam for the admin spam view.
+        app.UseRouting();
         app.Use(async (ctx, next) => {
             if (ctx.Request.Path.StartsWithSegments("/api/v1")) {
-                metrics.Record(ctx.Request.Path.Value ?? "");
+                if (ctx.GetEndpoint() is not null) {
+                    metrics.Record(ctx.Request.Path.Value ?? "");
+                } else {
+                    var ip = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+                    var ua = ctx.Request.Headers.UserAgent.ToString();
+                    var now = TimeProvider.System.GetUtcNow().ToUnixTimeSeconds();
+                    _ = Task.Run(async () => {
+                        try {
+                            await spam.RecordAsync(ip, ctx.Request.Method, ctx.Request.Path.Value ?? "", ua, now);
+                        } catch { /* logging the probe must never break the response */ }
+                    });
+                }
             }
             await next();
         });
