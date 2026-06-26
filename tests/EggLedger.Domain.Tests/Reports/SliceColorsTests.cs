@@ -52,6 +52,26 @@ public class SliceColorsTests {
         Assert.Equal("#6366f1", SliceColors.GetLabelColor("Z", "#6366f1", labels, map));
     }
 
+    [Theory]
+    [InlineData("ol")]
+    [InlineData("")]
+    [InlineData("#fff")]
+    [InlineData("6366f1")]
+    [InlineData("#zzzzzz")]
+    [InlineData("indigo")]
+    public void HexToHsl_BadInput_FallsBackToDefaultBase(string bad) {
+        var fallback = SliceColors.HexToHsl("#6366f1");
+        Assert.Equal(fallback, SliceColors.HexToHsl(bad));
+    }
+
+    [Theory]
+    [InlineData("ol")]
+    [InlineData("#fff")]
+    public void AutoSliceColors_BadInput_DoesNotThrow(string bad) {
+        var colors = SliceColors.AutoSliceColors(bad, 4);
+        Assert.Equal(4, colors.Count);
+    }
+
     [Fact]
     public void ParseLabelColors_HandlesBlankAndInvalid() {
         Assert.Empty(SliceColors.ParseLabelColors(""));

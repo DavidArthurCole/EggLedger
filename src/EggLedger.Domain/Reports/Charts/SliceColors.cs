@@ -8,8 +8,13 @@ namespace EggLedger.Domain.Reports.Charts;
 /// conversion and the auto hue-spread. Labels without an override fall back to the spread.
 /// </summary>
 public static class SliceColors {
-    /// <summary>Converts #rrggbb to (hue[0..360), saturation[0..1], lightness[0..1]). Port of useSliceColors hexToHsl.</summary>
+    private const string DefaultBase = "#6366f1";
+
+    /// <summary>Converts #rrggbb to (hue[0..360), saturation[0..1], lightness[0..1]). Malformed input falls back to the default base color (JS parseInt yielded NaN there; the strict port threw). Port of useSliceColors hexToHsl.</summary>
     public static (double H, double S, double L) HexToHsl(string hex) {
+        if (!IsHexColor(hex)) {
+            hex = DefaultBase;
+        }
         double rv = ParseByte(hex, 1) / 255.0;
         double gv = ParseByte(hex, 3) / 255.0;
         double bv = ParseByte(hex, 5) / 255.0;
@@ -94,6 +99,18 @@ public static class SliceColors {
             }
         }
         return -1;
+    }
+
+    private static bool IsHexColor(string? hex) {
+        if (hex is null || hex.Length != 7 || hex[0] != '#') {
+            return false;
+        }
+        for (int i = 1; i < 7; i++) {
+            if (!Uri.IsHexDigit(hex[i])) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static int ParseByte(string hex, int start) =>

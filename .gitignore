@@ -1,6 +1,6 @@
 bin/
 obj/
-artifacts/
+/artifacts/
 *.user
 .vs/
 .vscode/
