@@ -102,6 +102,9 @@ builder.Services.AddHttpClient("auxbrain", c => c.BaseAddress = new Uri("https:/
 var app = builder.Build();
 
 app.UseForwardedHeaders();
+// Single routing pass for the whole pipeline. Must precede auth/antiforgery/endpoints so the
+// Blazor endpoint has antiforgery ahead of it; Api.Map's metrics middleware reads GetEndpoint().
+app.UseRouting();
 app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();

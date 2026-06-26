@@ -26,10 +26,9 @@ public static class Api {
         var spam = new Admin.SpamLog(source);
         var admin = new Admin.AdminEndpoints(source, metrics, spam, cfg.AdminDiscordIds);
 
-        // Routing must run before the metrics middleware so ctx.GetEndpoint() reflects
-        // whether a route matched. Valid /api/v1 hits are count-only; unmatched ones (404
-        // probes) get the client logged to el_api_spam for the admin spam view.
-        app.UseRouting();
+        // Routing runs in Program.cs (one pass for the whole pipeline) so ctx.GetEndpoint() is
+        // populated here. Valid /api/v1 hits are count-only; unmatched ones (404 probes) get the
+        // client logged to el_api_spam for the admin spam view.
         app.Use(async (ctx, next) => {
             if (ctx.Request.Path.StartsWithSegments("/api/v1")) {
                 if (ctx.GetEndpoint() is not null) {

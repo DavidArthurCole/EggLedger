@@ -21,6 +21,11 @@ RUN --mount=type=secret,id=github_token \
     && dotnet publish src/EggLedger.Web.Server/EggLedger.Web.Server.csproj -c Release -o /app
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+# Npgsql probes GSSAPI/Kerberos at connect; the slim image lacks the lib (logs a load error
+# even with password auth). Install it to silence the probe. Done as root before USER drop.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libgssapi-krb5-2 \
+    && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=build --chown=app:app /app ./
 # Run as the image's predefined non-root user (UID 1654); the app binds a high port
