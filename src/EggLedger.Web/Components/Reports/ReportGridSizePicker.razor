@@ -23,19 +23,14 @@
 @code {
     private const int MaxCols = 8;
     private const int MaxRows = 4;
-
     [Parameter]
     public int Width { get; set; } = 2;
-
     [Parameter]
     public EventCallback<int> WidthChanged { get; set; }
-
     [Parameter]
     public int Height { get; set; } = 2;
-
     [Parameter]
     public EventCallback<int> HeightChanged { get; set; }
-
     private bool IsActive(int c, int r) => c <= Width && r <= Height;
 
     private async Task Select(int c, int r)

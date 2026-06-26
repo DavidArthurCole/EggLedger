@@ -123,7 +123,7 @@ app.Map("/egg-api/{**rest}", async (HttpContext ctx, IHttpClientFactory factory,
 
 // Sync server endpoints (/api/v1/*). Explicit routes win over the component fallback.
 if (hasDb) {
-    var build = new VerifyInfo { Name = "EggLedger", Sha256 = "dev", Version = "dev", Date = "dev" };
+    var build = new VerifyInfo { Name = "EggLedger", Sha256 = "dev", Version = EggLedger.Web.AppVersionInfo.Current, Date = "dev" };
 
     if (!string.IsNullOrEmpty(cfg.DiscordClientId))
         DiscordOAuth.Init(cfg.DiscordClientId, cfg.DiscordClientSecret, cfg.RedirectUrl);

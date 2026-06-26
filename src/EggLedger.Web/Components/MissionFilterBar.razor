@@ -24,7 +24,7 @@
             @if (RowComplete(row.Cond))
             {
                 <button type="button" title="Add alternate filter condition"
-                        class="mr-1rem flex items-center h-6 w-6 justify-center text-sml border text-yellow-700 border-yellow-700 bg-darkest rounded-md py-2 px-4 mt-0_5rem filter-button"
+                        class="mr-1rem flex items-center h-6 w-6 justify-center text-sml border text-yellow-700 border-yellow-700 bg-darkest rounded-md py-2 px-4 mt-0_5rem ledger-btn"
                         disabled="@OrAddDisabled(index)"
                         @onclick="() => AddOr(index)">OR</button>
             }
@@ -32,7 +32,7 @@
             @if (FieldOf(row.Cond) is not null)
             {
                 <button type="button" title="Remove filter condition" aria-label="Remove"
-                        class="mr-1rem flex items-center justify-center text-red-700 text-lg max-w-6 max-h-6 min-w-6 min-h-6 border border-red-700 rounded-md bg-transparent mt-0_5rem filter-button"
+                        class="mr-1rem flex items-center justify-center text-red-700 text-lg max-w-6 max-h-6 min-w-6 min-h-6 border border-red-700 rounded-md bg-transparent mt-0_5rem ledger-btn"
                         @onclick="() => RemoveRow(index)">&times;</button>
             }
 
@@ -49,7 +49,7 @@
                 @RenderConditionControls(orRow, () => OnOrRowChanged(index))
 
                 <button type="button" title="Remove alternate condition" aria-label="Remove"
-                        class="mr-1rem flex items-center justify-center text-red-700 text-lg max-w-6 max-h-6 min-w-6 min-h-6 border border-red-700 rounded-md bg-transparent mt-0_5rem filter-button"
+                        class="mr-1rem flex items-center justify-center text-red-700 text-lg max-w-6 max-h-6 min-w-6 min-h-6 border border-red-700 rounded-md bg-transparent mt-0_5rem ledger-btn"
                         @onclick="() => RemoveOr(index, orIndex)">&times;</button>
 
                 @RenderWarning(orRow)
@@ -62,7 +62,7 @@
 {
     <hr class="mt-1rem w-full" />
 
-    <button type="button" class="apply-filter-button" disabled="@Applying" @onclick="ApplyAsync">Apply Filter</button>
+    <button type="button" class="ledger-btn apply-filter-button" disabled="@Applying" @onclick="ApplyAsync">Apply Filter</button>
     @if (Applying)
     {
         <span class="text-green-700 mt-0_5rem"><i>Applying filter, please wait...</i></span>
@@ -313,7 +313,6 @@
     }
 
     private void OnRowChanged(int index) => EnsureTrailingRow();
-
     private void OnOrRowChanged(int index) { }
 
     // The grid always keeps one blank trailing AND row; filling it appends another.
@@ -359,6 +358,5 @@
     }
 
     private async Task ApplyAsync() => await OnApply.InvokeAsync(BuildFilter());
-
     private static FilterCondition Clone(FilterCondition c) => new(c.TopLevel, c.Op, c.Val);
 }

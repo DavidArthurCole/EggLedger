@@ -9,9 +9,7 @@ namespace EggLedger.Domain.Eiafx;
 /// </summary>
 public sealed class EmbeddedEiafxConfigSource : IEiafxConfigSource {
     public static readonly EmbeddedEiafxConfigSource Instance = new();
-
     private const string ResourceName = "EggLedger.Domain.Resources.eiafx-config.bin";
-
     private static readonly Lazy<ArtifactsConfigurationResponse> _config = new(LoadEmbedded);
 
     /// <inheritdoc />

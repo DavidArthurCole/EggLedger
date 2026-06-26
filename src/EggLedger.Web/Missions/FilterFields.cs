@@ -14,7 +14,6 @@ public sealed class FilterFieldDef {
 
     /// <summary>"mission" or "artifact".</summary>
     public string Scope { get; init; } = "mission";
-
     public FilterValueKind ValueKind { get; init; }
     public IReadOnlyList<FilterOp> Ops { get; init; } = Array.Empty<FilterOp>();
 

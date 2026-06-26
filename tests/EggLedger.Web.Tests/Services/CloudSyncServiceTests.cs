@@ -27,7 +27,6 @@ public sealed class CloudSyncServiceTests {
     // name, the auth start/poll endpoints, and the authed-route bearer check.
     private sealed class FakeServer : HttpMessageHandler {
         private readonly Dictionary<string, string> _blobs = [];
-
         public string? PendingState;
         // null => still pending (202).
         public PollResponse? PollPayload;
@@ -36,7 +35,6 @@ public sealed class CloudSyncServiceTests {
         public bool RejectAuth;
         public int PutHits;
         public int GetHits;
-
         public IReadOnlyDictionary<string, string> Blobs => _blobs;
 
         protected override async Task<HttpResponseMessage> SendAsync(

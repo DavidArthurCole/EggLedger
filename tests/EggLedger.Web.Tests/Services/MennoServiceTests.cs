@@ -25,7 +25,6 @@ public sealed class MennoServiceTests {
     private sealed class GzipHandler : HttpMessageHandler {
         private readonly byte[] _gzipped;
         public int Hits;
-
         public GzipHandler(byte[] rawBody) => _gzipped = Gzip(rawBody);
 
         protected override Task<HttpResponseMessage> SendAsync(

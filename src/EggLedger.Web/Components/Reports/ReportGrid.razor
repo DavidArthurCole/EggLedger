@@ -32,13 +32,10 @@
     /// <summary>Group id filter, or null for all reports.</summary>
     [Parameter]
     public string? GroupFilter { get; set; }
-
     [Parameter]
     public bool EditMode { get; set; }
-
     [Parameter]
     public EventCallback<ReportDefinition> OnEdit { get; set; }
-
     private List<ReportDefinition> _defs = new();
     private string _loadedKey = "";
 

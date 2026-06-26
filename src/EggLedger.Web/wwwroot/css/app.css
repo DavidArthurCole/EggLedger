@@ -37,11 +37,8 @@
     --color-duration-2: rgb(246, 168, 35);
     --color-duration-3: rgb(115, 128, 140);
     --color-dubcap: rgb(173, 10, 198);
-    --color-dubcap-darker: rgb(120, 7, 138);
     --color-buggedcap: rgb(198, 10, 10);
-    --color-buggedcap-darker: rgb(138, 7, 7);
     --color-selectedmission: rgb(10, 173, 82);
-    --color-selectedmission-darker: rgb(7, 120, 56);
 
     --font-stack: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 
@@ -83,11 +80,8 @@ a.url-link:hover {
 .text-duration-3 { color: var(--color-duration-3); }
 .text-goldenstar { color: var(--color-goldenstar); }
 .text-dubcap { color: var(--color-dubcap); }
-.text-dubcap-darker { color: var(--color-dubcap-darker); }
 .text-buggedcap { color: var(--color-buggedcap); }
-.text-buggedcap-darker { color: var(--color-buggedcap-darker); }
 .text-selectedmission { color: var(--color-selectedmission); }
-.text-selectedmission-darker { color: var(--color-selectedmission-darker); }
 
 /* Placeholder tab pages (filled in by later C3.x tasks). */
 .tab-page h1 {

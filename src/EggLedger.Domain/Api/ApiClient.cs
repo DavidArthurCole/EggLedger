@@ -12,27 +12,16 @@ namespace EggLedger.Domain.Api;
 public sealed partial class ApiClient {
     // The four Default* client identifiers below must track the live game.
     public const string DefaultAppVersion = "1.35.7";
-
     public const string DefaultAppBuild = "111343";
-
     public const uint DefaultClientVersion = 72;
-
     public const Platform DefaultPlatform = Platform.Ios;
-
     public const string DefaultApiPrefix = "https://ctx-dot-auxbrainhome.appspot.com";
-
     private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(5);
-
     private readonly HttpClient _client;
-
     public string ApiPrefix { get; }
-
     public string AppVersion { get; }
-
     public string AppBuild { get; }
-
     public uint ClientVersion { get; }
-
     public Platform Platform { get; }
 
     /// <summary>

@@ -90,7 +90,6 @@ public sealed class FetchServiceTests {
     private sealed class RoutingHandler : HttpMessageHandler {
         private readonly Func<string, string?>? _firstContact;
         private readonly Func<string, string?> _completeMission;
-
         public int FirstContactHits;
         public readonly List<string> CompleteMissionRequests = [];
 

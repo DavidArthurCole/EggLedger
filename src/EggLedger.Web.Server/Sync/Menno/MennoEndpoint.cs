@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Http;
 
 namespace EggLedger.Web.Server.Sync.Menno;
@@ -8,19 +9,30 @@ namespace EggLedger.Web.Server.Sync.Menno;
 public sealed record MennoRequest(
     [property: JsonPropertyName("eid")] string Eid);
 
-public sealed class MennoEndpoint(HttpClient client, string functionKey, string upstreamUrl) {
+// Unauthenticated proxy to the community-data Azure function using a server-held function key.
+// Guarded by an EID format check and a per-IP rate limit so the key can't be abused to burn quota.
+public sealed partial class MennoEndpoint(HttpClient client, string functionKey, string upstreamUrl) {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
+    private static readonly IpRateLimiter Limiter = new(maxPerWindow: 10, window: TimeSpan.FromMinutes(1));
+    [GeneratedRegex(@"^EI\d{16}$")]
+    private static partial Regex EidPattern();
 
     public async Task Submit(HttpContext ctx) {
+        var ip = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        if (!Limiter.Allow(ip)) {
+            ctx.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+            return;
+        }
+
         MennoRequest? body;
         try { body = await JsonSerializer.DeserializeAsync<MennoRequest>(ctx.Request.Body, Json, ctx.RequestAborted); } catch (JsonException) {
             ctx.Response.StatusCode = StatusCodes.Status400BadRequest;
             await ctx.Response.WriteAsync("invalid request body: eid is required\n", ctx.RequestAborted);
             return;
         }
-        if (body is null || string.IsNullOrEmpty(body.Eid)) {
+        if (body is null || string.IsNullOrEmpty(body.Eid) || !EidPattern().IsMatch(body.Eid)) {
             ctx.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await ctx.Response.WriteAsync("invalid request body: eid is required\n", ctx.RequestAborted);
+            await ctx.Response.WriteAsync("invalid request body: eid must be EI followed by 16 digits\n", ctx.RequestAborted);
             return;
         }
         using var req = new HttpRequestMessage(HttpMethod.Post, upstreamUrl) {

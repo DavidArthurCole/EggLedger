@@ -46,6 +46,7 @@
 
     protected override async Task OnInitializedAsync() {
         AdminState.Changed += OnAdminChanged;
+        AppStateSvc.AppVersion = AppVersionInfo.Current;
 
         // Seed the shared mask-EID toggle so masking components reflect it on first render.
         var settings = await Settings.GetAllSettingsAsync();
@@ -59,6 +60,5 @@
     }
 
     private void OnAdminChanged() => InvokeAsync(StateHasChanged);
-
     public void Dispose() => AdminState.Changed -= OnAdminChanged;
 }

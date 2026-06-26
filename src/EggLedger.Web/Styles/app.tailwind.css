@@ -95,28 +95,26 @@ hr {
   }
 }
 
-/* Native <dialog> backdrop; not expressible as a utility class. */
-.add-account-dialog::backdrop {
-  background-color: rgba(0, 0, 0, 0.5);
-}
-
-.filter-button {
+/* Shared button base: bg + focus/hover/disabled states. The four button classes
+   (fetch/view-form/apply-filter and bare ledger-btn usages) layer their own size
+   and border utilities on top. */
+.ledger-btn {
   @apply bg-darkerer;
 }
 
-.filter-button:focus {
+.ledger-btn:focus {
   @apply outline-none ring-1 ring-blue-500 border-blue-500;
 }
 
-.filter-button:hover {
+.ledger-btn:hover {
   @apply bg-dark_tab_hover;
 }
 
-.filter-button:disabled {
+.ledger-btn:disabled {
   @apply opacity-50;
 }
 
-.filter-button:disabled:hover {
+.ledger-btn:disabled:hover {
   @apply bg-darker_tab_hover cursor-not-allowed;
 }
 
@@ -128,32 +126,12 @@ hr {
   @apply box-border h-12 w-12 p-1;
 }
 
-.af-view-rep-lifetime {
-  @apply box-border h-14 w-14 p-1.5;
-}
-
 .ledger-af-count {
   @apply text-xs absolute leading-1rem bottom-0 -right-1 h-1rem ring-white ring-1 rounded-full bg-darkerer text-gray-400;
 }
 
 .fetch-button {
-  @apply relative w-20 text-center space-x-2 px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-400 bg-darkerer;
-}
-
-.fetch-button:focus {
-  @apply outline-none ring-1 ring-blue-500 border-blue-500;
-}
-
-.fetch-button:disabled {
-  @apply opacity-50;
-}
-
-.fetch-button:disabled:hover {
-  @apply bg-darker_tab_hover cursor-not-allowed;
-}
-
-.fetch-button:hover {
-  @apply bg-dark_tab_hover;
+  @apply relative w-20 text-center space-x-2 px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-400;
 }
 
 .filter-container {
@@ -162,10 +140,6 @@ hr {
 
 .filter-select-option {
   @apply bg-darkest text-gray-400;
-}
-
-.filter-select-option:hover {
-  @apply bg-darkest;
 }
 
 .filter-select {
@@ -226,14 +200,6 @@ hr {
   @apply ring-blue-500 border-blue-500;
 }
 
-.drop-select-full {
-  @apply text-gray-400 block w-full rounded-md tabular-nums;
-}
-
-.drop-select-full:focus {
-  @apply ring-blue-500 border-blue-500;
-}
-
 .number-input {
   @apply text-gray-400 block rounded-md tabular-nums;
 }
@@ -258,10 +224,6 @@ input[type=number] {
 
 .input-search:focus {
   @apply ring-blue-500 border-blue-500;
-}
-
-.select-form {
-  @apply flex rounded-md shadow-sm mt-0i;
 }
 
 .url-link {
@@ -312,10 +274,6 @@ input[type=number] {
   @apply outline-none;
 }
 
-.ledger-input-overlay {
-  @apply absolute top-0 left-0 w-full px-3 py-2 truncate border border-transparent text-sm text-gray-300 tabular-nums z-3 pointer-events-none;
-}
-
 .ledger-af-link {
   @apply relative block h-full w-full rounded-full;
 }
@@ -324,28 +282,12 @@ input[type=number] {
   @apply flex flex-wrap justify-center mx-auto max-w-42vw;
 }
 
-.ledger-af-repeat-lifetime {
-  @apply flex flex-wrap justify-center mx-auto max-w-70vw;
-}
-
-.ledger-af-repeat-lifetime-alt {
-  @apply flex flex-wrap;
-}
-
 .toggle-link {
   @apply text-duration-0 mr-5 font-bold bg-transparent;
 }
 
 .toggle-link:hover {
   @apply text-shortdarker;
-}
-
-.view-multi-link {
-  @apply text-green-500 mr-5 font-bold bg-transparent;
-}
-
-.view-multi-link:hover {
-  @apply text-green-600;
 }
 
 /* Rendered as <dialog open> so the browser promotes it to the top layer, escaping every
@@ -366,55 +308,6 @@ input[type=number] {
    rest of the app (the filter-row controls used to be smaller: text-xs/py-1). */
 .rb-control {
   @apply bg-darker border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 focus:outline-none focus:border-blue-500;
-}
-
-/* Side placement: full-screen transparent catcher for click-away. The inner
-   dialog positions itself as a field-anchored popover (.popover-anchored). */
-.popup-selector-side {
-  @apply z-50 fixed inset-0;
-}
-
-/* Anchored popover: positioned via inline left/top, with a caret pointing at
-   the trigger field. Caret color matches the panel background (bg-dark). */
-.popover-anchored {
-  position: fixed;
-  margin: 0;
-}
-
-/* Two-layer caret: ::before is the border-colored triangle (slightly larger,
-   behind), ::after is the bg-dark fill on top, so the caret matches the panel's
-   border. */
-.popover-anchored::before,
-.popover-anchored::after {
-  content: '';
-  position: absolute;
-  top: var(--caret-top, 50%);
-  transform: translateY(-50%);
-  border: 9px solid transparent;
-}
-
-.popover-anchored::before {
-  border-width: 10px;
-}
-
-.popover-anchored.caret-left::before {
-  left: -11px;
-  border-right-color: #4b5563;
-}
-
-.popover-anchored.caret-left::after {
-  left: -9px;
-  border-right-color: #393b40;
-}
-
-.popover-anchored.caret-right::before {
-  right: -11px;
-  border-left-color: #4b5563;
-}
-
-.popover-anchored.caret-right::after {
-  right: -9px;
-  border-left-color: #393b40;
 }
 
 .popup-selector-inner {
@@ -457,10 +350,6 @@ input[type=number] {
   @apply whitespace-pre max-h-9 items-center justify-center text-yellow-700 text-xs border border-yellow-700 rounded-md bg-transparent py-2 px-4 mt-0_5rem;
 }
 
-.mission-view-overlay {
-  @apply w-full h-full z-40 fixed top-0 left-0 right-0 bottom-0 flex items-center justify-center;
-}
-
 .bg-r-0 {
   @apply bg-rarity-0;
 }
@@ -482,14 +371,6 @@ input[type=number] {
   gap: 10px;
 }
 
-.mission-row-view {
-  flex: 0 0 calc(5% - 10px);
-}
-
-.mission-items-view {
-  flex: 0 0 calc(95% - 10px);
-}
-
 .mission-items-full {
   flex: 0 0 100%;
 }
@@ -503,64 +384,9 @@ input[type=number] {
      renders. Removed for the server host. */
 }
 
-.overlay-mission,
-.overlay-multi-mission,
 .overlay-drop,
-.overlay-target,
-.overlay-target-lifetime,
-.overlay-update,
-.overlay-menno,
-.overlay-ss,
-.overlay-report {
+.overlay-target {
   background: rgba(0, 0, 0, 0.7);
-}
-
-.popup-selector-side.overlay-drop,
-.popup-selector-side.overlay-drop-lifetime {
-  background: transparent;
-}
-
-/* SearchablePicker renders as a native top-layer <dialog>, so it escapes any
-   transformed/contained ancestor. UA-center it and dim the ::backdrop instead of
-   the panel. max-h keeps the option list scrollable on short viewports. */
-dialog.popup-selector-inner {
-  margin: auto;
-  max-height: 85vh;
-  max-width: 90vw;
-  overflow: visible;
-}
-
-dialog.popup-selector-inner::backdrop {
-  background: rgba(0, 0, 0, 0.7);
-}
-
-.tooltip-custom {
-  @apply relative inline-block;
-}
-
-.tooltip-custom:hover .tooltiptext-custom {
-  @apply inline-block z-3 absolute;
-  bottom: 25px;
-  left: 50%;
-  transform: translateX(-50%);
-}
-
-.tooltiptext-custom {
-  @apply hidden whitespace-nowrap text-center absolute;
-  border: 1px solid #ccc;
-  padding: 10px;
-  border-radius: 4px;
-  background-color: rgba(33, 37, 41, 0.95);
-}
-
-.tooltip-fade-enter-active,
-.tooltip-fade-leave-active {
-  transition: opacity 0.12s ease;
-}
-
-.tooltip-fade-enter-from,
-.tooltip-fade-leave-to {
-  opacity: 0;
 }
 
 .tooltip-floating {
@@ -593,14 +419,6 @@ dialog.popup-selector-inner::backdrop {
   transform: translateX(-50%) translateY(-1px);
   border: 6px solid transparent;
   border-top-color: rgba(33, 37, 41, 0.95);
-}
-
-.speech-bubble {
-  @apply relative;
-  padding: 10px;
-  margin: 10px auto;
-  border-radius: 5px;
-  background-color: rgba(33, 37, 41, 0.95);
 }
 
 .double-cap-span {
@@ -705,35 +523,6 @@ dialog.popup-selector-inner::backdrop {
   font-size: 0.9em;
 }
 
-.italic {
-  font-style: italic;
-}
-
-.mission-row-view-longer {
-  @apply relative;
-}
-
-.mission-row-view-longer::after {
-  @apply absolute;
-  content: '';
-  top: 0;
-  right: 7%;
-  width: 20px;
-  height: 100%;
-  border-right: 2px solid;
-}
-
-.mission-row-view-longer::before {
-  @apply absolute;
-  content: '';
-  top: 0;
-  right: -3%;
-  width: 12%;
-  height: calc(100%);
-  border-top: 2px solid;
-  border-bottom: 2px solid;
-}
-
 .view-layout {
   @apply flex-1 min-h-0 flex flex-col w-full mx-auto px-4 space-y-3 bg-darker;
 }
@@ -742,45 +531,16 @@ dialog.popup-selector-inner::backdrop {
   @apply min-h-7 px-2 py-1 text-gray-400 bg-darkest rounded-md tabular-nums overflow-auto mt-0_75rem;
 }
 
+.panel-muted {
+  background: rgba(120, 128, 138, 0.12);
+}
+
 .view-form-button {
   @apply -ml-px relative w-20 text-center space-x-2 px-4 py-2 border border-gray-300 text-sm font-medium rounded-r-md text-gray-400;
-  @apply bg-darkerer;
-}
-
-.view-form-button:focus {
-  @apply outline-none ring-1 ring-blue-500 border-blue-500;
-}
-
-.view-form-button:hover {
-  @apply bg-dark_tab_hover;
-}
-
-.view-form-button:disabled {
-  @apply opacity-50;
-}
-
-.view-form-button:disabled:hover {
-  @apply bg-darker_tab_hover cursor-not-allowed;
 }
 
 .apply-filter-button {
-  @apply mt-0_5rem mr-1rem -ml-px relative p-0.5 text-center space-x-2 px-3 py-1 border border-gray-300 text-sm font-medium rounded-md text-gray-400 bg-darkerer;
-}
-
-.apply-filter-button:hover {
-  @apply bg-dark_tab_hover;
-}
-
-.apply-filter-button:disabled {
-  @apply opacity-50;
-}
-
-.apply-filter-button:disabled:hover {
-  @apply bg-darker_tab_hover cursor-not-allowed;
-}
-
-.apply-filter-button:focus {
-  @apply outline-none ring-1 ring-blue-500 border-blue-500;
+  @apply mt-0_5rem mr-1rem -ml-px relative p-0.5 text-center space-x-2 px-3 py-1 border border-gray-300 text-sm font-medium rounded-md text-gray-400;
 }
 
 .section-heading {
@@ -789,8 +549,4 @@ dialog.popup-selector-inner::backdrop {
 
 .dismiss-btn {
   @apply p-0_75rem text-blue-500 border border-blue-500 rounded-md;
-}
-
-.progress-track {
-  @apply h-3 relative rounded-full overflow-hidden;
 }

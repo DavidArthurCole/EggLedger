@@ -36,7 +36,6 @@ public static class WebServiceRegistration {
         // CORS blocks auxbrain directly; the prefix is a same-origin path the host reverse-proxies upstream.
         services.AddScoped(sp => new ApiClient(sp.GetRequiredService<HttpClient>(), apiPrefix: "/egg-api"));
 
-        // Decode seam: default in-process protobuf-net. WASM overrides with a server-delegating decoder (protobuf-net cannot emit in the browser).
         services.AddScoped<IApiPayloadDecoder>(sp => new LocalApiPayloadDecoder(sp.GetRequiredService<ApiClient>()));
 
         services.AddScoped<FetchService>();
@@ -52,8 +51,7 @@ public static class WebServiceRegistration {
 
         // Redirect is behind INavigation for testability.
         services.AddScoped<INavigation, BlazorNavigation>();
-        // Blob crypto seam: WASM has no managed AES-GCM, so default is SubtleCrypto via JS interop; desktop overrides with the managed LocalBlobCipher.
-        services.AddScoped<IBlobCipher, SubtleCryptoBlobCipher>();
+        services.AddScoped<IBlobCipher, LocalBlobCipher>();
         services.AddScoped<CloudSyncService>();
         services.AddScoped<AdminService>();
         services.AddScoped<AdminState>();

@@ -35,7 +35,6 @@ public class ExecuteTests {
 
     private sealed class FakeDb : IMissionDb {
         private readonly Dictionary<string, IReadOnlyList<object?[]>> _byPrefix = new(StringComparer.Ordinal);
-
         public List<(string sql, IReadOnlyList<object?> args)> Calls { get; } = [];
 
         // Match on a unique substring of the query so tests need not reproduce whitespace.

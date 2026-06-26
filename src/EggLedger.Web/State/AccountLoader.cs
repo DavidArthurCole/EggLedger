@@ -8,7 +8,6 @@ public sealed class AccountLoader : IDisposable {
     private readonly IndexedDbAccountStore _store;
     private readonly AppStateService _appState;
     private readonly ActiveAccount _active;
-
     private bool _loaded;
     private bool _subscribed;
     private bool _persisting;

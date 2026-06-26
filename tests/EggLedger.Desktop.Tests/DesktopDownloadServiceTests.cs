@@ -26,7 +26,6 @@ public sealed class DesktopDownloadServiceTests : IDisposable {
         public string? SaveResult { get; } = saveResult;
         public string? LastDefaultName { get; private set; }
         public List<string> Revealed { get; } = [];
-
         public bool IsDesktop => true;
 
         public Task<string?> ChooseSaveFilePathAsync(string defaultName) {

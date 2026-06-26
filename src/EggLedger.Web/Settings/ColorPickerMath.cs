@@ -19,10 +19,8 @@ public static partial class ColorPickerMath {
 
     /// <summary>Used when input is unparseable.</summary>
     public const string Fallback = "#6366f1";
-
     [GeneratedRegex("^#[0-9a-fA-F]{6}$")]
     private static partial Regex HexRegexGen();
-
     [GeneratedRegex(@"hsl\(\s*([\d.]+)\s*,\s*([\d.]+)%\s*,\s*([\d.]+)%\s*\)")]
     private static partial Regex HslRegexGen();
 

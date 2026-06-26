@@ -44,16 +44,12 @@
 @code {
     [Parameter, EditorRequired]
     public ReportResult Result { get; set; } = new();
-
     [Parameter, EditorRequired]
     public string Color { get; set; } = "#6366f1";
-
     [Parameter]
     public string? NormalizeBy { get; set; }
-
     [Parameter]
     public string? UnfilledColor { get; set; }
-
     [Parameter]
     public int MinSampleSize { get; set; }
 
@@ -65,7 +61,6 @@
     /// Affects only the cell background, not display values.</summary>
     [Parameter]
     public IReadOnlyList<double>? ColorValues { get; set; }
-
     private double GlobalMax() => Result.MatrixValues.DefaultIfEmpty(0).Max();
 
     private (HeatmapCellStyle Style, string Display, string Secondary) Cell(int r, int c)

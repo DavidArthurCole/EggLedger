@@ -5,9 +5,7 @@ namespace EggLedger.Web.Data;
 /// <summary>Forwards <see cref="IIndexedDb"/> calls to the indexeddb.js ES module, imported lazily on first use and cached.</summary>
 public sealed class IndexedDb(IJSRuntime js) : IIndexedDb, IAsyncDisposable {
     private const string ModulePath = "./_content/EggLedger.Web/js/indexeddb.js";
-
     private readonly IJSRuntime _js = js;
-
     private IJSObjectReference? _module;
 
     private async ValueTask<IJSObjectReference> ModuleAsync()

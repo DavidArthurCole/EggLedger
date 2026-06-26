@@ -16,6 +16,5 @@ public interface IPlatformCapabilities {
 
     /// <summary>Desktop self-update flow.</summary>
     Task RestartAppAsync();
-
     Task<(int w, int h)> GetWindowSizeAsync();
 }

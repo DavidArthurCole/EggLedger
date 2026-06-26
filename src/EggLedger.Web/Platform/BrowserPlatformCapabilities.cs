@@ -5,18 +5,14 @@ namespace EggLedger.Web.Platform;
 /// <summary>Browser <see cref="IPlatformCapabilities"/>. No OS file access: file ops are no-ops, restart is a reload.</summary>
 public sealed class BrowserPlatformCapabilities(IJSRuntime js) : IPlatformCapabilities, IAsyncDisposable {
     private const string ModulePath = "./_content/EggLedger.Web/js/platform.js";
-
     private readonly IJSRuntime _js = js;
-
     private IJSObjectReference? _module;
 
     private async ValueTask<IJSObjectReference> ModuleAsync()
         => _module ??= await _js.InvokeAsync<IJSObjectReference>("import", ModulePath);
 
     public bool IsDesktop => false;
-
     public Task OpenFileAsync(string path) => Task.CompletedTask;
-
     public Task OpenFileInFolderAsync(string path) => Task.CompletedTask;
 
     /// <summary>Always null: downloads go to the browser's own download path.</summary>

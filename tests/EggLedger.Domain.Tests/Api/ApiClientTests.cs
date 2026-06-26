@@ -180,9 +180,7 @@ public class ApiClientTests {
         }
 
         public HttpRequestMessage? LastRequest { get; private set; }
-
         public string? RequestBody { get; private set; }
-
         public string? ContentType { get; private set; }
 
         protected override async Task<HttpResponseMessage> SendAsync(

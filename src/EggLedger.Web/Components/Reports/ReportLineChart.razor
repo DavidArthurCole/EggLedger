@@ -66,26 +66,19 @@
     private const double W = 300;
     private const double H = 150;
     private readonly string _gradId = "line-grad-" + Guid.NewGuid().ToString("N").Substring(0, 5);
-
     [Parameter, EditorRequired]
     public ReportResult Result { get; set; } = new();
-
     [Parameter, EditorRequired]
     public string Color { get; set; } = "#6366f1";
-
     [Parameter]
     public string? UnitLabel { get; set; }
 
     /// <summary>chart_type: "line" omits the area fill, "area" includes it.</summary>
     [Parameter]
     public string? ChartType { get; set; }
-
     private string UnitSuffix => string.IsNullOrEmpty(UnitLabel) ? "" : " " + UnitLabel;
-
     private List<double> Values() => ChartGeometry.Values(Result.Values, Result.FloatValues, Result.IsFloat);
-
     private double MaxVal() => Values().DefaultIfEmpty(0).Max();
-
     private List<ChartPoint> Points() => ChartGeometry.Points(Values(), Result.Labels, W, H);
 
     private MarkupString YTickText(YTick tick)
@@ -111,6 +104,5 @@
             : Math.Round(v).ToString(CultureInfo.InvariantCulture);
 
     private static string Fmt(double v) => v.ToString("0.###", CultureInfo.InvariantCulture);
-
     private static string Esc(string s) => ChartGeometry.EscapeText(s);
 }

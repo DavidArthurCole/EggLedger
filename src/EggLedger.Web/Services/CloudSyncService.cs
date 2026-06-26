@@ -10,9 +10,7 @@ namespace EggLedger.Web.Services;
 public sealed class CloudSyncService {
     /// <summary>Same-origin API prefix, relative to the HttpClient base address.</summary>
     public const string ApiPrefix = "api/v1";
-
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
-
     private readonly HttpClient _http;
     private readonly INavigation _nav;
     private readonly IBlobCipher _cipher;

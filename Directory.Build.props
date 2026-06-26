@@ -7,8 +7,18 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <AnalysisLevel>latest-recommended</AnalysisLevel>
-    <Version>0.1.0-preview.1</Version>
     <Authors>DavidArthurCole</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+  </PropertyGroup>
+
+  <!-- Single source of truth for the app release version. Hosts read it at runtime via
+       Assembly.GetEntryAssembly().GetCustomAttribute<AssemblyInformationalVersionAttribute>().
+       The packable Domain sets its own NuGet <Version> and is unaffected. -->
+  <PropertyGroup>
+    <EggLedgerVersion>3.0.0</EggLedgerVersion>
+    <Version>$(EggLedgerVersion)</Version>
+    <AssemblyVersion>$(EggLedgerVersion).0</AssemblyVersion>
+    <FileVersion>$(EggLedgerVersion).0</FileVersion>
+    <InformationalVersion>$(EggLedgerVersion)</InformationalVersion>
   </PropertyGroup>
 </Project>

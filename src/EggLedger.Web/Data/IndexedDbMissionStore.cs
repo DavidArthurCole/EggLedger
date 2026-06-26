@@ -11,11 +11,6 @@ namespace EggLedger.Web.Data;
 /// <c>complete_payload</c> is gzip(raw API response); see <see cref="DecodeAsync"/> for read-back.
 /// </summary>
 public sealed class IndexedDbMissionStore : IMissionStore {
-    private const string MissionStore = "mission";
-    private const string BackupStore = "backup";
-    private const string ArtifactDropsStore = "artifact_drops";
-    private const string PlayerIdIndex = "player_id";
-
     private readonly IIndexedDb _db;
     private readonly MissionPacker _packer;
     private readonly IApiPayloadDecoder _decoder;
@@ -151,7 +146,7 @@ public sealed class IndexedDbMissionStore : IMissionStore {
                 try { decoded = await DecodeAsync(row).ConfigureAwait(false); } catch { continue; }
 
                 if (_packer.TryComputeMissionFilterCols(row.StartTimestamp, decoded, out var cols))
-                    await _db.PutAsync(MissionStore, WithCols(row, cols)).ConfigureAwait(false);
+                    await _db.PutAsync(IndexedDbStores.Mission, WithCols(row, cols)).ConfigureAwait(false);
             }
         } finally {
             _backfilling.Remove(eid);
@@ -177,7 +172,7 @@ public sealed class IndexedDbMissionStore : IMissionStore {
     /// </summary>
     public async Task InsertBackupAsync(string playerId, double timestamp, byte[] rawPayload, TimeSpan minimumGap) {
         if (minimumGap > TimeSpan.Zero) {
-            var existing = await _db.GetAsync<BackupRow>(BackupStore, playerId);
+            var existing = await _db.GetAsync<BackupRow>(IndexedDbStores.Backup, playerId);
             if (existing is not null) {
                 double gapSeconds = timestamp - existing.RecordedAt;
                 if (gapSeconds < minimumGap.TotalSeconds) {
@@ -191,7 +186,7 @@ public sealed class IndexedDbMissionStore : IMissionStore {
             RecordedAt = timestamp,
             Payload = Gzip(rawPayload),
         };
-        await _db.PutAsync(BackupStore, row);
+        await _db.PutAsync(IndexedDbStores.Backup, row);
     }
 
     /// <summary>
@@ -223,7 +218,7 @@ public sealed class IndexedDbMissionStore : IMissionStore {
             Target = cols.Target,
             ReturnTimestamp = cols.ReturnTimestamp,
         };
-        await _db.PutAsync(MissionStore, row);
+        await _db.PutAsync(IndexedDbStores.Mission, row);
 
         var drops = ArtifactDrops.Build(decoded);
         if (drops.Count > 0) {
@@ -237,7 +232,7 @@ public sealed class IndexedDbMissionStore : IMissionStore {
                 Rarity = d.Rarity,
                 Quality = d.Quality,
             });
-            await _db.PutManyAsync(ArtifactDropsStore, rows);
+            await _db.PutManyAsync(IndexedDbStores.ArtifactDrops, rows);
         }
     }
 
@@ -251,13 +246,13 @@ public sealed class IndexedDbMissionStore : IMissionStore {
     }
 
     private async Task<List<MissionRow>> PlayerRowsAsync(string playerId) {
-        var rows = await _db.GetAllByIndexAsync<MissionRow>(MissionStore, PlayerIdIndex, playerId);
+        var rows = await _db.GetAllByIndexAsync<MissionRow>(IndexedDbStores.Mission, IndexedDbStores.PlayerIdIndex, playerId);
         return [.. rows];
     }
 
     public async Task<IReadOnlyList<StoredDrop>?> GetStoredPlayerDropsAsync(string playerId) {
         try {
-            var rows = await _db.GetAllByIndexAsync<ArtifactDropRow>(ArtifactDropsStore, PlayerIdIndex, playerId);
+            var rows = await _db.GetAllByIndexAsync<ArtifactDropRow>(IndexedDbStores.ArtifactDrops, IndexedDbStores.PlayerIdIndex, playerId);
             return [.. rows.Select(r => new StoredDrop(r.MissionId, r.ArtifactId, r.Level, r.Rarity))];
         } catch {
             return null;

@@ -45,13 +45,13 @@
         <div class="flex gap-2">
             @if (_idle)
             {
-                <button type="button" class="fetch-button" disabled="@(Active.ActiveAccountId is null)" @onclick="StartFetch">Fetch</button>
+                <button type="button" class="ledger-btn fetch-button" disabled="@(Active.ActiveAccountId is null)" @onclick="StartFetch">Fetch</button>
             }
             else
             {
-                <button type="button" class="fetch-button" @onclick="StopFetch">Stop</button>
+                <button type="button" class="ledger-btn fetch-button" @onclick="StopFetch">Stop</button>
             }
-            <button type="button" class="fetch-button w-auto" @onclick="OpenAddDialog">+ Add Account</button>
+            <button type="button" class="ledger-btn fetch-button w-auto" @onclick="OpenAddDialog">+ Add Account</button>
         </div>
     </div>
 
@@ -123,7 +123,6 @@
     private AddAccountDialog? _addDialog;
     private IReadOnlyList<DatabaseAccount> _existing = [];
     private AccountInfo? _activeInfo;
-
     private FetchProgress? _progress;
     private AppState? _terminalState;
     private CancellationTokenSource? _cts;

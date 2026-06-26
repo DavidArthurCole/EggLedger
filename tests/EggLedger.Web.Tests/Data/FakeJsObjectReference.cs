@@ -8,9 +8,7 @@ namespace EggLedger.Web.Tests.Data;
 /// </summary>
 public sealed class FakeJsObjectReference : IJSObjectReference {
     public List<(string Identifier, object?[] Args)> Calls { get; } = [];
-
     private readonly Dictionary<string, Queue<object?>> _canned = [];
-
     public bool Disposed { get; private set; }
 
     public void Enqueue(string identifier, object? value) {

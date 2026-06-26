@@ -67,9 +67,7 @@ public sealed class MennoService {
     private readonly HttpClient _http;
     private List<ConfigurationItem>? _cache;
     private Task<IReadOnlyList<ConfigurationItem>>? _inFlight;
-
     public MennoService(HttpClient http) => _http = http;
-
     public bool HasData => _cache is { Count: > 0 };
 
     /// <summary>Concurrent callers share a single in-flight download; a failed download is not cached, so a later call retries.</summary>

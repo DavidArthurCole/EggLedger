@@ -8,9 +8,7 @@ namespace EggLedger.Web.Tests.Data;
 /// </summary>
 public sealed class FakeJsRuntime : IJSRuntime {
     private readonly FakeJsObjectReference _module;
-
     public FakeJsRuntime(FakeJsObjectReference module) => _module = module;
-
     public List<(string Identifier, object?[] Args)> Calls { get; } = [];
 
     public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args) {

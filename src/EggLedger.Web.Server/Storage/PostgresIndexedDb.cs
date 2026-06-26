@@ -31,7 +31,6 @@ public sealed class PostgresIndexedDb : IIndexedDb {
     // settings on init (before the auth gate decides) don't crash the circuit.
     private Task<string> UserAsync() => _user.RequireAsync();
     private Task<string?> TryUserAsync() => _user.GetDiscordIdAsync();
-
     private static readonly JsonSerializerOptions JsonOpts = Rows.JsonOptions;
 
     public async ValueTask PutAsync(string store, object value) {
@@ -143,7 +142,7 @@ public sealed class PostgresIndexedDb : IIndexedDb {
             }
             var param = "p" + p.ToString(CultureInfo.InvariantCulture);
             cols.Add(prop.Name);
-            values.Add((param, JsonToDbValue(prop.Value, meta.BlobColumns.Contains(prop.Name))));
+            values.Add((param, JsonRowCodec.JsonToDbValue(prop.Value, meta.BlobColumns.Contains(prop.Name), JsonRowCodec.Postgres)));
             p++;
         }
 
@@ -187,73 +186,13 @@ public sealed class PostgresIndexedDb : IIndexedDb {
         return [.. result];
     }
 
-    // Rebuilds the row's JSON object from the SELECT columns (skipping discord_id, an
-    // internal tenancy column not on the Row records), then deserializes to T.
-    private static T Materialize<T>(StoreMeta meta, NpgsqlDataReader reader) {
-        using var buffer = new MemoryStream();
-        using (var writer = new Utf8JsonWriter(buffer)) {
-            writer.WriteStartObject();
-            for (var i = 0; i < reader.FieldCount; i++) {
-                var name = reader.GetName(i);
-                if (name == "discord_id") {
-                    continue;
-                }
-                writer.WritePropertyName(name);
-                WriteColumn(writer, reader, i, meta.BlobColumns.Contains(name));
-            }
-            writer.WriteEndObject();
-        }
-        var json = buffer.ToArray();
-        return JsonSerializer.Deserialize<T>(json, JsonOpts)
-            ?? throw new InvalidOperationException($"failed to materialize row for {meta.Table}");
-    }
-
-    private static void WriteColumn(Utf8JsonWriter writer, NpgsqlDataReader reader, int i, bool isBlob) {
-        if (reader.IsDBNull(i)) {
-            writer.WriteNullValue();
-            return;
-        }
-        if (isBlob) {
-            writer.WriteBase64StringValue((byte[])reader.GetValue(i));
-            return;
-        }
-        switch (reader.GetFieldType(i)) {
-            case var t when t == typeof(bool):
-                writer.WriteBooleanValue(reader.GetBoolean(i));
-                break;
-            case var t when t == typeof(long):
-                writer.WriteNumberValue(reader.GetInt64(i));
-                break;
-            case var t when t == typeof(int):
-                writer.WriteNumberValue(reader.GetInt32(i));
-                break;
-            case var t when t == typeof(double):
-                writer.WriteNumberValue(reader.GetDouble(i));
-                break;
-            case var t when t == typeof(byte[]):
-                writer.WriteBase64StringValue((byte[])reader.GetValue(i));
-                break;
-            default:
-                writer.WriteStringValue(reader.GetString(i));
-                break;
-        }
-    }
-
-    private static object JsonToDbValue(JsonElement el, bool isBlob) => el.ValueKind switch {
-        JsonValueKind.Null => DBNull.Value,
-        JsonValueKind.True => true,
-        JsonValueKind.False => false,
-        JsonValueKind.Number => el.TryGetInt64(out var l) ? l : el.GetDouble(),
-        JsonValueKind.String => DecodeString(el, isBlob),
-        _ => el.GetRawText(),
-    };
-
-    // System.Text.Json serializes byte[] columns as base64 strings; BYTEA columns must
-    // store real bytes. Plain text columns stay strings.
-    private static object DecodeString(JsonElement el, bool isBlob) {
-        var s = el.GetString() ?? "";
-        return isBlob ? Convert.FromBase64String(s) : s;
-    }
+    private static T Materialize<T>(StoreMeta meta, NpgsqlDataReader reader) =>
+        JsonRowCodec.Materialize<T>(
+            reader, meta.Table,
+            isBool: _ => false,
+            isBlob: meta.BlobColumns.Contains,
+            JsonOpts,
+            skipColumn: name => name == "discord_id");
 
     private static void BindKeyArgs(NpgsqlCommand cmd, object[] args) {
         for (var i = 0; i < args.Length; i++) {
@@ -261,18 +200,9 @@ public sealed class PostgresIndexedDb : IIndexedDb {
         }
     }
 
-    // KeyPredicate emits "col = @k0 AND col2 = @k1" (no discord_id; the caller prepends it).
-    private static (string where, object[] args) KeyPredicate(StoreMeta meta, object key) {
-        if (meta.KeyColumns.Length == 1) {
-            return ($"{Ident(meta.KeyColumns[0])} = @k0", [key]);
-        }
-        if (key is object[] parts && parts.Length == meta.KeyColumns.Length) {
-            var where = string.Join(" AND ",
-                meta.KeyColumns.Select((c, i) => $"{Ident(c)} = @k{i.ToString(CultureInfo.InvariantCulture)}"));
-            return (where, parts);
-        }
-        throw new ArgumentException($"composite key expected for store {meta.Table}", nameof(key));
-    }
+    // Emits "col = @k0 AND col2 = @k1" (no discord_id; the caller prepends it).
+    private static (string where, object[] args) KeyPredicate(StoreMeta meta, object key) =>
+        JsonRowCodec.KeyPredicate(meta.Table, meta.KeyColumns, key, Ident, JsonRowCodec.Postgres);
 
     // Quote identifiers defensively; all our names are already safe snake_case but the
     // index parameter to GetAllByIndexAsync is caller-supplied, so quote it.
@@ -289,17 +219,17 @@ public sealed class PostgresIndexedDb : IIndexedDb {
             : throw new ArgumentException($"unknown store {store}", nameof(store));
 
     private static Dictionary<string, StoreMeta> BuildStoreMeta() => new(StringComparer.Ordinal) {
-        ["mission"] = new StoreMeta("el_mission", ["player_id", "mission_id"], autoIncrementColumn: null,
+        [IndexedDbStores.Mission] = new StoreMeta("el_mission", ["player_id", "mission_id"], autoIncrementColumn: null,
             blobColumns: ["complete_payload"]),
-        ["backup"] = new StoreMeta("el_backup", ["player_id"], autoIncrementColumn: null,
+        [IndexedDbStores.Backup] = new StoreMeta("el_backup", ["player_id"], autoIncrementColumn: null,
             blobColumns: ["payload"]),
-        ["artifact_drops"] = new StoreMeta("el_artifact_drops", ["id"], autoIncrementColumn: "id",
+        [IndexedDbStores.ArtifactDrops] = new StoreMeta("el_artifact_drops", ["id"], autoIncrementColumn: "id",
             blobColumns: []),
-        ["settings"] = new StoreMeta("el_settings", ["key"], autoIncrementColumn: null,
+        [IndexedDbStores.Settings] = new StoreMeta("el_settings", ["key"], autoIncrementColumn: null,
             blobColumns: []),
-        ["reports"] = new StoreMeta("el_reports", ["id"], autoIncrementColumn: null,
+        [IndexedDbStores.Reports] = new StoreMeta("el_reports", ["id"], autoIncrementColumn: null,
             blobColumns: []),
-        ["report_groups"] = new StoreMeta("el_report_groups", ["id"], autoIncrementColumn: null,
+        [IndexedDbStores.ReportGroups] = new StoreMeta("el_report_groups", ["id"], autoIncrementColumn: null,
             blobColumns: []),
     };
 

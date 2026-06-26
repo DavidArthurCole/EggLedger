@@ -26,7 +26,7 @@
                 <p class="font-semibold">Could not reach the sync server</p>
                 <p>Settings sync is unavailable right now. Try disabling any active VPN, then click Retry below.</p>
             </div>
-            <button type="button" class="apply-filter-button mt-0_5rem" @onclick="RecheckReachableAsync">Retry</button>
+            <button type="button" class="ledger-btn apply-filter-button mt-0_5rem" @onclick="RecheckReachableAsync">Retry</button>
         </div>
     }
     else
@@ -69,7 +69,7 @@
         <div class="mt-0_5rem flex flex-col gap-2">
             @if (!_connected)
             {
-                <button type="button" class="apply-filter-button !text-white self-start"
+                <button type="button" class="ledger-btn apply-filter-button !text-white self-start"
                         style="background-color: #5865F2; border-color: #4752C4;"
                         disabled="@_authWaiting" @onclick="ConnectAsync">
                     @(_authWaiting ? "Waiting for auth..." : "Connect with Discord")
@@ -79,12 +79,12 @@
             {
                 <div class="flex flex-row flex-wrap gap-2">
                     <button type="button"
-                            class="apply-filter-button !mt-0 !mr-0 !ml-0 !bg-blue-700 !text-white hover:!bg-blue-600 !border-blue-500"
+                            class="ledger-btn apply-filter-button !mt-0 !mr-0 !ml-0 !bg-blue-700 !text-white hover:!bg-blue-600 !border-blue-500"
                             disabled="@_syncInProgress" @onclick="SyncNowAsync">
                         @(_syncInProgress ? "Syncing..." : "Sync now")
                     </button>
                     <button type="button"
-                            class="apply-filter-button !mt-0 !mr-0 !ml-0 !bg-gray-700 !text-gray-200 hover:!bg-gray-600 !border-gray-500"
+                            class="ledger-btn apply-filter-button !mt-0 !mr-0 !ml-0 !bg-gray-700 !text-gray-200 hover:!bg-gray-600 !border-gray-500"
                             disabled="@_restoreInProgress" @onclick="RestoreNowAsync">
                         @(_restoreInProgress ? "Restoring..." : "Restore from cloud")
                     </button>
@@ -94,10 +94,10 @@
                     {
                         <span class="text-xs text-red-400 self-center">Delete all remote data?</span>
                         <button type="button"
-                                class="apply-filter-button !mt-0 !mr-0 !ml-0 !text-gray-300 !bg-gray-700 hover:!bg-gray-600 !border-gray-500"
+                                class="ledger-btn apply-filter-button !mt-0 !mr-0 !ml-0 !text-gray-300 !bg-gray-700 hover:!bg-gray-600 !border-gray-500"
                                 @onclick="() => _confirmingDelete = false">Cancel</button>
                         <button type="button"
-                                class="apply-filter-button !mt-0 !mr-0 !ml-0 !bg-red-900 !text-red-200 hover:!bg-red-800 !border-red-700"
+                                class="ledger-btn apply-filter-button !mt-0 !mr-0 !ml-0 !bg-red-900 !text-red-200 hover:!bg-red-800 !border-red-700"
                                 disabled="@_deleteInProgress" @onclick="DeleteRemoteAsync">
                             @(_deleteInProgress ? "Deleting..." : "Yes, delete")
                         </button>
@@ -105,10 +105,10 @@
                     else
                     {
                         <button type="button"
-                                class="apply-filter-button !mt-0 !mr-0 !ml-0 !bg-red-900 !text-red-200 hover:!bg-red-800 !border-red-700"
+                                class="ledger-btn apply-filter-button !mt-0 !mr-0 !ml-0 !bg-red-900 !text-red-200 hover:!bg-red-800 !border-red-700"
                                 @onclick="DisconnectAsync">Disconnect</button>
                         <button type="button"
-                                class="apply-filter-button !mt-0 !mr-0 !ml-0 !bg-red-900/60 !text-red-300 hover:!bg-red-900 !border-red-800"
+                                class="ledger-btn apply-filter-button !mt-0 !mr-0 !ml-0 !bg-red-900/60 !text-red-300 hover:!bg-red-900 !border-red-800"
                                 @onclick="() => _confirmingDelete = true">Delete Remote Data</button>
                     }
                 </div>
@@ -143,7 +143,6 @@
 @code {
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(2);
     private static readonly TimeSpan PollTimeout = TimeSpan.FromMinutes(5);
-
     private bool _reachableChecking = true;
     private bool _reachable;
     private bool _connected;
@@ -161,7 +160,6 @@
     private bool _deleteInProgress;
     private string _deleteError = "";
     private bool _autoSync;
-
     private CloudSession? _session;
     private CancellationTokenSource? _pollCts;
     private bool _disposed;

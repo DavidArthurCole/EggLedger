@@ -32,16 +32,12 @@
 @code {
     private const double Vw = 240;
     private const double Vh = 240;
-
     [Parameter, EditorRequired]
     public ReportResult Result { get; set; } = new();
-
     [Parameter, EditorRequired]
     public string Color { get; set; } = "#6366f1";
-
     [Parameter]
     public string? LabelColors { get; set; }
-
     private double Cx => Vw / 2;
     private double Cy => Vh / 2;
     private double R => Math.Min(Vw, Vh) * 0.36;

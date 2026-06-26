@@ -12,7 +12,6 @@ public sealed class FetchService {
     private const int DefaultWorkerCount = 1;
     private const int MaxWorkerCount = 10;
     private static readonly TimeSpan BackupMinGap = TimeSpan.FromHours(12);
-
     private readonly ApiClient _api;
     private readonly IndexedDbMissionStore _store;
     private readonly IndexedDbSettings _settings;

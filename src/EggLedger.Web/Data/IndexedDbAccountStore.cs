@@ -12,7 +12,6 @@ namespace EggLedger.Web.Data;
 public sealed class IndexedDbAccountStore {
     internal const string KnownAccountsKey = "known_accounts";
     internal const string ActiveAccountKey = "active_account_id";
-
     private readonly IndexedDbSettings _settings;
 
     public IndexedDbAccountStore(IndexedDbSettings settings) {
@@ -87,22 +86,16 @@ public sealed class IndexedDbAccountStore {
 public sealed record AccountInfoRow {
     [JsonPropertyName("id")]
     public string Id { get; init; } = "";
-
     [JsonPropertyName("nickname")]
     public string Nickname { get; init; } = "";
-
     [JsonPropertyName("eb_string")]
     public string EBString { get; init; } = "";
-
     [JsonPropertyName("account_color")]
     public string AccountColor { get; init; } = "";
-
     [JsonPropertyName("se_string")]
     public string SeString { get; init; } = "";
-
     [JsonPropertyName("pe_count")]
     public int PeCount { get; init; }
-
     [JsonPropertyName("te_count")]
     public int TeCount { get; init; }
 

@@ -23,9 +23,7 @@ public interface IUpdateStatusProvider {
 
     /// <summary>Latest version tag when <see cref="Phase"/> is Available/Ready, else null.</summary>
     string? AvailableVersion { get; }
-
     string? ReleaseNotes { get; }
-
     long DownloadedBytes { get; }
 
     /// <summary>0 when unknown.</summary>
@@ -33,7 +31,6 @@ public interface IUpdateStatusProvider {
 
     /// <summary>Last error / status, when Phase is Failed or after a completed update.</summary>
     string? Message { get; }
-
     event Action? Changed;
 
     /// <summary>No-op in the browser. <paramref name="force"/> false honors the desktop 12h cooldown; an explicit user check passes true to bypass it.</summary>

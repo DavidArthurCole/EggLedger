@@ -78,7 +78,7 @@ public sealed class ReportExecutor {
             }
         }
 
-        if (def.NormalizeBy != "" && def.NormalizeBy != "none" && def.Mode == "aggregate") {
+        if (def.NormalizeBy != "" && def.NormalizeBy != ReportDefaults.NormalizeNone && def.Mode == "aggregate") {
             var groupCol = QueryBuilder.GroupByColumn(def.GroupBy);
             if (groupCol == "" || groupCol.StartsWith("d.", StringComparison.Ordinal)) {
                 return new ReportResult { Labels = labels, Values = values, Weight = def.Weight };
@@ -127,7 +127,7 @@ public sealed class ReportExecutor {
         var pctMode = def.NormalizeBy;
         if (pctMode is "row_pct" or "col_pct" or "global_pct") {
             Matrix.Apply2DPctNormalization(matrixValues, f.RowLabels.Count, f.ColLabels.Count, pctMode);
-        } else if (pctMode is not "" and not "none") {
+        } else if (pctMode is not "" and not ReportDefaults.NormalizeNone) {
             var col1 = QueryBuilder.GroupByColumn(def.GroupBy);
             var col2 = QueryBuilder.GroupByColumn(def.SecondaryGroupBy);
             if (col1 != "" && !col1.StartsWith("d.", StringComparison.Ordinal)
@@ -223,7 +223,7 @@ public sealed class ReportExecutor {
             floatValues.Add(accum[raw]);
         }
 
-        if (def.NormalizeBy != "" && def.NormalizeBy != "none" && def.Mode == "aggregate") {
+        if (def.NormalizeBy != "" && def.NormalizeBy != ReportDefaults.NormalizeNone && def.Mode == "aggregate") {
             var groupCol = QueryBuilder.GroupByColumn(def.GroupBy);
             if (groupCol != "" && !groupCol.StartsWith("d.", StringComparison.Ordinal)) {
                 var denomMap = Denom1D(groupCol, def.NormalizeBy, baseWhere, baseArgs);
@@ -309,7 +309,7 @@ public sealed class ReportExecutor {
         List<double>? rawPerMissionValues = null;
         if (pctMode is "row_pct" or "col_pct" or "global_pct") {
             Matrix.Apply2DPctNormalization(matrixValues, rowLabels.Count, colLabels.Count, pctMode);
-        } else if (pctMode is not "" and not "none") {
+        } else if (pctMode is not "" and not ReportDefaults.NormalizeNone) {
             var col1 = QueryBuilder.GroupByColumn(def.GroupBy);
             var col2 = QueryBuilder.GroupByColumn(def.SecondaryGroupBy);
             if (col1 != "" && !col1.StartsWith("d.", StringComparison.Ordinal)

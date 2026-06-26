@@ -84,9 +84,7 @@
     /// <summary>An account currently being fetched, shown as an ephemeral loading card until its data lands.</summary>
     [Parameter]
     public FetchingCard? Fetching { get; set; }
-
     public sealed record FetchingCard(string Id, string Nickname, string Color, int Finished, int Total);
-
     private static double NowUnix => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
     private IReadOnlyList<DatabaseAccount> Sorted =>

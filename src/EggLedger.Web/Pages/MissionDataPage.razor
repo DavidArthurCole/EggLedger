@@ -113,13 +113,11 @@
     private bool _applying;
     private string _resultText = "";
     private string? _missionBeingViewed;
-
     private IReadOnlyList<DatabaseMission>? _allMissions;
     private IReadOnlyList<DatabaseMission>? _filtered;
     private IReadOnlyList<DatabaseMission>? _tabFiltered;
     private MissionGrouping? _grouping;
     private bool _hasBothTypes;
-
     private readonly MissionViewOptions _opts = new();
     private readonly HashSet<string> _multiSelectedIds = new();
     private MissionFilterMatcher? _matcher;

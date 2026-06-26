@@ -10,8 +10,8 @@ using SyncKit.Auth;
 
 namespace EggLedger.Web.Server.Sync.Auth;
 
-// Go parity: the original server swallowed DB errors on these auth writes (fire-and-forget),
-// so the catch blocks below intentionally ignore failures to keep behavior byte-identical.
+// The original Go server swallowed DB errors on these auth writes (fire-and-forget); the catch
+// blocks keep that. The callback adds a state check the Go version lacked, to block login CSRF.
 
 public sealed record DiscordInitResponse(
     [property: JsonPropertyName("url")] string Url,
@@ -65,6 +65,14 @@ public sealed class AuthEndpoints(NpgsqlDataSource source) {
     public async Task Callback(HttpContext ctx) {
         var code = ctx.Request.Query["code"].ToString();
         var state = ctx.Request.Query["state"].ToString();
+
+        // Reject a state the server never issued, so a forged callback cannot sign a session
+        // cookie into an attacker-chosen account (login CSRF). BeginAuthAsync seeds the row.
+        if (string.IsNullOrEmpty(state) || !await StateIsPending(state, ctx.RequestAborted)) {
+            await WriteTextAsync(ctx, StatusCodes.Status400BadRequest, "invalid or expired state\n");
+            return;
+        }
+
         DiscordUser? authedUser = null;
         try {
             await DiscordOAuth.HandleCallbackAsync(
@@ -93,6 +101,18 @@ public sealed class AuthEndpoints(NpgsqlDataSource source) {
         ctx.Response.StatusCode = StatusCodes.Status200OK;
         ctx.Response.ContentType = "text/html; charset=utf-8";
         await ctx.Response.Body.WriteAsync(Encoding.UTF8.GetBytes(SuccessPage.Html), ctx.RequestAborted);
+    }
+
+    private async Task<bool> StateIsPending(string state, CancellationToken ct) {
+        await using var cmd = source.CreateCommand(
+            "SELECT 1 FROM pending_auth WHERE state = $1 AND expires_at > $2");
+        cmd.Parameters.AddWithValue(state);
+        cmd.Parameters.AddWithValue(Now());
+        try {
+            return await cmd.ExecuteScalarAsync(ct) is not null;
+        } catch {
+            return false;
+        }
     }
 
     public async Task StorePending(string state, string token, DiscordUser user) {

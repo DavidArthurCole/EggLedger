@@ -8,9 +8,7 @@ public sealed class DownloadService(IJSRuntime js) : IDownloadService, IAsyncDis
     private const string ModulePath = "./_content/EggLedger.Web/js/download.js";
     private const string CsvMime = "text/csv";
     private const string XlsxMime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-
     private readonly IJSRuntime _js = js;
-
     private IJSObjectReference? _module;
 
     private async ValueTask<IJSObjectReference> ModuleAsync()

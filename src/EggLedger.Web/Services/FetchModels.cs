@@ -22,12 +22,10 @@ public enum SegmentStatus {
 /// <summary>One progress event collapsing a state transition, a counter snapshot, or a per-mission segment update into a single <see cref="System.IProgress{T}"/> channel.</summary>
 public sealed record FetchProgress {
     public required AppState State { get; init; }
-
     public int Total { get; init; }
 
     /// <summary>Finished = cache hits + successful fetches.</summary>
     public int Finished { get; init; }
-
     public int Failed { get; init; }
 
     /// <summary>Missions re-attempted in the retry pass.</summary>

@@ -52,7 +52,6 @@
     /// <summary>Raised with the freshly added account on success.</summary>
     [Parameter]
     public EventCallback<AccountInfo> Added { get; set; }
-
     private string Normalized => LedgerFormatting.NormalizeEid(_eid);
     private string _problem => LedgerFormatting.EidProblem(Normalized);
     private bool IsValid => LedgerFormatting.IsEidValid(Normalized);

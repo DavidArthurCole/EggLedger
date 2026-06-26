@@ -55,15 +55,12 @@
     /// <summary>The bound color, a canonical #rrggbb string.</summary>
     [Parameter]
     public string Value { get; set; } = ColorPickerMath.Fallback;
-
     [Parameter]
     public EventCallback<string> ValueChanged { get; set; }
-
     private bool _open;
     private ColorPickerMath.HslInt _hsl;
     private string _hexInput = ColorPickerMath.Fallback;
     private string _lastSynced = "";
-
     private string CurrentHex => ColorPickerMath.NormalizeToHex(Value);
 
     protected override void OnParametersSet()

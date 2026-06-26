@@ -72,20 +72,16 @@
     /// <summary>Spec type group: "artifact", "stone", "ingredient", or "stone_fragment".</summary>
     [Parameter]
     public string Type { get; set; } = "";
-
     [Parameter]
     public IReadOnlyList<DropLike>? Items { get; set; }
-
     [Parameter]
     public MissionMennoData? MennoData { get; set; }
-
     [Parameter]
     public bool ShowExpectedDrops { get; set; }
 
     /// <summary>Total drop count across all spec sections of the mission; the expected-per-ship multiplier.</summary>
     [Parameter]
     public int MissionTotalDrops { get; set; }
-
     private DropLike? _hovered;
     private double _x;
     private double _y;

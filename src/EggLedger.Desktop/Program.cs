@@ -1,4 +1,3 @@
-using System.Reflection;
 using EggLedger.Desktop.Export;
 using EggLedger.Desktop.Platform;
 using EggLedger.Desktop.Storage;
@@ -39,7 +38,7 @@ appBuilder.Services.AddDesktopPlatformCapabilities(new ProcessRunner(), desktopW
 // D4 live self-update status provider for the About overlay; running version is the
 // assembly informational version. The default exit action is the OLD-instance exit after
 // the new instance reports /ready, letting it rename EggLedger_new -> EggLedger.
-var runningVersion = DesktopAppVersion();
+var runningVersion = AppVersionInfo.Current;
 appBuilder.Services.AddDesktopUpdater(() => runningVersion);
 
 // D5 desktop export sink: writes export bytes to a path picked via the native save dialog
@@ -79,14 +78,3 @@ app.Run();
 
 // Trailing slash required so relative "api/v1/..." URIs resolve under the host root.
 static Uri CloudSyncBaseAddress() => new("https://ledgersync.davidarthurcole.me/");
-
-// Prefer the assembly informational version (strip any +sha suffix), fall back to a default.
-static string DesktopAppVersion() {
-    var info = Assembly.GetEntryAssembly()?
-        .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
-    if (!string.IsNullOrEmpty(info)) {
-        var plus = info.IndexOf('+', StringComparison.Ordinal);
-        return plus >= 0 ? info[..plus] : info;
-    }
-    return "2.1.4";
-}

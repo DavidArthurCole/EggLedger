@@ -84,28 +84,21 @@
 @code {
     [Parameter, EditorRequired]
     public ReportDefinition Def { get; set; } = new();
-
     [Parameter, EditorRequired]
     public GridCardPos Pos { get; set; }
-
     [Parameter, EditorRequired]
     public string AccountId { get; set; } = "";
-
     [Parameter]
     public bool EditMode { get; set; }
-
     [Parameter]
     public EventCallback<ReportDefinition> OnEdit { get; set; }
-
     [Parameter]
     public EventCallback<string> OnDelete { get; set; }
-
     private ReportResult? _result;
     private ReportResult? _mennoResult;
     private string? _error;
     private string _ranKey = "";
     private MennoLoadingModal? _mennoModal;
-
     private string ColorOr => string.IsNullOrEmpty(Def.Color) ? "#6366f1" : Def.Color;
     private string NormalizeOr => string.IsNullOrEmpty(Def.NormalizeBy) ? "none" : Def.NormalizeBy;
     private string DisplayName => string.IsNullOrEmpty(Def.Name) ? "Untitled report" : Def.Name;

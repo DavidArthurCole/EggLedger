@@ -9,9 +9,7 @@ namespace EggLedger.Domain.LedgerData;
 /// </summary>
 public static class LedgerData {
     private const string ResourceName = "EggLedger.Domain.Resources.ledger-display-data-min.json";
-
     private static readonly Lazy<LedgerDisplayData> _config = new(LoadEmbedded);
-
     public static LedgerDisplayData Config => _config.Value;
 
     private static LedgerDisplayData LoadEmbedded() {

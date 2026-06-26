@@ -148,7 +148,7 @@ public sealed class SqliteIndexedDb : IIndexedDb {
         cmd.CommandText =
             $"INSERT INTO {meta.Table} ({string.Join(", ", cols)}) VALUES ({string.Join(", ", placeholders)}){conflict};";
         for (var i = 0; i < props.Count; i++) {
-            cmd.Parameters.AddWithValue(placeholders[i], JsonToDbValue(props[i].Val, meta.BlobColumns.Contains(props[i].Col)));
+            cmd.Parameters.AddWithValue(placeholders[i], JsonRowCodec.JsonToDbValue(props[i].Val, meta.BlobColumns.Contains(props[i].Col), JsonRowCodec.Sqlite));
         }
         cmd.ExecuteNonQuery();
     }
@@ -167,7 +167,7 @@ public sealed class SqliteIndexedDb : IIndexedDb {
             var match = props.First(p => p.Col == keyCol);
             var name = "@d" + k.ToString(CultureInfo.InvariantCulture);
             clauses.Add($"{keyCol} = {name}");
-            del.Parameters.AddWithValue(name, JsonToDbValue(match.Val, meta.BlobColumns.Contains(keyCol)));
+            del.Parameters.AddWithValue(name, JsonRowCodec.JsonToDbValue(match.Val, meta.BlobColumns.Contains(keyCol), JsonRowCodec.Sqlite));
             k++;
         }
         del.CommandText = $"DELETE FROM {meta.Table} WHERE {string.Join(" AND ", clauses)};";
@@ -183,71 +183,12 @@ public sealed class SqliteIndexedDb : IIndexedDb {
         return [.. result];
     }
 
-    // Rebuilds the row's JSON object from the SELECT columns, then deserializes to
-    // T. Column names are the JSON property names, so the round-trip is exact.
-    private static T Materialize<T>(StoreMeta meta, SqliteDataReader reader) {
-        using var buffer = new MemoryStream();
-        using (var writer = new Utf8JsonWriter(buffer)) {
-            writer.WriteStartObject();
-            for (var i = 0; i < reader.FieldCount; i++) {
-                var name = reader.GetName(i);
-                writer.WritePropertyName(name);
-                WriteColumn(writer, reader, i, meta.BoolColumns.Contains(name), meta.BlobColumns.Contains(name));
-            }
-            writer.WriteEndObject();
-        }
-        var json = buffer.ToArray();
-        return JsonSerializer.Deserialize<T>(json, JsonOpts)
-            ?? throw new InvalidOperationException($"failed to materialize row for {meta.Table}");
-    }
-
-    private static void WriteColumn(Utf8JsonWriter writer, SqliteDataReader reader, int i, bool isBool, bool isBlob) {
-        if (reader.IsDBNull(i)) {
-            writer.WriteNullValue();
-            return;
-        }
-        if (isBlob) {
-            // byte[] columns are base64 on the JSON wire (matches System.Text.Json).
-            var bytes = (byte[])reader.GetValue(i);
-            writer.WriteBase64StringValue(bytes);
-            return;
-        }
-        if (isBool) {
-            writer.WriteBooleanValue(reader.GetInt64(i) != 0);
-            return;
-        }
-        switch (reader.GetFieldType(i)) {
-            case var t when t == typeof(long):
-                writer.WriteNumberValue(reader.GetInt64(i));
-                break;
-            case var t when t == typeof(double):
-                writer.WriteNumberValue(reader.GetDouble(i));
-                break;
-            case var t when t == typeof(byte[]):
-                writer.WriteBase64StringValue((byte[])reader.GetValue(i));
-                break;
-            default:
-                writer.WriteStringValue(reader.GetString(i));
-                break;
-        }
-    }
-
-    private static object JsonToDbValue(JsonElement el, bool isBlob) => el.ValueKind switch {
-        JsonValueKind.Null => DBNull.Value,
-        JsonValueKind.True => 1L,
-        JsonValueKind.False => 0L,
-        JsonValueKind.Number => el.TryGetInt64(out var l) ? l : el.GetDouble(),
-        JsonValueKind.String => DecodeString(el, isBlob),
-        _ => el.GetRawText(),
-    };
-
-    // System.Text.Json serializes byte[] columns as base64 strings. Blob columns
-    // must be stored as real BLOBs (so they read back as byte[]); plain text columns
-    // stay strings.
-    private static object DecodeString(JsonElement el, bool isBlob) {
-        var s = el.GetString() ?? "";
-        return isBlob ? Convert.FromBase64String(s) : s;
-    }
+    private static T Materialize<T>(StoreMeta meta, SqliteDataReader reader) =>
+        JsonRowCodec.Materialize<T>(
+            reader, meta.Table,
+            isBool: meta.BoolColumns.Contains,
+            isBlob: meta.BlobColumns.Contains,
+            JsonOpts);
 
     private SqliteConnection Conn(StoreMeta meta) =>
         meta.UseReportDb ? _reportDb.Connection : _missionDb.Connection;
@@ -257,17 +198,9 @@ public sealed class SqliteIndexedDb : IIndexedDb {
             ? meta
             : throw new ArgumentException($"unknown store {store}", nameof(store));
 
-    private static (string where, object[] args) KeyPredicate(StoreMeta meta, object key) {
-        if (meta.KeyColumns.Length == 1) {
-            return ($"{meta.KeyColumns[0]} = ?", new[] { key });
-        }
-        // Composite key (mission: [player_id, mission_id]) arrives as an array.
-        if (key is object[] parts && parts.Length == meta.KeyColumns.Length) {
-            var where = string.Join(" AND ", meta.KeyColumns.Select(c => $"{c} = ?"));
-            return (where, parts);
-        }
-        throw new ArgumentException($"composite key expected for store {meta.Table}", nameof(key));
-    }
+    // Composite key (mission: [player_id, mission_id]) arrives as an array.
+    private static (string where, object[] args) KeyPredicate(StoreMeta meta, object key) =>
+        JsonRowCodec.KeyPredicate(meta.Table, meta.KeyColumns, key, c => c, JsonRowCodec.Sqlite);
 
     private static void BindArgs(SqliteCommand cmd, object[] args) {
         // IIndexedDb passes positional "?" args; bind them in order.
@@ -290,34 +223,34 @@ public sealed class SqliteIndexedDb : IIndexedDb {
     }
 
     private static Dictionary<string, StoreMeta> BuildStoreMeta() => new(StringComparer.Ordinal) {
-        ["mission"] = new StoreMeta(
+        [IndexedDbStores.Mission] = new StoreMeta(
             "mission", useReportDb: false,
             keyColumns: ["player_id", "mission_id"],
             autoIncrementColumn: null,
             boolColumns: ["is_dub_cap", "is_bugged_cap"]),
-        ["backup"] = new StoreMeta(
+        [IndexedDbStores.Backup] = new StoreMeta(
             "backup", useReportDb: false,
             keyColumns: ["player_id"],
             autoIncrementColumn: null,
             boolColumns: [],
             // No UNIQUE(player_id), so emulate keyPath=player_id by delete-then-insert.
             upsertByDelete: true),
-        ["artifact_drops"] = new StoreMeta(
+        [IndexedDbStores.ArtifactDrops] = new StoreMeta(
             "artifact_drops", useReportDb: false,
             keyColumns: ["id"],
             autoIncrementColumn: "id",
             boolColumns: []),
-        ["settings"] = new StoreMeta(
+        [IndexedDbStores.Settings] = new StoreMeta(
             "settings", useReportDb: false,
             keyColumns: ["key"],
             autoIncrementColumn: null,
             boolColumns: []),
-        ["reports"] = new StoreMeta(
+        [IndexedDbStores.Reports] = new StoreMeta(
             "reports", useReportDb: true,
             keyColumns: ["id"],
             autoIncrementColumn: null,
             boolColumns: ["menno_enabled"]),
-        ["report_groups"] = new StoreMeta(
+        [IndexedDbStores.ReportGroups] = new StoreMeta(
             "report_groups", useReportDb: true,
             keyColumns: ["id"],
             autoIncrementColumn: null,

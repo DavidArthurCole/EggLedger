@@ -71,13 +71,10 @@
     /// <summary>Filtered missions in display order; drives prev/next navigation.</summary>
     [Parameter]
     public IReadOnlyList<DatabaseMission> FilteredMissions { get; set; } = Array.Empty<DatabaseMission>();
-
     [Parameter]
     public MissionSortMethod SortMethod { get; set; } = MissionSortMethod.Default;
-
     [Parameter]
     public bool ShowExpectedDrops { get; set; }
-
     private bool _open;
     private ViewMissionData? _data;
     private List<ViewMissionData>? _multi;

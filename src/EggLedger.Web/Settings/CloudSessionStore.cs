@@ -16,7 +16,6 @@ public sealed class CloudSessionStore {
 
     /// <summary>Browser-only: poll state saved before the Discord redirect so the reloaded SPA resumes polling.</summary>
     public const string KeyPendingAuthState = "cloud_pending_auth_state";
-
     private readonly IndexedDbSettings _settings;
 
     public CloudSessionStore(IndexedDbSettings settings) {

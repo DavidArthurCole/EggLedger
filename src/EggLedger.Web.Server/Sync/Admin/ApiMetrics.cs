@@ -14,7 +14,6 @@ public sealed class ApiMetrics(TimeProvider time) {
 
     private readonly Bucket[] _ring = [.. Enumerable.Range(0, Minutes).Select(_ => new Bucket())];
     private readonly ConcurrentDictionary<string, long> _byPath = new(StringComparer.Ordinal);
-
     private long NowMinute() => time.GetUtcNow().ToUnixTimeSeconds() / 60;
 
     public void Record(string path) {

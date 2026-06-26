@@ -8,7 +8,6 @@ namespace EggLedger.Web.Services;
 /// <summary>Adds an account from an EID: validate the first-contact backup, then persist. Mission fetch is a separate step driven by <see cref="FetchService"/>.</summary>
 public sealed class AddAccountService {
     private static readonly TimeSpan FirstContactTimeout = TimeSpan.FromSeconds(20);
-
     private readonly ApiClient _api;
     private readonly IndexedDbAccountStore _accounts;
     private readonly IApiPayloadDecoder _decoder;

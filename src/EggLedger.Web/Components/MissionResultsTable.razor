@@ -46,7 +46,7 @@ else
             var year = Grouping.Arrays.Year[yearIndex];
             <div>
             <span class="text-lg font-bold mr-0_5rem ledger-underline">@year.Year</span>
-            <button type="button" class="tb-c text-lg toggle-link" @onclick="@(() => ToggleYear(yearIndex))">
+            <button type="button" class="text-lg toggle-link" @onclick="@(() => ToggleYear(yearIndex))">
                 @(year.Enabled ? "Collapse" : "Expand")
             </button>
 
@@ -61,7 +61,7 @@ else
                             <span class="text-base font-bold mr-0_5rem ledger-underline">
                                 @year.Year-@month.Month.ToString("00", CultureInfo.InvariantCulture)
                             </span>
-                            <button type="button" class="tb-c text-base toggle-link" @onclick="@(() => ToggleMonth(yearIndex, monthIndex))">
+                            <button type="button" class="text-base toggle-link" @onclick="@(() => ToggleMonth(yearIndex, monthIndex))">
                                 @(month.Enabled ? "Collapse" : "Expand")
                             </button>
 
@@ -78,14 +78,14 @@ else
                                                 <span class="text-sm font-bold mr-0_5rem ledger-underline">
                                                     @year.Year-@month.Month.ToString("00", CultureInfo.InvariantCulture)-@day.Day.ToString("00", CultureInfo.InvariantCulture)
                                                 </span>
-                                                <button type="button" class="tb-c text-sm mr-0_5rem toggle-link"
+                                                <button type="button" class="text-sm mr-0_5rem toggle-link"
                                                         @onclick="@(() => ToggleDay(yearIndex, monthIndex, dayIndex))">
                                                     @(day.Enabled ? "Collapse" : "Expand")
                                                 </button>
                                             }
                                             @if (MultiViewMode == MultiViewMode.Row)
                                             {
-                                                <button type="button" class="tb-c text-sm mr-0_5rem toggle-link"
+                                                <button type="button" class="text-sm mr-0_5rem toggle-link"
                                                         @onclick="@(() => ViewRow(yearIndex, monthIndex, dayIndex))">
                                                     View row
                                                 </button>
@@ -149,19 +149,14 @@ else
 @code {
     [Parameter]
     public MissionGrouping? Grouping { get; set; }
-
     [Parameter]
     public bool ViewByDate { get; set; }
-
     [Parameter]
     public bool ViewMissionTimes { get; set; }
-
     [Parameter]
     public bool RecolorDc { get; set; }
-
     [Parameter]
     public bool RecolorBc { get; set; }
-
     [Parameter]
     public MultiViewMode MultiViewMode { get; set; } = MultiViewMode.Off;
 
@@ -176,7 +171,6 @@ else
     /// <summary>Mission id shown in the overlay, highlighted in the list.</summary>
     [Parameter]
     public string? MissionBeingViewed { get; set; }
-
     [Parameter]
     public EventCallback<string> OnViewMission { get; set; }
 
@@ -191,9 +185,7 @@ else
     /// <summary>Raised when collapse state mutates so the page can re-render.</summary>
     [Parameter]
     public EventCallback OnGroupingChanged { get; set; }
-
     private async Task OnView(string missionId) => await OnViewMission.InvokeAsync(missionId);
-
     private bool AllSelected => TabFiltered.Count > 0 && SelectedIds.Count >= TabFiltered.Count;
 
     private async Task ViewRow(int yi, int mi, int di)

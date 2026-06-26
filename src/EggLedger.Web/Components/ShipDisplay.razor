@@ -18,7 +18,7 @@
             </span>
         </div>
 
-        <div class="rounded-md px-4 py-2 flex flex-col items-center justify-center" style="background: rgba(120, 128, 138, 0.12);">
+        <div class="panel-muted rounded-md px-4 py-2 flex flex-col items-center justify-center">
             @if (!string.IsNullOrEmpty(Mission.ShipEnumString))
             {
                 <img class="w-12 h-12 object-contain mb-2" src="@State.ContentPaths.Asset($"images/ships/{Mission.ShipEnumString}.png")" alt="@Mission.ShipString" />
@@ -30,7 +30,7 @@
             }
         </div>
 
-        <div class="rounded-md px-4 py-2 flex flex-col justify-center text-left text-sm" style="background: rgba(120, 128, 138, 0.12);">
+        <div class="panel-muted rounded-md px-4 py-2 flex flex-col justify-center text-left text-sm">
             <div>Launched: @Format(Data.LaunchDT)</div>
             <div>Returned: @Format(Data.ReturnDT)</div>
             <div>Duration: @Data.DurationStr</div>
@@ -63,10 +63,8 @@
 @code {
     [Parameter]
     public ViewMissionData Data { get; set; } = new();
-
     [Parameter]
     public bool ShowExpectedDrops { get; set; }
-
     private DatabaseMission Mission => Data.MissionInfo;
 
     private bool HasTarget =>

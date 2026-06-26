@@ -169,17 +169,14 @@
     /// <summary>Group id for new reports, or null for ungrouped.</summary>
     [Parameter]
     public string? GroupId { get; set; }
-
     [Parameter]
     public EventCallback Saved { get; set; }
-
     private bool _open;
     private FormModel? _form;
     private string? _editingId;
     private string _editingGroupId = "";
     private long _createdAt;
     private int _sortOrder;
-
     private MissionFilterBar? _filterBar;
     private int _filterBarKey;
     private IReadOnlyList<WebCondition>? _initialAnd;

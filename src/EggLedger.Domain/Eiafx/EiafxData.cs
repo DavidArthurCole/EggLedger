@@ -116,13 +116,10 @@ public static class EiafxData {
     internal sealed class FamilyData {
         [JsonPropertyName("id")]
         public string Id { get; set; } = "";
-
         [JsonPropertyName("name")]
         public string Name { get; set; } = "";
-
         [JsonPropertyName("child_afx_ids")]
         public List<int>? ChildAfxIds { get; set; }
-
         [JsonPropertyName("tiers")]
         public List<TierData>? Tiers { get; set; }
     }
@@ -130,10 +127,8 @@ public static class EiafxData {
     internal sealed class TierData {
         [JsonPropertyName("afx_id")]
         public int AfxId { get; set; }
-
         [JsonPropertyName("afx_level")]
         public int AfxLevel { get; set; }
-
         [JsonPropertyName("recipe")]
         public List<IngredientData>? Recipe { get; set; }
     }
@@ -141,10 +136,8 @@ public static class EiafxData {
     internal sealed class IngredientData {
         [JsonPropertyName("afx_id")]
         public int AfxId { get; set; }
-
         [JsonPropertyName("afx_level")]
         public int AfxLevel { get; set; }
-
         [JsonPropertyName("count")]
         public int Count { get; set; }
     }

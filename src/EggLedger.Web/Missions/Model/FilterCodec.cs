@@ -213,9 +213,7 @@ public static class FilterCodec {
     };
 
     private static string Int(int v) => v.ToString(CultureInfo.InvariantCulture);
-
     private static string Num(double v) => v.ToString(CultureInfo.InvariantCulture);
-
     private static string DayStr(DateOnly d) => d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
     private static bool TryParseDay(string s, out DateOnly day) =>

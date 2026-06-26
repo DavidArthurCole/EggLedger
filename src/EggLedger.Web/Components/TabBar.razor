@@ -23,10 +23,8 @@
 
 @code {
     public sealed record TabItem(string Label, string Href);
-
     [Parameter]
     public IReadOnlyList<TabItem> Tabs { get; set; } = [];
-
     [Parameter]
     public RenderFragment? Right { get; set; }
 

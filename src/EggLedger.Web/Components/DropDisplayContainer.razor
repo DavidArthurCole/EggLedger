@@ -2,7 +2,7 @@
 
 @* Renders the four spec-type sections inside one rounded container. *@
 
-<div class="rounded-md px-2 pt-1 pb-0 mb-2 ml-2rem mr-2rem" style="background: rgba(120, 128, 138, 0.12)">
+<div class="panel-muted rounded-md px-2 pt-1 pb-0 mb-2 ml-2rem mr-2rem">
     <DropDisplay Type="artifact" Items="Artifacts" MennoData="MennoData" ShowExpectedDrops="ShowExpectedDrops" MissionTotalDrops="TotalDrops" />
     <DropDisplay Type="stone" Items="Stones" MennoData="MennoData" ShowExpectedDrops="ShowExpectedDrops" MissionTotalDrops="TotalDrops" />
     <DropDisplay Type="ingredient" Items="Ingredients" MennoData="MennoData" ShowExpectedDrops="ShowExpectedDrops" MissionTotalDrops="TotalDrops" />
@@ -12,19 +12,14 @@
 @code {
     [Parameter]
     public IReadOnlyList<DropLike>? Artifacts { get; set; }
-
     [Parameter]
     public IReadOnlyList<DropLike>? Stones { get; set; }
-
     [Parameter]
     public IReadOnlyList<DropLike>? Ingredients { get; set; }
-
     [Parameter]
     public IReadOnlyList<DropLike>? StoneFragments { get; set; }
-
     [Parameter]
     public MissionMennoData? MennoData { get; set; }
-
     [Parameter]
     public bool ShowExpectedDrops { get; set; }
 

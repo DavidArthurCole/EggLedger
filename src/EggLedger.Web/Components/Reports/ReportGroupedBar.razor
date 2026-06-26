@@ -51,16 +51,12 @@
 
 @code {
     private const int MaxCols = 11;
-
     [Parameter, EditorRequired]
     public ReportResult Result { get; set; } = new();
-
     [Parameter, EditorRequired]
     public string Color { get; set; } = "#6366f1";
-
     [Parameter]
     public string? NormalizeBy { get; set; }
-
     private bool IsPct => NormalizeBy is "row_pct" or "col_pct" or "global_pct";
     private int RawColCount => Result.ColLabels.Count;
     private bool HasOtherGroup => RawColCount > MaxCols + 1;

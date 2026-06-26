@@ -7,10 +7,6 @@ namespace EggLedger.Web.Data;
 /// player's mission and drop rows and runs them through <see cref="InMemoryReportRunner"/>.
 /// </summary>
 public sealed class IndexedDbMissionDb : IReportRunner {
-    private const string MissionStore = "mission";
-    private const string DropStore = "artifact_drops";
-    private const string PlayerIdIndex = "player_id";
-
     private readonly IIndexedDb _db;
     private readonly IWeightData _weights;
 
@@ -24,8 +20,8 @@ public sealed class IndexedDbMissionDb : IReportRunner {
     /// and filtered to the player (browser DB is single-account).
     /// </summary>
     public async Task<ReportResult> RunReportAsync(ReportDefinition def, string accountId) {
-        var missionRows = await _db.GetAllByIndexAsync<MissionRow>(MissionStore, PlayerIdIndex, accountId);
-        var dropRows = await _db.GetAllAsync<ArtifactDropRow>(DropStore);
+        var missionRows = await _db.GetAllByIndexAsync<MissionRow>(IndexedDbStores.Mission, IndexedDbStores.PlayerIdIndex, accountId);
+        var dropRows = await _db.GetAllAsync<ArtifactDropRow>(IndexedDbStores.ArtifactDrops);
 
         var missions = missionRows
             .Where(m => m.PlayerId == accountId)

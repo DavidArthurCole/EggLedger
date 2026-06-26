@@ -12,7 +12,6 @@ namespace EggLedger.Domain.Reports;
 public static class Labels {
     private static readonly string[] RarityNames = ["Common", "Rare", "Epic", "Legendary"];
     private static readonly string[] TierNames = ["T1", "T2", "T3", "T4"];
-
     private static LedgerDisplayData Config => LedgerData.LedgerData.Config;
 
     /// <summary>

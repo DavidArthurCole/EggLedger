@@ -22,11 +22,8 @@ public sealed class DesktopPlatformCapabilitiesTests {
         public (int Width, int Height) SizeToReturn { get; set; } = (0, 0);
         public string? SaveResult { get; set; }
         public int ExitCalls { get; private set; }
-
         public (int Width, int Height) GetSize() => SizeToReturn;
-
         public string? ShowSaveFileDialog(string defaultName) => SaveResult;
-
         public void ExitProcess() => ExitCalls++;
     }
 

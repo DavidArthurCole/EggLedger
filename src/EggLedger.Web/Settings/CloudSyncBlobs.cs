@@ -9,55 +9,38 @@ namespace EggLedger.Web.Settings;
 public sealed record CloudSyncableSettings {
     [JsonPropertyName("auto_refresh_menno_pref")]
     public bool AutoRefreshMennoPref { get; init; }
-
     [JsonPropertyName("retry_failed_missions")]
     public bool RetryFailedMissions { get; init; }
-
     [JsonPropertyName("hide_timeout_errors")]
     public bool HideTimeoutErrors { get; init; }
-
     [JsonPropertyName("worker_count")]
     public int WorkerCount { get; init; }
-
     [JsonPropertyName("screenshot_safety")]
     public bool ScreenshotSafety { get; init; }
-
     [JsonPropertyName("show_mission_progress")]
     public bool ShowMissionProgress { get; init; }
-
     [JsonPropertyName("collapse_older_sections")]
     public bool CollapseOlderSections { get; init; }
-
     [JsonPropertyName("advanced_drop_filter")]
     public bool AdvancedDropFilter { get; init; }
-
     [JsonPropertyName("mission_view_by_date")]
     public bool MissionViewByDate { get; init; }
-
     [JsonPropertyName("mission_view_times")]
     public bool MissionViewTimes { get; init; }
-
     [JsonPropertyName("mission_recolor_dc")]
     public bool MissionRecolorDC { get; init; }
-
     [JsonPropertyName("mission_recolor_bc")]
     public bool MissionRecolorBC { get; init; }
-
     [JsonPropertyName("mission_show_expected_drops")]
     public bool MissionShowExpectedDrops { get; init; }
-
     [JsonPropertyName("mission_multi_view_mode")]
     public string MissionMultiViewMode { get; init; } = "";
-
     [JsonPropertyName("mission_sort_method")]
     public string MissionSortMethod { get; init; } = "";
-
     [JsonPropertyName("lifetime_sort_method")]
     public string LifetimeSortMethod { get; init; } = "";
-
     [JsonPropertyName("lifetime_show_drops_per_ship")]
     public bool LifetimeShowDropsPerShip { get; init; }
-
     [JsonPropertyName("lifetime_show_expected_totals")]
     public bool LifetimeShowExpectedTotals { get; init; }
 }
@@ -66,16 +49,12 @@ public sealed record CloudSyncableSettings {
 public sealed record CloudReportGroup {
     [JsonPropertyName("Id")]
     public string Id { get; init; } = "";
-
     [JsonPropertyName("AccountId")]
     public string AccountId { get; init; } = "";
-
     [JsonPropertyName("Name")]
     public string Name { get; init; } = "";
-
     [JsonPropertyName("SortOrder")]
     public int SortOrder { get; init; }
-
     [JsonPropertyName("CreatedAt")]
     public long CreatedAt { get; init; }
 
@@ -100,7 +79,6 @@ public sealed record CloudReportGroup {
 public sealed record CloudReportsBlob {
     [JsonPropertyName("reports")]
     public IReadOnlyList<ReportDefinition> Reports { get; init; } = [];
-
     [JsonPropertyName("groups")]
     public IReadOnlyList<CloudReportGroup> Groups { get; init; } = [];
 

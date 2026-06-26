@@ -17,7 +17,6 @@ public static partial class ChartGeometry {
     public const double PadTop = 10;
     public const double PadBottom = 60;
     public const int MaxLabels = 12;
-
     private static readonly string[] Months =
     [
         "Jan", "Feb", "Mar", "Apr", "May", "Jun",

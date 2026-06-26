@@ -15,11 +15,8 @@ else
 @code {
     [Parameter]
     public string Value { get; set; } = "";
-
     protected override void OnInitialized() => ScreenshotSafety.Changed += OnChanged;
-
     public void Dispose() => ScreenshotSafety.Changed -= OnChanged;
-
     private void OnChanged() => InvokeAsync(StateHasChanged);
 
     private static bool IsEid(string s) =>

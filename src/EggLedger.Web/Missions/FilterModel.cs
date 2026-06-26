@@ -5,7 +5,6 @@ public sealed class FilterCondition {
     public string TopLevel { get; set; } = "";
     public string Op { get; set; } = "";
     public string Val { get; set; } = "";
-
     public FilterCondition() { }
 
     public FilterCondition(string topLevel, string op, string val) {

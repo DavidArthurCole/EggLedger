@@ -8,9 +8,7 @@ namespace EggLedger.Web.Server.Sync.Admin;
 // handler runs behind RequireAuth (sets X-Discord-ID), then checks the allowlist.
 public sealed class AdminEndpoints(NpgsqlDataSource source, ApiMetrics metrics, SpamLog spam, IReadOnlySet<string> adminIds) {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
-
     private static string DiscordId(HttpContext ctx) => ctx.Request.Headers["X-Discord-ID"].ToString();
-
     private bool IsAdmin(HttpContext ctx) => adminIds.Contains(DiscordId(ctx));
 
     private static async Task ForbidAsync(HttpContext ctx) {

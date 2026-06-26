@@ -26,20 +26,16 @@
 @code {
     [Parameter, EditorRequired]
     public ReportResult Result { get; set; } = new();
-
     [Parameter, EditorRequired]
     public string Color { get; set; } = "#6366f1";
-
     [Parameter]
     public string? UnitLabel { get; set; }
-
     [Parameter]
     public string? LabelColors { get; set; }
 
     /// <summary>chart_type: "bar", "bar_desc", or "bar_asc".</summary>
     [Parameter]
     public string? ChartType { get; set; }
-
     private string UnitSuffix => string.IsNullOrEmpty(UnitLabel) ? "" : " " + UnitLabel;
 
     private IReadOnlyDictionary<string, string> ParsedColors =>

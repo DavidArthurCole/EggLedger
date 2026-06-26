@@ -75,7 +75,7 @@ public static class ReportMapping {
         ValueFilterOp = d.ValueFilterOp,
         ValueFilterThreshold = d.ValueFilterThreshold,
         GroupId = d.GroupId,
-        NormalizeBy = string.IsNullOrEmpty(d.NormalizeBy) ? "none" : d.NormalizeBy,
+        NormalizeBy = string.IsNullOrEmpty(d.NormalizeBy) ? ReportDefaults.NormalizeNone : d.NormalizeBy,
         LabelColors = d.LabelColors,
         UnfilledColor = d.UnfilledColor,
         FamilyWeight = d.FamilyWeight,
