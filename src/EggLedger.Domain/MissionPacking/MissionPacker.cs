@@ -1,5 +1,6 @@
 using System.Globalization;
 using EggLedger.Domain.Ei;
+using EggLedger.Domain.MissionQuery;
 using Ei;
 
 namespace EggLedger.Domain.MissionPacking;
@@ -8,7 +9,7 @@ namespace EggLedger.Domain.MissionPacking;
 /// Mission compilation + nominal-capacity logic. Go port of package missionpacking
 /// (capacity.go + missionpacking.go), including the mission_type = -1 ("not yet determined") sentinel.
 /// </summary>
-public sealed class MissionPacker {
+public sealed class MissionPacker : IMissionCompiler {
     private const long BuggedCapLower = 1712721600;
     private const long BuggedCapUpper = 1713286800;
 
@@ -197,6 +198,9 @@ public sealed class MissionPacker {
     /// Compiles a full DatabaseMission from a decoded mission; empty record when Info is null.
     /// Mirrors Go CompileMissionInformation.
     /// </summary>
+    IMissionRow IMissionCompiler.CompileMissionInformation(CompleteMissionResponse mission) =>
+        CompileMissionInformation(mission);
+
     public DatabaseMission CompileMissionInformation(CompleteMissionResponse completeMissionResponse) {
         var info = completeMissionResponse.Info;
         if (info is null) {

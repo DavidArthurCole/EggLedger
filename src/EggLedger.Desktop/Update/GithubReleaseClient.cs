@@ -127,6 +127,53 @@ public sealed class GithubReleaseClient(HttpClient httpClient) {
     }
 
     /// <summary>
+    /// Expected SHA-256 (lowercase hex) for this platform's asset, read from the release's
+    /// SHA256SUMS asset (lines of "hash␠␠filename"). Null when the asset or its line is absent.
+    /// </summary>
+    public async Task<string?> GetExpectedSha256Async(string tag, CancellationToken cancel = default) {
+        var listUrl = $"https://api.github.com/repos/{GithubRepo}/releases/tags/{tag}";
+        var json = await GetStringAsync(listUrl, cancel).ConfigureAwait(false);
+        if (json is null) {
+            return null;
+        }
+        string? sumsUrl = null;
+        try {
+            using var doc = JsonDocument.Parse(json);
+            if (!doc.RootElement.TryGetProperty("assets", out var assets) || assets.ValueKind != JsonValueKind.Array) {
+                return null;
+            }
+            foreach (var asset in assets.EnumerateArray()) {
+                if ((asset.TryGetProperty("name", out var n) ? n.GetString() : null) == "SHA256SUMS") {
+                    sumsUrl = asset.TryGetProperty("browser_download_url", out var u) ? u.GetString() : null;
+                    break;
+                }
+            }
+        } catch (JsonException) {
+            return null;
+        }
+        if (string.IsNullOrEmpty(sumsUrl)) {
+            return null;
+        }
+
+        var sums = await GetStringAsync(sumsUrl, cancel).ConfigureAwait(false);
+        if (sums is null) {
+            return null;
+        }
+        var want = ExpectedAssetName();
+        foreach (var line in sums.Split('\n')) {
+            var trimmed = line.Trim();
+            if (trimmed.Length == 0) {
+                continue;
+            }
+            var parts = trimmed.Split([' '], 2, StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length == 2 && parts[1].Trim().TrimStart('*') == want) {
+                return parts[0].Trim().ToLowerInvariant();
+            }
+        }
+        return null;
+    }
+
+    /// <summary>
     /// Stream the asset to <paramref name="destPath"/>, reporting (downloaded, total)
     /// roughly every 64KB. Ports downloadUpdate; throws on non-success or truncated download.
     /// </summary>

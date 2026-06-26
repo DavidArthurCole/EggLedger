@@ -118,6 +118,32 @@ hr {
   @apply bg-darker_tab_hover cursor-not-allowed;
 }
 
+.discord-btn {
+  @apply inline-flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-semibold text-white;
+  background-color: #5865f2;
+  transition: background-color 0.15s ease;
+}
+
+.discord-btn:hover {
+  background-color: #4752c4;
+}
+
+.discord-icon {
+  @apply h-5 w-5;
+}
+
+/* The Fetch/Add row sits flush under the account nameplate as one joined block. */
+.nameplate-stack {
+  @apply inline-flex flex-col;
+  width: fit-content;
+  min-width: 16rem;
+}
+
+.nameplate-btn {
+  @apply flex-1 text-center px-4 py-2 border border-gray-700 text-sm font-medium text-gray-400;
+  border-top: 0;
+}
+
 .mission-view-div {
   @apply text-center text-xs rounded-full w-max px-2 py-0.5 mx-auto mt-2 mb-1;
 }

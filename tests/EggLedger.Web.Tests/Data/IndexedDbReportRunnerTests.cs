@@ -3,7 +3,7 @@ using EggLedger.Web.Data;
 
 namespace EggLedger.Web.Tests.Data;
 
-public sealed class IndexedDbMissionDbTests {
+public sealed class IndexedDbReportRunnerTests {
     private const string Eid = "EI1";
 
     private sealed class NoWeights : IWeightData {
@@ -29,7 +29,7 @@ public sealed class IndexedDbMissionDbTests {
         db.Seed("mission", Mission("c", ship: 3, start: 300));
         db.Seed("mission", Mission("other", ship: 9, start: 400) with { PlayerId = "EI2" });
 
-        var sut = new IndexedDbMissionDb(db, new NoWeights());
+        var sut = new IndexedDbReportRunner(db, new NoWeights());
         var def = new ReportDefinition {
             Mode = "aggregate",
             GroupBy = "ship_type",
@@ -83,7 +83,7 @@ public sealed class IndexedDbMissionDbTests {
             Level = 0,
         });
 
-        var sut = new IndexedDbMissionDb(db, new NoWeights());
+        var sut = new IndexedDbReportRunner(db, new NoWeights());
         var def = new ReportDefinition {
             Mode = "aggregate",
             GroupBy = "rarity",
@@ -100,9 +100,45 @@ public sealed class IndexedDbMissionDbTests {
     }
 
     [Fact]
+    public async Task RunReportAsync_DropReport_ReadsDropsByIndexNotWholeStore() {
+        var db = new CountingIndexedDb();
+        db.Seed("mission", Mission("a", ship: 9, start: 100));
+        db.Seed("artifact_drops", new ArtifactDropRow {
+            PlayerId = Eid,
+            MissionId = "a",
+            DropIndex = 0,
+            ArtifactId = 12,
+            Rarity = 3,
+            Level = 0,
+        });
+        db.Seed("artifact_drops", new ArtifactDropRow {
+            PlayerId = "EI2",
+            MissionId = "z",
+            DropIndex = 0,
+            ArtifactId = 99,
+            Rarity = 3,
+            Level = 0,
+        });
+
+        var sut = new IndexedDbReportRunner(db, new NoWeights());
+        var def = new ReportDefinition {
+            Mode = "aggregate",
+            GroupBy = "rarity",
+            Subject = "artifacts",
+            AccountId = Eid,
+        };
+
+        var result = await sut.RunReportAsync(def, Eid);
+
+        Assert.Contains(("artifact_drops", "player_id"), db.IndexQueries);
+        Assert.DoesNotContain("artifact_drops", db.WholeStoreReads);
+        Assert.Equal([1], result.Values);
+    }
+
+    [Fact]
     public async Task RunReportAsync_EmptyWhenNoRows() {
         var db = new FakeIndexedDb();
-        var sut = new IndexedDbMissionDb(db, new NoWeights());
+        var sut = new IndexedDbReportRunner(db, new NoWeights());
         var def = new ReportDefinition {
             Mode = "aggregate",
             GroupBy = "ship_type",
@@ -114,5 +150,30 @@ public sealed class IndexedDbMissionDbTests {
 
         Assert.Empty(result.Values);
         Assert.Empty(result.Labels);
+    }
+
+    private sealed class CountingIndexedDb : IIndexedDb {
+        private readonly FakeIndexedDb _inner = new();
+        public List<(string Store, string Index)> IndexQueries { get; } = [];
+        public List<string> WholeStoreReads { get; } = [];
+
+        public void Seed(string store, object row) => _inner.Seed(store, row);
+
+        public ValueTask<T[]> GetAllByIndexAsync<T>(string store, string index, object value) {
+            IndexQueries.Add((store, index));
+            return _inner.GetAllByIndexAsync<T>(store, index, value);
+        }
+
+        public ValueTask<T[]> GetAllAsync<T>(string store) {
+            WholeStoreReads.Add(store);
+            return _inner.GetAllAsync<T>(store);
+        }
+
+        public ValueTask<T?> GetAsync<T>(string store, object key) => _inner.GetAsync<T>(store, key);
+        public ValueTask PutAsync(string store, object value) => _inner.PutAsync(store, value);
+        public ValueTask<int> PutManyAsync(string store, IEnumerable<object> values) => _inner.PutManyAsync(store, values);
+        public ValueTask DeleteAsync(string store, object key) => _inner.DeleteAsync(store, key);
+        public ValueTask ClearAsync(string store) => _inner.ClearAsync(store);
+        public ValueTask<int> CountAsync(string store) => _inner.CountAsync(store);
     }
 }

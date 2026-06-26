@@ -1,4 +1,5 @@
 using EggLedger.Domain.Api;
+using EggLedger.Domain.MissionPacking;
 using EggLedger.Domain.MissionQuery;
 using EggLedger.Domain.Reports;
 using EggLedger.Web.Data;
@@ -25,13 +26,14 @@ public static class WebServiceRegistration {
             sp.GetRequiredService<IApiPayloadDecoder>(),
             accounts: sp.GetRequiredService<IndexedDbAccountStore>()));
         services.AddScoped<IMissionStore>(sp => sp.GetRequiredService<IndexedDbMissionStore>());
-        services.AddScoped<IndexedDbMissionDb>();
-        services.AddScoped<IReportRunner>(sp => sp.GetRequiredService<IndexedDbMissionDb>());
+        services.AddScoped<IndexedDbReportRunner>();
+        services.AddScoped<IReportRunner>(sp => sp.GetRequiredService<IndexedDbReportRunner>());
 
-        services.AddScoped<IArtifactQuality>(_ => EiafxQualityAdapter.Instance);
+        services.AddSingleton<IArtifactQuality>(_ => EiafxQualityAdapter.Instance);
+        services.AddScoped<IMissionCompiler>(_ => new MissionPacker(EiafxMissionConfigSource.Instance));
         services.AddScoped<MissionQueryHandlers>();
 
-        services.AddScoped<EggLedger.Web.Missions.MissionConfigProvider>();
+        services.AddSingleton<EggLedger.Web.Missions.MissionConfigProvider>();
 
         // CORS blocks auxbrain directly; the prefix is a same-origin path the host reverse-proxies upstream.
         services.AddScoped(sp => new ApiClient(sp.GetRequiredService<HttpClient>(), apiPrefix: "/egg-api"));
@@ -45,9 +47,11 @@ public static class WebServiceRegistration {
         services.AddScoped<DownloadService>();
         services.AddScoped<IDownloadService>(sp => sp.GetRequiredService<DownloadService>());
 
-        services.AddScoped<IWeightData>(_ => EiafxWeightData.Instance);
+        services.AddSingleton<IWeightData>(_ => EiafxWeightData.Instance);
 
-        services.AddScoped<MennoService>();
+        // Singleton: the multi-MB community payload downloads once for all circuits. Owns a
+        // dedicated long-lived HttpClient (not the scoped one) to avoid a captive dependency.
+        services.AddSingleton(_ => new MennoService(new HttpClient()));
 
         // Redirect is behind INavigation for testability.
         services.AddScoped<INavigation, BlazorNavigation>();

@@ -201,6 +201,57 @@ public sealed class UpdateStatusTests {
     }
 
     [Fact]
+    public async Task DownloadAndInstall_ValidChecksum_GoesReady() {
+        var exeDir = Path.Combine(Path.GetTempPath(), "egg-dl-sum-ok-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(exeDir);
+        var exePath = Path.Combine(exeDir, OperatingSystem.IsWindows() ? "EggLedger.exe" : "EggLedger");
+        try {
+            var want = GithubReleaseClient.ExpectedAssetName();
+            var payload = AssetPayload(want);
+            var sum = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(payload));
+            var assetJson = $$"""{"assets":[{"name":"{{want}}","browser_download_url":"https://x/{{want}}"},{"name":"SHA256SUMS","browser_download_url":"https://x/SHA256SUMS"}]}""";
+            var github = Github(req =>
+                req.RequestUri!.AbsoluteUri.Contains("releases/tags") ? StubHttpMessageHandler.Json(assetJson)
+                : req.RequestUri!.AbsoluteUri.EndsWith("SHA256SUMS", StringComparison.Ordinal)
+                    ? StubHttpMessageHandler.Json($"{sum}  {want}\n")
+                    : StubHttpMessageHandler.Bytes(payload));
+
+            var svc = new UpdateService(github, () => "2.1.4", () => exePath);
+            await svc.DownloadAndInstallAsync("2.2.0");
+
+            Assert.Equal(UpdatePhase.Ready, svc.Phase);
+        } finally {
+            Directory.Delete(exeDir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task DownloadAndInstall_ChecksumMismatch_Fails() {
+        var exeDir = Path.Combine(Path.GetTempPath(), "egg-dl-sum-bad-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(exeDir);
+        var exePath = Path.Combine(exeDir, OperatingSystem.IsWindows() ? "EggLedger.exe" : "EggLedger");
+        try {
+            var want = GithubReleaseClient.ExpectedAssetName();
+            var payload = AssetPayload(want);
+            var wrong = new string('0', 64);
+            var assetJson = $$"""{"assets":[{"name":"{{want}}","browser_download_url":"https://x/{{want}}"},{"name":"SHA256SUMS","browser_download_url":"https://x/SHA256SUMS"}]}""";
+            var github = Github(req =>
+                req.RequestUri!.AbsoluteUri.Contains("releases/tags") ? StubHttpMessageHandler.Json(assetJson)
+                : req.RequestUri!.AbsoluteUri.EndsWith("SHA256SUMS", StringComparison.Ordinal)
+                    ? StubHttpMessageHandler.Json($"{wrong}  {want}\n")
+                    : StubHttpMessageHandler.Bytes(payload));
+
+            var svc = new UpdateService(github, () => "2.1.4", () => exePath);
+            await svc.DownloadAndInstallAsync("2.2.0");
+
+            Assert.Equal(UpdatePhase.Failed, svc.Phase);
+            Assert.False(File.Exists(UpdateService.NewBinaryTempPath(exePath)), "binary should be deleted on checksum failure");
+        } finally {
+            Directory.Delete(exeDir, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task DownloadAndInstall_ReachesHandoff_LaunchesNewAndExits() {
         // DownloadAndInstall reaches the self-replace handoff and, after the handshake
         // wait + exit delay, runs the injected exit. Runner + exit are fakes here, the

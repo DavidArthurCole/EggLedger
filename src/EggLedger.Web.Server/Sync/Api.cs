@@ -77,6 +77,32 @@ public static class Api {
         MapAuthed(app, ["GET"], "/api/v1/admin/metrics", store, admin.Metrics);
         MapAuthed(app, ["DELETE"], "/api/v1/admin/users/{discordId}", store,
             c => admin.DeleteUser(c, (string)c.Request.RouteValues["discordId"]!));
+
+        // Ship 3D assets: authed + admin-allowlist gated. Bytes live in a server-local dir
+        // (not wwwroot), served only here, until licensing is confirmed.
+        var ships = app.Services.GetRequiredService<Ships.ShipAssetService>();
+        var adminIds = cfg.AdminDiscordIds;
+        MapAuthed(app, ["GET"], "/api/ships/manifest", store, async ctx => {
+            if (!adminIds.Contains(ctx.Request.Headers["X-Discord-ID"].ToString())) {
+                ctx.Response.StatusCode = StatusCodes.Status403Forbidden;
+                return;
+            }
+            ctx.Response.ContentType = "application/json; charset=utf-8";
+            await ctx.Response.WriteAsJsonAsync(
+                ships.Manifest.Ships.ToDictionary(kv => kv.Key, kv => new { bbox = kv.Value.Bbox }),
+                ctx.RequestAborted);
+        });
+        MapAuthed(app, ["GET"], "/api/ships/{key}.glb", store, async ctx => {
+            bool isAdmin = adminIds.Contains(ctx.Request.Headers["X-Discord-ID"].ToString());
+            var key = (string)ctx.Request.RouteValues["key"]!;
+            var r = await Ships.ShipEndpoints.HandleGlb(ships, isAdmin, key, ctx.RequestAborted);
+            ctx.Response.StatusCode = r.Status;
+            if (r.Bytes is not null) {
+                ctx.Response.ContentType = r.ContentType!;
+                ctx.Response.Headers.CacheControl = "public, max-age=31536000, immutable";
+                await ctx.Response.Body.WriteAsync(r.Bytes, ctx.RequestAborted);
+            }
+        });
     }
 
     private static void MapAuthed(WebApplication app, string[] methods, string pattern,

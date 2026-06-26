@@ -14,7 +14,9 @@
 
 **EggLedger as a Web app: [eggledger.davidarthurcole.me](https://eggledger.davidarthurcole.me/)**
 - Nothing to install.
-- (Optionally) Connect to Discord to sync Settings.
+- Connect with Discord to start.
+  - ONLY used for login/identification
+  - Optionally can be used to store/sync settings
 - Enter your EID, and pull your data.
 
 This is the recommended way to run EggLedger.<br><br>
@@ -22,6 +24,7 @@ This is the recommended way to run EggLedger.<br><br>
 Prefer a local app?
 **[Download the desktop build](https://github.com/DavidArthurCole/EggLedger/releases)** instead.
 - Same features as the web app
+- (Optionally) Connect to Discord to sync Settings.
 - Runs offline, keeps everything on your machine.
 
 ## What's "new"

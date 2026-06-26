@@ -1,6 +1,8 @@
 namespace EggLedger.Web.Data;
 
-/// <summary>Object-store access over the browser IndexedDB shim. One instance backs every persistence store.</summary>
+// Key-value object-store seam shared by all three persistence backends (browser IndexedDB,
+// Postgres, SQLite). store/index names come from IndexedDbStores; values + keys are the typed
+// Row records the stores own. The JSON<->column round-trip is fixed by JsonRowCodec.
 public interface IIndexedDb {
     ValueTask PutAsync(string store, object value);
     ValueTask<int> PutManyAsync(string store, IEnumerable<object> values);

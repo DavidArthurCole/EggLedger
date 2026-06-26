@@ -8,7 +8,7 @@ public class MissionQueryHandlersTests {
     private static (MissionQueryHandlers h, FakeMissionStore store, FakeQuality q) NewSut() {
         var store = new FakeMissionStore();
         var quality = new FakeQuality();
-        return (new MissionQueryHandlers(store, quality), store, quality);
+        return (new MissionQueryHandlers(store, quality, new FakeMissionCompiler()), store, quality);
     }
 
     private static CompleteMissionResponse Mission(string id, params ArtifactSpec[] specs) {

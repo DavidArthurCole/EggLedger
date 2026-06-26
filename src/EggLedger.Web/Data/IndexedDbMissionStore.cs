@@ -69,8 +69,9 @@ public sealed class IndexedDbMissionStore : IMissionStore {
 
     /// <summary>One decoded mission for (player, mission). Null on cache miss or decode error (Go returns nil for both).</summary>
     public async Task<CompleteMissionResponse?> GetCompleteMissionAsync(string playerId, string missionId) {
-        var rows = await PlayerRowsAsync(playerId);
-        var row = rows.FirstOrDefault(r => r.MissionId == missionId);
+        // Indexed single-row lookup on the [player_id, mission_id] composite key, not a full-table
+        // scan: the overlay + prev/next navigation hit this per click.
+        var row = await _db.GetAsync<MissionRow>(IndexedDbStores.Mission, new object[] { playerId, missionId }).ConfigureAwait(false);
         if (row is null) {
             return null;
         }
@@ -121,10 +122,6 @@ public sealed class IndexedDbMissionStore : IMissionStore {
             return null;
         }
     }
-
-    /// <summary>Compiles a decoded mission into a display row (slow path).</summary>
-    public IMissionRow CompileMissionInformation(CompleteMissionResponse mission) =>
-        _packer.CompileMissionInformation(mission);
 
     private readonly HashSet<string> _backfilling = [];
 

@@ -23,11 +23,18 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents(o => o.DetailedErrors = true);
 
 // Behind nginx TLS termination: trust the forwarded proto/host so the app knows it is
-// HTTPS (secure cookies + correct OAuth redirect scheme).
+// HTTPS (secure cookies + correct OAuth redirect scheme). Only forwarded headers from the
+// configured proxy networks are trusted, so a client off the trusted path can't spoof its IP/host.
 builder.Services.Configure<ForwardedHeadersOptions>(o => {
     o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost;
     o.KnownIPNetworks.Clear();
     o.KnownProxies.Clear();
+    o.ForwardLimit = null;
+    foreach (var cidr in cfg.TrustedProxyNetworks) {
+        if (System.Net.IPNetwork.TryParse(cidr, out var net)) {
+            o.KnownIPNetworks.Add(net);
+        }
+    }
 });
 
 // Cookie auth carries the Discord identity into the Blazor circuit via the framework
@@ -70,11 +77,6 @@ static string SelfBaseFromUrls() {
     return first.Replace("0.0.0.0", "localhost").Replace("[::]", "localhost").Replace("+", "localhost");
 }
 
-// Override the WASM blob-crypto seam: WASM used SubtleCrypto, the server uses managed
-// AES-GCM. Decode needs no override (LocalApiPayloadDecoder is already the default).
-builder.Services.RemoveAll<IBlobCipher>();
-builder.Services.AddScoped<IBlobCipher, LocalBlobCipher>();
-
 // Server-side per-user storage, only when a DB is configured (dev without DB keeps the
 // browser IndexedDB path). PostgresIndexedDb scopes every op to the circuit's CurrentUser.
 builder.Services.AddScoped<EggLedger.Web.Server.Storage.CurrentUser>();
@@ -87,6 +89,12 @@ if (hasDb) {
         sp.GetRequiredService<EggLedger.Web.Server.Storage.CurrentUser>()));
     builder.Services.AddScoped<EggLedger.Web.Server.Storage.FirstLoginBackfill>();
 }
+
+// Ship 3D assets read from a server-local dir (content root /ships), served only via the
+// auth-gated endpoint. Missing dir -> empty manifest, endpoint 404s gracefully.
+builder.Services.AddSingleton(_ =>
+    new EggLedger.Web.Server.Ships.ShipAssetService(
+        Path.Combine(builder.Environment.ContentRootPath, "ships")));
 
 // Outbound client for the egg-api forward (server calls auxbrain directly; no browser CORS).
 builder.Services.AddHttpClient("auxbrain", c => c.BaseAddress = new Uri("https://www.auxbrain.com"));

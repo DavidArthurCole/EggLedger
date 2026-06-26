@@ -61,6 +61,7 @@ public sealed class FakeIndexedDb : IIndexedDb {
     /// </summary>
     private static object? IndexValue<T>(T row, string index) => (row, index) switch {
         (MissionRow m, "player_id") => m.PlayerId,
+        (ArtifactDropRow d, "player_id") => d.PlayerId,
         (ReportRow r, "account_id") => r.AccountId,
         (ReportGroupRow g, "account_id") => g.AccountId,
         _ => throw new NotSupportedException($"FakeIndexedDb has no index '{index}' for {typeof(T).Name}"),
@@ -108,10 +109,17 @@ public sealed class FakeIndexedDb : IIndexedDb {
             if (!_stores.TryGetValue(store, out var list)) {
                 return new ValueTask<T?>(default(T));
             }
-            var match = list.OfType<T>().FirstOrDefault(r => KeyOf(r!)?.Equals(key) == true);
+            var match = list.OfType<T>().FirstOrDefault(r => KeyMatches(r!, key));
             return new ValueTask<T?>(match);
         }
     }
+
+    // Mission uses the composite [player_id, mission_id] key (passed as object[]); other stores
+    // use the single string keyPath via KeyOf.
+    private static bool KeyMatches(object row, object key) =>
+        row is MissionRow m && key is object[] { Length: 2 } k
+            ? m.PlayerId.Equals(k[0]) && m.MissionId.Equals(k[1])
+            : KeyOf(row)?.Equals(key) == true;
 
     public ValueTask DeleteAsync(string store, object key) {
         lock (_gate) {

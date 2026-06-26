@@ -12,12 +12,20 @@ public sealed record AppConfig(
     string DeployAgentUrl,
     string DeployAgentSecret,
     string MennoFunctionKey,
-    IReadOnlySet<string> AdminDiscordIds) {
+    IReadOnlySet<string> AdminDiscordIds,
+    IReadOnlyList<string> TrustedProxyNetworks) {
     public const string MennoUpstreamUrl = "https://eggincdatacollection.azurewebsites.net/api/SubmitEid";
+
+    // Private + ULA + loopback ranges. The container sits behind nginx on a private docker network,
+    // so only forwarded headers from those sources are trusted. Override with TRUSTED_PROXY_NETWORKS.
+    private static readonly string[] DefaultProxyNetworks =
+        ["127.0.0.0/8", "::1/128", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "fc00::/7", "fe80::/10"];
 
     public static AppConfig FromEnv(Func<string, string?> get) {
         string V(string k) => get(k) ?? string.Empty;
         var addr = V("LISTEN_ADDR");
+        var proxyNets = V("TRUSTED_PROXY_NETWORKS")
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         var admins = V("ADMIN_DISCORD_IDS")
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .ToHashSet(StringComparer.Ordinal);
@@ -35,6 +43,7 @@ public sealed record AppConfig(
             DeployAgentUrl: V("DEPLOY_AGENT_URL"),
             DeployAgentSecret: V("DEPLOY_AGENT_SECRET"),
             MennoFunctionKey: V("MENNO_FUNCTION_KEY"),
-            AdminDiscordIds: admins);
+            AdminDiscordIds: admins,
+            TrustedProxyNetworks: proxyNets.Length > 0 ? proxyNets : DefaultProxyNetworks);
     }
 }

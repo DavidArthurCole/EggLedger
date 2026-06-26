@@ -64,7 +64,10 @@ public sealed class MennoService {
     public const string DataUrl =
         "https://eggincdatacollectionsa.blob.core.windows.net/mission-data/all-data.json.gz";
 
+    // Registered as a singleton so the multi-MB community payload downloads once for all circuits,
+    // not per user/tab. Owns one long-lived HttpClient (the data URL is absolute, no base address).
     private readonly HttpClient _http;
+    private readonly Lock _gate = new();
     private List<ConfigurationItem>? _cache;
     private Task<IReadOnlyList<ConfigurationItem>>? _inFlight;
     public MennoService(HttpClient http) => _http = http;
@@ -75,15 +78,22 @@ public sealed class MennoService {
         if (_cache is { Count: > 0 } cached) {
             return Task.FromResult<IReadOnlyList<ConfigurationItem>>(cached);
         }
-        _inFlight ??= LoadOnceAsync(cancellationToken);
-        return _inFlight;
+        lock (_gate) {
+            if (_cache is { Count: > 0 } cachedLocked) {
+                return Task.FromResult<IReadOnlyList<ConfigurationItem>>(cachedLocked);
+            }
+            _inFlight ??= LoadOnceAsync(cancellationToken);
+            return _inFlight;
+        }
     }
 
     private async Task<IReadOnlyList<ConfigurationItem>> LoadOnceAsync(CancellationToken cancellationToken) {
         try {
             return await RefreshAsync(cancellationToken).ConfigureAwait(false);
         } finally {
-            _inFlight = null;
+            lock (_gate) {
+                _inFlight = null;
+            }
         }
     }
 
@@ -167,6 +177,47 @@ public sealed class MennoService {
         string pctMode = def.NormalizeBy;
         bool isPct = pctMode is "row_pct" or "col_pct" or "global_pct";
 
+        var (familyDrops, estimatedMissions) = AccumulateDrops(
+            items, rowMatcher, colMatcher, rawRowLabels, rawColLabels, nR, nC, isPct, def, familySet);
+
+        var (shipAxis, durAxis) = ResolveAxisRoles(def);
+
+        var (matrixValues, airtimeMatrixValues) = ComputeMatrix(
+            familyDrops, estimatedMissions, nR, nC, isPct, pctMode, shipAxis, durAxis, rawRowLabels, rawColLabels);
+
+        var rowLabels = new List<string>(nR);
+        var colLabels = new List<string>(nC);
+        for (int i = 0; i < nR; i++) {
+            rowLabels.Add(Labels.FormatLabel(def.GroupBy, rawRowLabels[i]));
+        }
+        for (int i = 0; i < nC; i++) {
+            colLabels.Add(Labels.FormatLabel(def.SecondaryGroupBy, rawColLabels[i]));
+        }
+
+        return new ReportResult {
+            RowLabels = rowLabels,
+            ColLabels = colLabels,
+            MatrixValues = [.. matrixValues],
+            Is2D = true,
+            IsFloat = true,
+            Weight = def.Weight,
+            RawRowLabels = [.. rawRowLabels],
+            RawColLabels = [.. rawColLabels],
+            AirtimeMatrixValues = airtimeMatrixValues?.ToList(),
+        };
+    }
+
+    private static (double[] familyDrops, double[] estimatedMissions) AccumulateDrops(
+        IReadOnlyList<ConfigurationItem> items,
+        MennoMatcher rowMatcher,
+        MennoMatcher colMatcher,
+        IReadOnlyList<string> rawRowLabels,
+        IReadOnlyList<string> rawColLabels,
+        int nR,
+        int nC,
+        bool isPct,
+        ReportDefinition def,
+        HashSet<int>? familySet) {
         var familyDrops = new double[nR * nC];
         var estimatedMissions = new double[nR * nC];
 
@@ -205,6 +256,10 @@ public sealed class MennoService {
             }
         }
 
+        return (familyDrops, estimatedMissions);
+    }
+
+    private static (string shipAxis, string durAxis) ResolveAxisRoles(ReportDefinition def) {
         string shipAxis = "";
         string durAxis = "";
         if (def.GroupBy == "ship_type") {
@@ -217,7 +272,20 @@ public sealed class MennoService {
         } else if (def.SecondaryGroupBy == "duration_type") {
             durAxis = "col";
         }
+        return (shipAxis, durAxis);
+    }
 
+    private static (double[] matrixValues, double[]? airtimeMatrixValues) ComputeMatrix(
+        double[] familyDrops,
+        double[] estimatedMissions,
+        int nR,
+        int nC,
+        bool isPct,
+        string pctMode,
+        string shipAxis,
+        string durAxis,
+        IReadOnlyList<string> rawRowLabels,
+        IReadOnlyList<string> rawColLabels) {
         var matrixValues = new double[nR * nC];
 
         bool canComputeAirtime = shipAxis != "" && durAxis != "" && !isPct;
@@ -266,26 +334,7 @@ public sealed class MennoService {
             Matrix.Apply2DPctNormalization(matrixValues, nR, nC, pctMode);
         }
 
-        var rowLabels = new List<string>(nR);
-        var colLabels = new List<string>(nC);
-        for (int i = 0; i < nR; i++) {
-            rowLabels.Add(Labels.FormatLabel(def.GroupBy, rawRowLabels[i]));
-        }
-        for (int i = 0; i < nC; i++) {
-            colLabels.Add(Labels.FormatLabel(def.SecondaryGroupBy, rawColLabels[i]));
-        }
-
-        return new ReportResult {
-            RowLabels = rowLabels,
-            ColLabels = colLabels,
-            MatrixValues = [.. matrixValues],
-            Is2D = true,
-            IsFloat = true,
-            Weight = def.Weight,
-            RawRowLabels = [.. rawRowLabels],
-            RawColLabels = [.. rawColLabels],
-            AirtimeMatrixValues = airtimeMatrixValues?.ToList(),
-        };
+        return (matrixValues, airtimeMatrixValues);
     }
 
     private delegate bool MennoMatcher(ConfigurationItem item, string rawVal);

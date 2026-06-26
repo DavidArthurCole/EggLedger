@@ -51,12 +51,6 @@ public interface IMissionStore {
     Task<IReadOnlyList<StoredDrop>?> GetStoredPlayerDropsAsync(string playerId);
 
     /// <summary>
-    /// Compiles a decoded complete mission into a display row (slow path).
-    /// Mirrors missionpacking.CompileMissionInformation; injected to avoid a hard dependency.
-    /// </summary>
-    IMissionRow CompileMissionInformation(CompleteMissionResponse mission);
-
-    /// <summary>
     /// Kicks a one-time background filter-column backfill for the EID. Called only
     /// when CountPendingFilterCols succeeded and returned &gt; 0.
     /// </summary>

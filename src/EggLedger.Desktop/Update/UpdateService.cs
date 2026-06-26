@@ -227,6 +227,10 @@ public sealed class UpdateService : IUpdateStatusProvider {
         var tempPath = NewBinaryTempPath(exePath);
         TryDelete(tempPath);
 
+        // Expected SHA-256 from the release's SHA256SUMS asset. Verified against the downloaded
+        // bytes before extract/launch. Null (asset absent on older releases) skips the check.
+        var expectedSha = await _github.GetExpectedSha256Async(tag).ConfigureAwait(false);
+
         // Windows asset is the raw binary (straight to tempPath). Linux .tar.gz / mac
         // .zip assets download to a temp archive, then extract + chmod into tempPath.
         var assetName = GithubReleaseClient.ExpectedAssetName();
@@ -235,6 +239,11 @@ public sealed class UpdateService : IUpdateStatusProvider {
             TryDelete(archivePath);
             try {
                 await _github.DownloadAsync(assetUrl, archivePath, OnProgress).ConfigureAwait(false);
+                if (!VerifySha256(archivePath, expectedSha)) {
+                    TryDelete(archivePath);
+                    Fail("checksum mismatch: downloaded archive does not match the published SHA-256");
+                    return;
+                }
                 ArchiveExtraction.Extract(archivePath, tempPath);
             } catch (Exception ex) when (ex is HttpRequestException or IOException or TaskCanceledException or InvalidOperationException) {
                 TryDelete(archivePath);
@@ -246,6 +255,11 @@ public sealed class UpdateService : IUpdateStatusProvider {
         } else {
             try {
                 await _github.DownloadAsync(assetUrl, tempPath, OnProgress).ConfigureAwait(false);
+                if (!VerifySha256(tempPath, expectedSha)) {
+                    TryDelete(tempPath);
+                    Fail("checksum mismatch: downloaded binary does not match the published SHA-256");
+                    return;
+                }
             } catch (Exception ex) when (ex is HttpRequestException or IOException or TaskCanceledException) {
                 TryDelete(tempPath);
                 Fail($"download failed: {ex.Message}");
@@ -342,5 +356,16 @@ public sealed class UpdateService : IUpdateStatusProvider {
             File.Delete(path);
         } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) {
         }
+    }
+
+    // True when expected is null (no published sum to check) or the file's SHA-256 matches it.
+    private static bool VerifySha256(string path, string? expected) {
+        if (string.IsNullOrEmpty(expected)) {
+            return true;
+        }
+        using var stream = File.OpenRead(path);
+        var hash = System.Security.Cryptography.SHA256.HashData(stream);
+        var hex = Convert.ToHexStringLower(hash);
+        return string.Equals(hex, expected, StringComparison.Ordinal);
     }
 }

@@ -84,10 +84,36 @@ jobs:
             rawexe) cp EggLedger.exe "../../${{ matrix.asset }}" ;;
           esac
 
+      # One "hash␠␠filename" line per asset; the checksums job concatenates them into SHA256SUMS.
+      - name: Hash
+        shell: bash
+        run: sha256sum "${{ matrix.asset }}" > "${{ matrix.asset }}.sha256"
+
       - name: Attach to release
         uses: softprops/action-gh-release@v2
         with:
           files: ${{ matrix.asset }}
+
+      - name: Upload checksum line
+        uses: actions/upload-artifact@v4
+        with:
+          name: sha-${{ matrix.rid }}
+          path: ${{ matrix.asset }}.sha256
+
+  # Gather the per-asset hash lines into one SHA256SUMS asset the self-updater verifies against.
+  checksums:
+    needs: desktop
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: sha-*
+          merge-multiple: true
+          path: sums
+      - run: cat sums/*.sha256 > SHA256SUMS
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: SHA256SUMS
 
   # Build the Blazor Server image and push to GHCR; frame pulls the prebuilt image.
   docker:

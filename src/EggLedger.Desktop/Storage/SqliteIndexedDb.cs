@@ -69,6 +69,7 @@ public sealed class SqliteIndexedDb : IIndexedDb {
     }
 
     public ValueTask<T[]> GetAllByIndexAsync<T>(string store, string index, object value) {
+        index = IndexedDbStores.ValidIndex(index);
         var meta = Meta(store);
         var connection = Conn(meta);
         using var cmd = connection.CreateCommand();

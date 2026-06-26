@@ -82,6 +82,7 @@ public sealed class PostgresIndexedDb : IIndexedDb {
     }
 
     public async ValueTask<T[]> GetAllByIndexAsync<T>(string store, string index, object value) {
+        index = IndexedDbStores.ValidIndex(index);
         if (await TryUserAsync().ConfigureAwait(false) is not { } user) {
             return [];
         }

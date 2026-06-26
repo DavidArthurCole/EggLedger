@@ -48,16 +48,11 @@ public static class DesktopStorageRegistration {
         // The live SQL report path: ReportExecutor over real SQLite. Overrides the
         // browser in-memory runner; also drop the concrete browser report-runner so
         // it can't be resolved on desktop.
-        services.RemoveAll<IndexedDbMissionDb>();
+        services.RemoveAll<IndexedDbReportRunner>();
         services.RemoveAll<IReportRunner>();
         services.AddScoped<IReportRunner>(sp => new SqliteReportRunner(
             sp.GetRequiredService<SqliteMissionDb>(),
             sp.GetRequiredService<IWeightData>()));
-
-        // Desktop can run managed AES-GCM, so use the in-process cipher instead
-        // of the browser SubtleCrypto (JS interop) default.
-        services.RemoveAll<IBlobCipher>();
-        services.AddScoped<IBlobCipher, LocalBlobCipher>();
 
         return services;
     }

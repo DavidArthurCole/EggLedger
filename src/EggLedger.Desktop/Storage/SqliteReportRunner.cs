@@ -5,7 +5,7 @@ namespace EggLedger.Desktop.Storage;
 
 /// <summary>Desktop <see cref="IReportRunner"/>: ReportExecutor over SqliteMissionDb (the live SQL path).</summary>
 /// <remarks>
-/// The browser uses the in-memory IndexedDbMissionDb runner; both produce identical
+/// The browser uses the in-memory IndexedDbReportRunner runner; both produce identical
 /// ReportResult output (parity-tested).
 /// </remarks>
 public sealed class SqliteReportRunner : IReportRunner {

@@ -10,10 +10,12 @@ namespace EggLedger.Domain.MissionQuery;
 public sealed class MissionQueryHandlers {
     private readonly IMissionStore _store;
     private readonly IArtifactQuality _quality;
+    private readonly IMissionCompiler _compiler;
 
-    public MissionQueryHandlers(IMissionStore store, IArtifactQuality quality) {
+    public MissionQueryHandlers(IMissionStore store, IArtifactQuality quality, IMissionCompiler compiler) {
         _store = store;
         _quality = quality;
+        _compiler = compiler;
     }
 
     /// <summary>Port of GetMissionIds. Null on store error.</summary>
@@ -61,7 +63,7 @@ public sealed class MissionQueryHandlers {
         }
         var missions = new List<IMissionRow>(complete.Count);
         foreach (var cm in complete) {
-            missions.Add(_store.CompileMissionInformation(cm));
+            missions.Add(_compiler.CompileMissionInformation(cm));
         }
 
         // Kick a one-time background backfill so the next call uses the fast path.

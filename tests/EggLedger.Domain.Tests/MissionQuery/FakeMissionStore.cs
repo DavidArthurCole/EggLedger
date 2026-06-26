@@ -53,13 +53,15 @@ internal sealed class FakeMissionStore : IMissionStore {
     public Task<IReadOnlyList<StoredDrop>?> GetStoredPlayerDropsAsync(string playerId) =>
         Task.FromResult(StoredDrops.TryGetValue(playerId, out var d) ? d : null);
 
-    public IMissionRow CompileMissionInformation(CompleteMissionResponse mission) =>
-        new FakeMissionRow(mission.Info?.Identifier ?? "");
-
     public void QueueFilterColBackfill(string eid) => BackfillsQueued.Add(eid);
 }
 
 internal sealed record FakeMissionRow(string Id) : IMissionRow;
+
+internal sealed class FakeMissionCompiler : IMissionCompiler {
+    public IMissionRow CompileMissionInformation(CompleteMissionResponse mission) =>
+        new FakeMissionRow(mission.Info?.Identifier ?? "");
+}
 
 /// <summary>Quality stub: fixed value per (name,level,rarity) tuple, else 0.</summary>
 internal sealed class FakeQuality : IArtifactQuality {

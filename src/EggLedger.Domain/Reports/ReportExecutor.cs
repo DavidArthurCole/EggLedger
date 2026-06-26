@@ -51,6 +51,10 @@ public sealed class ReportExecutor {
             return ExecutePivotReport(def, baseWhere, args, baseArgs);
         }
 
+        return ExecuteSimpleReport(def, baseWhere, args, baseArgs);
+    }
+
+    private ReportResult ExecuteSimpleReport(ReportDefinition def, string baseWhere, List<object?> args, List<object?> baseArgs) {
         string query;
         (query, args) = def.Mode switch {
             "aggregate" => QueryBuilder.BuildAggregateQuery(def, baseWhere, args),
@@ -274,6 +278,26 @@ public sealed class ReportExecutor {
         var colLabels = f.ColLabels;
 
         // Always compute mission counts so the frontend can apply min-sample-size.
+        var mcMap = BuildMissionCountMap(def, baseWhere, baseArgs);
+
+        var missionCountMatrix = BuildMissionCountMatrix(mcMap, rowLabels, colLabels);
+
+        var rawPerMissionValues = ApplyWeightedPivotNormalization(def, matrixValues, rowLabels, colLabels, mcMap, baseWhere, baseArgs);
+
+        return new ReportResult {
+            RowLabels = rowLabels,
+            ColLabels = colLabels,
+            MatrixValues = [.. matrixValues],
+            Is2D = true,
+            Weight = def.Weight,
+            RawRowLabels = f.RawRowLabels,
+            RawColLabels = f.RawColLabels,
+            RawPerMissionValues = rawPerMissionValues,
+            MissionCountMatrix = missionCountMatrix,
+        };
+    }
+
+    private Dictionary<string, Dictionary<string, double>> BuildMissionCountMap(ReportDefinition def, string baseWhere, List<object?> baseArgs) {
         var col1mc = QueryBuilder.GroupByColumn(def.GroupBy);
         var col2mc = QueryBuilder.GroupByColumn(def.SecondaryGroupBy);
         var mcMap = new Dictionary<string, Dictionary<string, double>>(StringComparer.Ordinal);
@@ -297,14 +321,21 @@ public sealed class ReportExecutor {
                 inner[k2] = cnt;
             }
         }
+        return mcMap;
+    }
 
+    private static List<long> BuildMissionCountMatrix(Dictionary<string, Dictionary<string, double>> mcMap, List<string> rowLabels, List<string> colLabels) {
         var missionCountMatrix = new List<long>(rowLabels.Count * colLabels.Count);
         for (var r = 0; r < rowLabels.Count; r++) {
             for (var c = 0; c < colLabels.Count; c++) {
                 missionCountMatrix.Add((long)Denom(mcMap, rowLabels[r], colLabels[c]));
             }
         }
+        return missionCountMatrix;
+    }
 
+    // Mutates matrixValues in place. Returns per-mission values only for airtime mode.
+    private List<double>? ApplyWeightedPivotNormalization(ReportDefinition def, double[] matrixValues, List<string> rowLabels, List<string> colLabels, Dictionary<string, Dictionary<string, double>> mcMap, string baseWhere, List<object?> baseArgs) {
         var pctMode = def.NormalizeBy;
         List<double>? rawPerMissionValues = null;
         if (pctMode is "row_pct" or "col_pct" or "global_pct") {
@@ -339,18 +370,7 @@ public sealed class ReportExecutor {
                 }
             }
         }
-
-        return new ReportResult {
-            RowLabels = rowLabels,
-            ColLabels = colLabels,
-            MatrixValues = [.. matrixValues],
-            Is2D = true,
-            Weight = def.Weight,
-            RawRowLabels = f.RawRowLabels,
-            RawColLabels = f.RawColLabels,
-            RawPerMissionValues = rawPerMissionValues,
-            MissionCountMatrix = missionCountMatrix,
-        };
+        return rawPerMissionValues;
     }
 
     private ReportResult ExecuteWeightedTimeSeries(ReportDefinition def, string baseWhere, List<object?> args, string fwClause, IReadOnlyList<object?> fwArgs) {
