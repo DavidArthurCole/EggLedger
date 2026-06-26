@@ -138,7 +138,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.PACKAGES_PAT }}
 
       # GHCR image names must be lowercase; the repo name has capitals.
       - name: Lowercase image name
