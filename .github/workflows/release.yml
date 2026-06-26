@@ -81,11 +81,6 @@ jobs:
           timestamp-rfc3161: http://timestamp.acs.microsoft.com
           timestamp-digest: SHA256
 
-      - name: Restore nuget.config
-        if: always() && matrix.kind == 'rawexe' && steps.signing.outputs.available == 'true'
-        shell: bash
-        run: test -f nuget.config.bak && mv nuget.config.bak nuget.config || true
-
       # Windows ships the raw signed exe; others are archived.
       - name: Package
         shell: bash
@@ -138,7 +133,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.PACKAGES_PAT }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       # GHCR image names must be lowercase; the repo name has capitals.
       - name: Lowercase image name
