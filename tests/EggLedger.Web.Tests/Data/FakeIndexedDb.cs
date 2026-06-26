@@ -46,6 +46,36 @@ public sealed class FakeIndexedDb : IIndexedDb {
         }
     }
 
+    public ValueTask<T[]> GetAllByIndexProjectedAsync<T>(string store, string index, object value) {
+        if (typeof(T) == typeof(MissionMetaRow)) {
+            lock (_gate) {
+                var list = _stores.TryGetValue(store, out var l) ? l : [];
+                var matches = list.OfType<MissionRow>()
+                    .Where(r => r.PlayerId.Equals(value))
+                    .Select(r => (T)(object)ToMetaRow(r))
+                    .ToArray();
+                return new ValueTask<T[]>(matches);
+            }
+        }
+        return GetAllByIndexAsync<T>(store, index, value);
+    }
+
+    private static MissionMetaRow ToMetaRow(MissionRow r) => new() {
+        PlayerId = r.PlayerId,
+        MissionId = r.MissionId,
+        StartTimestamp = r.StartTimestamp,
+        MissionType = r.MissionType,
+        Ship = r.Ship,
+        DurationType = r.DurationType,
+        Level = r.Level,
+        Capacity = r.Capacity,
+        IsDubCap = r.IsDubCap,
+        IsBuggedCap = r.IsBuggedCap,
+        Target = r.Target,
+        ReturnTimestamp = r.ReturnTimestamp,
+        NominalCapacity = r.NominalCapacity,
+    };
+
     public ValueTask<T[]> GetAllAsync<T>(string store) {
         lock (_gate) {
             if (!_stores.TryGetValue(store, out var list)) {

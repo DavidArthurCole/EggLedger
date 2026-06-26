@@ -22,7 +22,10 @@ RUN --mount=type=secret,id=github_token \
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
-COPY --from=build /app ./
+COPY --from=build --chown=app:app /app ./
+# Run as the image's predefined non-root user (UID 1654); the app binds a high port
+# (SYNC_PORT >= 1024 via ASPNETCORE_URLS), so no privileged bind is needed.
+USER app
 # Binds SYNC_PORT via ASPNETCORE_URLS (compose). Migrations + bot start on boot when
 # DATABASE_URL is set; egg-api is proxied to auxbrain in-process (no nginx CORS dodge).
 ENTRYPOINT ["dotnet", "EggLedger.Web.Server.dll"]

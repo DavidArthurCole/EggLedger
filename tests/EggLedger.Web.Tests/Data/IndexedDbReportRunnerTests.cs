@@ -164,6 +164,11 @@ public sealed class IndexedDbReportRunnerTests {
             return _inner.GetAllByIndexAsync<T>(store, index, value);
         }
 
+        public ValueTask<T[]> GetAllByIndexProjectedAsync<T>(string store, string index, object value) {
+            IndexQueries.Add((store, index));
+            return _inner.GetAllByIndexProjectedAsync<T>(store, index, value);
+        }
+
         public ValueTask<T[]> GetAllAsync<T>(string store) {
             WholeStoreReads.Add(store);
             return _inner.GetAllAsync<T>(store);

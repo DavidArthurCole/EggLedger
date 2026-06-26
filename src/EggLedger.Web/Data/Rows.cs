@@ -49,6 +49,23 @@ public sealed record MissionRow {
     public int NominalCapacity { get; init; }
 }
 
+// MissionRow without complete_payload, for metadata reads that must not pull the blob.
+public sealed record MissionMetaRow {
+    [JsonPropertyName("player_id")] public string PlayerId { get; init; } = "";
+    [JsonPropertyName("mission_id")] public string MissionId { get; init; } = "";
+    [JsonPropertyName("start_timestamp")] public double StartTimestamp { get; init; }
+    [JsonPropertyName("mission_type")] public int MissionType { get; init; }
+    [JsonPropertyName("ship")] public int Ship { get; init; }
+    [JsonPropertyName("duration_type")] public int DurationType { get; init; }
+    [JsonPropertyName("level")] public int Level { get; init; }
+    [JsonPropertyName("capacity")] public int Capacity { get; init; }
+    [JsonPropertyName("is_dub_cap")] public bool IsDubCap { get; init; }
+    [JsonPropertyName("is_bugged_cap")] public bool IsBuggedCap { get; init; }
+    [JsonPropertyName("target")] public int Target { get; init; }
+    [JsonPropertyName("return_timestamp")] public double ReturnTimestamp { get; init; }
+    [JsonPropertyName("nominal_capacity")] public int NominalCapacity { get; init; }
+}
+
 /// <summary>
 /// Mirrors the IndexedDB <c>backup</c> store (keyPath <c>player_id</c>): one row per player.
 /// The timestamp serializes to <c>backed_up_at</c> to line up with the desktop SQLite schema;

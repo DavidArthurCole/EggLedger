@@ -95,6 +95,21 @@ public sealed class PostgresIndexedDb : IIndexedDb {
         return await ReadAllAsync<T>(meta, cmd).ConfigureAwait(false);
     }
 
+    public async ValueTask<T[]> GetAllByIndexProjectedAsync<T>(string store, string index, object value) {
+        index = IndexedDbStores.ValidIndex(index);
+        if (await TryUserAsync().ConfigureAwait(false) is not { } user) {
+            return [];
+        }
+        var meta = Meta(store);
+        var cols = string.Join(", ", RowColumns.Of<T>().Select(Ident));
+        await using var conn = await _source.OpenConnectionAsync().ConfigureAwait(false);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = $"SELECT {cols} FROM {meta.Table} WHERE discord_id = @user AND {Ident(index)} = @idx;";
+        cmd.Parameters.AddWithValue("user", user);
+        cmd.Parameters.AddWithValue("idx", value ?? (object)DBNull.Value);
+        return await ReadAllAsync<T>(meta, cmd).ConfigureAwait(false);
+    }
+
     public async ValueTask DeleteAsync(string store, object key) {
         var meta = Meta(store);
         var (where, keyArgs) = KeyPredicate(meta, key);

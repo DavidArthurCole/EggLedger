@@ -36,6 +36,11 @@ public sealed class IndexedDb(IJSRuntime js) : IIndexedDb, IAsyncDisposable {
         return await module.InvokeAsync<T[]>("getAllByIndex", store, index, value);
     }
 
+    // Browser returns whole JS objects; projection is a SQL-only optimization. Deserializing
+    // to a smaller T ignores extra fields, so delegating to the full read is correct.
+    public ValueTask<T[]> GetAllByIndexProjectedAsync<T>(string store, string index, object value) =>
+        GetAllByIndexAsync<T>(store, index, value);
+
     public async ValueTask DeleteAsync(string store, object key) {
         var module = await ModuleAsync();
         await module.InvokeVoidAsync("del", store, key);

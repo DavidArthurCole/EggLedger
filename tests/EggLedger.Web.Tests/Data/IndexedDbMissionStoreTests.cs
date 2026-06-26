@@ -144,6 +144,112 @@ public sealed class IndexedDbMissionStoreTests {
         Assert.Equal(new[] { "m1", "m2" }, seen);
     }
 
+    private sealed class CountingDecoder : IApiPayloadDecoder {
+        public int Calls;
+        public Task<EggIncFirstContactResponse> DecodeFirstContactAsync(byte[] rawPayload, CancellationToken ct = default) =>
+            Task.FromResult(new EggIncFirstContactResponse());
+        public Task<CompleteMissionResponse> DecodeCompleteMissionAsync(byte[] rawPayload, CancellationToken ct = default) {
+            Calls++;
+            return Task.FromResult(new CompleteMissionResponse {
+                Success = true,
+                Info = new MissionInfo { Identifier = "m1" },
+            });
+        }
+    }
+
+    [Fact]
+    public async Task GetCompleteMissionAsync_SecondCall_DoesNotReDecode() {
+        var decoder = new CountingDecoder();
+        var db = new FakeIndexedDb();
+        db.Seed("mission", PayloadRow("EI1", "m1", start: 1, identifier: "m1"));
+        var store = new IndexedDbMissionStore(db, decoder);
+
+        var first = await store.GetCompleteMissionAsync("EI1", "m1");
+        var second = await store.GetCompleteMissionAsync("EI1", "m1");
+
+        Assert.NotNull(first);
+        Assert.Same(first, second);
+        Assert.Equal(1, decoder.Calls);
+    }
+
+    [Fact]
+    public async Task GetCompleteMissionAsync_DistinctMissions_DecodeSeparately() {
+        var decoder = new CountingDecoder();
+        var db = new FakeIndexedDb();
+        db.Seed("mission", PayloadRow("EI1", "m1", start: 1, identifier: "m1"));
+        db.Seed("mission", PayloadRow("EI1", "m2", start: 2, identifier: "m2"));
+        var store = new IndexedDbMissionStore(db, decoder);
+
+        await store.GetCompleteMissionAsync("EI1", "m1");
+        await store.GetCompleteMissionAsync("EI1", "m2");
+
+        Assert.Equal(2, decoder.Calls);
+    }
+
+    [Fact]
+    public async Task InsertCompleteMissionAsync_EvictsCachedDecode() {
+        var decoder = new CountingDecoder();
+        var db = new FakeIndexedDb();
+        db.Seed("mission", PayloadRow("EI1", "m1", start: 1, identifier: "m1"));
+        var store = new IndexedDbMissionStore(db, decoder);
+
+        await store.GetCompleteMissionAsync("EI1", "m1");
+        await store.InsertCompleteMissionAsync("EI1", "m1", 1, [1, 2, 3], 0,
+            default, new CompleteMissionResponse());
+        await store.GetCompleteMissionAsync("EI1", "m1");
+
+        Assert.Equal(2, decoder.Calls);
+    }
+
+    private sealed class RecordingDb : IIndexedDb {
+        private readonly FakeIndexedDb _inner = new();
+        public List<string> ProjectedTypes { get; } = [];
+        public List<string> FullTypes { get; } = [];
+        public void Seed(string s, object r) => _inner.Seed(s, r);
+
+        public ValueTask<T[]> GetAllByIndexProjectedAsync<T>(string store, string index, object value) {
+            ProjectedTypes.Add(typeof(T).Name);
+            return _inner.GetAllByIndexProjectedAsync<T>(store, index, value);
+        }
+        public ValueTask<T[]> GetAllByIndexAsync<T>(string store, string index, object value) {
+            FullTypes.Add(typeof(T).Name);
+            return _inner.GetAllByIndexAsync<T>(store, index, value);
+        }
+        public ValueTask<T[]> GetAllAsync<T>(string store) => _inner.GetAllAsync<T>(store);
+        public ValueTask<T?> GetAsync<T>(string store, object key) => _inner.GetAsync<T>(store, key);
+        public ValueTask PutAsync(string store, object value) => _inner.PutAsync(store, value);
+        public ValueTask<int> PutManyAsync(string store, IEnumerable<object> values) => _inner.PutManyAsync(store, values);
+        public ValueTask DeleteAsync(string store, object key) => _inner.DeleteAsync(store, key);
+        public ValueTask ClearAsync(string store) => _inner.ClearAsync(store);
+        public ValueTask<int> CountAsync(string store) => _inner.CountAsync(store);
+    }
+
+    [Fact]
+    public async Task GetCompleteMissionIdsAsync_UsesProjectedRead() {
+        var db = new RecordingDb();
+        db.Seed("mission", MissionMeta("EI1", "m1", start: 1));
+        var store = new IndexedDbMissionStore(db, new LocalApiPayloadDecoder(new ApiClient()));
+
+        await store.GetCompleteMissionIdsAsync("EI1");
+
+        Assert.Contains("MissionMetaRow", db.ProjectedTypes);
+        Assert.DoesNotContain("MissionRow", db.FullTypes);
+    }
+
+    [Fact]
+    public async Task GetPlayerMissionMetaAsync_ProjectedRead_StillBuildsRows() {
+        var db = new RecordingDb();
+        db.Seed("mission", MissionMeta("EI1", "m1", start: 100, ship: 9));
+        db.Seed("mission", MissionMeta("EI1", "m2", start: 200, ship: 3));
+        var store = new IndexedDbMissionStore(db, new LocalApiPayloadDecoder(new ApiClient()));
+
+        var rows = await store.GetPlayerMissionMetaAsync("EI1");
+
+        Assert.NotNull(rows);
+        Assert.Equal(2, rows!.Count);
+        Assert.Contains("MissionMetaRow", db.ProjectedTypes);
+    }
+
     private static MissionRow PayloadRow(string playerId, string missionId, double start, string identifier) {
         var resp = new CompleteMissionResponse {
             Success = true,

@@ -89,6 +89,7 @@ public sealed class UpdateStatusTests {
 
         public ValueTask<T?> GetAsync<T>(string store, object key) => throw new NotSupportedException();
         public ValueTask<T[]> GetAllByIndexAsync<T>(string store, string index, object value) => throw new NotSupportedException();
+        public ValueTask<T[]> GetAllByIndexProjectedAsync<T>(string store, string index, object value) => throw new NotSupportedException();
         public ValueTask DeleteAsync(string store, object key) => throw new NotSupportedException();
         public ValueTask ClearAsync(string store) => throw new NotSupportedException();
         public ValueTask<int> CountAsync(string store) => throw new NotSupportedException();

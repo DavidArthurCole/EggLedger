@@ -9,6 +9,10 @@ public interface IIndexedDb {
     ValueTask<T?> GetAsync<T>(string store, object key);
     ValueTask<T[]> GetAllAsync<T>(string store);
     ValueTask<T[]> GetAllByIndexAsync<T>(string store, string index, object value);
+
+    // Like GetAllByIndexAsync but SELECTs only T's columns (SQL impls); the browser impl
+    // delegates to the full read since it returns whole objects from JS.
+    ValueTask<T[]> GetAllByIndexProjectedAsync<T>(string store, string index, object value);
     ValueTask DeleteAsync(string store, object key);
     ValueTask ClearAsync(string store);
     ValueTask<int> CountAsync(string store);

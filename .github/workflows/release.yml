@@ -57,6 +57,14 @@ jobs:
         run: |
           if [ -n "$AZURE_CLIENT_ID" ]; then echo "available=true" >> "$GITHUB_OUTPUT"; else echo "available=false" >> "$GITHUB_OUTPUT"; fi
 
+      # The root nuget.config's packageSourceMapping (pins SyncKit.* to GitHub Packages) makes
+      # the signing action's `sign` tool install fail: --add-source is rejected under source
+      # mapping. Restore already ran in Publish, so hide the config for the signing step only.
+      - name: Hide nuget.config for signing
+        if: matrix.kind == 'rawexe' && steps.signing.outputs.available == 'true'
+        shell: bash
+        run: mv nuget.config nuget.config.bak
+
       - name: Sign Windows executable
         if: matrix.kind == 'rawexe' && steps.signing.outputs.available == 'true'
         uses: azure/trusted-signing-action@v0.5.0
@@ -72,6 +80,11 @@ jobs:
           file-digest: SHA256
           timestamp-rfc3161: http://timestamp.acs.microsoft.com
           timestamp-digest: SHA256
+
+      - name: Restore nuget.config
+        if: always() && matrix.kind == 'rawexe' && steps.signing.outputs.available == 'true'
+        shell: bash
+        run: test -f nuget.config.bak && mv nuget.config.bak nuget.config || true
 
       # Windows ships the raw signed exe; others are archived.
       - name: Package

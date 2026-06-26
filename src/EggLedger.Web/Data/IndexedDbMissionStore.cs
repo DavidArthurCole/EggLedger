@@ -29,7 +29,7 @@ public sealed class IndexedDbMissionStore : IMissionStore {
 
     /// <summary>Mission ids for the player, ordered by start_timestamp.</summary>
     public async Task<IReadOnlyList<string>?> GetCompleteMissionIdsAsync(string playerId) {
-        var rows = await PlayerRowsAsync(playerId);
+        var rows = await PlayerMetaRowsAsync(playerId);
         return rows.OrderBy(r => r.StartTimestamp)
             .Select(r => r.MissionId)
             .ToList();
@@ -46,7 +46,7 @@ public sealed class IndexedDbMissionStore : IMissionStore {
 
     /// <summary>Mission count and max return_timestamp for the player. Mirrors Go RetrievePlayerMissionStats.</summary>
     public async Task<PlayerMissionStats?> GetPlayerMissionStatsAsync(string playerId) {
-        var rows = await PlayerRowsAsync(playerId);
+        var rows = await PlayerMetaRowsAsync(playerId);
         double max = rows.Count == 0 ? 0 : rows.Max(r => r.ReturnTimestamp);
         return new PlayerMissionStats(rows.Count, max);
     }
@@ -71,12 +71,18 @@ public sealed class IndexedDbMissionStore : IMissionStore {
     public async Task<CompleteMissionResponse?> GetCompleteMissionAsync(string playerId, string missionId) {
         // Indexed single-row lookup on the [player_id, mission_id] composite key, not a full-table
         // scan: the overlay + prev/next navigation hit this per click.
+        var key = DecodeKey(playerId, missionId);
+        if (DecodeCacheGet(key) is { } hit) {
+            return hit;
+        }
         var row = await _db.GetAsync<MissionRow>(IndexedDbStores.Mission, new object[] { playerId, missionId }).ConfigureAwait(false);
         if (row is null) {
             return null;
         }
         try {
-            return await DecodeAsync(row).ConfigureAwait(false);
+            var decoded = await DecodeAsync(row).ConfigureAwait(false);
+            DecodeCachePut(key, decoded);
+            return decoded;
         } catch {
             return null;
         }
@@ -84,13 +90,13 @@ public sealed class IndexedDbMissionStore : IMissionStore {
 
     /// <summary>Count of player missions missing migration-6 filter columns (ship == -1). Mirrors Go CountPendingFilterCols.</summary>
     public async Task<int?> CountPendingFilterColsAsync(string eid) {
-        var rows = await PlayerRowsAsync(eid);
+        var rows = await PlayerMetaRowsAsync(eid);
         return rows.Count(r => r.Ship == -1);
     }
 
     /// <summary>Fast path: display rows from stored filter columns only (ship != -1), ordered by start_timestamp.</summary>
     public async Task<IReadOnlyList<IMissionRow>?> GetPlayerMissionMetaAsync(string eid) {
-        var rows = await PlayerRowsAsync(eid);
+        var rows = await PlayerMetaRowsAsync(eid);
         var result = new List<IMissionRow>();
         foreach (var row in rows.Where(r => r.Ship != -1).OrderBy(r => r.StartTimestamp)) {
             result.Add(_packer.MissionMetaToDBMission(ToMeta(row)));
@@ -123,6 +129,51 @@ public sealed class IndexedDbMissionStore : IMissionStore {
         }
     }
 
+    // Bounded LRU of decoded single-mission responses, keyed (playerId, missionId). Only the hot
+    // repeat path (overlay + prev/next) uses it; callers treat the response as read-only.
+    private const int DecodeCacheCap = 256;
+    private readonly Lock _decodeGate = new();
+    private readonly LinkedList<(string Key, CompleteMissionResponse Value)> _decodeLru = new();
+    private readonly Dictionary<string, LinkedListNode<(string Key, CompleteMissionResponse Value)>> _decodeIndex = new(StringComparer.Ordinal);
+
+    private static string DecodeKey(string playerId, string missionId) => playerId + " " + missionId;
+
+    private CompleteMissionResponse? DecodeCacheGet(string key) {
+        lock (_decodeGate) {
+            if (!_decodeIndex.TryGetValue(key, out var node)) {
+                return null;
+            }
+            _decodeLru.Remove(node);
+            _decodeLru.AddFirst(node);
+            return node.Value.Value;
+        }
+    }
+
+    private void DecodeCachePut(string key, CompleteMissionResponse value) {
+        lock (_decodeGate) {
+            if (_decodeIndex.TryGetValue(key, out var existing)) {
+                _decodeLru.Remove(existing);
+                _decodeIndex.Remove(key);
+            }
+            var node = _decodeLru.AddFirst((key, value));
+            _decodeIndex[key] = node;
+            while (_decodeIndex.Count > DecodeCacheCap) {
+                var last = _decodeLru.Last!;
+                _decodeLru.RemoveLast();
+                _decodeIndex.Remove(last.Value.Key);
+            }
+        }
+    }
+
+    private void DecodeCacheEvict(string key) {
+        lock (_decodeGate) {
+            if (_decodeIndex.TryGetValue(key, out var node)) {
+                _decodeLru.Remove(node);
+                _decodeIndex.Remove(key);
+            }
+        }
+    }
+
     private readonly HashSet<string> _backfilling = [];
 
     // Decode each column-less mission once, compute + persist its filter columns,
@@ -142,8 +193,10 @@ public sealed class IndexedDbMissionStore : IMissionStore {
                 CompleteMissionResponse decoded;
                 try { decoded = await DecodeAsync(row).ConfigureAwait(false); } catch { continue; }
 
-                if (_packer.TryComputeMissionFilterCols(row.StartTimestamp, decoded, out var cols))
+                if (_packer.TryComputeMissionFilterCols(row.StartTimestamp, decoded, out var cols)) {
                     await _db.PutAsync(IndexedDbStores.Mission, WithCols(row, cols)).ConfigureAwait(false);
+                    DecodeCacheEvict(DecodeKey(eid, row.MissionId));
+                }
             }
         } finally {
             _backfilling.Remove(eid);
@@ -216,6 +269,7 @@ public sealed class IndexedDbMissionStore : IMissionStore {
             ReturnTimestamp = cols.ReturnTimestamp,
         };
         await _db.PutAsync(IndexedDbStores.Mission, row);
+        DecodeCacheEvict(DecodeKey(playerId, missionId));
 
         var drops = ArtifactDrops.Build(decoded);
         if (drops.Count > 0) {
@@ -247,6 +301,12 @@ public sealed class IndexedDbMissionStore : IMissionStore {
         return [.. rows];
     }
 
+    // Payload-free metadata rows; the projected read does not pull complete_payload.
+    private async Task<List<MissionMetaRow>> PlayerMetaRowsAsync(string playerId) {
+        var rows = await _db.GetAllByIndexProjectedAsync<MissionMetaRow>(IndexedDbStores.Mission, IndexedDbStores.PlayerIdIndex, playerId);
+        return [.. rows];
+    }
+
     public async Task<IReadOnlyList<StoredDrop>?> GetStoredPlayerDropsAsync(string playerId) {
         try {
             var rows = await _db.GetAllByIndexAsync<ArtifactDropRow>(IndexedDbStores.ArtifactDrops, IndexedDbStores.PlayerIdIndex, playerId);
@@ -275,7 +335,7 @@ public sealed class IndexedDbMissionStore : IMissionStore {
         return output.ToArray();
     }
 
-    private static MissionMeta ToMeta(MissionRow row) => new() {
+    private static MissionMeta ToMeta(MissionMetaRow row) => new() {
         MissionId = row.MissionId,
         StartTimestamp = row.StartTimestamp,
         ReturnTimestamp = row.ReturnTimestamp,

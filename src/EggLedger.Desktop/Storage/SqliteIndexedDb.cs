@@ -78,6 +78,17 @@ public sealed class SqliteIndexedDb : IIndexedDb {
         return ValueTask.FromResult(ReadAll<T>(meta, cmd));
     }
 
+    public ValueTask<T[]> GetAllByIndexProjectedAsync<T>(string store, string index, object value) {
+        index = IndexedDbStores.ValidIndex(index);
+        var meta = Meta(store);
+        var connection = Conn(meta);
+        var cols = string.Join(", ", RowColumns.Of<T>());
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = $"SELECT {cols} FROM {meta.Table} WHERE {index} = ?;";
+        BindArgs(cmd, [value]);
+        return ValueTask.FromResult(ReadAll<T>(meta, cmd));
+    }
+
     public ValueTask DeleteAsync(string store, object key) {
         var meta = Meta(store);
         var connection = Conn(meta);
