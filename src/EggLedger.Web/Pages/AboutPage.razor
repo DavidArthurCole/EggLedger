@@ -1,8 +1,6 @@
 @page "/about"
 @using EggLedger.Web.Platform
-@using EggLedger.Web.State
 @implements IDisposable
-@inject AppStateService AppStateSvc
 @inject IPlatformCapabilities Platform
 @inject IUpdateStatusProvider UpdateStatus
 
@@ -107,7 +105,7 @@
                     <li>Your EID is at the bottom
                         <ul class="about-list-2">
                             <li><span class="ledger-underline">It should look like EI1234567890123456</span>. That's the letters "EI" followed by 16 digits.</li>
-                            <li>Alternatively, if you choose Help <img src="@ContentPaths.Asset("images/icon_help.webp")" alt="Help Icon" class="game-btn-ico" /> in the main menu and click on &nbsp;<span class="p-0.5 text-xs rounded-md bg-data_loss_red w-4 pl-3 pr-3"> Data Loss Issue </span>&nbsp; the game will auto-compose an email with your ID in the subject.</li>
+                            <li>Use the Copy button (<img src="@ContentPaths.Asset("images/icon_copy.webp")" alt="Help Icon" class="game-btn-ico" />) to copy your EID to clipboard</li>
                         </ul>
                     </li>
                 </ul>
@@ -167,11 +165,6 @@
                 <p><a class="url-link" target="_blank" rel="noopener" href="https://areyousure.netlify.app/">Are you sure</a> you want @@mk2's autograph?</p>
             </div>
         </div>
-
-        @if (!string.IsNullOrEmpty(AppStateSvc.AppVersion))
-        {
-            <p class="text-xs text-gray-500 text-center mt-3">Version @AppStateSvc.AppVersion</p>
-        }
     </div>
 </section>
 
