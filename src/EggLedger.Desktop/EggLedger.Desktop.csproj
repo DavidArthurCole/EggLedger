@@ -1,7 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
+    <!-- WinExe: GUI subsystem on Windows so no console window opens beside the WebView.
+         Treated as Exe on linux/mac. Photino stdout logging is discarded without a console;
+         debug mode still writes to EggLedger.fatal.log. -->
+    <OutputType>WinExe</OutputType>
     <Description>EggLedger Photino desktop host. Boots the shared EggLedger.Web Blazor UI in a native OS window via a system WebView (the .NET-native replacement for the Go/lorca shell).</Description>
     <AssemblyName>EggLedger</AssemblyName>
     <Product>EggLedger</Product>
