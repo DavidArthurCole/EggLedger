@@ -68,6 +68,11 @@ public static class WebServiceRegistration {
         services.AddScoped<AccountLoader>();
         services.AddScoped<IPlatformCapabilities, BrowserPlatformCapabilities>();
 
+        // Desktop storage/export seams: browser no-ops; desktop swaps native impls.
+        services.AddScoped<BrowserStorageManagement>();
+        services.AddScoped<IStorageManagement>(sp => sp.GetRequiredService<BrowserStorageManagement>());
+        services.AddScoped<IExportManagement>(sp => sp.GetRequiredService<BrowserStorageManagement>());
+
         // Browser default is the no-op; desktop overrides with the live updater.
         services.AddScoped<IUpdateStatusProvider, NoOpUpdateStatusProvider>();
 

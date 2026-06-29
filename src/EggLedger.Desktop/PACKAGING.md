@@ -46,5 +46,5 @@ output tree: add `-p:PublishSingleFile=false`.
 - Photino native libs land per-RID in the output; with single-file they are
   self-extracted at first run. Confirmed for win-x64.
 - Cloud sync + Menno work on desktop because the HttpClient base address is set to
-  the production sync host (`https://ledgersync.davidarthurcole.me/`) in
+  the production sync host (`https://eggledger.davidarthurcole.me/`) in
   `Program.cs`; Menno's data URL is absolute and independent of that base.

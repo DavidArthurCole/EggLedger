@@ -1,0 +1,245 @@
+@using EggLedger.Domain.Export
+@using EggLedger.Web.Platform
+@using EggLedger.Web.Settings
+@using EggLedger.Web.State
+@inject IExportManagement Exports
+@inject ScreenshotSafetyState ScreenshotSafety
+
+@* Lists export file groups per account, prunes to a keep-count, and deletes selected pairs.
+   Sizes and counts mirror the Go ExportManagementPanel. *@
+
+<div class="mt-0_5rem">
+    <span class="section-heading">Export Pruning</span><br />
+    <div class="mt-0_5rem pl-0_5rem flex flex-row items-center gap-2 flex-wrap">
+        <label class="text-sm text-gray-400" for="keepCountInput">Keep</label>
+        <input id="keepCountInput" type="number" class="number-input text-sm bg-darkest" style="width: 4rem"
+               value="@_keepCount" min="0" max="50" placeholder="0" @onchange="OnKeepCountChangeAsync" />
+        <span class="text-sm text-gray-400">most recent exports per player (0 = unlimited)</span>
+    </div>
+    @if (PruneFileCount > 0) {
+        <div class="mt-0_5rem pl-0_5rem flex flex-col items-start gap-1">
+            <button type="button"
+                    class="apply-filter-button !mt-0 !mr-0 !ml-0 !bg-orange-700 !text-white hover:!bg-orange-600 !border-orange-500"
+                    disabled="@_pruning" @onclick="PruneNowAsync">@(_pruning ? "Pruning..." : "Prune Now")</button>
+            <span class="text-xs text-gray-500 italic">Removes @PruneFileCount file(s), freeing @FormatSize(PruneBytes)</span>
+        </div>
+    }
+    @if (_pruneError.Length > 0) {
+        <div class="mt-0_25rem pl-0_5rem text-xs text-red-400">@_pruneError</div>
+    }
+</div>
+
+<div class="mt-1rem">
+    <span class="section-heading">Export Files</span><br />
+    @if (_groups.Count == 0) {
+        <div class="mt-0_5rem pl-0_5rem text-xs text-gray-500 italic">No export files found.</div>
+    } else {
+        <div class="mt-0_5rem">
+            @foreach (var group in _groups) {
+                var collapsed = _collapsed.Contains(group.Eid);
+                <div class="mb-1">
+                    <button type="button"
+                            class="group w-full flex items-center gap-1 text-left text-xs text-gray-400 hover:text-gray-300 py-0.5"
+                            @onclick="() => ToggleCollapse(group.Eid)">
+                        <span class="text-gray-500 w-3">@(collapsed ? "▶" : "▼")</span>
+                        @if (!string.IsNullOrEmpty(group.Nickname)) {
+                            <span class="font-medium group-hover:brightness-125"
+                                  style="@(string.IsNullOrEmpty(group.AccountColor) ? "" : $"color: #{group.AccountColor}")">@group.Nickname</span>
+                        }
+                        <span class="font-mono">@ScreenshotSafety.Mask(group.Eid)</span>
+                        <span class="text-gray-500 ml-1">· @group.Pairs.Count export(s) · @FormatSize(GroupSize(group))</span>
+                    </button>
+                    @if (!collapsed) {
+                        <div class="pl-4 mt-1">
+                            <table class="text-xs">
+                                <thead>
+                                    <tr class="text-gray-500">
+                                        <th class="text-left pr-4 font-normal pb-0.5">Date</th>
+                                        <th class="text-left pr-4 font-normal pb-0.5">CSV</th>
+                                        <th class="text-left font-normal pb-0.5">XLSX</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var pair in group.Pairs) {
+                                        <tr class="text-gray-400">
+                                            <td class="pr-4 py-0.5">@pair.DisplayDate</td>
+                                            <td class="pr-4 py-0.5">
+                                                @if (!string.IsNullOrEmpty(pair.CsvPath)) {
+                                                    <label class="flex items-center gap-1 cursor-pointer">
+                                                        <input type="checkbox" class="ext-opt-check"
+                                                               checked="@_selected.Contains(pair.CsvPath)"
+                                                               @onchange="() => TogglePath(pair.CsvPath)" />
+                                                        <span>@FormatSize(pair.CsvSize)</span>
+                                                    </label>
+                                                } else {
+                                                    <span class="text-gray-600">-</span>
+                                                }
+                                            </td>
+                                            <td class="py-0.5">
+                                                @if (!string.IsNullOrEmpty(pair.XlsxPath)) {
+                                                    <label class="flex items-center gap-1 cursor-pointer">
+                                                        <input type="checkbox" class="ext-opt-check"
+                                                               checked="@_selected.Contains(pair.XlsxPath)"
+                                                               @onchange="() => TogglePath(pair.XlsxPath)" />
+                                                        <span>@FormatSize(pair.XlsxSize)</span>
+                                                    </label>
+                                                } else {
+                                                    <span class="text-gray-600">-</span>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            }
+
+            <div class="mt-0_5rem pl-0_5rem flex flex-row items-center gap-2 flex-wrap">
+                <span class="text-xs text-gray-500">@_selected.Count file(s) selected · @FormatSize(SelectedBytes)</span>
+                <button type="button"
+                        class="apply-filter-button !mt-0 !mr-0 !ml-0 !bg-red-900 !text-red-200 hover:!bg-red-800 !border-red-700"
+                        disabled="@(_selected.Count == 0 || _deleting)" @onclick="DeleteSelectedAsync">@(_deleting ? "Deleting..." : "Delete selected")</button>
+            </div>
+            @if (_deleteError.Length > 0) {
+                <div class="mt-0_25rem pl-0_5rem text-xs text-red-400">@_deleteError</div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public SettingsModel Model { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public EventCallback<(string Key, string Value)> OnSetting { get; set; }
+
+    private List<ExportGroup> _groups = [];
+    private int _keepCount;
+    private readonly HashSet<string> _selected = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _collapsed = new(StringComparer.Ordinal);
+    private bool _pruning;
+    private bool _deleting;
+    private string _pruneError = "";
+    private string _deleteError = "";
+
+    private List<FilePair> ToPrune {
+        get {
+            if (_keepCount <= 0) {
+                return [];
+            }
+            var result = new List<FilePair>();
+            foreach (var g in _groups) {
+                if (g.Pairs.Count > _keepCount) {
+                    result.AddRange(g.Pairs.GetRange(_keepCount, g.Pairs.Count - _keepCount));
+                }
+            }
+            return result;
+        }
+    }
+
+    private int PruneFileCount =>
+        ToPrune.Sum(p => (string.IsNullOrEmpty(p.CsvPath) ? 0 : 1) + (string.IsNullOrEmpty(p.XlsxPath) ? 0 : 1));
+
+    private long PruneBytes => ToPrune.Sum(p => p.CsvSize + p.XlsxSize);
+
+    private long SelectedBytes {
+        get {
+            long total = 0;
+            foreach (var g in _groups) {
+                foreach (var p in g.Pairs) {
+                    if (!string.IsNullOrEmpty(p.CsvPath) && _selected.Contains(p.CsvPath)) {
+                        total += p.CsvSize;
+                    }
+                    if (!string.IsNullOrEmpty(p.XlsxPath) && _selected.Contains(p.XlsxPath)) {
+                        total += p.XlsxSize;
+                    }
+                }
+            }
+            return total;
+        }
+    }
+
+    // Go clamps the keep-count to [0, 50].
+    private const int MaxKeepCount = 50;
+    private static int ClampKeep(int n) => n < 0 ? 0 : n > MaxKeepCount ? MaxKeepCount : n;
+
+    protected override async Task OnInitializedAsync() {
+        _keepCount = ClampKeep(Model.ExportKeepCount);
+        await LoadFilesAsync();
+    }
+
+    private async Task LoadFilesAsync() {
+        _groups = await Exports.ListAsync();
+        _collapsed.Clear();
+        foreach (var g in _groups) {
+            _collapsed.Add(g.Eid);
+        }
+    }
+
+    private static long GroupSize(ExportGroup g) => g.Pairs.Sum(p => p.CsvSize + p.XlsxSize);
+
+    private void ToggleCollapse(string eid) {
+        if (!_collapsed.Remove(eid)) {
+            _collapsed.Add(eid);
+        }
+    }
+
+    private void TogglePath(string path) {
+        if (!_selected.Remove(path)) {
+            _selected.Add(path);
+        }
+    }
+
+    private async Task OnKeepCountChangeAsync(ChangeEventArgs e) {
+        int.TryParse(e.Value?.ToString(), out var v);
+        _keepCount = ClampKeep(v);
+        Model.ExportKeepCount = _keepCount;
+        await OnSetting.InvokeAsync((SettingsModel.KeyExportKeepCount, SettingsModel.FormatInt(_keepCount)));
+    }
+
+    private async Task PruneNowAsync() {
+        _pruning = true;
+        _pruneError = "";
+        StateHasChanged();
+        try {
+            await Exports.PruneAsync(_keepCount);
+            _selected.Clear();
+            await LoadFilesAsync();
+        } catch (Exception ex) {
+            _pruneError = ex.Message;
+        } finally {
+            _pruning = false;
+        }
+    }
+
+    private async Task DeleteSelectedAsync() {
+        _deleting = true;
+        _deleteError = "";
+        StateHasChanged();
+        try {
+            await Exports.DeleteAsync(_selected.ToList());
+            _selected.Clear();
+            await LoadFilesAsync();
+        } catch (Exception ex) {
+            _deleteError = ex.Message;
+        } finally {
+            _deleting = false;
+        }
+    }
+
+    private static string FormatSize(long bytes) {
+        if (bytes < 1024) {
+            return $"{bytes} B";
+        }
+        if (bytes < 1024 * 1024) {
+            return $"{bytes / 1024.0:0.0} KB";
+        }
+        if (bytes < 1024L * 1024 * 1024) {
+            return $"{bytes / (1024.0 * 1024):0.0} MB";
+        }
+        return $"{bytes / (1024.0 * 1024 * 1024):0.0} GB";
+    }
+}

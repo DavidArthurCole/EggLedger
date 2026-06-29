@@ -14,4 +14,13 @@ public interface IDesktopWindow {
 
     /// <summary>Terminate the current process (used after relaunch on restart).</summary>
     void ExitProcess();
+
+    /// <summary>Show the native open-folder dialog; returns the chosen path or null on cancel.</summary>
+    string? ShowOpenFolderDialog();
+
+    /// <summary>Set the window size in pixels.</summary>
+    void SetSize(int width, int height);
+
+    /// <summary>Toggle fullscreen on the window.</summary>
+    void SetFullScreen(bool fullScreen);
 }

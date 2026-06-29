@@ -36,4 +36,13 @@ public static class DesktopCommandBuilder {
     /// <remarks>Caller exits the current process after launching it.</remarks>
     public static (string Exe, string[] Args) BuildRestartCommand(string exePath)
         => (exePath, []);
+
+    /// <summary>macOS-only command to toggle the Finder-hidden flag on a path; null on other OSes.</summary>
+    /// <remarks>Windows uses native File.SetAttributes; Linux has no per-file hidden flag (the caller no-ops).</remarks>
+    public static (string Exe, string[] Args)? BuildSetHiddenCommand(OSPlatform platform, string path, bool hidden) {
+        if (platform != OSPlatform.OSX) {
+            return null;
+        }
+        return ("chflags", [hidden ? "hidden" : "nohidden", path]);
+    }
 }

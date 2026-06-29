@@ -1,0 +1,73 @@
+using EggLedger.Desktop.Storage;
+using EggLedger.Domain.Export;
+using EggLedger.Domain.MissionQuery;
+using EggLedger.Web.Platform;
+
+namespace EggLedger.Desktop.Export;
+
+/// <summary>
+/// Desktop "Export management" backend over the pure <see cref="ExportManagement"/>
+/// logic. Port of Go main.go bindings listExportFiles/pruneOldExports/deleteExportFiles.
+/// </summary>
+public sealed class DesktopExportService : IExportManagement {
+    private readonly string _exportsDir;
+    private readonly IExportFileSystem _fs;
+    private readonly Func<Task<IReadOnlyList<AccountInfo>>>? _accountLookup;
+
+    public DesktopExportService(
+        string dataRootDir,
+        IExportFileSystem? fs = null,
+        Func<Task<IReadOnlyList<AccountInfo>>>? accountLookup = null) {
+        _exportsDir = StoragePaths.ResolveExportsDir(dataRootDir);
+        _fs = fs ?? new PhysicalExportFileSystem();
+        _accountLookup = accountLookup;
+    }
+
+    /// <summary>Groups newest-first, enriched with account nickname/color when a lookup is supplied.</summary>
+    public async Task<List<ExportGroup>> ListAsync() {
+        var dir = _exportsDir;
+        var groups = await Task.Run(() => ExportManagement.ListGroups(dir, _fs));
+        if (_accountLookup is null || groups.Count == 0) {
+            return groups;
+        }
+        var accounts = await _accountLookup();
+        var byId = new Dictionary<string, AccountInfo>(StringComparer.Ordinal);
+        foreach (var a in accounts) {
+            byId[a.Id] = a;
+        }
+        foreach (var g in groups) {
+            if (byId.TryGetValue(g.Eid, out var acct)) {
+                g.Nickname = acct.Nickname;
+                g.AccountColor = acct.AccountColor;
+            }
+        }
+        return groups;
+    }
+
+    /// <summary>Prunes every group to at most <paramref name="keepCount"/> newest pairs; aggregates counts.</summary>
+    public Task<(int deleted, long freedBytes)> PruneAsync(int keepCount) {
+        var dir = _exportsDir;
+        return Task.Run(() => {
+            int deleted = 0;
+            long freed = 0;
+            foreach (var g in ExportManagement.ListGroups(dir, _fs)) {
+                var (d, f) = ExportManagement.PruneForPlayer(dir, g.Eid, keepCount, _fs);
+                deleted += d;
+                freed += f;
+            }
+            return (deleted, freed);
+        });
+    }
+
+    /// <summary>Deletes each path; missing files are ignored by the filesystem seam.</summary>
+    public Task DeleteAsync(IEnumerable<string> paths) {
+        var snapshot = paths.ToList();
+        return Task.Run(() => {
+            foreach (var path in snapshot) {
+                if (!string.IsNullOrEmpty(path)) {
+                    _fs.Delete(path);
+                }
+            }
+        });
+    }
+}

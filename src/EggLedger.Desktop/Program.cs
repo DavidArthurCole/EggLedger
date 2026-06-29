@@ -3,6 +3,8 @@ using EggLedger.Desktop.Platform;
 using EggLedger.Desktop.Storage;
 using EggLedger.Desktop.Update;
 using EggLedger.Web;
+using EggLedger.Web.Data;
+using EggLedger.Web.Settings;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Photino.Blazor;
@@ -72,10 +74,11 @@ internal static class Program {
         // operate on the real window.
         desktopWindow.Attach(app.MainWindow);
 
-        // Window config ported from the Go/lorca setup. The Go build read size from stored user
-        // prefs; for now use a default and center.
-        const int defaultWidth = 1280;
-        const int defaultHeight = 800;
+        // Window size + fullscreen come from persisted settings (Settings tab), falling back to
+        // the Go/lorca default. Read synchronously at startup before the window shows.
+        var settings = LoadDesktopSettings(app.Services);
+        var width = settings.WindowWidth > 0 ? settings.WindowWidth : SettingsModel.DefaultWindowWidth;
+        var height = settings.WindowHeight > 0 ? settings.WindowHeight : SettingsModel.DefaultWindowHeight;
 
         // Icon ships inside the single-file exe and self-extracts to BaseDir; SetIconFile
         // resolves relative paths against the working dir, so pass an absolute path and skip
@@ -85,9 +88,10 @@ internal static class Program {
         if (File.Exists(iconFile)) app.MainWindow.SetIconFile(iconFile);
         app.MainWindow
             .SetUseOsDefaultSize(false)
-            .SetSize(defaultWidth, defaultHeight)
+            .SetSize(width, height)
             .SetUseOsDefaultLocation(false)
             .Center();
+        if (settings.StartInFullscreen) app.MainWindow.SetFullScreen(true);
 
         if (debugMode) {
             app.MainWindow.SetDevToolsEnabled(true);
@@ -120,7 +124,19 @@ internal static class Program {
     }
 
     // Trailing slash required so relative "api/v1/..." URIs resolve under the host root.
-    private static Uri CloudSyncBaseAddress() => new("https://ledgersync.davidarthurcole.me/");
+    private static Uri CloudSyncBaseAddress() => new("https://eggledger.davidarthurcole.me/");
+
+    // Read the persisted settings once at startup to size the window. Blocking is fine here:
+    // this runs before the window shows, on the STA main thread.
+    private static SettingsModel LoadDesktopSettings(IServiceProvider services) {
+        var model = new SettingsModel();
+        try {
+            using var scope = services.CreateScope();
+            var settings = scope.ServiceProvider.GetRequiredService<IndexedDbSettings>();
+            model.LoadFrom(settings.GetAllSettingsAsync().GetAwaiter().GetResult());
+        } catch { }
+        return model;
+    }
 
     // Extract the embedded wwwroot.zip resource to BaseDir/wwwroot. Stamps with the assembly
     // MVID so a swapped-in update (self-updater) re-extracts; a matching stamp skips the work.

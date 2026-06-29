@@ -17,4 +17,13 @@ public interface IPlatformCapabilities {
     /// <summary>Desktop self-update flow.</summary>
     Task RestartAppAsync();
     Task<(int w, int h)> GetWindowSizeAsync();
+
+    /// <summary>Native folder picker; returns the chosen path or null (null in the browser).</summary>
+    Task<string?> ChooseFolderAsync();
+
+    /// <summary>Toggle the OS hidden attribute on a folder (no-op in the browser and on Linux).</summary>
+    Task SetFolderHiddenAsync(string path, bool hidden);
+
+    /// <summary>Absolute data-root dir on desktop; empty string in the browser.</summary>
+    string DataRootDir { get; }
 }

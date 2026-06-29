@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using EggLedger.Desktop.Storage;
 using EggLedger.Web.Platform;
 
 namespace EggLedger.Desktop.Platform;
@@ -43,6 +44,23 @@ public sealed class DesktopPlatformCapabilities(IProcessRunner processRunner, ID
         var (width, height) = _window.GetSize();
         return Task.FromResult((width, height));
     }
+
+    /// <summary>MANUAL-VERIFY: native open-folder dialog. Returns the chosen path or null on cancel.</summary>
+    public Task<string?> ChooseFolderAsync() => Task.FromResult(_window.ShowOpenFolderDialog());
+
+    /// <summary>Windows toggles the hidden file attribute natively; macOS shells chflags; Linux no-ops.</summary>
+    public Task SetFolderHiddenAsync(string path, bool hidden) {
+        var full = Path.GetFullPath(path);
+        if (CurrentPlatform() == OSPlatform.Windows) {
+            var attrs = File.GetAttributes(full);
+            File.SetAttributes(full, hidden ? attrs | FileAttributes.Hidden : attrs & ~FileAttributes.Hidden);
+            return Task.CompletedTask;
+        }
+        var cmd = DesktopCommandBuilder.BuildSetHiddenCommand(CurrentPlatform(), full, hidden);
+        return cmd is { } c ? _processRunner.RunAsync(c.Exe, c.Args) : Task.CompletedTask;
+    }
+
+    public string DataRootDir => StoragePaths.ResolveDataRootDir(AppContext.BaseDirectory);
 
     private static OSPlatform CurrentPlatform() {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {

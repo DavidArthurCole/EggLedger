@@ -30,6 +30,13 @@ public sealed class BrowserPlatformCapabilities(IJSRuntime js) : IPlatformCapabi
         return (dims[0], dims[1]);
     }
 
+    /// <summary>No native picker in the browser.</summary>
+    public Task<string?> ChooseFolderAsync() => Task.FromResult<string?>(null);
+
+    public Task SetFolderHiddenAsync(string path, bool hidden) => Task.CompletedTask;
+
+    public string DataRootDir => "";
+
     public async ValueTask DisposeAsync() {
         if (_module is not null) {
             await _module.DisposeAsync();

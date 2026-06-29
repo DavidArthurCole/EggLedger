@@ -34,5 +34,15 @@ public sealed class PhotinoDesktopWindow : IDesktopWindow {
 
     public void ExitProcess() => Environment.Exit(0);
 
+    /// <summary>MANUAL-VERIFY: Photino native open-folder dialog. Returns the first chosen path or null.</summary>
+    public string? ShowOpenFolderDialog() {
+        var chosen = Window.ShowOpenFolder("Choose Folder", "", multiSelect: false);
+        return chosen is { Length: > 0 } && !string.IsNullOrEmpty(chosen[0]) ? chosen[0] : null;
+    }
+
+    public void SetSize(int width, int height) => Window.SetSize(width, height);
+
+    public void SetFullScreen(bool fullScreen) => Window.SetFullScreen(fullScreen);
+
     private PhotinoWindow Window { get => field ?? throw new InvalidOperationException("Photino window not attached yet; call Attach after building the host."); set; }
 }

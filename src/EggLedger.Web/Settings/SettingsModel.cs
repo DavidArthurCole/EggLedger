@@ -17,11 +17,22 @@ public sealed class SettingsModel {
     public const string KeyAutoExportCsv = "auto_export_csv";
     public const string KeyAutoExportXlsx = "auto_export_xlsx";
     public const string KeyWorkerCountWarningRead = "worker_count_warning_read";
+    public const string KeyWindowWidth = "resolution_width";
+    public const string KeyWindowHeight = "resolution_height";
+    public const string KeyStartInFullscreen = "resolution_start_fullscreen";
+    public const string KeyExportKeepCount = "export_keep_count";
+    public const string KeyStorageFolderHidden = "storage_folder_hidden";
+    public const string KeyBackupDestPath = "backup_dest_path";
+    public const string KeyMoveDestPath = "move_dest_path";
 
     // Clamped on read.
 
     public const int MinWorkerCount = 1;
     public const int MaxWorkerCount = 10;
+
+    /// <summary>Fallback window size when no stored resolution exists (Go lorca default).</summary>
+    public const int DefaultWindowWidth = 1280;
+    public const int DefaultWindowHeight = 800;
 
     /// <summary>Refresh Menno community data once weekly.</summary>
     public bool AutoRefreshMenno { get; set; }
@@ -56,6 +67,27 @@ public sealed class SettingsModel {
     /// <summary>Whether the worker-count warning has been dismissed.</summary>
     public bool WorkerCountWarningRead { get; set; }
 
+    /// <summary>Persisted window width; 0 means unset (use <see cref="DefaultWindowWidth"/>).</summary>
+    public int WindowWidth { get; set; }
+
+    /// <summary>Persisted window height; 0 means unset (use <see cref="DefaultWindowHeight"/>).</summary>
+    public int WindowHeight { get; set; }
+
+    /// <summary>Launch the desktop window in fullscreen. Applied at startup only.</summary>
+    public bool StartInFullscreen { get; set; }
+
+    /// <summary>Export files to keep per account when pruning; 0 means unlimited.</summary>
+    public int ExportKeepCount { get; set; }
+
+    /// <summary>Whether the desktop internal storage folder is OS-hidden.</summary>
+    public bool StorageFolderHidden { get; set; }
+
+    /// <summary>Last-used backup destination path.</summary>
+    public string BackupDestPath { get; set; } = "";
+
+    /// <summary>Last-used move-storage destination path.</summary>
+    public string MoveDestPath { get; set; } = "";
+
     public static int ClampWorkerCount(int n) => n < MinWorkerCount ? MinWorkerCount
         : n > MaxWorkerCount ? MaxWorkerCount
         : n;
@@ -73,6 +105,13 @@ public sealed class SettingsModel {
         AutoExportCsv = Bool(settings, KeyAutoExportCsv, AutoExportCsv);
         AutoExportXlsx = Bool(settings, KeyAutoExportXlsx, AutoExportXlsx);
         WorkerCountWarningRead = Bool(settings, KeyWorkerCountWarningRead, WorkerCountWarningRead);
+        WindowWidth = Int(settings, KeyWindowWidth, WindowWidth);
+        WindowHeight = Int(settings, KeyWindowHeight, WindowHeight);
+        StartInFullscreen = Bool(settings, KeyStartInFullscreen, StartInFullscreen);
+        ExportKeepCount = Int(settings, KeyExportKeepCount, ExportKeepCount);
+        StorageFolderHidden = Bool(settings, KeyStorageFolderHidden, StorageFolderHidden);
+        BackupDestPath = Str(settings, KeyBackupDestPath, BackupDestPath);
+        MoveDestPath = Str(settings, KeyMoveDestPath, MoveDestPath);
     }
 
     /// <summary>Serializes a bool the way Go strconv.FormatBool does ("true"/"false").</summary>
@@ -89,4 +128,7 @@ public sealed class SettingsModel {
             && int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var v)
             ? v
             : fallback;
+
+    private static string Str(IReadOnlyDictionary<string, string> s, string key, string fallback) =>
+        s.TryGetValue(key, out var raw) ? raw : fallback;
 }

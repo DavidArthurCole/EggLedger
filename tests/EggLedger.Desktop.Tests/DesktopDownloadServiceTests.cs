@@ -41,6 +41,9 @@ public sealed class DesktopDownloadServiceTests : IDisposable {
         public Task OpenFileAsync(string path) => Task.CompletedTask;
         public Task RestartAppAsync() => Task.CompletedTask;
         public Task<(int w, int h)> GetWindowSizeAsync() => Task.FromResult((0, 0));
+        public Task<string?> ChooseFolderAsync() => Task.FromResult<string?>(null);
+        public Task SetFolderHiddenAsync(string path, bool hidden) => Task.CompletedTask;
+        public string DataRootDir => "";
     }
 
     private static IReadOnlyList<Mission> SampleMissions() => [];

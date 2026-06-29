@@ -22,6 +22,13 @@ public sealed class SettingsModelTests {
         Assert.True(m.AutoExportCsv);
         Assert.True(m.AutoExportXlsx);
         Assert.False(m.WorkerCountWarningRead);
+        Assert.Equal(0, m.WindowWidth);
+        Assert.Equal(0, m.WindowHeight);
+        Assert.False(m.StartInFullscreen);
+        Assert.Equal(0, m.ExportKeepCount);
+        Assert.False(m.StorageFolderHidden);
+        Assert.Equal("", m.BackupDestPath);
+        Assert.Equal("", m.MoveDestPath);
     }
 
     [Theory]
@@ -60,6 +67,13 @@ public sealed class SettingsModelTests {
             [SettingsModel.KeyAutoExportCsv] = "false",
             [SettingsModel.KeyAutoExportXlsx] = "false",
             [SettingsModel.KeyWorkerCountWarningRead] = "true",
+            [SettingsModel.KeyWindowWidth] = "1600",
+            [SettingsModel.KeyWindowHeight] = "900",
+            [SettingsModel.KeyStartInFullscreen] = "true",
+            [SettingsModel.KeyExportKeepCount] = "5",
+            [SettingsModel.KeyStorageFolderHidden] = "true",
+            [SettingsModel.KeyBackupDestPath] = @"C:\backups",
+            [SettingsModel.KeyMoveDestPath] = @"D:\eggdata",
         };
         var m = new SettingsModel();
         m.LoadFrom(settings);
@@ -75,6 +89,13 @@ public sealed class SettingsModelTests {
         Assert.False(m.AutoExportCsv);
         Assert.False(m.AutoExportXlsx);
         Assert.True(m.WorkerCountWarningRead);
+        Assert.Equal(1600, m.WindowWidth);
+        Assert.Equal(900, m.WindowHeight);
+        Assert.True(m.StartInFullscreen);
+        Assert.Equal(5, m.ExportKeepCount);
+        Assert.True(m.StorageFolderHidden);
+        Assert.Equal(@"C:\backups", m.BackupDestPath);
+        Assert.Equal(@"D:\eggdata", m.MoveDestPath);
     }
 
     [Fact]

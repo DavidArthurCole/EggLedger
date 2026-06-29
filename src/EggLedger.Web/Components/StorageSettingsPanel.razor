@@ -1,0 +1,193 @@
+@using EggLedger.Web.Platform
+@using EggLedger.Web.Settings
+@inject IPlatformCapabilities Platform
+@inject IStorageManagement Storage
+
+@* Desktop storage location, backup, and move. Backup copies selected parts; move copies
+   everything then restarts. Source files are never deleted. *@
+
+<div class="px-2 py-2 text-sm text-gray-400 bg-darker rounded-md tabular-nums overflow-auto">
+    <span class="mr-0_5rem font-bold text-lg text-gray-400 ledger-underline">Storage</span><br />
+
+    <div class="mt-0_5rem">
+        <span class="section-heading">Storage Location</span><br />
+        <div class="mt-0_5rem pl-0_5rem">
+            <div class="flex flex-row items-center gap-2">
+                <input type="text" readonly value="@(_storagePath.Length > 0 ? _storagePath : "Loading...")"
+                       class="block rounded-md text-sm bg-darkest font-mono text-gray-300 cursor-default border border-gray-600 px-2 py-1 focus:outline-none focus:ring-0 shrink min-w-0" />
+                <button type="button"
+                        class="apply-filter-button !mt-0 !mr-0 !ml-0 !bg-blue-700 !text-white hover:!bg-blue-600 !border-blue-500 flex-shrink-0"
+                        @onclick="OpenStorageFolderAsync">Open folder</button>
+                <button type="button"
+                        class="apply-filter-button !mt-0 !mr-0 !ml-0 flex-shrink-0 @(Model.StorageFolderHidden ? "!bg-green-700 !text-white hover:!bg-green-600 !border-green-500" : "!bg-orange-700 !text-white hover:!bg-orange-600 !border-orange-500")"
+                        @onclick="ToggleStorageVisibleAsync">@(Model.StorageFolderHidden ? "Show folder" : "Hide folder")</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-1rem">
+        <span class="section-heading">Backup Storage</span><br />
+        <div class="mt-0_25rem pl-0_5rem text-xs text-gray-500">
+            Copies selected data into the chosen folder. The original files are not modified.
+        </div>
+        <div class="mt-0_5rem pl-0_5rem">
+            <div class="flex flex-row items-center gap-2 max-w-[50%]">
+                <input type="text" class="drop-select-full text-sm bg-darkest" placeholder="Destination path..."
+                       value="@_backupDestPath" @onchange="OnBackupDestChangeAsync" />
+                <button type="button"
+                        class="apply-filter-button !mt-0 !mr-0 !ml-0 !bg-gray-700 !text-gray-200 hover:!bg-gray-600 !border-gray-500 flex-shrink-0"
+                        @onclick="ChooseBackupDestAsync">Choose...</button>
+                <button type="button"
+                        class="apply-filter-button !mt-0 !mr-0 !ml-0 !bg-blue-700 !text-white hover:!bg-blue-600 !border-blue-500 flex-shrink-0"
+                        disabled="@BackupDisabled" @onclick="RunBackupAsync">@(_backupInProgress ? "Backing up..." : "Backup storage")</button>
+            </div>
+            <div class="mt-0_5rem flex items-center gap-4 max-w-[50%]">
+                <label class="flex items-center gap-1 cursor-pointer select-none text-xs text-gray-400">
+                    <input type="checkbox" class="ext-opt-check" checked="@_backupDb" @onchange="e => _backupDb = ToBool(e)" />
+                    Database
+                </label>
+                <label class="flex items-center gap-1 cursor-pointer select-none text-xs text-gray-400">
+                    <input type="checkbox" class="ext-opt-check" checked="@_backupExports" @onchange="e => _backupExports = ToBool(e)" />
+                    Exports
+                </label>
+                <label class="flex items-center gap-1 cursor-pointer select-none text-xs text-gray-400">
+                    <input type="checkbox" class="ext-opt-check" checked="@_backupLogs" @onchange="e => _backupLogs = ToBool(e)" />
+                    Logs
+                </label>
+            </div>
+            <div class="mt-0_5rem space-y-1">
+                @if (_backupSuccess) {
+                    <div class="text-green-400 text-xs">Backup complete.</div>
+                }
+                @if (_backupError.Length > 0) {
+                    <div class="text-red-400 text-xs">Backup failed: @_backupError</div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-1rem">
+        <span class="section-heading">Move Storage</span><br />
+        <div class="mt-0_25rem pl-0_5rem text-xs text-gray-500">
+            Copies all app data into the chosen folder, then restarts. Old files are NOT deleted automatically.
+        </div>
+        <div class="mt-0_5rem pl-0_5rem">
+            <div class="flex flex-row items-center gap-2 max-w-[50%]">
+                <input type="text" class="drop-select-full text-sm bg-darkest" placeholder="Destination path..."
+                       value="@_moveDestPath" @onchange="OnMoveDestChangeAsync" />
+                <button type="button"
+                        class="apply-filter-button !mt-0 !mr-0 !ml-0 !bg-gray-700 !text-gray-200 hover:!bg-gray-600 !border-gray-500 flex-shrink-0"
+                        @onclick="ChooseMoveDestAsync">Choose...</button>
+                <button type="button"
+                        class="apply-filter-button !mt-0 !mr-0 !ml-0 !bg-orange-700 !text-white hover:!bg-orange-600 !border-orange-500 flex-shrink-0"
+                        disabled="@MoveDisabled" @onclick="RunMoveAsync">@(_moveInProgress ? "Moving..." : "Move storage")</button>
+                @if (_moveError.Length > 0) {
+                    <span class="text-red-400 text-xs flex-shrink-0">@_moveError</span>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public SettingsModel Model { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public EventCallback<(string Key, string Value)> OnSetting { get; set; }
+
+    private string _storagePath = "";
+    private string _backupDestPath = "";
+    private string _moveDestPath = "";
+    private bool _backupDb = true;
+    private bool _backupExports = true;
+    private bool _backupLogs = true;
+    private bool _backupInProgress;
+    private bool _backupSuccess;
+    private string _backupError = "";
+    private bool _moveInProgress;
+    private string _moveError = "";
+
+    private bool BackupDisabled =>
+        _backupDestPath.Length == 0 || _backupInProgress || (!_backupDb && !_backupExports && !_backupLogs);
+
+    private bool MoveDisabled => _moveDestPath.Length == 0 || _moveInProgress;
+
+    protected override void OnInitialized() {
+        _storagePath = Storage.GetDataRootDir();
+        _backupDestPath = Model.BackupDestPath;
+        _moveDestPath = Model.MoveDestPath;
+    }
+
+    private static bool ToBool(ChangeEventArgs e) =>
+        e.Value is bool b ? b : bool.TryParse(e.Value?.ToString(), out var p) && p;
+
+    private Task OpenStorageFolderAsync() =>
+        _storagePath.Length > 0 ? Platform.OpenFileInFolderAsync(_storagePath) : Task.CompletedTask;
+
+    private async Task ToggleStorageVisibleAsync() {
+        var hidden = !Model.StorageFolderHidden;
+        if (_storagePath.Length > 0) {
+            await Platform.SetFolderHiddenAsync(_storagePath, hidden);
+        }
+        Model.StorageFolderHidden = hidden;
+        await OnSetting.InvokeAsync((SettingsModel.KeyStorageFolderHidden, SettingsModel.FormatBool(hidden)));
+    }
+
+    private async Task OnBackupDestChangeAsync(ChangeEventArgs e) {
+        _backupDestPath = e.Value?.ToString() ?? "";
+        Model.BackupDestPath = _backupDestPath;
+        await OnSetting.InvokeAsync((SettingsModel.KeyBackupDestPath, _backupDestPath));
+    }
+
+    private async Task ChooseBackupDestAsync() {
+        var chosen = await Platform.ChooseFolderAsync();
+        if (!string.IsNullOrEmpty(chosen)) {
+            _backupDestPath = chosen;
+            Model.BackupDestPath = chosen;
+            await OnSetting.InvokeAsync((SettingsModel.KeyBackupDestPath, chosen));
+        }
+    }
+
+    private async Task RunBackupAsync() {
+        _backupInProgress = true;
+        _backupSuccess = false;
+        _backupError = "";
+        StateHasChanged();
+        try {
+            await Storage.BackupAsync(_backupDestPath, _backupDb, _backupExports, _backupLogs);
+            _backupSuccess = true;
+        } catch (Exception ex) {
+            _backupError = ex.Message;
+        } finally {
+            _backupInProgress = false;
+        }
+    }
+
+    private async Task OnMoveDestChangeAsync(ChangeEventArgs e) {
+        _moveDestPath = e.Value?.ToString() ?? "";
+        Model.MoveDestPath = _moveDestPath;
+        await OnSetting.InvokeAsync((SettingsModel.KeyMoveDestPath, _moveDestPath));
+    }
+
+    private async Task ChooseMoveDestAsync() {
+        var chosen = await Platform.ChooseFolderAsync();
+        if (!string.IsNullOrEmpty(chosen)) {
+            _moveDestPath = chosen;
+            Model.MoveDestPath = chosen;
+            await OnSetting.InvokeAsync((SettingsModel.KeyMoveDestPath, chosen));
+        }
+    }
+
+    private async Task RunMoveAsync() {
+        _moveInProgress = true;
+        _moveError = "";
+        StateHasChanged();
+        try {
+            await Storage.MoveAsync(_moveDestPath);
+        } catch (Exception ex) {
+            _moveError = ex.Message;
+            _moveInProgress = false;
+        }
+    }
+}

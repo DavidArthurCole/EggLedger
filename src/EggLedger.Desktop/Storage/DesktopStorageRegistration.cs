@@ -1,5 +1,8 @@
+using EggLedger.Desktop.Export;
+using EggLedger.Domain.MissionQuery;
 using EggLedger.Domain.Reports;
 using EggLedger.Web.Data;
+using EggLedger.Web.Platform;
 using EggLedger.Web.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -25,6 +28,22 @@ public static class DesktopStorageRegistration {
         var reportDb = SqliteDatabase.OpenReportDb(reportDbPath);
 
         AddDesktopSqliteStorage(services, missionDb, reportDb);
+
+        // Settings-tab storage + export-management services, keyed to the same data root.
+        // Override the browser no-op seams (registered by AddEggLedgerWeb) with the native impls.
+        services.AddScoped(sp => new DesktopStorageService(
+            dataRootDir, sp.GetRequiredService<IPlatformCapabilities>()));
+        services.RemoveAll<IStorageManagement>();
+        services.AddScoped<IStorageManagement>(sp => sp.GetRequiredService<DesktopStorageService>());
+
+        services.AddScoped(sp => {
+            var accounts = sp.GetRequiredService<IndexedDbAccountStore>();
+            return new DesktopExportService(
+                dataRootDir,
+                accountLookup: async () => (IReadOnlyList<AccountInfo>)await accounts.GetKnownAccountsAsync());
+        });
+        services.RemoveAll<IExportManagement>();
+        services.AddScoped<IExportManagement>(sp => sp.GetRequiredService<DesktopExportService>());
         return services;
     }
 
