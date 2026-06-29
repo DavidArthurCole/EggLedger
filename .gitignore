@@ -4,6 +4,7 @@ obj/
 *.user
 .vs/
 .vscode/
+dist/
 
 # Standalone Tailwind CLI binary (fetched at build) + the compiled sheet (generated).
 tools/tailwind/

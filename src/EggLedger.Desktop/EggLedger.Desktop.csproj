@@ -15,7 +15,8 @@
          carried into the publish output tree. -->
     <SelfContained>true</SelfContained>
     <PublishSingleFile>true</PublishSingleFile>
-    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
     <ApplicationIcon>icon.ico</ApplicationIcon>
   </PropertyGroup>
 
@@ -42,5 +43,20 @@
   <ItemGroup>
     <Content Include="icon-64.png" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+
+  <!-- Single-file packaging of the WebView's static assets. RCL static web assets
+       (_content/**, scoped css, desktop.html) are NOT folded into a single-file exe;
+       the SDK copies them loose to PublishDir/wwwroot, and Photino serves them from a
+       PhysicalFileProvider at BaseDir/wwwroot. After publish we zip that tree to
+       wwwroot.zip beside the exe and delete the loose copy; Program.cs unpacks the
+       zip to BaseDir/wwwroot on first run. Single-file only. -->
+  <Target Name="PackWwwrootForSingleFile"
+          AfterTargets="Publish"
+          Condition="'$(PublishSingleFile)' == 'true' And Exists('$(PublishDir)wwwroot')">
+    <ZipDirectory SourceDirectory="$(PublishDir)wwwroot"
+                  DestinationFile="$(PublishDir)wwwroot.zip"
+                  Overwrite="true" />
+    <RemoveDir Directories="$(PublishDir)wwwroot" />
+  </Target>
 
 </Project>

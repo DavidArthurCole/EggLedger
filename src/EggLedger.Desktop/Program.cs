@@ -16,6 +16,11 @@ using Photino.Blazor;
 var updateBootstrap = new UpdateBootstrap(new ProcessProbe(), new BinaryReplacement(new ProcessProbe()));
 updateBootstrap.RunStartup(args, Environment.ProcessPath);
 
+// Single-file packaging: the RCL static web assets do not fold into the exe, so the
+// publish target ships them as wwwroot.zip beside the host. Photino's default file
+// provider reads BaseDir/wwwroot, so unpack the zip there before the window builds.
+EnsureWwwrootExtracted();
+
 var appBuilder = PhotinoBlazorAppBuilder.CreateDefault(args);
 
 // Shared UI service set; desktop swaps in native storage (D2), platform caps (D3),
@@ -62,19 +67,48 @@ desktopWindow.Attach(app.MainWindow);
 const int defaultWidth = 1280;
 const int defaultHeight = 800;
 
+// Icon ships inside the single-file exe and self-extracts to BaseDir; SetIconFile
+// resolves relative paths against the working dir, so pass an absolute path and skip
+// it when absent rather than letting Photino throw at WaitForClose.
+var iconFile = Path.Combine(AppContext.BaseDirectory, "icon-64.png");
+app.MainWindow.SetTitle("EggLedger");
+if (File.Exists(iconFile)) app.MainWindow.SetIconFile(iconFile);
 app.MainWindow
-    .SetTitle("EggLedger")
-    .SetIconFile("icon-64.png")
     .SetUseOsDefaultSize(false)
     .SetSize(defaultWidth, defaultHeight)
     .SetUseOsDefaultLocation(false)
     .Center();
 
+// Calling Photino's native ShowMessage from the unhandled-exception path access-
+// violates, so log the fault to stderr and a file beside the exe instead.
 AppDomain.CurrentDomain.UnhandledException += (_, error) => {
-    app.MainWindow.ShowMessage("Fatal exception", error.ExceptionObject.ToString() ?? "Unknown error");
+    var text = error.ExceptionObject.ToString() ?? "Unknown error";
+    Console.Error.WriteLine("FATAL: " + text);
+    try {
+        var logDir = Path.GetDirectoryName(Environment.ProcessPath) ?? AppContext.BaseDirectory;
+        File.AppendAllText(Path.Combine(logDir, "EggLedger.fatal.log"), text + Environment.NewLine);
+    } catch { }
 };
 
 app.Run();
 
 // Trailing slash required so relative "api/v1/..." URIs resolve under the host root.
 static Uri CloudSyncBaseAddress() => new("https://ledgersync.davidarthurcole.me/");
+
+// Unpack wwwroot.zip into BaseDir/wwwroot when the zip is present (single-file publish)
+// and the extracted tree is missing or older than the zip. A loose dev/publish wwwroot
+// with no zip is left untouched.
+static void EnsureWwwrootExtracted() {
+    // The zip ships beside the exe; with single-file the exe dir is NOT
+    // AppContext.BaseDirectory (that is the self-extract temp dir Photino serves from).
+    var exeDir = Path.GetDirectoryName(Environment.ProcessPath) ?? AppContext.BaseDirectory;
+    var zipPath = Path.Combine(exeDir, "wwwroot.zip");
+    if (!File.Exists(zipPath)) return;
+    var wwwrootDir = Path.Combine(AppContext.BaseDirectory, "wwwroot");
+    var stamp = Path.Combine(wwwrootDir, ".pack-stamp");
+    var zipTime = File.GetLastWriteTimeUtc(zipPath);
+    if (File.Exists(stamp) && File.GetLastWriteTimeUtc(stamp) >= zipTime) return;
+    if (Directory.Exists(wwwrootDir)) Directory.Delete(wwwrootDir, recursive: true);
+    System.IO.Compression.ZipFile.ExtractToDirectory(zipPath, wwwrootDir);
+    File.WriteAllText(stamp, zipTime.ToString("O"));
+}
