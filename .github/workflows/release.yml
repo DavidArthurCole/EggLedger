@@ -40,6 +40,19 @@ jobs:
         with:
           dotnet-version: "10.0.x"
 
+      # Tag runs cannot share caches across tags; these restore the entries the CI
+      # workflow seeds on master (default-branch fallback). Tailwind CLI v3.4.17 keyed by OS.
+      - uses: actions/cache@v4
+        with:
+          path: tools/tailwind
+          key: tailwind-cli-v3.4.17-${{ runner.os }}
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/Directory.Build.props') }}
+          restore-keys: ${{ runner.os }}-nuget-
+
       - name: Publish
         shell: bash
         run: |

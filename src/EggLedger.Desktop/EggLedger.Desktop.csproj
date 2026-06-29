@@ -64,7 +64,7 @@
       <_InnerRid Condition="'$(_InnerRid)' == ''">$(NETCoreSdkRuntimeIdentifier)</_InnerRid>
     </PropertyGroup>
     <RemoveDir Directories="$(_WwwrootStageRoot)" />
-    <Exec Command="dotnet publish &quot;$(MSBuildProjectFullPath)&quot; -c $(Configuration) -r $(_InnerRid) --self-contained -p:PublishSingleFile=false -p:_EggLedgerEmbedWwwroot=false -o &quot;$(_WwwrootStageRoot)&quot;" />
+    <Exec Command="dotnet publish &quot;$(MSBuildProjectFullPath)&quot; -c $(Configuration) -r $(_InnerRid) --self-contained --no-restore -p:PublishSingleFile=false -p:_EggLedgerEmbedWwwroot=false -p:BuildTailwindCss=false -o &quot;$(_WwwrootStageRoot)&quot;" />
     <ItemGroup>
       <_WwwrootRawFile Include="$(_WwwrootStageRoot)wwwroot\**\*"
                        Exclude="$(_WwwrootStageRoot)wwwroot\**\*.br;$(_WwwrootStageRoot)wwwroot\**\*.gz" />

@@ -8,7 +8,7 @@
     <base href="/" />
     <link rel="stylesheet" href="_content/EggLedger.Web/tailwind.css" />
     <link rel="stylesheet" href="_content/EggLedger.Web/css/app.css" />
-    <link rel="stylesheet" href="EggLedger.Desktop.styles.css" />
+    <link rel="stylesheet" href="EggLedger.styles.css" />
 </head>
 
 <body>
@@ -19,6 +19,15 @@
         <a href="." class="reload">Reload</a>
         <span class="dismiss">&times;</span>
     </div>
+
+    <script>
+        // Pipe JS errors to the host (logged in --debug mode; a no-op otherwise).
+        function post(m) { try { window.external.sendMessage(m); } catch (e) { } }
+        window.onerror = function (msg, src, line, col) { post("onerror: " + msg + " @ " + src + ":" + line + ":" + col); };
+        window.addEventListener("unhandledrejection", function (e) { post("unhandledrejection: " + (e.reason && e.reason.stack || e.reason)); });
+        var ce = console.error;
+        console.error = function () { post("console.error: " + Array.prototype.join.call(arguments, " ")); ce.apply(console, arguments); };
+    </script>
     <script src="_framework/blazor.webview.js"></script>
 </body>
 
