@@ -44,7 +44,7 @@ internal static class Program {
         // D2 native SQLite storage: replaces browser IndexedDB with a live SQL ReportExecutor.
         // Data lives under the exe data root (honors bootstrap.json relocation); must run after
         // AddEggLedgerWeb so overrides win.
-        var dataRootDir = StoragePaths.ResolveDataRootDir(AppContext.BaseDirectory);
+        var dataRootDir = StoragePaths.ResolveDataRootDir(StoragePaths.DefaultRootDir());
         appBuilder.Services.AddDesktopSqliteStorage(dataRootDir);
 
         // D3 native platform capabilities (open/reveal file, save dialog, restart, window size).

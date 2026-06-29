@@ -60,7 +60,7 @@ public sealed class DesktopPlatformCapabilities(IProcessRunner processRunner, ID
         return cmd is { } c ? _processRunner.RunAsync(c.Exe, c.Args) : Task.CompletedTask;
     }
 
-    public string DataRootDir => StoragePaths.ResolveDataRootDir(AppContext.BaseDirectory);
+    public string DataRootDir => StoragePaths.ResolveDataRootDir(StoragePaths.DefaultRootDir());
 
     private static OSPlatform CurrentPlatform() {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {

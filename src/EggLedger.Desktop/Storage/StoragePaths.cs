@@ -13,6 +13,17 @@ public static class StoragePaths {
     private const string BootstrapFileName = "bootstrap.json";
 
     /// <summary>
+    /// Default data root when no bootstrap override exists: %LOCALAPPDATA%\EggLedger
+    /// (XDG/Library equivalents elsewhere). A single-file exe runs from a volatile temp
+    /// dir, so AppContext.BaseDirectory must NOT be used as the root.
+    /// </summary>
+    public static string DefaultRootDir() {
+        var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        var baseDir = string.IsNullOrEmpty(local) ? AppContext.BaseDirectory : local;
+        return Path.Combine(baseDir, AppDirName);
+    }
+
+    /// <summary>
     /// Path to bootstrap.json under the OS user config dir, or "" when the config
     /// dir cannot be resolved. Mirrors Go bootstrapPath / os.UserConfigDir.
     /// </summary>
