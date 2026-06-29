@@ -16,9 +16,9 @@ using Photino.Blazor;
 var updateBootstrap = new UpdateBootstrap(new ProcessProbe(), new BinaryReplacement(new ProcessProbe()));
 updateBootstrap.RunStartup(args, Environment.ProcessPath);
 
-// Single-file packaging: the RCL static web assets do not fold into the exe, so the
-// publish target ships them as wwwroot.zip beside the host. Photino's default file
-// provider reads BaseDir/wwwroot, so unpack the zip there before the window builds.
+// Single-file packaging: the RCL static web assets do not fold into the exe, so the build
+// embeds them as a wwwroot.zip assembly resource. Photino's default file provider reads
+// BaseDir/wwwroot, so extract the resource there before the window builds.
 EnsureWwwrootExtracted();
 
 var appBuilder = PhotinoBlazorAppBuilder.CreateDefault(args);
@@ -95,20 +95,21 @@ app.Run();
 // Trailing slash required so relative "api/v1/..." URIs resolve under the host root.
 static Uri CloudSyncBaseAddress() => new("https://ledgersync.davidarthurcole.me/");
 
-// Unpack wwwroot.zip into BaseDir/wwwroot when the zip is present (single-file publish)
-// and the extracted tree is missing or older than the zip. A loose dev/publish wwwroot
-// with no zip is left untouched.
+// Extract the embedded wwwroot.zip resource to BaseDir/wwwroot. Stamps with the assembly
+// MVID so a swapped-in update (self-updater) re-extracts; a matching stamp skips the work.
+// When the resource is absent (loose dev/publish wwwroot) the existing tree is left alone.
 static void EnsureWwwrootExtracted() {
-    // The zip ships beside the exe; with single-file the exe dir is NOT
-    // AppContext.BaseDirectory (that is the self-extract temp dir Photino serves from).
-    var exeDir = Path.GetDirectoryName(Environment.ProcessPath) ?? AppContext.BaseDirectory;
-    var zipPath = Path.Combine(exeDir, "wwwroot.zip");
-    if (!File.Exists(zipPath)) return;
+    var assembly = System.Reflection.Assembly.GetExecutingAssembly();
+    using var zipStream = assembly.GetManifestResourceStream("EggLedger.Desktop.wwwroot.zip");
+    if (zipStream is null) return;
     var wwwrootDir = Path.Combine(AppContext.BaseDirectory, "wwwroot");
     var stamp = Path.Combine(wwwrootDir, ".pack-stamp");
-    var zipTime = File.GetLastWriteTimeUtc(zipPath);
-    if (File.Exists(stamp) && File.GetLastWriteTimeUtc(stamp) >= zipTime) return;
+    var mvid = assembly.ManifestModule.ModuleVersionId.ToString();
+    if (File.Exists(stamp) && File.ReadAllText(stamp) == mvid) return;
     if (Directory.Exists(wwwrootDir)) Directory.Delete(wwwrootDir, recursive: true);
-    System.IO.Compression.ZipFile.ExtractToDirectory(zipPath, wwwrootDir);
-    File.WriteAllText(stamp, zipTime.ToString("O"));
+    Directory.CreateDirectory(wwwrootDir);
+    using (var archive = new System.IO.Compression.ZipArchive(zipStream, System.IO.Compression.ZipArchiveMode.Read)) {
+        System.IO.Compression.ZipFileExtensions.ExtractToDirectory(archive, wwwrootDir, overwriteFiles: true);
+    }
+    File.WriteAllText(stamp, mvid);
 }

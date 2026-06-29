@@ -45,17 +45,53 @@
   </ItemGroup>
 
   <!-- Single-file packaging of the WebView's static assets. RCL static web assets
-       (_content/**, scoped css, desktop.html) are NOT folded into a single-file exe;
-       the SDK copies them loose to PublishDir/wwwroot, and Photino serves them from a
-       PhysicalFileProvider at BaseDir/wwwroot. After publish we zip that tree to
-       wwwroot.zip beside the exe and delete the loose copy; Program.cs unpacks the
-       zip to BaseDir/wwwroot on first run. Single-file only. -->
-  <Target Name="PackWwwrootForSingleFile"
+       (_content/**, scoped css, desktop.html) are NOT folded into a single-file exe and
+       never reach the bundler's file list, so they cannot ship inside the lone exe via
+       the publish pipeline. Instead we embed them: a build-time inner publish composes the
+       full wwwroot tree, we zip it (raw files only, no .br/.gz), and embed the zip as an
+       assembly resource. Program.cs extracts it to BaseDir/wwwroot on first run. -->
+
+  <!-- _EggLedgerEmbedWwwroot guards the inner publish from recursing into this target.
+       The inner publish composes the publish-time wwwroot tree that the SWA pipeline only
+       produces during a real publish, not a plain build. -->
+  <Target Name="ComposeWwwrootZip"
+          BeforeTargets="PrepareResourceNames;CoreCompile"
+          Condition="'$(_EggLedgerEmbedWwwroot)' != 'false' And '$(DesignTimeBuild)' != 'true'">
+    <PropertyGroup>
+      <_WwwrootStageRoot>$(IntermediateOutputPath)wwwroot-compose\</_WwwrootStageRoot>
+      <_WwwrootZip>$(IntermediateOutputPath)wwwroot.zip</_WwwrootZip>
+      <_InnerRid Condition="'$(RuntimeIdentifier)' != ''">$(RuntimeIdentifier)</_InnerRid>
+      <_InnerRid Condition="'$(_InnerRid)' == ''">$(NETCoreSdkRuntimeIdentifier)</_InnerRid>
+    </PropertyGroup>
+    <RemoveDir Directories="$(_WwwrootStageRoot)" />
+    <Exec Command="dotnet publish &quot;$(MSBuildProjectFullPath)&quot; -c $(Configuration) -r $(_InnerRid) --self-contained -p:PublishSingleFile=false -p:_EggLedgerEmbedWwwroot=false -o &quot;$(_WwwrootStageRoot)&quot;" />
+    <ItemGroup>
+      <_WwwrootRawFile Include="$(_WwwrootStageRoot)wwwroot\**\*"
+                       Exclude="$(_WwwrootStageRoot)wwwroot\**\*.br;$(_WwwrootStageRoot)wwwroot\**\*.gz" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_WwwrootRawFile)"
+          DestinationFiles="@(_WwwrootRawFile->'$(_WwwrootStageRoot)wwwroot-raw\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="false" />
+    <ZipDirectory SourceDirectory="$(_WwwrootStageRoot)wwwroot-raw"
+                  DestinationFile="$(_WwwrootZip)"
+                  Overwrite="true" />
+  </Target>
+
+  <!-- Statically declared so the resource pipeline assigns it a manifest name; the file is
+       produced by ComposeWwwrootZip before GenerateResource reads it. Skip in the inner
+       publish, which sets _EggLedgerEmbedWwwroot=false. -->
+  <ItemGroup Condition="'$(_EggLedgerEmbedWwwroot)' != 'false'">
+    <EmbeddedResource Include="$(IntermediateOutputPath)wwwroot.zip">
+      <LogicalName>EggLedger.Desktop.wwwroot.zip</LogicalName>
+      <Visible>false</Visible>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <!-- The SWA pipeline still copies the loose wwwroot tree into PublishDir; it is now
+       embedded, so drop it to keep the single-file output a lone exe with no sidecars. -->
+  <Target Name="RemoveLooseWwwrootFromPublish"
           AfterTargets="Publish"
           Condition="'$(PublishSingleFile)' == 'true' And Exists('$(PublishDir)wwwroot')">
-    <ZipDirectory SourceDirectory="$(PublishDir)wwwroot"
-                  DestinationFile="$(PublishDir)wwwroot.zip"
-                  Overwrite="true" />
     <RemoveDir Directories="$(PublishDir)wwwroot" />
   </Target>
 
