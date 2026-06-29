@@ -1,3 +1,4 @@
+using EggLedger.Domain.Api;
 using EggLedger.Web.Platform;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -26,6 +27,11 @@ public static class DesktopPlatformRegistration {
         services.RemoveAll<IPlatformCapabilities>();
         services.AddSingleton<IPlatformCapabilities>(
             new DesktopPlatformCapabilities(processRunner, window));
+
+        // Desktop has no CORS limit, so call auxbrain directly instead of routing game-API
+        // requests through the sync server's /egg-api proxy (which sits behind Cloudflare).
+        services.RemoveAll<ApiClient>();
+        services.AddScoped(sp => new ApiClient(sp.GetRequiredService<HttpClient>()));
 
         return services;
     }
