@@ -1,3 +1,4 @@
+@using System.Globalization
 @using EggLedger.Domain.MissionPacking
 @using EggLedger.Domain.MissionQuery
 @using EggLedger.Web.Missions
@@ -13,7 +14,7 @@
 @if (_open)
 {
 <div class="fixed inset-0 z-40 flex items-center justify-center bg-black/60" @onclick="Close">
-<div class="mission-overlay @(_multi is null ? "w-60vw" : "w-90vw") max-h-95vh bg-dark rounded-lg relative flex flex-col" @onclick:stopPropagation="true">
+<div class="mission-overlay @(_multi is null ? "w-60vw" : (_isLoading ? "min-w-40vw max-w-40vw" : "min-w-60vw max-w-85vw")) max-h-95vh bg-dark rounded-lg relative flex flex-col" @onclick:stopPropagation="true">
     <button class="absolute top-2 right-2 z-10 rounded-md text-gray-400 hover:text-gray-200 focus:outline-none" type="button" @onclick="Close" aria-label="Close">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -38,28 +39,130 @@
         </button>
     }
 
-    <div class="overflow-auto flex-1 min-h-0 pt-8 px-10 pb-2">
-        @if (_multi is null)
-        {
+    @if (_multi is null)
+    {
+        <div class="overflow-auto flex-1 min-h-0 pt-8 px-10 pb-2">
             <div class="bg-darkerer rounded-lg py-2">
                 @if (_data is not null)
                 {
                     <ShipDisplay Data="_data" ShowExpectedDrops="ShowExpectedDrops" />
                 }
             </div>
-        }
-        else
-        {
-            <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3">
-                @foreach (var d in _multi)
-                {
-                    <div class="bg-darkerer rounded-lg py-2">
-                        <ShipDisplay Data="d" ShowExpectedDrops="ShowExpectedDrops" />
-                    </div>
-                }
+        </div>
+    }
+    else if (_isLoading)
+    {
+        <div class="text-center px-8 py-4 min-w-60 pt-8">
+            <div class="mt-0_5rem text-center text-xl text-gray-400">Multi-Mission View Loading</div>
+            <hr class="mt-1rem mb-1rem w-full" />
+            <img src="@State.ContentPaths.Asset("images/loading.gif")" alt="Loading..." class="xl-ico" />
+            <div class="mt-3 text-sm text-gray-400">
+                Loading mission
+                <span class="text-gray-200 font-semibold">@(_loadedCount + 1)</span>
+                of
+                <span class="text-gray-200 font-semibold">@_totalToLoad</span>
             </div>
-        }
-    </div>
+            <div class="mt-2 w-full bg-darker rounded-full h-1.5 overflow-hidden">
+                <div class="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
+                     style="width: @(LoadingPercent)%;"></div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="flex flex-col flex-1 min-h-0 pt-8 px-10 pb-2">
+            <div class="flex justify-center mb-3 flex-shrink-0">
+                <div class="flex bg-darkerer border border-gray-700 rounded-md p-0.5 text-sm gap-0.5">
+                    <button type="button"
+                            disabled="@(_multi.Count > 20)"
+                            class="px-3 py-1 rounded focus:outline-none transition-colors @(_displayMode == "separate" ? "bg-dark text-blue-400" : (_multi.Count > 20 ? "text-gray-600 cursor-not-allowed" : "text-gray-500 hover:text-gray-300"))"
+                            @onclick="@(() => _displayMode = "separate")">Separate</button>
+                    <button type="button"
+                            class="px-3 py-1 rounded focus:outline-none transition-colors @(_displayMode == "combined" ? "bg-dark text-blue-400" : "text-gray-500 hover:text-gray-300")"
+                            @onclick="@(() => _displayMode = "combined")">Combined</button>
+                </div>
+            </div>
+
+            @if (_displayMode == "separate")
+            {
+                <div class="flex justify-between gap-2 flex-1 min-h-0 overflow-auto mb-3">
+                    @for (int i = 0; i < _multi.Count; i++)
+                    {
+                        var idx = i;
+                        <div class="h-full bg-darkerer rounded-lg py-2 flex-shrink-0" style="width: @(100.0 / _multi.Count)%;">
+                            <ShipDisplay Data="_multi[idx]"
+                                         IsMulti="true"
+                                         IsFirst="@(idx == 0)"
+                                         IsLast="@(idx == _multi.Count - 1)"
+                                         ShipCount="_multi.Count"
+                                         ShowExpectedDrops="ShowExpectedDrops" />
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="bg-darkerer rounded-lg p-3 text-gray-300 text-center flex-1 min-h-0 overflow-auto mb-3">
+                    <div class="flex flex-wrap justify-center gap-x-3 gap-y-2 mb-4">
+                        @foreach (var d in (_shipHeaderExpanded ? _multi : _multi.Take(20)))
+                        {
+                            <div class="flex flex-col items-center rounded-lg px-3 py-2 min-w-36" style="background: rgba(120, 128, 138, 0.12);">
+                                @if (!string.IsNullOrEmpty(d.MissionInfo.ShipEnumString))
+                                {
+                                    <img loading="lazy" decoding="async"
+                                         src="@State.ContentPaths.Asset($"images/ships/{d.MissionInfo.ShipEnumString}.png")"
+                                         alt="@d.MissionInfo.ShipString" class="w-14 h-14 object-contain mb-1" />
+                                }
+                                <div class="font-semibold text-sm @DurationClass(d.MissionInfo)">@d.MissionInfo.ShipString</div>
+                                @if (d.MissionInfo.Level > 0)
+                                {
+                                    <span class="text-goldenstar text-xs">(@d.MissionInfo.Level★)</span>
+                                }
+                                <div class="text-gray-400 text-xs mt-1">@ShortDate(d.LaunchDT)</div>
+                                <div class="text-gray-400 text-xs">@ShortDate(d.ReturnDT)</div>
+                                @if (HasTarget(d.MissionInfo))
+                                {
+                                    <div class="text-gray-400 text-xs mt-1">@ProperCase(d.MissionInfo.Target.Replace("_", " ", StringComparison.Ordinal))</div>
+                                }
+                                <div class="text-gray-500 text-xs mt-0.5 flex items-center gap-1">
+                                    <span>@d.MissionInfo.Capacity</span>
+                                    @if (d.MissionInfo.IsBuggedCap)
+                                    {
+                                        <span class="text-buggedcap">0.6x</span>
+                                    }
+                                    else if (d.MissionInfo.IsDubCap)
+                                    {
+                                        <span class="text-dubcap">@d.CapacityModifier.ToString("0.##", CultureInfo.InvariantCulture)x</span>
+                                    }
+                                </div>
+                            </div>
+                        }
+                        @if (!_shipHeaderExpanded && _multi.Count > 20)
+                        {
+                            <button type="button"
+                                    class="flex flex-col items-center justify-center rounded-lg px-3 py-2 min-w-36 text-gray-400 hover:text-gray-200 transition-colors"
+                                    style="background: rgba(120, 128, 138, 0.12);"
+                                    @onclick="@(() => _shipHeaderExpanded = true)">
+                                + @(_multi.Count - 20) more
+                            </button>
+                        }
+                    </div>
+                    <DropDisplayContainer Artifacts="_combinedArtifacts"
+                                          Stones="_combinedStones"
+                                          Ingredients="_combinedIngredients"
+                                          StoneFragments="_combinedStoneFragments"
+                                          ShowExpectedDrops="false" />
+                </div>
+            }
+
+            <div class="text-xs text-gray-300 text-center flex-shrink-0">
+                Hover mouse over an item to show details.<br />
+                Click to open the relevant
+                <a class="ledger-underline" target="_blank" rel="noopener" href="https://wasmegg-carpet.netlify.app/artifact-explorer/">artifact explorer</a>
+                page.
+            </div>
+        </div>
+    }
 </div>
 </div>
 }
@@ -78,6 +181,18 @@
     private bool _open;
     private ViewMissionData? _data;
     private List<ViewMissionData>? _multi;
+    private bool _isLoading;
+    private int _loadedCount;
+    private int _totalToLoad;
+    private string _displayMode = "separate";
+    private bool _shipHeaderExpanded;
+    private List<DropLike> _combinedArtifacts = [];
+    private List<DropLike> _combinedStones = [];
+    private List<DropLike> _combinedIngredients = [];
+    private List<DropLike> _combinedStoneFragments = [];
+
+    private int LoadingPercent =>
+        _totalToLoad > 0 ? Math.Min(100, (int)(((_loadedCount + 1) / (double)_totalToLoad) * 100)) : 0;
 
     public async Task OpenAsync(string missionId)
     {
@@ -91,6 +206,11 @@
         _open = true;
         _data = null;
         _multi = new List<ViewMissionData>();
+        _isLoading = true;
+        _loadedCount = 0;
+        _totalToLoad = missionIds.Count;
+        _shipHeaderExpanded = false;
+        _displayMode = _totalToLoad > 5 ? "combined" : "separate";
         StateHasChanged();
         foreach (var id in missionIds)
         {
@@ -99,8 +219,30 @@
             {
                 _multi.Add(data);
             }
+            _loadedCount++;
+            StateHasChanged();
         }
+        RebuildCombined();
+        _isLoading = false;
         StateHasChanged();
+    }
+
+    // Port of MissionOverlay.vue combinedDropData: merge each spec bucket across missions, then sort.
+    private void RebuildCombined() => RebuildCombined(SortMethod);
+
+    private void RebuildCombined(MissionSortMethod method)
+    {
+        if (_multi is null)
+        {
+            return;
+        }
+        Func<IEnumerable<DropLike>, List<DropLike>> sortFn = method == MissionSortMethod.Iv
+            ? DropSorter.InventoryVisualizerSort
+            : DropSorter.SortGroupAlreadyCombed;
+        _combinedArtifacts = sortFn(LifetimeAggregator.MergeDropArrays(_multi.Select(m => (IReadOnlyList<DropLike>)m.Artifacts)));
+        _combinedStones = sortFn(LifetimeAggregator.MergeDropArrays(_multi.Select(m => (IReadOnlyList<DropLike>)m.Stones)));
+        _combinedIngredients = sortFn(LifetimeAggregator.MergeDropArrays(_multi.Select(m => (IReadOnlyList<DropLike>)m.Ingredients)));
+        _combinedStoneFragments = sortFn(LifetimeAggregator.MergeDropArrays(_multi.Select(m => (IReadOnlyList<DropLike>)m.StoneFragments)));
     }
 
     /// <summary>Re-sort the open overlay's drop lists when the sort method changes.</summary>
@@ -120,6 +262,7 @@
             {
                 MissionDetailBuilder.ApplySortMethod(d, method);
             }
+            RebuildCombined(method);
         }
         StateHasChanged();
         await Task.CompletedTask;
@@ -203,5 +346,35 @@
         _open = false;
         _data = null;
         _multi = null;
+        _isLoading = false;
+        _shipHeaderExpanded = false;
+        _combinedArtifacts = [];
+        _combinedStones = [];
+        _combinedIngredients = [];
+        _combinedStoneFragments = [];
+    }
+
+    private static string ShortDate(DateTime dt) => dt.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+    private static bool HasTarget(DatabaseMission m) =>
+        m.Target.Length > 0 && !string.Equals(m.Target, "UNKNOWN", StringComparison.OrdinalIgnoreCase);
+
+    private static string DurationClass(DatabaseMission m) =>
+        m.DurationType is { } d
+            ? "text-duration-" + Convert.ToInt32(d, CultureInfo.InvariantCulture)
+            : "text-duration-3";
+
+    private static string ProperCase(string value)
+    {
+        var words = value.ToLowerInvariant().Split(' ');
+        for (int i = 0; i < words.Length; i++)
+        {
+            if (words[i] is not ("of" or "the") && words[i].Length > 0)
+            {
+                words[i] = char.ToUpperInvariant(words[i][0]) + words[i].Substring(1);
+            }
+        }
+        var joined = string.Join(' ', words);
+        return joined.Length > 0 ? char.ToUpperInvariant(joined[0]) + joined.Substring(1) : joined;
     }
 }

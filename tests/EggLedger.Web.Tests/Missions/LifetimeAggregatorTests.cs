@@ -15,12 +15,14 @@ public sealed class LifetimeAggregatorTests {
         int rarity = 0,
         string name = "X",
         double quality = 0,
-        int iv = 0) =>
+        int iv = 0,
+        string effect = "") =>
         new() {
             Id = id,
             SpecType = spec,
             Name = name,
             GameName = name,
+            EffectString = effect,
             Level = level,
             Rarity = rarity,
             Quality = quality,
@@ -154,7 +156,7 @@ public sealed class LifetimeAggregatorTests {
     [Fact]
     public void Aggregate_PreservesDisplayFields() {
         var input = Missions(
-            ("m1", new[] { Drop(9, "Artifact", level: 3, rarity: 2, name: "QUANTUM", quality: 4.5, iv: 7) }));
+            ("m1", new[] { Drop(9, "Artifact", level: 3, rarity: 2, name: "QUANTUM", quality: 4.5, iv: 7, effect: "+75% egg value") }));
 
         var result = LifetimeAggregator.Aggregate(input);
 
@@ -166,6 +168,51 @@ public sealed class LifetimeAggregatorTests {
         Assert.Equal(4.5, d.Quality);
         Assert.Equal(7, d.IvOrder);
         Assert.Equal("Artifact", d.SpecType);
+        // Lifetime tooltip showed an empty title and "???" effect before these two fields were carried.
+        Assert.Equal("QUANTUM", d.GameName);
+        Assert.Equal("+75% egg value", d.EffectString);
+    }
+
+    [Fact]
+    public void MergeDropArrays_SumsCountsAndCarriesFields() {
+        static DropLike Item(int id, int level, int rarity, int count, string name, string effect) => new() {
+            Id = id,
+            Level = level,
+            Rarity = rarity,
+            Count = count,
+            Name = name,
+            GameName = name,
+            EffectString = effect,
+            SpecType = "Artifact",
+        };
+        var a = new List<DropLike> { Item(1, 2, 3, 1, "DEFLECTOR", "+10%") };
+        var b = new List<DropLike> { Item(1, 2, 3, 4, "DEFLECTOR", "+10%"), Item(2, 0, 0, 2, "OTHER", "x") };
+
+        var merged = LifetimeAggregator.MergeDropArrays(new IReadOnlyList<DropLike>[] { a, b });
+
+        Assert.Equal(2, merged.Count);
+        var d = merged[0];
+        Assert.Equal(1, d.Id);
+        Assert.Equal(5, d.Count);
+        Assert.Equal("DEFLECTOR", d.GameName);
+        Assert.Equal("+10%", d.EffectString);
+    }
+
+    [Fact]
+    public void MergeDropArrays_DifferentRarity_StaysSeparate() {
+        static DropLike Item(int rarity, int count) => new() {
+            Id = 1,
+            Level = 2,
+            Rarity = rarity,
+            Count = count,
+            Name = "X",
+            SpecType = "Artifact",
+        };
+        var merged = LifetimeAggregator.MergeDropArrays(new IReadOnlyList<DropLike>[] {
+            new List<DropLike> { Item(0, 1), Item(3, 1) },
+        });
+
+        Assert.Equal(2, merged.Count);
     }
 
     [Fact]

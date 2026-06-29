@@ -41,6 +41,39 @@ public static class LifetimeAggregator {
         };
     }
 
+    // Port of MissionOverlay.vue mergeDropArrays: merge by id_level_rarity, summing counts; first occurrence is the representative (full copy).
+    public static List<DropLike> MergeDropArrays(IEnumerable<IReadOnlyList<DropLike>> arrays) {
+        var map = new Dictionary<string, DropLike>();
+        var order = new List<string>();
+        foreach (var arr in arrays) {
+            foreach (var item in arr) {
+                string key = item.Id + "_" + item.Level + "_" + item.Rarity;
+                if (map.TryGetValue(key, out var existing)) {
+                    existing.Count += item.Count;
+                } else {
+                    map[key] = new DropLike {
+                        Id = item.Id,
+                        Name = item.Name,
+                        GameName = item.GameName,
+                        EffectString = item.EffectString,
+                        Level = item.Level,
+                        Rarity = item.Rarity,
+                        Quality = item.Quality,
+                        IvOrder = item.IvOrder,
+                        SpecType = item.SpecType,
+                        Count = item.Count,
+                    };
+                    order.Add(key);
+                }
+            }
+        }
+        var result = new List<DropLike>(order.Count);
+        foreach (var key in order) {
+            result.Add(map[key]);
+        }
+        return result;
+    }
+
     // Dedupe-on-insert bucket: ordered list plus a key index (mirrors Vue LifetimeBucket: arr + index Map).
     private sealed class Bucket {
         public List<DropLike> Items { get; } = [];
@@ -55,6 +88,8 @@ public static class LifetimeAggregator {
             var rep = new DropLike {
                 Id = drop.Id,
                 Name = drop.Name,
+                GameName = drop.GameName,
+                EffectString = drop.EffectString,
                 Level = drop.Level,
                 Rarity = drop.Rarity,
                 Quality = drop.Quality,
