@@ -15,7 +15,7 @@
        Assembly.GetEntryAssembly().GetCustomAttribute<AssemblyInformationalVersionAttribute>().
        The packable Domain sets its own NuGet <Version> and is unaffected. -->
   <PropertyGroup>
-    <EggLedgerVersion>3.0.0-beta.16</EggLedgerVersion>
+    <EggLedgerVersion>3.0.0.beta.16</EggLedgerVersion>
     <Version>$(EggLedgerVersion)</Version>
     <AssemblyVersion>$(EggLedgerVersion).0</AssemblyVersion>
     <FileVersion>$(EggLedgerVersion).0</FileVersion>
