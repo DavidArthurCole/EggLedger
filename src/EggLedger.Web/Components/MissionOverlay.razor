@@ -14,7 +14,7 @@
 @if (_open)
 {
 <div class="fixed inset-0 z-40 flex items-center justify-center bg-black/60" @onclick="Close">
-<div class="mission-overlay @(_multi is null ? "w-60vw" : (_isLoading ? "min-w-40vw max-w-40vw" : "min-w-60vw max-w-85vw")) max-h-95vh bg-dark rounded-lg relative flex flex-col" @onclick:stopPropagation="true">
+<div @ref="_rootRef" tabindex="-1" class="mission-overlay focus:outline-none @(_multi is null ? "w-60vw" : (_isLoading ? "min-w-40vw max-w-40vw" : "min-w-60vw max-w-85vw")) max-h-95vh bg-dark rounded-lg relative flex flex-col" @onclick:stopPropagation="true" @onkeydown="OnKeyDown" @onkeydown:preventDefault="_preventKey">
     <button class="absolute top-2 right-2 z-10 rounded-md text-gray-400 hover:text-gray-200 focus:outline-none" type="button" @onclick="Close" aria-label="Close">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -186,6 +186,9 @@
     [Parameter]
     public bool ShowExpectedDrops { get; set; }
     private bool _open;
+    private ElementReference _rootRef;
+    private bool _focusPending;
+    private bool _preventKey;
     private ViewMissionData? _data;
     private List<ViewMissionData>? _multi;
     private bool _isLoading;
@@ -207,8 +210,37 @@
         _multi = null;
         _data = null;
         _isLoading = true;
+        _focusPending = true;
         StateHasChanged();
         await LoadAsync(missionId);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Focus the overlay so its keydown handler receives arrow/Escape keys instead of the
+        // mission list scrolling behind it.
+        if (_focusPending && _open)
+        {
+            _focusPending = false;
+            await _rootRef.FocusAsync();
+        }
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        _preventKey = e.Key is "ArrowLeft" or "ArrowRight" or "Escape";
+        switch (e.Key)
+        {
+            case "Escape":
+                Close();
+                break;
+            case "ArrowLeft" when _multi is null:
+                await NavigateAsync(_data?.PrevMission);
+                break;
+            case "ArrowRight" when _multi is null:
+                await NavigateAsync(_data?.NextMission);
+                break;
+        }
     }
 
     public async Task OpenMultiAsync(IReadOnlyList<string> missionIds)
@@ -221,6 +253,7 @@
         _totalToLoad = missionIds.Count;
         _shipHeaderExpanded = false;
         _displayMode = _totalToLoad > 5 ? "combined" : "separate";
+        _focusPending = true;
         StateHasChanged();
         foreach (var id in missionIds)
         {

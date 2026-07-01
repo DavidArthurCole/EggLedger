@@ -33,6 +33,7 @@ public sealed class AdminEndpoints(NpgsqlDataSource source, ApiMetrics metrics, 
         await using var cmd = source.CreateCommand(
             "SELECT u.discord_id, u.username, u.avatar_url, " +
             "(SELECT COUNT(*) FROM blobs b WHERE b.discord_id = u.discord_id) AS blob_count, " +
+            "(SELECT COALESCE(SUM(octet_length(b.ciphertext)), 0) FROM blobs b WHERE b.discord_id = u.discord_id) AS storage_bytes, " +
             "(SELECT MAX(expires_at) FROM sessions s WHERE s.discord_id = u.discord_id) AS last_session " +
             "FROM users u ORDER BY u.username");
         await using var reader = await cmd.ExecuteReaderAsync(ctx.RequestAborted);
@@ -42,7 +43,8 @@ public sealed class AdminEndpoints(NpgsqlDataSource source, ApiMetrics metrics, 
                 username = reader.GetString(1),
                 avatarUrl = reader.GetString(2),
                 blobCount = reader.GetInt64(3),
-                lastSession = reader.IsDBNull(4) ? (long?)null : reader.GetInt64(4),
+                storageBytes = reader.GetInt64(4),
+                lastSession = reader.IsDBNull(5) ? (long?)null : reader.GetInt64(5),
                 isAdmin = adminIds.Contains(reader.GetString(0)),
             });
         }

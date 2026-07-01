@@ -4,6 +4,20 @@ using EggLedger.Domain.MissionQuery;
 namespace EggLedger.Web.State;
 
 public static class LedgerFormatting {
+    /// <summary>Human byte size (B/KB/MB/GB), one decimal above 1 KB.</summary>
+    public static string FormatBytes(long bytes) {
+        if (bytes < 1024) {
+            return $"{bytes} B";
+        }
+        if (bytes < 1024 * 1024) {
+            return $"{bytes / 1024.0:0.0} KB";
+        }
+        if (bytes < 1024L * 1024 * 1024) {
+            return $"{bytes / (1024.0 * 1024):0.0} MB";
+        }
+        return $"{bytes / (1024.0 * 1024 * 1024):0.0} GB";
+    }
+
     /// <summary>By mission count descending, stable for equal counts (preserves input order).</summary>
     public static IReadOnlyList<DatabaseAccount> SortByMissionCountDescending(IEnumerable<DatabaseAccount> accounts) =>
         accounts

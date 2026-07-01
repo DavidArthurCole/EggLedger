@@ -42,7 +42,7 @@ public sealed class AdminService(HttpClient http) {
 
 public sealed record AdminMe(bool IsAdmin);
 
-public sealed record AdminUser(string DiscordId, string Username, string AvatarUrl, long BlobCount, long? LastSession, bool IsAdmin);
+public sealed record AdminUser(string DiscordId, string Username, string AvatarUrl, long BlobCount, long StorageBytes, long? LastSession, bool IsAdmin);
 
 public sealed record AdminMetrics(IReadOnlyList<AdminMinute> Minutes, IReadOnlyList<AdminPath> Paths, IReadOnlyList<AdminSpam> Spam);
 
