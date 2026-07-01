@@ -53,11 +53,15 @@ jobs:
           key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/Directory.Build.props') }}
           restore-keys: ${{ runner.os }}-nuget-
 
+      # Stamp the real release version from the tag (v3.0.0-beta.18 -> 3.0.0-beta.18) so the
+      # updater's SemVersion compare works; Directory.Build.props only holds the dev default.
       - name: Publish
         shell: bash
         run: |
+          VERSION="${GITHUB_REF_NAME#v}"
           dotnet publish src/EggLedger.Desktop/EggLedger.Desktop.csproj \
             -c Release -r ${{ matrix.rid }} --self-contained true \
+            -p:EggLedgerVersion="$VERSION" \
             -o publish/${{ matrix.rid }}
 
       # Skip signing when the Azure secret is absent, so unsigned dry-runs still build.

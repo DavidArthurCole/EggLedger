@@ -11,14 +11,14 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
-  <!-- Single source of truth for the app release version. Hosts read it at runtime via
-       Assembly.GetEntryAssembly().GetCustomAttribute<AssemblyInformationalVersionAttribute>().
-       The packable Domain sets its own NuGet <Version> and is unaffected. -->
+  <!-- Release CI passes the git tag; dev default omits the prerelease. AssemblyVersion needs
+       the numeric core; InformationalVersion keeps the full string the updater compares. -->
   <PropertyGroup>
     <EggLedgerVersion>3.0.0</EggLedgerVersion>
+    <EggLedgerVersionCore>$(EggLedgerVersion.Split('-')[0])</EggLedgerVersionCore>
     <Version>$(EggLedgerVersion)</Version>
-    <AssemblyVersion>$(EggLedgerVersion).0</AssemblyVersion>
-    <FileVersion>$(EggLedgerVersion).0</FileVersion>
+    <AssemblyVersion>$(EggLedgerVersionCore).0</AssemblyVersion>
+    <FileVersion>$(EggLedgerVersionCore).0</FileVersion>
     <InformationalVersion>$(EggLedgerVersion)</InformationalVersion>
   </PropertyGroup>
 </Project>
