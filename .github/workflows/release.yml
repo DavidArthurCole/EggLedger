@@ -115,7 +115,7 @@ jobs:
         run: sha256sum "${{ matrix.asset }}" > "${{ matrix.asset }}.sha256"
 
       - name: Attach to release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: ${{ matrix.asset }}
 
@@ -136,7 +136,7 @@ jobs:
           merge-multiple: true
           path: sums
       - run: cat sums/*.sha256 > SHA256SUMS
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           files: SHA256SUMS
 
@@ -146,7 +146,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: docker/login-action@v3
+      - uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -158,7 +158,7 @@ jobs:
         run: echo "name=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
 
       - name: Build and push image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           push: true

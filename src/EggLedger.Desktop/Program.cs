@@ -4,6 +4,7 @@ using EggLedger.Desktop.Storage;
 using EggLedger.Desktop.Update;
 using EggLedger.Web;
 using EggLedger.Web.Data;
+using EggLedger.Web.Platform;
 using EggLedger.Web.Settings;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -93,11 +94,20 @@ internal static class Program {
             .Center();
         if (settings.StartInFullscreen) app.MainWindow.SetFullScreen(true);
 
+        // The desktop.html bridge posts messages here: "openurl:<url>" to open a link in the OS
+        // browser (WebView would otherwise navigate the app away), and in debug mode error logs.
+        var platform = app.Services.GetRequiredService<IPlatformCapabilities>();
+        app.MainWindow.RegisterWebMessageReceivedHandler((_, msg) => {
+            if (msg.StartsWith("openurl:", StringComparison.Ordinal)) {
+                _ = platform.OpenUrlAsync(msg["openurl:".Length..]);
+                return;
+            }
+            if (debugMode) Log("WEBVIEW: " + msg);
+        });
+
         if (debugMode) {
             app.MainWindow.SetDevToolsEnabled(true);
             app.MainWindow.SetLogVerbosity(2);
-            // The bridge in desktop.html posts window.onerror + console.error here.
-            app.MainWindow.RegisterWebMessageReceivedHandler((_, msg) => Log("WEBVIEW: " + msg));
             // Blazor swallows component-init/render exceptions into blazor-error-ui; surface the
             // first-chance throw so a black screen reveals its managed cause.
             AppDomain.CurrentDomain.FirstChanceException += (_, e) =>

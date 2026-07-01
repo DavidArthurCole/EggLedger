@@ -35,6 +35,30 @@
         #blazor-error-ui { display: none; position: fixed; bottom: 0; left: 0; right: 0;
             background: #b91c1c; color: #fff; padding: 0.6rem 1rem; z-index: 1000; }
         #blazor-error-ui .reload, #blazor-error-ui .dismiss { color: #fff; margin-left: 0.75rem; cursor: pointer; }
+
+        /* Reconnect overlay: blazor.web.js toggles the show/failed/rejected classes. */
+        #components-reconnect-modal { display: none; }
+        #components-reconnect-modal.components-reconnect-show,
+        #components-reconnect-modal.components-reconnect-failed,
+        #components-reconnect-modal.components-reconnect-rejected {
+            display: flex; position: fixed; inset: 0; z-index: 1010;
+            align-items: center; justify-content: center;
+            background: rgba(0, 0, 0, 0.6); }
+        .reconnect-card { background: #16181d; color: #d1d5db; border: 1px solid #4b5563;
+            border-radius: 0.5rem; padding: 1.5rem 2rem; text-align: center;
+            font-size: 0.9rem; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); }
+        .reconnect-spinner { width: 2rem; height: 2rem; margin: 0 auto 0.75rem;
+            border: 3px solid #374151; border-top-color: #3b82f6; border-radius: 50%;
+            animation: reconnect-spin 0.8s linear infinite; }
+        @@keyframes reconnect-spin { to { transform: rotate(360deg); } }
+        .reconnect-failed-text, .reconnect-rejected-text { display: none; }
+        .components-reconnect-failed .reconnect-spinner,
+        .components-reconnect-failed .reconnect-active-text,
+        .components-reconnect-rejected .reconnect-spinner,
+        .components-reconnect-rejected .reconnect-active-text { display: none; }
+        .components-reconnect-failed .reconnect-failed-text,
+        .components-reconnect-rejected .reconnect-rejected-text { display: block; }
+        .reconnect-card a { color: #3b82f6; cursor: pointer; text-decoration: underline; }
     </style>
     <HeadOutlet @rendermode="@RenderMode" />
 </head>
@@ -47,6 +71,19 @@
         An unhandled error has occurred.
         <a href="." class="reload">Reload</a>
         <span class="dismiss">&times;</span>
+    </div>
+
+    <div id="components-reconnect-modal">
+        <div class="reconnect-card">
+            <div class="reconnect-spinner"></div>
+            <div class="reconnect-active-text">Reconnecting to the server...</div>
+            <div class="reconnect-failed-text">
+                Connection lost. <a onclick="window.Blazor.reconnect()">Retry</a> or <a href=".">reload</a>.
+            </div>
+            <div class="reconnect-rejected-text">
+                Session expired. <a href=".">Reload</a> to continue.
+            </div>
+        </div>
     </div>
     <script src="_framework/blazor.web.js"></script>
 </body>

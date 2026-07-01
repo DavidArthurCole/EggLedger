@@ -106,6 +106,35 @@ public sealed class DesktopPlatformCapabilitiesTests {
         Assert.Equal(1, window.ExitCalls);
     }
 
+    [Theory]
+    [InlineData("https://example.com/x")]
+    [InlineData("http://example.com/y")]
+    public async Task OpenUrlAsync_RunsOpenCommandForHttpUrls(string url) {
+        var runner = new FakeProcessRunner();
+        var caps = new DesktopPlatformCapabilities(runner, new FakeWindow());
+
+        await caps.OpenUrlAsync(url);
+
+        var call = Assert.Single(runner.Calls);
+        var expected = DesktopCommandBuilder.BuildOpenCommand(CurrentPlatform(), url);
+        Assert.Equal(expected.Exe, call.Exe);
+        Assert.Equal(expected.Args, call.Args);
+    }
+
+    [Theory]
+    [InlineData("file:///etc/passwd")]
+    [InlineData("javascript:alert(1)")]
+    [InlineData("ftp://host/f")]
+    [InlineData("not a url")]
+    public async Task OpenUrlAsync_IgnoresNonHttpSchemes(string url) {
+        var runner = new FakeProcessRunner();
+        var caps = new DesktopPlatformCapabilities(runner, new FakeWindow());
+
+        await caps.OpenUrlAsync(url);
+
+        Assert.Empty(runner.Calls);
+    }
+
     private static OSPlatform CurrentPlatform() {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
             return OSPlatform.Windows;

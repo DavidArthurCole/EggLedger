@@ -19,6 +19,16 @@ public sealed class DesktopPlatformCapabilities(IProcessRunner processRunner, ID
         return _processRunner.RunAsync(exe, args);
     }
 
+    public Task OpenUrlAsync(string url) {
+        // Only shell out for http(s); reject anything else so a link can't launch an arbitrary handler.
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)
+            || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)) {
+            return Task.CompletedTask;
+        }
+        var (exe, args) = DesktopCommandBuilder.BuildOpenCommand(CurrentPlatform(), uri.AbsoluteUri);
+        return _processRunner.RunAsync(exe, args);
+    }
+
     public Task OpenFileInFolderAsync(string path) {
         var (exe, args) = DesktopCommandBuilder.BuildOpenInFolderCommand(CurrentPlatform(), Path.GetFullPath(path));
         return _processRunner.RunAsync(exe, args);

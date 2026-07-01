@@ -8,6 +8,9 @@ public interface IPlatformCapabilities {
     /// <summary>Open with the OS default handler.</summary>
     Task OpenFileAsync(string path);
 
+    /// <summary>Open an http(s) URL in the OS default browser. No-op in the browser build.</summary>
+    Task OpenUrlAsync(string url);
+
     /// <summary>Reveal in the OS file browser (select it in its folder).</summary>
     Task OpenFileInFolderAsync(string path);
 

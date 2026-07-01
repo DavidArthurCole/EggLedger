@@ -15,6 +15,9 @@ public sealed class BrowserPlatformCapabilities(IJSRuntime js) : IPlatformCapabi
     public Task OpenFileAsync(string path) => Task.CompletedTask;
     public Task OpenFileInFolderAsync(string path) => Task.CompletedTask;
 
+    /// <summary>No-op: the browser opens target="_blank" links in a real tab itself.</summary>
+    public Task OpenUrlAsync(string url) => Task.CompletedTask;
+
     /// <summary>Always null: downloads go to the browser's own download path.</summary>
     public Task<string?> ChooseSaveFilePathAsync(string defaultName) => Task.FromResult<string?>(null);
 

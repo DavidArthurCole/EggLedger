@@ -29,6 +29,7 @@ public sealed class DesktopStorageServiceTests : IDisposable {
             return Task.CompletedTask;
         }
         public Task OpenFileAsync(string path) => Task.CompletedTask;
+        public Task OpenUrlAsync(string url) => Task.CompletedTask;
         public Task OpenFileInFolderAsync(string path) => Task.CompletedTask;
         public Task<string?> ChooseSaveFilePathAsync(string defaultName) => Task.FromResult<string?>(null);
         public Task<(int w, int h)> GetWindowSizeAsync() => Task.FromResult((0, 0));

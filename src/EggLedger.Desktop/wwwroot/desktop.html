@@ -33,6 +33,15 @@
         window.addEventListener("unhandledrejection", function (e) { post("unhandledrejection: " + (e.reason && e.reason.stack || e.reason)); });
         var ce = console.error;
         console.error = function () { post("console.error: " + Array.prototype.join.call(arguments, " ")); ce.apply(console, arguments); };
+
+        // External links would navigate the WebView away from the app. Intercept clicks on
+        // http(s) anchors and hand the URL to the host, which opens the OS default browser.
+        document.addEventListener("click", function (e) {
+            var a = e.target && e.target.closest && e.target.closest("a[href]");
+            if (!a) return;
+            var href = a.href;
+            if (/^https?:\/\//i.test(href)) { e.preventDefault(); post("openurl:" + href); }
+        }, true);
     </script>
     <script src="_framework/blazor.webview.js"></script>
 </body>

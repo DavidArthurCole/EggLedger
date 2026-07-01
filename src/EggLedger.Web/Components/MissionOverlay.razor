@@ -47,6 +47,13 @@
                 {
                     <ShipDisplay Data="_data" ShowExpectedDrops="ShowExpectedDrops" />
                 }
+                else if (_isLoading)
+                {
+                    <div class="text-center px-8 py-6">
+                        <img src="@State.ContentPaths.Asset("images/loading.gif")" alt="Loading..." class="xl-ico" />
+                        <div class="mt-3 text-sm text-gray-400">Loading mission...</div>
+                    </div>
+                }
             </div>
         </div>
     }
@@ -198,6 +205,9 @@
     {
         _open = true;
         _multi = null;
+        _data = null;
+        _isLoading = true;
+        StateHasChanged();
         await LoadAsync(missionId);
     }
 
@@ -224,6 +234,19 @@
         }
         RebuildCombined();
         _isLoading = false;
+        StateHasChanged();
+
+        // Expected-drops need the community download; populate after the grid renders so the
+        // ship cards are not gated on it, then rebuild the combined view once.
+        foreach (var data in _multi)
+        {
+            var mission = FindMission(data.MissionInfo.MissiondId);
+            if (mission is not null)
+            {
+                await PopulateMennoAsync(mission, data);
+            }
+        }
+        RebuildCombined();
         StateHasChanged();
     }
 
@@ -271,7 +294,20 @@
     private async Task LoadAsync(string missionId)
     {
         _data = await BuildAsync(missionId);
+        _isLoading = false;
         StateHasChanged();
+
+        // Expected-drops come from the multi-MB community download; fill it in after the
+        // ship is already on screen so first paint is not gated on the fetch.
+        if (_data is not null)
+        {
+            var mission = FindMission(missionId);
+            if (mission is not null)
+            {
+                await PopulateMennoAsync(mission, _data);
+                StateHasChanged();
+            }
+        }
     }
 
     private async Task<ViewMissionData?> BuildAsync(string missionId)
@@ -292,7 +328,6 @@
             FilteredMissions,
             extendedInfo: true);
         MissionDetailBuilder.ApplySortMethod(data, SortMethod);
-        await PopulateMennoAsync(mission, data);
         return data;
     }
 
