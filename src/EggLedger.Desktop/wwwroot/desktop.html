@@ -34,13 +34,15 @@
         var ce = console.error;
         console.error = function () { post("console.error: " + Array.prototype.join.call(arguments, " ")); ce.apply(console, arguments); };
 
-        // External links would navigate the WebView away from the app. Intercept clicks on
-        // http(s) anchors and hand the URL to the host, which opens the OS default browser.
+        // Off-origin links would navigate the WebView away from the app. Intercept clicks on
+        // external http(s) anchors and hand the URL to the host (OS default browser). Same-origin
+        // links (Blazor nav like /missions) fall through to normal in-app routing.
         document.addEventListener("click", function (e) {
             var a = e.target && e.target.closest && e.target.closest("a[href]");
             if (!a) return;
-            var href = a.href;
-            if (/^https?:\/\//i.test(href)) { e.preventDefault(); post("openurl:" + href); }
+            if (!/^https?:$/i.test(a.protocol) || a.host === location.host) return;
+            e.preventDefault();
+            post("openurl:" + a.href);
         }, true);
     </script>
     <script src="_framework/blazor.webview.js"></script>
