@@ -1,7 +1,6 @@
 @using System.Globalization
 @using EggLedger.Domain.Reports
 @using EggLedger.Domain.Reports.Charts
-
 @* Grouped horizontal bars over a 2D result: each row heads a stack of per-column bars,
    with an "Other" rollup once columns exceed MaxCols. Legend drag-reorder deferred. *@
 
@@ -11,17 +10,14 @@
         var colors = ColColors(cols);
         var max = GlobalMax();
     }
-    @for (int rIdx = 0; rIdx < Result.RowLabels.Count; rIdx++)
-    {
+    @for (var rIdx = 0; rIdx < Result.RowLabels.Count; rIdx++) {
         var row = Result.RowLabels[rIdx];
         <div class="flex items-center gap-1 min-w-0 flex-1">
             <span class="text-xs text-gray-400 w-24 shrink-0 text-right truncate" title="@row">@row</span>
             <div class="flex-1 flex flex-col gap-0.5">
-                @for (int cIdx = 0; cIdx < cols.Count; cIdx++)
-                {
+                @for (var cIdx = 0; cIdx < cols.Count; cIdx++) {
                     var raw = CellRawValue(rIdx, cIdx, cols);
-                    if (raw > 0)
-                    {
+                    if (raw > 0) {
                         <div class="flex items-center gap-1">
                             <div class="chart-hit h-3 rounded-sm"
                                  style="width: @BarWidth(raw, max)%; background-color: @colors[cIdx]; min-width: 2px; cursor: pointer;"
@@ -39,8 +35,7 @@
             var legendCols = DisplayCols();
             var legendColors = ColColors(legendCols);
         }
-        @for (int c = 0; c < legendCols.Count; c++)
-        {
+        @for (var c = 0; c < legendCols.Count; c++) {
             <div class="flex items-center gap-1 select-none" title="@legendCols[c]">
                 <div class="w-2 h-2 rounded-sm shrink-0" style="background-color: @legendColors[c];"></div>
                 <span class="text-xs text-gray-400 truncate max-w-28">@legendCols[c]</span>
@@ -51,73 +46,67 @@
 
 @code {
     private const int MaxCols = 11;
-    [Parameter, EditorRequired]
-    public ReportResult Result { get; set; } = new();
-    [Parameter, EditorRequired]
-    public string Color { get; set; } = "#6366f1";
-    [Parameter]
-    public string? NormalizeBy { get; set; }
+    [Parameter] [EditorRequired] public ReportResult Result { get; set; } = new();
+    [Parameter] [EditorRequired] public string Color { get; set; } = "#6366f1";
+    [Parameter] public string? NormalizeBy { get; set; }
     private bool IsPct => NormalizeBy is "row_pct" or "col_pct" or "global_pct";
     private int RawColCount => Result.ColLabels.Count;
     private bool HasOtherGroup => RawColCount > MaxCols + 1;
 
-    private List<string> DisplayCols()
-    {
+    private List<string> DisplayCols() {
         var raw = Result.ColLabels.ToList();
-        if (raw.Count <= MaxCols + 1)
-        {
+        if (raw.Count <= MaxCols + 1) {
             return raw;
         }
+
         var kept = raw.Take(MaxCols).ToList();
         kept.Add("Other");
         return kept;
     }
 
-    private double GlobalMax() => Result.MatrixValues.DefaultIfEmpty(0).Max();
+    private double GlobalMax() {
+        return Result.MatrixValues.DefaultIfEmpty(0).Max();
+    }
 
-    private double CellRawValue(int rIdx, int cDisplayIdx, List<string> cols)
-    {
-        int nCols = RawColCount;
-        if (HasOtherGroup && cDisplayIdx >= MaxCols)
-        {
+    private double CellRawValue(int rIdx, int cDisplayIdx, List<string> cols) {
+        var nCols = RawColCount;
+        if (HasOtherGroup && cDisplayIdx >= MaxCols) {
             double sum = 0;
-            for (int c = MaxCols; c < nCols; c++)
-            {
-                int flat = rIdx * nCols + c;
+            for (var c = MaxCols; c < nCols; c++) {
+                var flat = rIdx * nCols + c;
                 sum += flat < Result.MatrixValues.Count ? Result.MatrixValues[flat] : 0;
             }
+
             return sum;
         }
-        int idx = rIdx * nCols + cDisplayIdx;
+
+        var idx = rIdx * nCols + cDisplayIdx;
         return idx < Result.MatrixValues.Count ? Result.MatrixValues[idx] : 0;
     }
 
-    private double BarWidth(double v, double max)
-    {
-        if (IsPct)
-        {
+    private double BarWidth(double v, double max) {
+        if (IsPct) {
             return v;
         }
+
         return max == 0 ? 0 : v / max * 100;
     }
 
-    private string CellLabel(double v)
-    {
-        if (IsPct)
-        {
+    private string CellLabel(double v) {
+        if (IsPct) {
             return v.ToString("0.0", CultureInfo.InvariantCulture) + "%";
         }
+
         return v % 1 == 0
             ? ((long)v).ToString(CultureInfo.InvariantCulture)
             : v.ToString("0.00", CultureInfo.InvariantCulture);
     }
 
-    private List<string> ColColors(List<string> cols)
-    {
-        if (RawColCount == 0)
-        {
+    private List<string> ColColors(List<string> cols) {
+        if (RawColCount == 0) {
             return new List<string>();
         }
+
         return ChartGeometry.SeriesColors(
             cols,
             Color,

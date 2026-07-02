@@ -1,24 +1,31 @@
-@using EggLedger.Web.State
 @inject ScreenshotSafetyState ScreenshotSafety
 @implements IDisposable
 
 @* When screenshot-safety is on, keep the "EI" prefix but replace the 16 digits with a solid bar so screenshots leak nothing. *@
-@if (ScreenshotSafety.Enabled && IsEid(Value))
-{
-    <span>EI</span><span class="inline-block rounded-sm bg-current select-none align-[-0.05em]" style="width: 16ch; height: 0.8em;"></span>
-}
-else
-{
+@if (ScreenshotSafety.Enabled && IsEid(Value)) {
+    <span>EI</span>
+    <span class="inline-block rounded-sm bg-current select-none align-[-0.05em]" style="width: 16ch; height: 0.8em;"></span>
+} else {
     @Value
 }
 
 @code {
-    [Parameter]
-    public string Value { get; set; } = "";
-    protected override void OnInitialized() => ScreenshotSafety.Changed += OnChanged;
-    public void Dispose() => ScreenshotSafety.Changed -= OnChanged;
-    private void OnChanged() => InvokeAsync(StateHasChanged);
+    [Parameter] public string Value { get; set; } = "";
 
-    private static bool IsEid(string s) =>
-        s.Length == 18 && s.StartsWith("EI", StringComparison.Ordinal) && s.AsSpan(2).IndexOfAnyExceptInRange('0', '9') < 0;
+    protected override void OnInitialized() {
+        ScreenshotSafety.Changed += OnChanged;
+    }
+
+    public void Dispose() {
+        ScreenshotSafety.Changed -= OnChanged;
+    }
+
+    private void OnChanged() {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private static bool IsEid(string s) {
+        return s.Length == 18 && s.StartsWith("EI", StringComparison.Ordinal) && s.AsSpan(2).IndexOfAnyExceptInRange('0', '9') < 0;
+    }
+
 }

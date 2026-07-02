@@ -38,7 +38,7 @@ public sealed class SettingsModel {
     public bool AutoRefreshMenno { get; set; }
 
     /// <summary>Auto-retry missions that fail during a fetch.</summary>
-    public bool AutoRetry { get; set; }
+    public bool AutoRetry { get; set; } = true;
 
     /// <summary>Hide per-mission timeout errors in the fetch log.</summary>
     public bool HideTimeoutErrors { get; set; }

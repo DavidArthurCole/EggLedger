@@ -1,13 +1,12 @@
+@using System.Globalization
 @using EggLedger.Domain.Reports
 @using EggLedger.Domain.Reports.Charts
-
 @* Horizontal bar chart (CSS-width bars), sortable by chart_type (bar_desc / bar_asc).
    Colors come from per-label overrides or the base color. *@
 
 <div class="chart-rows w-full h-full grid gap-x-2 gap-y-1 overflow-y-auto pr-3"
      style="grid-template-columns: max-content 1fr max-content; align-content: start;">
-    @foreach (var pair in SortedPairs())
-    {
+    @foreach (var pair in SortedPairs()) {
         <span class="text-gray-400 text-xs text-right self-center leading-tight" style="max-width: 9rem;" title="@pair.Label">@pair.Label</span>
         <div class="bg-gray-800 rounded-sm h-4 min-w-0 self-center">
             <div class="h-4 rounded-sm chart-hit"
@@ -17,59 +16,62 @@
         </div>
         <span class="text-gray-300 font-mono text-xs text-right self-center">@FormatValue(pair.Value)</span>
     }
-    @if (!string.IsNullOrEmpty(UnitLabel))
-    {
+    @if (!string.IsNullOrEmpty(UnitLabel)) {
         <div class="col-span-3 text-xs text-gray-600 text-right mt-0.5">@UnitLabel</div>
     }
 </div>
 
 @code {
-    [Parameter, EditorRequired]
-    public ReportResult Result { get; set; } = new();
-    [Parameter, EditorRequired]
-    public string Color { get; set; } = "#6366f1";
-    [Parameter]
-    public string? UnitLabel { get; set; }
-    [Parameter]
-    public string? LabelColors { get; set; }
+    [Parameter] [EditorRequired] public ReportResult Result { get; set; } = new();
+    [Parameter] [EditorRequired] public string Color { get; set; } = "#6366f1";
+    [Parameter] public string? UnitLabel { get; set; }
+    [Parameter] public string? LabelColors { get; set; }
 
     /// <summary>chart_type: "bar", "bar_desc", or "bar_asc".</summary>
     [Parameter]
     public string? ChartType { get; set; }
+
     private string UnitSuffix => string.IsNullOrEmpty(UnitLabel) ? "" : " " + UnitLabel;
 
     private IReadOnlyDictionary<string, string> ParsedColors =>
         SliceColors.ParseLabelColors(LabelColors);
 
-    private List<double> DisplayValues() =>
-        Result.IsFloat ? Result.FloatValues : Result.Values.Select(v => (double)v).ToList();
+    private List<double> DisplayValues() {
+        return Result.IsFloat ? Result.FloatValues : Result.Values.Select(v => (double)v).ToList();
+    }
 
-    private double MaxVal() => Math.Max(DisplayValues().DefaultIfEmpty(0).Max(), 1);
+    private double MaxVal() {
+        return Math.Max(DisplayValues().DefaultIfEmpty(0).Max(), 1);
+    }
 
-    private List<(string Label, double Value)> SortedPairs()
-    {
+    private List<(string Label, double Value)> SortedPairs() {
         var values = DisplayValues();
         var pairs = Result.Labels
             .Select((label, i) => (Label: label, Value: i < values.Count ? values[i] : 0))
             .ToList();
-        return ChartType switch
-        {
+        return ChartType switch {
             "bar_desc" => pairs.OrderByDescending(p => p.Value).ToList(),
             "bar_asc" => pairs.OrderBy(p => p.Value).ToList(),
-            _ => pairs,
+            _ => pairs
         };
     }
 
-    private int BarWidth(double val) => (int)Math.Round(val / MaxVal() * 100);
+    private int BarWidth(double val) {
+        return (int)Math.Round(val / MaxVal() * 100);
+    }
 
-    private string BarColor(string label) =>
-        ParsedColors.TryGetValue(label, out var c) && !string.IsNullOrEmpty(c) ? c : Color;
+    private string BarColor(string label) {
+        return ParsedColors.TryGetValue(label, out var c) && !string.IsNullOrEmpty(c) ? c : Color;
+    }
 
-    private string BarTitle(string label, double value) =>
-        $"{label}\n{FormatValue(value)}{UnitSuffix}";
+    private string BarTitle(string label, double value) {
+        return $"{label}\n{FormatValue(value)}{UnitSuffix}";
+    }
 
-    private string FormatValue(double val) =>
-        Result.IsFloat
-            ? val.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)
-            : ((long)val).ToString(System.Globalization.CultureInfo.InvariantCulture);
+    private string FormatValue(double val) {
+        return Result.IsFloat
+            ? val.ToString("0.00", CultureInfo.InvariantCulture)
+            : ((long)val).ToString(CultureInfo.InvariantCulture);
+    }
+
 }

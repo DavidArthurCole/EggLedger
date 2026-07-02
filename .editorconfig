@@ -101,6 +101,10 @@ dotnet_diagnostic.CA1822.severity = suggestion # 'mark static' must not force pu
 # Razor: the generated backing partial trips some analyzers; relax a few.
 dotnet_diagnostic.IDE0005.severity = none
 
+# dotnet format does not process .razor files. jb cleanupcode (ReSharper CLI) does; this
+# is the K&R brace-style knob for its embedded-C# formatter (@code + @if/@switch/@foreach).
+resharper_razor_always_use_end_of_line_brace_style = true
+
 [tests/**/*.cs]
 # Test conventions: underscore method names, instance methods, inline arrays, and
 # per-call options are fine in tests; perf analyzers add only noise there.

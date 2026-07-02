@@ -1,7 +1,6 @@
 @page "/admin"
 @using EggLedger.Web.Services
 @using EggLedger.Web.Settings
-@using EggLedger.Web.State
 @inject AdminService Admin
 @inject CloudSessionStore SessionStore
 @inject AdminState AdminState
@@ -27,9 +26,11 @@
             <span class="section-heading mt-1rem">Requests by endpoint</span>
             <table class="w-full text-xs text-gray-400 mt-0_5rem tabular-nums">
                 <tbody>
-                    @foreach (var p in _metrics.Paths) {
-                        <tr><td class="font-mono py-0.5">@p.Path</td><td class="text-right">@p.Count</td></tr>
-                    }
+                @foreach (var p in _metrics.Paths) {
+                    <tr>
+                        <td class="font-mono py-0.5">@p.Path</td><td class="text-right">@p.Count</td>
+                    </tr>
+                }
                 </tbody>
             </table>
         } else {
@@ -41,24 +42,24 @@
             <div class="text-xs text-gray-500 mt-0_5rem">Invalid /api/v1 requests (no matching route). Likely scanners probing for other software.</div>
             <table class="w-full text-xs text-gray-400 mt-0_5rem tabular-nums">
                 <thead>
-                    <tr class="text-gray-500">
-                        <th class="text-left py-1">IP</th>
-                        <th class="text-left">Request</th>
-                        <th class="text-left">User-Agent</th>
-                        <th class="text-right">Hits</th>
-                        <th class="text-right">Last seen</th>
-                    </tr>
+                <tr class="text-gray-500">
+                    <th class="text-left py-1">IP</th>
+                    <th class="text-left">Request</th>
+                    <th class="text-left">User-Agent</th>
+                    <th class="text-right">Hits</th>
+                    <th class="text-right">Last seen</th>
+                </tr>
                 </thead>
                 <tbody>
-                    @foreach (var s in _metrics.Spam) {
-                        <tr class="border-t border-gray-700/50">
-                            <td class="py-1 font-mono">@s.Ip</td>
-                            <td class="font-mono">@s.Method @s.Path</td>
-                            <td class="truncate max-w-xs text-gray-600" title="@s.UserAgent">@s.UserAgent</td>
-                            <td class="text-right">@s.Hits</td>
-                            <td class="text-right text-gray-600">@FormatEpoch(s.LastSeen)</td>
-                        </tr>
-                    }
+                @foreach (var s in _metrics.Spam) {
+                    <tr class="border-t border-gray-700/50">
+                        <td class="py-1 font-mono">@s.Ip</td>
+                        <td class="font-mono">@s.Method @s.Path</td>
+                        <td class="truncate max-w-xs text-gray-600" title="@s.UserAgent">@s.UserAgent</td>
+                        <td class="text-right">@s.Hits</td>
+                        <td class="text-right text-gray-600">@FormatEpoch(s.LastSeen)</td>
+                    </tr>
+                }
                 </tbody>
             </table>
         }
@@ -72,36 +73,38 @@
         <div class="mt-0_5rem max-h-96 overflow-auto rounded-md border border-gray-700/50">
             <table class="w-full table-fixed text-sm text-gray-400 tabular-nums">
                 <colgroup>
-                    <col style="width: 34%" />
-                    <col style="width: 26%" />
-                    <col style="width: 12%" />
-                    <col style="width: 16%" />
-                    <col style="width: 12%" />
+                    <col style="width: 34%"/>
+                    <col style="width: 26%"/>
+                    <col style="width: 12%"/>
+                    <col style="width: 16%"/>
+                    <col style="width: 12%"/>
                 </colgroup>
                 <thead class="sticky top-0 bg-darkest z-10">
-                    <tr class="text-gray-500 text-xs">
-                        <th class="text-left py-1 px-2">User</th>
-                        <th class="text-left px-2">Discord ID</th>
-                        <th class="text-right px-2">Blobs</th>
-                        <th class="text-right px-2">Storage</th>
-                        <th class="px-2"></th>
-                    </tr>
+                <tr class="text-gray-500 text-xs">
+                    <th class="text-left py-1 px-2">User</th>
+                    <th class="text-left px-2">Discord ID</th>
+                    <th class="text-right px-2">Blobs</th>
+                    <th class="text-right px-2">Storage</th>
+                    <th class="px-2"></th>
+                </tr>
                 </thead>
                 <tbody>
-                    @foreach (var u in _users ?? []) {
-                        <tr class="border-t border-gray-700/50">
-                            <td class="py-1 px-2 font-medium truncate" title="@u.Username">@u.Username @(u.IsAdmin ? "(admin)" : "")</td>
-                            <td class="px-2 font-mono text-xs text-gray-600 truncate" title="@u.DiscordId">@u.DiscordId</td>
-                            <td class="text-right px-2">@u.BlobCount</td>
-                            <td class="text-right px-2">@LedgerFormatting.FormatBytes(u.StorageBytes)</td>
-                            <td class="text-right px-2">
-                                @if (!u.IsAdmin) {
-                                    <button type="button" class="text-xs text-red-400 hover:text-red-300"
-                                            @onclick="() => DeleteUser(u.DiscordId)">Delete</button>
-                                }
-                            </td>
-                        </tr>
-                    }
+                @foreach (var u in _users ?? []) {
+                    <tr class="border-t border-gray-700/50">
+                        <td class="py-1 px-2 font-medium truncate" title="@u.Username">@u.Username @(u.IsAdmin ? "(admin)" : "")</td>
+                        <td class="px-2 font-mono text-xs text-gray-600 truncate" title="@u.DiscordId">@u.DiscordId</td>
+                        <td class="text-right px-2">@u.BlobCount</td>
+                        <td class="text-right px-2">@LedgerFormatting.FormatBytes(u.StorageBytes)</td>
+                        <td class="text-right px-2">
+                            @if (!u.IsAdmin) {
+                                <button type="button" class="text-xs text-red-400 hover:text-red-300"
+                                        @onclick="() => DeleteUser(u.DiscordId)">
+                                    Delete
+                                </button>
+                            }
+                        </td>
+                    </tr>
+                }
                 </tbody>
             </table>
         </div>
@@ -135,12 +138,14 @@
         StateHasChanged();
     }
 
-    private static string FormatEpoch(long unixSeconds) =>
-        DateTimeOffset.FromUnixTimeSeconds(unixSeconds).ToLocalTime().ToString("yyyy-MM-dd HH:mm");
+    private static string FormatEpoch(long unixSeconds) {
+        return DateTimeOffset.FromUnixTimeSeconds(unixSeconds).ToLocalTime().ToString("yyyy-MM-dd HH:mm");
+    }
 
     private async Task DeleteUser(string discordId) {
         if (_token is null) return;
         if (await Admin.DeleteUserAsync(_token, discordId)) await RefreshAsync();
         else _error = $"failed to delete {discordId}";
     }
+
 }

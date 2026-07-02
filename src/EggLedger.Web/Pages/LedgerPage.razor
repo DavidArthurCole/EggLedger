@@ -1,9 +1,6 @@
 @page "/"
 @using EggLedger.Domain.MissionQuery
-@using EggLedger.Web.Components
-@using EggLedger.Web.Data
 @using EggLedger.Web.Services
-@using EggLedger.Web.State
 @implements IDisposable
 @inject MissionQueryHandlers Queries
 @inject FetchService Fetch
@@ -17,39 +14,31 @@
     <div class="flex flex-col items-center py-2">
         <div class="nameplate-stack">
             <div class="text-xs text-gray-400 bg-darker border border-gray-700 rounded-t-lg px-4 py-2 text-center min-h-4">
-                @if (_activeInfo is not null)
-                {
+                @if (_activeInfo is not null) {
                     <span class="font-medium" style="color: #@_activeInfo.AccountColor">@_activeInfo.Nickname</span>
                     <span class="text-gray-500 ml-1.5">@_activeInfo.EBString</span>
-                    @if (_activeInfo.SeString != "")
-                    {
+                    @if (_activeInfo.SeString != "") {
                         <span class="text-gray-400 ml-1.5">&middot;</span>
-                        <img src="@State.ContentPaths.Asset("images/soul_egg.png")" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="" />
+                        <img src="@ContentPaths.Asset("images/soul_egg.png")" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt=""/>
                         <span style="color:#a855f7">@_activeInfo.SeString SE</span>
                         <span class="text-gray-400 ml-1.5">&middot;</span>
-                        <img src="@State.ContentPaths.Asset("images/prophecy_egg.png")" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="" />
+                        <img src="@ContentPaths.Asset("images/prophecy_egg.png")" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt=""/>
                         <span style="color:#eab308">@_activeInfo.PeCount PE</span>
-                        @if (_activeInfo.TeCount > 0)
-                        {
+                        @if (_activeInfo.TeCount > 0) {
                             <span class="text-gray-400 ml-1.5">&middot;</span>
-                            <img src="@State.ContentPaths.Asset("images/truth_egg.png")" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt="" />
+                            <img src="@ContentPaths.Asset("images/truth_egg.png")" style="display:inline;height:1em;vertical-align:middle;margin:0 0.25em" alt=""/>
                             <span style="color:#c831ff">@_activeInfo.TeCount TE</span>
                         }
                     }
-                }
-                else
-                {
+                } else {
                     <span class="text-gray-500 italic">Select an account from the top right to get started</span>
                 }
             </div>
 
             <div class="flex">
-                @if (_idle)
-                {
+                @if (_idle) {
                     <button type="button" class="ledger-btn nameplate-btn rounded-bl-lg" disabled="@(Active.ActiveAccountId is null)" @onclick="StartFetch">Fetch</button>
-                }
-                else
-                {
+                } else {
                     <button type="button" class="ledger-btn nameplate-btn rounded-bl-lg" @onclick="StopFetch">Stop</button>
                 }
                 <button type="button" class="ledger-btn nameplate-btn rounded-br-lg border-l-0" @onclick="OpenAddDialog">+ Add Account</button>
@@ -57,19 +46,16 @@
         </div>
     </div>
 
-    @if (_progress is not null && !_idle || _terminalState is not null)
-    {
+    @if ((_progress is not null && !_idle) || _terminalState is not null) {
         <div class="w-full max-w-2xl mx-auto min-h-14 px-2 py-1 text-xs text-gray-500 bg-darkest rounded-md tabular-nums">
-            @switch (_displayState)
-            {
+            @switch (_displayState) {
                 case AppState.FetchingSave:
                     <div class="text-yellow-400">Fetching save...</div>
                     break;
                 case AppState.FetchingMissions:
                     <div class="text-yellow-400">
                         Fetching missions...
-                        @if (_progress?.MissionId is { Length: > 0 } mid)
-                        {
+                        @if (_progress?.MissionId is { Length: > 0 } mid) {
                             <span class="text-gray-400 italic">@mid</span>
                         }
                     </div>
@@ -77,23 +63,20 @@
                         <span class="text-green-400">@(_progress?.Finished ?? 0)</span>
                         <span class="text-gray-400"> / @(_progress?.Total ?? 0) (@PercentText%)</span>
                     </div>
-                    @if ((_progress?.Failed ?? 0) > 0 || (_progress?.Retried ?? 0) > 0)
-                    {
+                    @if ((_progress?.Failed ?? 0) > 0 || (_progress?.Retried ?? 0) > 0) {
                         <div>
-                            @if ((_progress?.Failed ?? 0) > 0)
-                            {
+                            @if ((_progress?.Failed ?? 0) > 0) {
                                 <span class="text-red-500">@_progress?.Failed failed</span>
                             }
-                            @if ((_progress?.Failed ?? 0) > 0 && (_progress?.Retried ?? 0) > 0)
-                            {
+                            @if ((_progress?.Failed ?? 0) > 0 && (_progress?.Retried ?? 0) > 0) {
                                 <span class="text-gray-400"> &middot; </span>
                             }
-                            @if ((_progress?.Retried ?? 0) > 0)
-                            {
+                            @if ((_progress?.Retried ?? 0) > 0) {
                                 <span class="text-orange-400">@_progress?.Retried to retry</span>
                             }
                         </div>
                     }
+
                     <div class="h-3 mt-1 rounded-sm overflow-hidden bg-dark">
                         <div class="h-full bg-green-500 transition-all duration-300 rounded-sm" style="width: @PercentText%"></div>
                     </div>
@@ -106,6 +89,20 @@
                     break;
                 case AppState.Failed:
                     <div class="text-red-500">Data fetching failed. Please try again.</div>
+                    @if (_progress?.FailedMissions is { Count: > 0 } fails) {
+                        <details class="mt-1">
+                            <summary class="cursor-pointer text-gray-400 hover:text-gray-300">Show @fails.Count failed mission@(fails.Count == 1 ? "" : "s")</summary>
+                            <ul class="mt-1 pl-3 max-h-40 overflow-auto">
+                                @foreach (var f in fails) {
+                                    <li class="text-gray-500">
+                                        <span class="text-gray-400 font-mono">@f.MissionId</span>
+                                        <span> - @f.Reason</span>
+                                    </li>
+                                }
+                            </ul>
+                        </details>
+                    }
+
                     break;
                 case AppState.Interrupted:
                     <div class="text-yellow-400">Interrupted.</div>
@@ -115,11 +112,11 @@
     }
 
     <div class="w-full max-w-2xl mx-auto flex flex-col gap-3">
-        <AccountDataPanel Accounts="_existing" Changed="ReloadAsync" Fetching="FetchingCardInfo" />
+        <AccountDataPanel Accounts="_existing" Changed="ReloadAsync" Fetching="FetchingCardInfo"/>
     </div>
 </section>
 
-<AddAccountDialog @ref="_addDialog" Added="OnAccountAdded" />
+<AddAccountDialog @ref="_addDialog" Added="OnAccountAdded"/>
 
 @code {
     private AddAccountDialog? _addDialog;
@@ -130,9 +127,9 @@
     private CancellationTokenSource? _cts;
 
     private bool _idle => _terminalState is not null
-        || _progress is null
-        || _progress.State is AppState.AwaitingInput
-            or AppState.Success or AppState.Failed or AppState.Interrupted;
+                          || _progress is null
+                          || _progress.State is AppState.AwaitingInput
+                              or AppState.Success or AppState.Failed or AppState.Interrupted;
 
     private AppState? _displayState => _terminalState ?? _progress?.State;
 
@@ -147,48 +144,42 @@
 
     private string PercentText => Percent.ToString();
 
-    protected override async Task OnInitializedAsync()
-    {
+    protected override async Task OnInitializedAsync() {
         Active.Changed += OnActiveChanged;
         await Loader.EnsureLoadedAsync();
         await ReloadAsync();
         RefreshActiveInfo();
     }
 
-    private void OnActiveChanged()
-    {
+    private void OnActiveChanged() {
         RefreshActiveInfo();
         InvokeAsync(StateHasChanged);
     }
 
-    private void RefreshActiveInfo() =>
+    private void RefreshActiveInfo() {
         _activeInfo = Loader.Accounts.FirstOrDefault(a => a.Id == Active.ActiveAccountId);
+    }
 
-    private async Task ReloadAsync()
-    {
+    private async Task ReloadAsync() {
         await Loader.RefreshAsync();
         _existing = await Queries.GetExistingDataAsync();
         RefreshActiveInfo();
         StateHasChanged();
     }
 
-    private void OpenAddDialog()
-    {
+    private void OpenAddDialog() {
         _addDialog?.Open();
     }
 
-    private async Task OnAccountAdded(AccountInfo account)
-    {
+    private async Task OnAccountAdded(AccountInfo account) {
         Active.SetActive(account.Id);
         await ReloadAsync();
         await StartFetch();
     }
 
-    private async Task StartFetch()
-    {
+    private async Task StartFetch() {
         var id = Active.ActiveAccountId;
-        if (id is null)
-        {
+        if (id is null) {
             return;
         }
 
@@ -197,35 +188,29 @@
         _cts?.Dispose();
         _cts = new CancellationTokenSource();
 
-        var progress = new Progress<FetchProgress>(p =>
-        {
+        var progress = new Progress<FetchProgress>(p => {
             // Segment events carry no counts, so carry last-known counts forward to avoid clobbering the counter.
-            bool segmentOnly = p.Segment is not null;
-            if (segmentOnly && _progress is not null)
-            {
-                _progress = p with
-                {
+            var segmentOnly = p.Segment is not null;
+            if (segmentOnly && _progress is not null) {
+                _progress = p with {
                     Total = _progress.Total,
                     Finished = _progress.Finished,
                     Failed = _progress.Failed,
-                    Retried = _progress.Retried,
+                    Retried = _progress.Retried
                 };
-            }
-            else
-            {
+            } else {
                 _progress = p;
             }
+
             AppStateSvc.PipelineState = p.State;
             InvokeAsync(StateHasChanged);
         });
 
-        try
-        {
+        try {
             var result = await Fetch.FetchPlayerDataAsync(id, progress, _cts.Token);
             _terminalState = result;
         }
-        catch (Exception)
-        {
+        catch (Exception) {
             _terminalState = AppState.Failed;
         }
 
@@ -233,15 +218,14 @@
         await ReloadAsync();
     }
 
-    private void StopFetch()
-    {
+    private void StopFetch() {
         _cts?.Cancel();
     }
 
-    public void Dispose()
-    {
+    public void Dispose() {
         Active.Changed -= OnActiveChanged;
         _cts?.Cancel();
         _cts?.Dispose();
     }
+
 }

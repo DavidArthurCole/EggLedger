@@ -3,7 +3,7 @@
 @* Empty-state box directing the user to the Ledger tab (route "/") to fetch. *@
 <div class="text-center mt-3 rounded-md border border-red-700 py-2">
     <span class="text-red-700">
-        @Message<br />Please <b>Fetch</b> from the
+        @Message<br/>Please <b>Fetch</b> from the
     </span>
     <button type="button" class="btn-link" @onclick="GoToLedger">
         <span class="text-blue-500 ledger-underline font-bold">Ledger tab</span>
@@ -12,7 +12,10 @@
 </div>
 
 @code {
-    [Parameter]
-    public string Message { get; set; } = "No mission data has been loaded yet.";
-    private void GoToLedger() => Nav.NavigateTo("/");
+    [Parameter] public string Message { get; set; } = "No mission data has been loaded yet.";
+
+    private void GoToLedger() {
+        Nav.NavigateTo("/");
+    }
+
 }

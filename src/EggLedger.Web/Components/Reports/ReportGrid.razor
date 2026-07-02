@@ -1,7 +1,7 @@
+@using System.Text.Json
 @using EggLedger.Domain.Reports
 @using EggLedger.Web.Data
 @using EggLedger.Web.Services
-@using System.Text.Json
 @inject IndexedDbReportStore Store
 @inject IDownloadService Downloader
 
@@ -10,30 +10,25 @@
    the Vue zone-insertion drag math is not replicated. *@
 
 <div class="flex-1 min-h-0 overflow-y-auto py-2 px-3 flex flex-col gap-3">
-    @if (!string.IsNullOrEmpty(_actionMessage))
-    {
+    @if (!string.IsNullOrEmpty(_actionMessage)) {
         <span class="text-xs text-gray-400 self-end">@_actionMessage</span>
     }
-    @if (_defs.Count == 0)
-    {
+    @if (_defs.Count == 0) {
         <div class="text-xs text-gray-500 text-center mt-8">No reports yet. Click "New Report" to create one.</div>
-    }
-    else
-    {
+    } else {
         var (positions, _) = ReportGridLayout.BuildOccupancyFromLayout(_defs);
         <div class="grid gap-3 relative" style="grid-template-columns: repeat(8, 1fr); grid-auto-rows: 9rem;">
-            @for (int i = 0; i < _defs.Count; i++)
-            {
+            @for (var i = 0; i < _defs.Count; i++) {
                 var index = i;
                 var def = _defs[i];
                 var pos = positions[i];
                 <div @key="def.Id" draggable="@EditMode" class="@(EditMode ? "cursor-grab" : "")"
                      style="grid-column: @pos.Col / span @pos.W; grid-row: @pos.Row / span @pos.H;"
-                     @ondragstart="() => OnDragStart(index)" @ondragover="@(() => {})" @ondragover:preventDefault="true"
+                     @ondragstart="() => OnDragStart(index)" @ondragover="@(() => { })" @ondragover:preventDefault="true"
                      @ondrop="() => OnDropAsync(index)">
                     <ReportCard Def="def" Pos="pos" AccountId="@AccountId"
                                 EditMode="EditMode" Groups="Groups" OnEdit="OnEdit"
-                                OnDelete="HandleDeleteAsync" OnChanged="ReloadAsync" />
+                                OnDelete="HandleDeleteAsync" OnChanged="ReloadAsync"/>
                 </div>
             }
         </div>
@@ -41,41 +36,36 @@
 </div>
 
 @code {
-    [Parameter, EditorRequired]
-    public string AccountId { get; set; } = "";
+    [Parameter] [EditorRequired] public string AccountId { get; set; } = "";
 
     /// <summary>Group id filter, or null for all reports.</summary>
     [Parameter]
     public string? GroupFilter { get; set; }
-    [Parameter]
-    public bool EditMode { get; set; }
-    [Parameter]
-    public IReadOnlyList<ReportGroupRow> Groups { get; set; } = Array.Empty<ReportGroupRow>();
-    [Parameter]
-    public EventCallback<ReportDefinition> OnEdit { get; set; }
+
+    [Parameter] public bool EditMode { get; set; }
+    [Parameter] public IReadOnlyList<ReportGroupRow> Groups { get; set; } = Array.Empty<ReportGroupRow>();
+    [Parameter] public EventCallback<ReportDefinition> OnEdit { get; set; }
     private List<ReportDefinition> _defs = new();
     private string _loadedKey = "";
     private int? _draggingIndex;
     private string? _actionMessage;
 
-    protected override async Task OnParametersSetAsync()
-    {
-        string key = AccountId + "|" + (GroupFilter ?? "");
-        if (key == _loadedKey)
-        {
+    protected override async Task OnParametersSetAsync() {
+        var key = AccountId + "|" + (GroupFilter ?? "");
+        if (key == _loadedKey) {
             return;
         }
+
         _loadedKey = key;
         await ReloadAsync();
     }
 
-    public async Task ReloadAsync()
-    {
-        if (string.IsNullOrEmpty(AccountId))
-        {
+    public async Task ReloadAsync() {
+        if (string.IsNullOrEmpty(AccountId)) {
             _defs = new List<ReportDefinition>();
             return;
         }
+
         var rows = await Store.RetrieveAccountReportsAsync(AccountId);
         var filtered = GroupFilter is null
             ? rows
@@ -84,22 +74,22 @@
         StateHasChanged();
     }
 
-    private async Task HandleDeleteAsync(string id)
-    {
+    private async Task HandleDeleteAsync(string id) {
         await Store.DeleteReportAsync(id);
         await ReloadAsync();
     }
 
-    private void OnDragStart(int index) => _draggingIndex = index;
+    private void OnDragStart(int index) {
+        _draggingIndex = index;
+    }
 
-    private async Task OnDropAsync(int targetIndex)
-    {
-        int? from = _draggingIndex;
+    private async Task OnDropAsync(int targetIndex) {
+        var from = _draggingIndex;
         _draggingIndex = null;
-        if (from is null || from == targetIndex)
-        {
+        if (from is null || from == targetIndex) {
             return;
         }
+
         var ids = _defs.Select(d => d.Id).ToList();
         var moved = ids[from.Value];
         ids.RemoveAt(from.Value);
@@ -109,8 +99,7 @@
     }
 
     /// <summary>Downloads every report definition for the account as one JSON array.</summary>
-    public async Task ExportAllAsync()
-    {
+    public async Task ExportAllAsync() {
         var rows = await Store.RetrieveAccountReportsAsync(AccountId);
         var defs = rows.Select(ReportMapping.ToDefinition).ToList();
         var json = JsonSerializer.Serialize(defs, new JsonSerializerOptions { WriteIndented = true });
@@ -121,56 +110,55 @@
     }
 
     /// <summary>Prompts a file picker and imports one report definition or an array of them.</summary>
-    public async Task ImportAsync()
-    {
+    public async Task ImportAsync() {
         var json = await Downloader.PickJsonFileAsync();
-        if (string.IsNullOrWhiteSpace(json))
-        {
+        if (string.IsNullOrWhiteSpace(json)) {
             return;
         }
-        try
-        {
+
+        try {
             var defs = ParseImportedDefinitions(json);
-            foreach (var def in defs)
-            {
+            foreach (var def in defs) {
                 def.Id = Guid.NewGuid().ToString("D");
                 def.AccountId = AccountId;
                 def.SortOrder = 0;
                 def.CreatedAt = 0;
                 def.UpdatedAt = 0;
-                if (GroupFilter is not null)
-                {
+                if (GroupFilter is not null) {
                     def.GroupId = GroupFilter;
                 }
+
                 await Store.InsertReportAsync(ReportMapping.ToRow(def));
             }
+
             _actionMessage = $"Imported {defs.Count} report(s)";
         }
-        catch (JsonException)
-        {
+        catch (JsonException) {
             _actionMessage = "Import failed - invalid file";
         }
+
         await ReloadAsync();
         ClearMessageLater();
     }
 
-    private static List<ReportDefinition> ParseImportedDefinitions(string json)
-    {
+    private static List<ReportDefinition> ParseImportedDefinitions(string json) {
         var trimmed = json.TrimStart();
-        if (trimmed.StartsWith('['))
-        {
+        if (trimmed.StartsWith('[')) {
             return JsonSerializer.Deserialize<List<ReportDefinition>>(json) ?? new List<ReportDefinition>();
         }
+
         var single = JsonSerializer.Deserialize<ReportDefinition>(json);
         return single is null ? new List<ReportDefinition>() : new List<ReportDefinition> { single };
     }
 
-    private void ClearMessageLater() => _ = ClearMessageLaterAsync();
+    private void ClearMessageLater() {
+        _ = ClearMessageLaterAsync();
+    }
 
-    private async Task ClearMessageLaterAsync()
-    {
+    private async Task ClearMessageLaterAsync() {
         await Task.Delay(5000);
         _actionMessage = null;
         await InvokeAsync(StateHasChanged);
     }
+
 }

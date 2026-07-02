@@ -1,16 +1,15 @@
 @using System.Globalization
 @using EggLedger.Domain.MissionPacking
 @using EggLedger.Web.Missions
-
 @* Single-mode ship display: identity + details + capacity badge, then drops, then the footer tip. *@
 
 <div class="@MultiClass text-gray-300 text-center@(ShipCount > 3 ? " min-w-30vw" : "")">
     <div class="flex flex-row gap-2 mb-3 mx-auto items-center" style="width: fit-content;">
-        <div class="@(Mission.IsBuggedCap ? "bugged-cap-span" : (Mission.IsDubCap ? "double-cap-span" : "")) flex items-center py-1 px-1.5 self-center"
+        <div class="@(Mission.IsBuggedCap ? "bugged-cap-span" : Mission.IsDubCap ? "double-cap-span" : "") flex items-center py-1 px-1.5 self-center"
              style="visibility: @(Mission.IsBuggedCap || Mission.IsDubCap ? "visible" : "hidden");">
             <img class="w-5 mr-0_5rem"
                  alt="@(Mission.IsBuggedCap ? "Skull Emoji" : "Artifact Crate")"
-                 src="@(Mission.IsBuggedCap ? State.ContentPaths.Asset("images/skull.png") : State.ContentPaths.Asset("images/icon_afx_chest_2.png"))" />
+                 src="@(Mission.IsBuggedCap ? ContentPaths.Asset("images/skull.png") : ContentPaths.Asset("images/icon_afx_chest_2.png"))"/>
             <span class="text-xs font-bold whitespace-nowrap">
                 @(Mission.IsBuggedCap
                     ? "0.6x Capacity"
@@ -19,13 +18,11 @@
         </div>
 
         <div class="panel-muted rounded-md px-4 py-2 flex flex-col items-center justify-center">
-            @if (!string.IsNullOrEmpty(Mission.ShipEnumString))
-            {
-                <img class="w-12 h-12 object-contain mb-2" src="@State.ContentPaths.Asset($"images/ships/{Mission.ShipEnumString}.png")" alt="@Mission.ShipString" />
+            @if (!string.IsNullOrEmpty(Mission.ShipEnumString)) {
+                <img class="w-12 h-12 object-contain mb-2" src="@ContentPaths.Asset($"images/ships/{Mission.ShipEnumString}.png")" alt="@Mission.ShipString"/>
             }
             <span class="@DurationClass">@Mission.ShipString</span>
-            @if (Mission.Level > 0)
-            {
+            @if (Mission.Level > 0) {
                 <span class="text-star text-goldenstar">@(new string('★', Mission.Level))</span>
             }
         </div>
@@ -35,8 +32,7 @@
             <div>Returned: @Format(Data.ReturnDT)</div>
             <div>Duration: @Data.DurationStr</div>
             <div>Capacity: @Mission.Capacity</div>
-            @if (HasTarget)
-            {
+            @if (HasTarget) {
                 <div class="flex items-center gap-1 mt-1">
                     <span>Sensor Target:</span>
                     <div class="text-xs rounded-full w-max px-1.5 py-0.5 text-gray-400 bg-darkerer font-semibold">@ProperCase(Mission.Target.Replace("_", " ", StringComparison.Ordinal))</div>
@@ -50,12 +46,11 @@
                           Ingredients="Data.Ingredients"
                           StoneFragments="Data.StoneFragments"
                           MennoData="Data.MennoData"
-                          ShowExpectedDrops="ShowExpectedDrops" />
+                          ShowExpectedDrops="ShowExpectedDrops"/>
 
-    @if (!IsMulti && !HideFooterTip)
-    {
+    @if (!IsMulti && !HideFooterTip) {
         <div class="text-xs text-gray-300 text-center flex-shrink-0 pb-2">
-            Hover mouse over an item to show details.<br />
+            Hover mouse over an item to show details.<br/>
             Click to open the relevant
             <a class="ledger-underline" target="_blank" rel="noopener" href="https://wasmegg-carpet.netlify.app/artifact-explorer/">artifact explorer</a>
             page.
@@ -64,20 +59,13 @@
 </div>
 
 @code {
-    [Parameter]
-    public ViewMissionData Data { get; set; } = new();
-    [Parameter]
-    public bool ShowExpectedDrops { get; set; }
-    [Parameter]
-    public bool IsMulti { get; set; }
-    [Parameter]
-    public bool IsFirst { get; set; }
-    [Parameter]
-    public bool IsLast { get; set; }
-    [Parameter]
-    public int ShipCount { get; set; }
-    [Parameter]
-    public bool HideFooterTip { get; set; }
+    [Parameter] public ViewMissionData Data { get; set; } = new();
+    [Parameter] public bool ShowExpectedDrops { get; set; }
+    [Parameter] public bool IsMulti { get; set; }
+    [Parameter] public bool IsFirst { get; set; }
+    [Parameter] public bool IsLast { get; set; }
+    [Parameter] public int ShipCount { get; set; }
+    [Parameter] public bool HideFooterTip { get; set; }
     private DatabaseMission Mission => Data.MissionInfo;
 
     // Port of ShipDisplay.vue root class: multi adds first/last horizontal padding.
@@ -92,19 +80,20 @@
             ? "text-duration-" + Convert.ToInt32(d, CultureInfo.InvariantCulture)
             : "text-duration-3";
 
-    private static string Format(DateTime dt) => dt.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+    private static string Format(DateTime dt) {
+        return dt.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+    }
 
-    private static string ProperCase(string value)
-    {
+    private static string ProperCase(string value) {
         var words = value.ToLowerInvariant().Split(' ');
-        for (int i = 0; i < words.Length; i++)
-        {
-            if (words[i] is not ("of" or "the") && words[i].Length > 0)
-            {
+        for (var i = 0; i < words.Length; i++) {
+            if (words[i] is not ("of" or "the") && words[i].Length > 0) {
                 words[i] = char.ToUpperInvariant(words[i][0]) + words[i].Substring(1);
             }
         }
+
         var joined = string.Join(' ', words);
         return joined.Length > 0 ? char.ToUpperInvariant(joined[0]) + joined.Substring(1) : joined;
     }
+
 }

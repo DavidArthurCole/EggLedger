@@ -1,5 +1,4 @@
 @page "/about"
-@using EggLedger.Web.Platform
 @implements IDisposable
 @inject IPlatformCapabilities Platform
 @inject IUpdateStatusProvider UpdateStatus
@@ -10,34 +9,37 @@
 
 <section class="flex-1 w-full mx-auto px-4 overflow-y-auto">
     <div class="text-sm text-gray-400 space-y-2 pb-3">
-        @if (!_coffeeDismissed)
-        {
+        @if (!_coffeeDismissed) {
             <div class="flex items-start gap-3 p-3 rounded-lg bg-yellow-950/40 border border-yellow-700/40 mt-2">
                 <div class="flex-1 space-y-1">
                     <p class="text-yellow-200/70 text-xs">EggLedger is free - if it's saved you time, consider supporting development!</p>
                     <p class="text-yellow-200/50 text-xs">
-                        Getting $10 helps cover Azure Windows signing costs.<br />
+                        Getting $10 helps cover Azure Windows signing costs.<br/>
                         As a stretch goal, enough for a $99/yr Apple license to properly sign the app on macOS.
                     </p>
                 </div>
                 <div class="flex flex-col items-end gap-2 flex-shrink-0">
                     <a class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-yellow-400 hover:bg-yellow-300 text-gray-900 text-xs font-semibold transition-colors" target="_blank" rel="noopener"
-                       href="https://buymeacoffee.com/davidarthurcole">&#x2615; Buy me a coffee</a>
+                       href="https://buymeacoffee.com/davidarthurcole">
+                        &#x2615; Buy me a coffee
+                    </a>
                     <a class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-gray-700 hover:bg-gray-600 text-gray-200 text-xs font-semibold transition-colors" target="_blank" rel="noopener"
-                       href="https://github.com/sponsors/DavidArthurCole">&#10084; GitHub Sponsors</a>
+                       href="https://github.com/sponsors/DavidArthurCole">
+                        &#10084; GitHub Sponsors
+                    </a>
                     <a class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-orange-700 hover:bg-orange-600 text-white text-xs font-semibold transition-colors" target="_blank" rel="noopener"
-                       href="https://patreon.com/DavidArthurCole">&#9733; Patreon</a>
+                       href="https://patreon.com/DavidArthurCole">
+                        &#9733; Patreon
+                    </a>
                     <button type="button" class="text-yellow-200/30 hover:text-yellow-200/60 text-xs" @onclick="DismissCoffee">Dismiss</button>
                 </div>
             </div>
         }
 
-        @if (Platform.IsDesktop)
-        {
+        @if (Platform.IsDesktop) {
             @* Self-update overlay bound to the desktop host's IUpdateStatusProvider. *@
             <div class="flex items-center gap-3 p-3 rounded-lg bg-blue-950/40 border border-blue-700/40 mt-2">
-                @switch (UpdateStatus.Phase)
-                {
+                @switch (UpdateStatus.Phase) {
                     case UpdatePhase.Checking:
                         <p class="text-blue-200/80 text-xs">Checking for updates...</p>
                         break;
@@ -83,7 +85,8 @@
                 <h2 class="font-bold text-gray-300 border-b border-gray-700 pb-1 mb-2">How do I use EggLedger?</h2>
                 <ul class="about-list-1">
                     <li>Open the account selector and choose <b>+ Add Account</b>, then enter your EID</li>
-                    <li>With your account selected, press <b>Fetch</b> on the <b>Ledger</b> tab
+                    <li>
+                        With your account selected, press <b>Fetch</b> on the <b>Ledger</b> tab
                         <ul class="about-list-2">
                             <li>First fetch may take a while if you have many completed missions</li>
                             <li>Subsequent fetches only pull new missions</li>
@@ -99,13 +102,14 @@
             <div class="bg-dark rounded-md p-3 space-y-1">
                 <h2 class="font-bold text-gray-300 border-b border-gray-700 pb-1 mb-2">Where do I find my Egg, Inc. account ID?</h2>
                 <ul class="about-list-1">
-                    <li>Open the game menu <img src="@ContentPaths.Asset("images/icon_menu.webp")" alt="Menu Icon" class="game-btn-ico" /></li>
-                    <li>Choose Settings <img src="@ContentPaths.Asset("images/icon_settings.webp")" alt="Settings Icon" class="game-btn-ico" /></li>
+                    <li>Open the game menu <img src="@ContentPaths.Asset("images/icon_menu.webp")" alt="Menu Icon" class="game-btn-ico"/></li>
+                    <li>Choose Settings <img src="@ContentPaths.Asset("images/icon_settings.webp")" alt="Settings Icon" class="game-btn-ico"/></li>
                     <li>Choose &nbsp;<span class="p-0.5 text-xs rounded-md bg-privacy_blue w-4 pl-3 pr-3"> Privacy &amp; Data </span></li>
-                    <li>Your EID is at the bottom
+                    <li>
+                        Your EID is at the bottom
                         <ul class="about-list-2">
                             <li><span class="ledger-underline">It should look like EI1234567890123456</span>. That's the letters "EI" followed by 16 digits.</li>
-                            <li>Use the Copy button (<img src="@ContentPaths.Asset("images/icon_copy.webp")" alt="Help Icon" class="game-btn-ico" />) to copy your EID to clipboard</li>
+                            <li>Use the Copy button (<img src="@ContentPaths.Asset("images/icon_copy.webp")" alt="Help Icon" class="game-btn-ico"/>) to copy your EID to clipboard</li>
                         </ul>
                     </li>
                 </ul>
@@ -150,7 +154,8 @@
                 <ul class="about-list-1">
                     <li>On macOS, clicking the dock icon can open a new browser window</li>
                     <li>On Windows, the taskbar icon resolution is low</li>
-                    <li>Some missions may fail to fetch
+                    <li>
+                        Some missions may fail to fetch
                         <ul class="about-list-2">
                             <li>Occasional API timeouts are normal - a second fetch usually resolves them</li>
                             <li>If the same mission fails repeatedly, please reach out</li>
@@ -171,31 +176,35 @@
 @code {
     private bool _coffeeDismissed;
 
-    protected override void OnInitialized()
-    {
-        if (Platform.IsDesktop)
-        {
+    protected override void OnInitialized() {
+        if (Platform.IsDesktop) {
             UpdateStatus.Changed += OnUpdateChanged;
         }
     }
 
-    private void OnUpdateChanged() => InvokeAsync(StateHasChanged);
+    private void OnUpdateChanged() {
+        InvokeAsync(StateHasChanged);
+    }
 
     // Explicit user check bypasses the 12h cooldown (force=true).
-    private Task CheckUpdate() => UpdateStatus.CheckForUpdatesAsync(force: true);
+    private Task CheckUpdate() {
+        return UpdateStatus.CheckForUpdatesAsync(true);
+    }
 
-    private Task InstallUpdate()
-        => string.IsNullOrEmpty(UpdateStatus.AvailableVersion)
+    private Task InstallUpdate() {
+        return string.IsNullOrEmpty(UpdateStatus.AvailableVersion)
             ? Task.CompletedTask
             : UpdateStatus.DownloadAndInstallAsync(UpdateStatus.AvailableVersion);
+    }
 
-    private void DismissCoffee() => _coffeeDismissed = true;
+    private void DismissCoffee() {
+        _coffeeDismissed = true;
+    }
 
-    public void Dispose()
-    {
-        if (Platform.IsDesktop)
-        {
+    public void Dispose() {
+        if (Platform.IsDesktop) {
             UpdateStatus.Changed -= OnUpdateChanged;
         }
     }
+
 }

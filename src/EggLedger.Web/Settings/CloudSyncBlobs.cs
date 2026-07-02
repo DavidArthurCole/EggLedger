@@ -100,7 +100,7 @@ public static class CloudSyncBlobs {
     /// <summary>Projects the cloud-syncable subset out of the settings map, each key read with the desktop default when absent.</summary>
     public static CloudSyncableSettings PackSettings(IReadOnlyDictionary<string, string> settings) => new() {
         AutoRefreshMennoPref = Bool(settings, SettingsModel.KeyAutoRefreshMenno, false),
-        RetryFailedMissions = Bool(settings, SettingsModel.KeyRetryFailedMissions, false),
+        RetryFailedMissions = Bool(settings, SettingsModel.KeyRetryFailedMissions, true),
         HideTimeoutErrors = Bool(settings, SettingsModel.KeyHideTimeoutErrors, false),
         WorkerCount = SettingsModel.ClampWorkerCount(Int(settings, SettingsModel.KeyWorkerCount, SettingsModel.MinWorkerCount)),
         ScreenshotSafety = Bool(settings, SettingsModel.KeyScreenshotSafety, false),

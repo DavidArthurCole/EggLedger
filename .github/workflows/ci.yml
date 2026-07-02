@@ -38,6 +38,18 @@ jobs:
 
       - run: dotnet test EggLedger.slnx -c Release
 
+      - run: dotnet format EggLedger.slnx --verify-no-changes
+
+      # dotnet format does not process .razor files; jb cleanupcode (ReSharper CLI,
+      # free/headless) is the only tool that enforces K&R brace style there too.
+      - name: Install ReSharper CLI
+        run: dotnet tool install -g JetBrains.ReSharper.GlobalTools
+
+      - name: Verify Razor formatting
+        run: |
+          jb cleanupcode EggLedger.slnx --include="src/**/*.razor"
+          git diff --exit-code -- '*.razor' || (echo "::error::Razor files are not formatted. Run 'jb cleanupcode EggLedger.slnx --include=\"src/**/*.razor\"' locally." && exit 1)
+
   # Seed the per-OS NuGet + Tailwind-CLI caches on master so the tag-triggered release
   # workflow restores them via default-branch fallback (tag runs cannot share caches
   # across tags). Keys here MUST match release.yml exactly. Desktop publish only, since

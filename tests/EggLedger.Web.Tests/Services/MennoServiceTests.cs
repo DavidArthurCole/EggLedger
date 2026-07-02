@@ -225,9 +225,9 @@ public sealed class MennoServiceTests {
 
     [Theory]
     [InlineData(false, "artifacts", "ship_type", "duration_type")] // Menno disabled
-    [InlineData(true, "ships", "ship_type", "duration_type")]      // wrong subject
-    [InlineData(true, "artifacts", "spec_type", "duration_type")]  // non-comparable groupBy
-    [InlineData(true, "artifacts", "ship_type", "")]               // empty secondary groupBy
+    [InlineData(true, "ships", "ship_type", "duration_type")] // wrong subject
+    [InlineData(true, "artifacts", "spec_type", "duration_type")] // non-comparable groupBy
+    [InlineData(true, "artifacts", "ship_type", "")] // empty secondary groupBy
     public async Task ExecuteComparison_IneligibleReport_ReturnsNull(
         bool enabled, string subject, string groupBy, string secondary) {
         var service = Make(FixtureBytes("menno-sample.json"), out _);

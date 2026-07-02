@@ -1,7 +1,5 @@
-@using System.Globalization
 @using EggLedger.Domain.Reports
 @using EggLedger.Domain.Reports.Charts
-
 @* Heatmap table over a 2D result; HeatmapGeometry owns color, threshold suppression,
    and formatting. Axis drag-reorder deferred. Optional secondary-value sub-line and
    color-value override drive the Menno dual_value mode. *@
@@ -9,78 +7,74 @@
 <div class="h-full w-full overflow-auto pr-1">
     <table class="text-xs w-full h-full border-collapse table-fixed">
         <thead>
-            <tr>
-                <th class="px-1 py-0.5 text-left font-normal w-20 text-gray-600"></th>
-                @foreach (var col in Result.ColLabels)
-                {
-                    <th class="px-1 py-0.5 text-center font-normal text-gray-400 whitespace-nowrap" title="@col">@col</th>
-                }
-            </tr>
+        <tr>
+            <th class="px-1 py-0.5 text-left font-normal w-20 text-gray-600"></th>
+            @foreach (var col in Result.ColLabels) {
+                <th class="px-1 py-0.5 text-center font-normal text-gray-400 whitespace-nowrap" title="@col">@col</th>
+            }
+        </tr>
         </thead>
         <tbody>
-            @for (int r = 0; r < Result.RowLabels.Count; r++)
-            {
-                <tr>
-                    <td class="px-1 py-0.5 text-right pr-2 truncate text-gray-400" title="@Result.RowLabels[r]">@Result.RowLabels[r]</td>
-                    @for (int c = 0; c < Result.ColLabels.Count; c++)
-                    {
-                        var cell = Cell(r, c);
-                        <td class="text-center px-1 py-0.5 transition-[filter] hover:brightness-[1.4]"
-                            style="background-color: @cell.Style.BackgroundColor; color: @cell.Style.Color; cursor: pointer;"
-                            data-tt="@($"{Result.RowLabels[r]}\n{Result.ColLabels[c]}: {cell.Display}")">
-                            <div class="leading-none">@cell.Display</div>
-                            @if (SecondaryValues is not null)
-                            {
-                                <div class="leading-none opacity-70" style="font-size: 0.65rem;">@cell.Secondary</div>
-                            }
-                        </td>
-                    }
-                </tr>
-            }
+        @for (var r = 0; r < Result.RowLabels.Count; r++) {
+            <tr>
+                <td class="px-1 py-0.5 text-right pr-2 truncate text-gray-400" title="@Result.RowLabels[r]">@Result.RowLabels[r]</td>
+                @for (var c = 0; c < Result.ColLabels.Count; c++) {
+                    var cell = Cell(r, c);
+                    <td class="text-center px-1 py-0.5 transition-[filter] hover:brightness-[1.4]"
+                        style="background-color: @cell.Style.BackgroundColor; color: @cell.Style.Color; cursor: pointer;"
+                        data-tt="@($"{Result.RowLabels[r]}\n{Result.ColLabels[c]}: {cell.Display}")">
+                        <div class="leading-none">@cell.Display</div>
+                        @if (SecondaryValues is not null) {
+                            <div class="leading-none opacity-70" style="font-size: 0.65rem;">@cell.Secondary</div>
+                        }
+                    </td>
+                }
+            </tr>
+        }
         </tbody>
     </table>
 </div>
 
 @code {
-    [Parameter, EditorRequired]
-    public ReportResult Result { get; set; } = new();
-    [Parameter, EditorRequired]
-    public string Color { get; set; } = "#6366f1";
-    [Parameter]
-    public string? NormalizeBy { get; set; }
-    [Parameter]
-    public string? UnfilledColor { get; set; }
-    [Parameter]
-    public int MinSampleSize { get; set; }
+    [Parameter] [EditorRequired] public ReportResult Result { get; set; } = new();
+    [Parameter] [EditorRequired] public string Color { get; set; } = "#6366f1";
+    [Parameter] public string? NormalizeBy { get; set; }
+    [Parameter] public string? UnfilledColor { get; set; }
+    [Parameter] public int MinSampleSize { get; set; }
 
     /// <summary>Optional per-cell sub-line under the primary value (Menno community number); null hides it.</summary>
     [Parameter]
     public IReadOnlyList<double>? SecondaryValues { get; set; }
 
-    /// <summary>Optional per-cell color-intensity override (ratio: 1.0 = community avg, 2.0 = full).
-    /// Affects only the cell background, not display values.</summary>
+    /// <summary>
+    ///     Optional per-cell color-intensity override (ratio: 1.0 = community avg, 2.0 = full).
+    ///     Affects only the cell background, not display values.
+    /// </summary>
     [Parameter]
     public IReadOnlyList<double>? ColorValues { get; set; }
-    private double GlobalMax() => Result.MatrixValues.DefaultIfEmpty(0).Max();
 
-    private (HeatmapCellStyle Style, string Display, string Secondary) Cell(int r, int c)
-    {
-        int nCols = Result.ColLabels.Count;
-        int flat = r * nCols + c;
-        double v = flat < Result.MatrixValues.Count ? Result.MatrixValues[flat] : 0;
+    private double GlobalMax() {
+        return Result.MatrixValues.DefaultIfEmpty(0).Max();
+    }
+
+    private (HeatmapCellStyle Style, string Display, string Secondary) Cell(int r, int c) {
+        var nCols = Result.ColLabels.Count;
+        var flat = r * nCols + c;
+        var v = flat < Result.MatrixValues.Count ? Result.MatrixValues[flat] : 0;
         int? missionCount = Result.MissionCountMatrix is { } mc && flat < mc.Count ? (int)mc[flat] : null;
-        bool below = HeatmapGeometry.IsBelowThreshold(missionCount, MinSampleSize);
+        var below = HeatmapGeometry.IsBelowThreshold(missionCount, MinSampleSize);
         double? colorValue = ColorValues is { } cv && flat < cv.Count ? cv[flat] : null;
 
         var style = HeatmapGeometry.CellStyle(
             v, GlobalMax(), Color, UnfilledColor ?? "#1f2937", NormalizeBy, colorValue, below);
         var display = HeatmapGeometry.DisplayValue(v, NormalizeBy, below);
-        string secondary = "";
-        if (SecondaryValues is { } sv)
-        {
-            double s = flat < sv.Count ? sv[flat] : 0;
+        var secondary = "";
+        if (SecondaryValues is { } sv) {
+            var s = flat < sv.Count ? sv[flat] : 0;
             secondary = HeatmapGeometry.SecondaryDisplayValue(s, NormalizeBy, below);
         }
+
         return (style, display, secondary);
     }
+
 }

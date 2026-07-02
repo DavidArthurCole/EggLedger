@@ -1,42 +1,38 @@
 @* Target artifact icon for a mission, or nothing when empty / UNKNOWN. *@
 
-@if (_path is not null)
-{
-    <img loading="lazy" decoding="async" src="@_path" alt="@_alt" class="target-ico" />
+@if (_path is not null) {
+    <img loading="lazy" decoding="async" src="@_path" alt="@_alt" class="target-ico"/>
 }
 
 @code {
-    [Parameter]
-    public string? Target { get; set; }
+    [Parameter] public string? Target { get; set; }
     private string? _path;
     private string _alt = "";
 
-    protected override void OnParametersSet()
-    {
+    protected override void OnParametersSet() {
         (_path, _alt) = TargetImage(Target);
     }
 
     // Returns (null, "") for empty/UNKNOWN.
-    private static (string?, string) TargetImage(string? target)
-    {
-        if (string.IsNullOrEmpty(target) || target == "UNKNOWN")
-        {
+    private static (string?, string) TargetImage(string? target) {
+        if (string.IsNullOrEmpty(target) || target == "UNKNOWN") {
             return (null, "");
         }
 
         var t = target.ToUpperInvariant()
             .Replace("ORNATE_GUSSET", "GUSSET", StringComparison.Ordinal)
             .Replace("VIAL_MARTIAN_DUST", "VIAL_OF_MARTIAN_DUST", StringComparison.Ordinal);
-        int tier = 4;
-        if (t.Contains("_FRAGMENT", StringComparison.Ordinal))
-        {
+        var tier = 4;
+        if (t.Contains("_FRAGMENT", StringComparison.Ordinal)) {
             t = t.Replace("_FRAGMENT", "", StringComparison.Ordinal);
             tier = 1;
         }
-        if (t is "GOLD_METEORITE" or "TAU_CETI_GEODE" or "SOLAR_TITANIUM")
-        {
+
+        if (t is "GOLD_METEORITE" or "TAU_CETI_GEODE" or "SOLAR_TITANIUM") {
             tier = 3;
         }
-        return (State.ContentPaths.Asset($"images/artifacts/{t}/{t}_{tier}.png"), t);
+
+        return (ContentPaths.Asset($"images/artifacts/{t}/{t}_{tier}.png"), t);
     }
+
 }

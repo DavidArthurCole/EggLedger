@@ -11,180 +11,161 @@
    <dialog>.showModal(): top-layer promotion desyncs the Blazor Server render tree
    (insertBefore/parentNode-null crashes). Backdrop click closes. *@
 
-@if (_open)
-{
-<div class="fixed inset-0 z-40 flex items-center justify-center bg-black/60" @onclick="Close">
-<div @ref="_rootRef" tabindex="-1" class="mission-overlay focus:outline-none @(_multi is null ? "w-60vw" : (_isLoading ? "min-w-40vw max-w-40vw" : "min-w-60vw max-w-85vw")) max-h-95vh bg-dark rounded-lg relative flex flex-col" @onclick:stopPropagation="true" @onkeydown="OnKeyDown" @onkeydown:preventDefault="_preventKey">
-    <button class="absolute top-2 right-2 z-10 rounded-md text-gray-400 hover:text-gray-200 focus:outline-none" type="button" @onclick="Close" aria-label="Close">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-        </svg>
-    </button>
+@if (_open) {
+    <div class="fixed inset-0 z-40 flex items-center justify-center bg-black/60" @onclick="Close">
+        <div @ref="_rootRef" tabindex="-1" class="mission-overlay focus:outline-none @(_multi is null ? "w-60vw" : _isLoading ? "min-w-40vw max-w-40vw" : "min-w-60vw max-w-85vw") max-h-95vh bg-dark rounded-lg relative flex flex-col" @onclick:stopPropagation="true" @onkeydown="OnKeyDown" @onkeydown:preventDefault="_preventKey">
+            <button class="absolute top-2 right-2 z-10 rounded-md text-gray-400 hover:text-gray-200 focus:outline-none" type="button" @onclick="Close" aria-label="Close">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
 
-    @if (_multi is null)
-    {
-        <button class="disabled:cursor-not-allowed absolute left-2 top-1/2 -translate-y-1/2 z-10 rounded-md text-gray-400 focus:outline-none disabled:text-gray-600 hover:text-gray-200" type="button" title="Previous mission"
-                disabled="@(_data?.PrevMission is null)"
-                @onclick="@(() => NavigateAsync(_data?.PrevMission))">
-            <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-            </svg>
-        </button>
-        <button class="disabled:cursor-not-allowed absolute right-2 top-1/2 -translate-y-1/2 z-10 rounded-md text-gray-400 focus:outline-none disabled:text-gray-600 hover:text-gray-200" type="button" title="Next mission"
-                disabled="@(_data?.NextMission is null)"
-                @onclick="@(() => NavigateAsync(_data?.NextMission))">
-            <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-            </svg>
-        </button>
-    }
-
-    @if (_multi is null)
-    {
-        <div class="overflow-auto flex-1 min-h-0 pt-8 px-10 pb-2">
-            <div class="bg-darkerer rounded-lg py-2">
-                @if (_data is not null)
-                {
-                    <ShipDisplay Data="_data" ShowExpectedDrops="ShowExpectedDrops" />
-                }
-                else if (_isLoading)
-                {
-                    <div class="text-center px-8 py-6">
-                        <img src="@State.ContentPaths.Asset("images/loading.gif")" alt="Loading..." class="xl-ico" />
-                        <div class="mt-3 text-sm text-gray-400">Loading mission...</div>
-                    </div>
-                }
-            </div>
-        </div>
-    }
-    else if (_isLoading)
-    {
-        <div class="text-center px-8 py-4 min-w-60 pt-8">
-            <div class="mt-0_5rem text-center text-xl text-gray-400">Multi-Mission View Loading</div>
-            <hr class="mt-1rem mb-1rem w-full" />
-            <img src="@State.ContentPaths.Asset("images/loading.gif")" alt="Loading..." class="xl-ico" />
-            <div class="mt-3 text-sm text-gray-400">
-                Loading mission
-                <span class="text-gray-200 font-semibold">@(_loadedCount + 1)</span>
-                of
-                <span class="text-gray-200 font-semibold">@_totalToLoad</span>
-            </div>
-            <div class="mt-2 w-full bg-darker rounded-full h-1.5 overflow-hidden">
-                <div class="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
-                     style="width: @(LoadingPercent)%;"></div>
-            </div>
-        </div>
-    }
-    else
-    {
-        <div class="flex flex-col flex-1 min-h-0 pt-8 px-10 pb-2">
-            <div class="flex justify-center mb-3 flex-shrink-0">
-                <div class="flex bg-darkerer border border-gray-700 rounded-md p-0.5 text-sm gap-0.5">
-                    <button type="button"
-                            disabled="@(_multi.Count > 20)"
-                            class="px-3 py-1 rounded focus:outline-none transition-colors @(_displayMode == "separate" ? "bg-dark text-blue-400" : (_multi.Count > 20 ? "text-gray-600 cursor-not-allowed" : "text-gray-500 hover:text-gray-300"))"
-                            @onclick="@(() => _displayMode = "separate")">Separate</button>
-                    <button type="button"
-                            class="px-3 py-1 rounded focus:outline-none transition-colors @(_displayMode == "combined" ? "bg-dark text-blue-400" : "text-gray-500 hover:text-gray-300")"
-                            @onclick="@(() => _displayMode = "combined")">Combined</button>
-                </div>
-            </div>
-
-            @if (_displayMode == "separate")
-            {
-                <div class="flex justify-between gap-2 flex-1 min-h-0 overflow-auto mb-3">
-                    @for (int i = 0; i < _multi.Count; i++)
-                    {
-                        var idx = i;
-                        <div class="h-full bg-darkerer rounded-lg py-2 flex-shrink-0" style="width: @(100.0 / _multi.Count)%;">
-                            <ShipDisplay Data="_multi[idx]"
-                                         IsMulti="true"
-                                         IsFirst="@(idx == 0)"
-                                         IsLast="@(idx == _multi.Count - 1)"
-                                         ShipCount="_multi.Count"
-                                         ShowExpectedDrops="ShowExpectedDrops" />
-                        </div>
-                    }
-                </div>
+            @if (_multi is null) {
+                <button class="disabled:cursor-not-allowed absolute left-2 top-1/2 -translate-y-1/2 z-10 rounded-md text-gray-400 focus:outline-none disabled:text-gray-600 hover:text-gray-200" type="button" title="Previous mission"
+                        disabled="@(_data?.PrevMission is null)"
+                        @onclick="@(() => NavigateAsync(_data?.PrevMission))">
+                    <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                    </svg>
+                </button>
+                <button class="disabled:cursor-not-allowed absolute right-2 top-1/2 -translate-y-1/2 z-10 rounded-md text-gray-400 focus:outline-none disabled:text-gray-600 hover:text-gray-200" type="button" title="Next mission"
+                        disabled="@(_data?.NextMission is null)"
+                        @onclick="@(() => NavigateAsync(_data?.NextMission))">
+                    <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
+                </button>
             }
-            else
-            {
-                <div class="bg-darkerer rounded-lg p-3 text-gray-300 text-center flex-1 min-h-0 overflow-auto mb-3">
-                    <div class="flex flex-wrap justify-center gap-x-3 gap-y-2 mb-4">
-                        @foreach (var d in (_shipHeaderExpanded ? _multi : _multi.Take(20)))
-                        {
-                            <div class="flex flex-col items-center rounded-lg px-3 py-2 min-w-36" style="background: rgba(120, 128, 138, 0.12);">
-                                @if (!string.IsNullOrEmpty(d.MissionInfo.ShipEnumString))
-                                {
-                                    <img loading="lazy" decoding="async"
-                                         src="@State.ContentPaths.Asset($"images/ships/{d.MissionInfo.ShipEnumString}.png")"
-                                         alt="@d.MissionInfo.ShipString" class="w-14 h-14 object-contain mb-1" />
-                                }
-                                <div class="font-semibold text-sm @DurationClass(d.MissionInfo)">@d.MissionInfo.ShipString</div>
-                                @if (d.MissionInfo.Level > 0)
-                                {
-                                    <span class="text-goldenstar text-xs">(@d.MissionInfo.Level★)</span>
-                                }
-                                <div class="text-gray-400 text-xs mt-1">@ShortDate(d.LaunchDT)</div>
-                                <div class="text-gray-400 text-xs">@ShortDate(d.ReturnDT)</div>
-                                @if (HasTarget(d.MissionInfo))
-                                {
-                                    <div class="text-gray-400 text-xs mt-1">@ProperCase(d.MissionInfo.Target.Replace("_", " ", StringComparison.Ordinal))</div>
-                                }
-                                <div class="text-gray-500 text-xs mt-0.5 flex items-center gap-1">
-                                    <span>@d.MissionInfo.Capacity</span>
-                                    @if (d.MissionInfo.IsBuggedCap)
-                                    {
-                                        <span class="text-buggedcap">0.6x</span>
-                                    }
-                                    else if (d.MissionInfo.IsDubCap)
-                                    {
-                                        <span class="text-dubcap">@d.CapacityModifier.ToString("0.##", CultureInfo.InvariantCulture)x</span>
-                                    }
-                                </div>
+
+            @if (_multi is null) {
+                <div class="overflow-auto flex-1 min-h-0 pt-8 px-10 pb-2">
+                    <div class="bg-darkerer rounded-lg py-2">
+                        @if (_data is not null) {
+                            <ShipDisplay Data="_data" ShowExpectedDrops="ShowExpectedDrops"/>
+                        } else if (_isLoading) {
+                            <div class="text-center px-8 py-6">
+                                <img src="@ContentPaths.Asset("images/loading.gif")" alt="Loading..." class="xl-ico"/>
+                                <div class="mt-3 text-sm text-gray-400">Loading mission...</div>
                             </div>
                         }
-                        @if (!_shipHeaderExpanded && _multi.Count > 20)
-                        {
-                            <button type="button"
-                                    class="flex flex-col items-center justify-center rounded-lg px-3 py-2 min-w-36 text-gray-400 hover:text-gray-200 transition-colors"
-                                    style="background: rgba(120, 128, 138, 0.12);"
-                                    @onclick="@(() => _shipHeaderExpanded = true)">
-                                + @(_multi.Count - 20) more
-                            </button>
-                        }
                     </div>
-                    <DropDisplayContainer Artifacts="_combinedArtifacts"
-                                          Stones="_combinedStones"
-                                          Ingredients="_combinedIngredients"
-                                          StoneFragments="_combinedStoneFragments"
-                                          ShowExpectedDrops="false" />
+                </div>
+            } else if (_isLoading) {
+                <div class="text-center px-8 py-4 min-w-60 pt-8">
+                    <div class="mt-0_5rem text-center text-xl text-gray-400">Multi-Mission View Loading</div>
+                    <hr class="mt-1rem mb-1rem w-full"/>
+                    <img src="@ContentPaths.Asset("images/loading.gif")" alt="Loading..." class="xl-ico"/>
+                    <div class="mt-3 text-sm text-gray-400">
+                        Loading mission
+                        <span class="text-gray-200 font-semibold">@(_loadedCount + 1)</span>
+                        of
+                        <span class="text-gray-200 font-semibold">@_totalToLoad</span>
+                    </div>
+                    <div class="mt-2 w-full bg-darker rounded-full h-1.5 overflow-hidden">
+                        <div class="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
+                             style="width: @(LoadingPercent)%;">
+                        </div>
+                    </div>
+                </div>
+            } else {
+                <div class="flex flex-col flex-1 min-h-0 pt-8 px-10 pb-2">
+                    <div class="flex justify-center mb-3 flex-shrink-0">
+                        <div class="flex bg-darkerer border border-gray-700 rounded-md p-0.5 text-sm gap-0.5">
+                            <button type="button"
+                                    disabled="@(_multi.Count > 20)"
+                                    class="px-3 py-1 rounded focus:outline-none transition-colors @(_displayMode == "separate" ? "bg-dark text-blue-400" : _multi.Count > 20 ? "text-gray-600 cursor-not-allowed" : "text-gray-500 hover:text-gray-300")"
+                                    @onclick="@(() => _displayMode = "separate")">
+                                Separate
+                            </button>
+                            <button type="button"
+                                    class="px-3 py-1 rounded focus:outline-none transition-colors @(_displayMode == "combined" ? "bg-dark text-blue-400" : "text-gray-500 hover:text-gray-300")"
+                                    @onclick="@(() => _displayMode = "combined")">
+                                Combined
+                            </button>
+                        </div>
+                    </div>
+
+                    @if (_displayMode == "separate") {
+                        <div class="flex justify-between gap-2 flex-1 min-h-0 overflow-auto mb-3">
+                            @for (var i = 0; i < _multi.Count; i++) {
+                                var idx = i;
+                                <div class="h-full bg-darkerer rounded-lg py-2 flex-shrink-0" style="width: @(100.0 / _multi.Count)%;">
+                                    <ShipDisplay Data="_multi[idx]"
+                                                 IsMulti="true"
+                                                 IsFirst="@(idx == 0)"
+                                                 IsLast="@(idx == _multi.Count - 1)"
+                                                 ShipCount="_multi.Count"
+                                                 ShowExpectedDrops="ShowExpectedDrops"/>
+                                </div>
+                            }
+                        </div>
+                    } else {
+                        <div class="bg-darkerer rounded-lg p-3 text-gray-300 text-center flex-1 min-h-0 overflow-auto mb-3">
+                            <div class="flex flex-wrap justify-center gap-x-3 gap-y-2 mb-4">
+                                @foreach (var d in _shipHeaderExpanded ? _multi : _multi.Take(20)) {
+                                    <div class="flex flex-col items-center rounded-lg px-3 py-2 min-w-36" style="background: rgba(120, 128, 138, 0.12);">
+                                        @if (!string.IsNullOrEmpty(d.MissionInfo.ShipEnumString)) {
+                                            <img loading="lazy" decoding="async"
+                                                 src="@ContentPaths.Asset($"images/ships/{d.MissionInfo.ShipEnumString}.png")"
+                                                 alt="@d.MissionInfo.ShipString" class="w-14 h-14 object-contain mb-1"/>
+                                        }
+                                        <div class="font-semibold text-sm @DurationClass(d.MissionInfo)">@d.MissionInfo.ShipString</div>
+                                        @if (d.MissionInfo.Level > 0) {
+                                            <span class="text-goldenstar text-xs">(@d.MissionInfo.Level★)</span>
+                                        }
+                                        <div class="text-gray-400 text-xs mt-1">@ShortDate(d.LaunchDT)</div>
+                                        <div class="text-gray-400 text-xs">@ShortDate(d.ReturnDT)</div>
+                                        @if (HasTarget(d.MissionInfo)) {
+                                            <div class="text-gray-400 text-xs mt-1">@ProperCase(d.MissionInfo.Target.Replace("_", " ", StringComparison.Ordinal))</div>
+                                        }
+                                        <div class="text-gray-500 text-xs mt-0.5 flex items-center gap-1">
+                                            <span>@d.MissionInfo.Capacity</span>
+                                            @if (d.MissionInfo.IsBuggedCap) {
+                                                <span class="text-buggedcap">0.6x</span>
+                                            } else if (d.MissionInfo.IsDubCap) {
+                                                <span class="text-dubcap">@d.CapacityModifier.ToString("0.##", CultureInfo.InvariantCulture)x</span>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                                @if (!_shipHeaderExpanded && _multi.Count > 20) {
+                                    <button type="button"
+                                            class="flex flex-col items-center justify-center rounded-lg px-3 py-2 min-w-36 text-gray-400 hover:text-gray-200 transition-colors"
+                                            style="background: rgba(120, 128, 138, 0.12);"
+                                            @onclick="@(() => _shipHeaderExpanded = true)">
+                                        + @(_multi.Count - 20) more
+                                    </button>
+                                }
+                            </div>
+                            <DropDisplayContainer Artifacts="_combinedArtifacts"
+                                                  Stones="_combinedStones"
+                                                  Ingredients="_combinedIngredients"
+                                                  StoneFragments="_combinedStoneFragments"
+                                                  ShowExpectedDrops="false"/>
+                        </div>
+                    }
+
+                    <div class="text-xs text-gray-300 text-center flex-shrink-0">
+                        Hover mouse over an item to show details.<br/>
+                        Click to open the relevant
+                        <a class="ledger-underline" target="_blank" rel="noopener" href="https://wasmegg-carpet.netlify.app/artifact-explorer/">artifact explorer</a>
+                        page.
+                    </div>
                 </div>
             }
-
-            <div class="text-xs text-gray-300 text-center flex-shrink-0">
-                Hover mouse over an item to show details.<br />
-                Click to open the relevant
-                <a class="ledger-underline" target="_blank" rel="noopener" href="https://wasmegg-carpet.netlify.app/artifact-explorer/">artifact explorer</a>
-                page.
-            </div>
         </div>
-    }
-</div>
-</div>
+    </div>
 }
 
 @code {
-    [Parameter]
-    public string? AccountId { get; set; }
+    [Parameter] public string? AccountId { get; set; }
 
     /// <summary>Filtered missions in display order; drives prev/next navigation.</summary>
     [Parameter]
     public IReadOnlyList<DatabaseMission> FilteredMissions { get; set; } = Array.Empty<DatabaseMission>();
-    [Parameter]
-    public MissionSortMethod SortMethod { get; set; } = MissionSortMethod.Default;
-    [Parameter]
-    public bool ShowExpectedDrops { get; set; }
+
+    [Parameter] public MissionSortMethod SortMethod { get; set; } = MissionSortMethod.Default;
+    [Parameter] public bool ShowExpectedDrops { get; set; }
     private bool _open;
     private ElementReference _rootRef;
     private bool _focusPending;
@@ -202,10 +183,9 @@
     private List<DropLike> _combinedStoneFragments = [];
 
     private int LoadingPercent =>
-        _totalToLoad > 0 ? Math.Min(100, (int)(((_loadedCount + 1) / (double)_totalToLoad) * 100)) : 0;
+        _totalToLoad > 0 ? Math.Min(100, (int)((_loadedCount + 1) / (double)_totalToLoad * 100)) : 0;
 
-    public async Task OpenAsync(string missionId)
-    {
+    public async Task OpenAsync(string missionId) {
         _open = true;
         _multi = null;
         _data = null;
@@ -215,22 +195,18 @@
         await LoadAsync(missionId);
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
         // Focus the overlay so its keydown handler receives arrow/Escape keys instead of the
         // mission list scrolling behind it.
-        if (_focusPending && _open)
-        {
+        if (_focusPending && _open) {
             _focusPending = false;
             await _rootRef.FocusAsync();
         }
     }
 
-    private async Task OnKeyDown(KeyboardEventArgs e)
-    {
+    private async Task OnKeyDown(KeyboardEventArgs e) {
         _preventKey = e.Key is "ArrowLeft" or "ArrowRight" or "Escape";
-        switch (e.Key)
-        {
+        switch (e.Key) {
             case "Escape":
                 Close();
                 break;
@@ -243,8 +219,7 @@
         }
     }
 
-    public async Task OpenMultiAsync(IReadOnlyList<string> missionIds)
-    {
+    public async Task OpenMultiAsync(IReadOnlyList<string> missionIds) {
         _open = true;
         _data = null;
         _multi = new List<ViewMissionData>();
@@ -255,43 +230,43 @@
         _displayMode = _totalToLoad > 5 ? "combined" : "separate";
         _focusPending = true;
         StateHasChanged();
-        foreach (var id in missionIds)
-        {
+        foreach (var id in missionIds) {
             var data = await BuildAsync(id);
-            if (data is not null)
-            {
+            if (data is not null) {
                 _multi.Add(data);
             }
+
             _loadedCount++;
             StateHasChanged();
         }
+
         RebuildCombined();
         _isLoading = false;
         StateHasChanged();
 
         // Expected-drops need the community download; populate after the grid renders so the
         // ship cards are not gated on it, then rebuild the combined view once.
-        foreach (var data in _multi)
-        {
+        foreach (var data in _multi) {
             var mission = FindMission(data.MissionInfo.MissiondId);
-            if (mission is not null)
-            {
+            if (mission is not null) {
                 await PopulateMennoAsync(mission, data);
             }
         }
+
         RebuildCombined();
         StateHasChanged();
     }
 
     // Port of MissionOverlay.vue combinedDropData: merge each spec bucket across missions, then sort.
-    private void RebuildCombined() => RebuildCombined(SortMethod);
+    private void RebuildCombined() {
+        RebuildCombined(SortMethod);
+    }
 
-    private void RebuildCombined(MissionSortMethod method)
-    {
-        if (_multi is null)
-        {
+    private void RebuildCombined(MissionSortMethod method) {
+        if (_multi is null) {
             return;
         }
+
         Func<IEnumerable<DropLike>, List<DropLike>> sortFn = method == MissionSortMethod.Iv
             ? DropSorter.InventoryVisualizerSort
             : DropSorter.SortGroupAlreadyCombed;
@@ -302,52 +277,46 @@
     }
 
     /// <summary>Re-sort the open overlay's drop lists when the sort method changes.</summary>
-    public async Task ReSortAsync(MissionSortMethod method)
-    {
-        if (!_open)
-        {
+    public async Task ReSortAsync(MissionSortMethod method) {
+        if (!_open) {
             return;
         }
-        if (_data is not null)
-        {
+
+        if (_data is not null) {
             MissionDetailBuilder.ApplySortMethod(_data, method);
         }
-        if (_multi is not null)
-        {
-            foreach (var d in _multi)
-            {
+
+        if (_multi is not null) {
+            foreach (var d in _multi) {
                 MissionDetailBuilder.ApplySortMethod(d, method);
             }
+
             RebuildCombined(method);
         }
+
         StateHasChanged();
         await Task.CompletedTask;
     }
 
-    private async Task LoadAsync(string missionId)
-    {
+    private async Task LoadAsync(string missionId) {
         _data = await BuildAsync(missionId);
         _isLoading = false;
         StateHasChanged();
 
         // Expected-drops come from the multi-MB community download; fill it in after the
         // ship is already on screen so first paint is not gated on the fetch.
-        if (_data is not null)
-        {
+        if (_data is not null) {
             var mission = FindMission(missionId);
-            if (mission is not null)
-            {
+            if (mission is not null) {
                 await PopulateMennoAsync(mission, _data);
                 StateHasChanged();
             }
         }
     }
 
-    private async Task<ViewMissionData?> BuildAsync(string missionId)
-    {
+    private async Task<ViewMissionData?> BuildAsync(string missionId) {
         var mission = FindMission(missionId);
-        if (mission is null)
-        {
+        if (mission is null) {
             return null;
         }
 
@@ -359,58 +328,51 @@
             mission,
             drops ?? new List<MissionDrop>(),
             FilteredMissions,
-            extendedInfo: true);
+            true);
         MissionDetailBuilder.ApplySortMethod(data, SortMethod);
         return data;
     }
 
-    private async Task PopulateMennoAsync(DatabaseMission mission, ViewMissionData data)
-    {
-        if (!ShowExpectedDrops)
-        {
+    private async Task PopulateMennoAsync(DatabaseMission mission, ViewMissionData data) {
+        if (!ShowExpectedDrops) {
             return;
         }
-        try
-        {
+
+        try {
             await Menno.EnsureLoadedAsync();
         }
-        catch
-        {
+        catch {
             // Community data is best-effort; tooltip falls back to "not enough data".
             return;
         }
+
         var (ship, duration, level, target) = MissionDetailBuilder.MennoParams(mission);
         var configs = Menno.GetData(ship, duration, level, target);
-        int total = 0;
-        foreach (var c in configs)
-        {
+        var total = 0;
+        foreach (var c in configs) {
             total += c.TotalDrops;
         }
+
         data.MennoData = new MissionMennoData { Configs = configs, TotalDropsCount = total };
     }
 
-    private DatabaseMission? FindMission(string missionId)
-    {
-        foreach (var m in FilteredMissions)
-        {
-            if (m.MissiondId == missionId)
-            {
+    private DatabaseMission? FindMission(string missionId) {
+        foreach (var m in FilteredMissions) {
+            if (m.MissiondId == missionId) {
                 return m;
             }
         }
+
         return null;
     }
 
-    private async Task NavigateAsync(string? missionId)
-    {
-        if (missionId is not null)
-        {
+    private async Task NavigateAsync(string? missionId) {
+        if (missionId is not null) {
             await LoadAsync(missionId);
         }
     }
 
-    private void Close()
-    {
+    private void Close() {
         _open = false;
         _data = null;
         _multi = null;
@@ -422,27 +384,30 @@
         _combinedStoneFragments = [];
     }
 
-    private static string ShortDate(DateTime dt) => dt.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+    private static string ShortDate(DateTime dt) {
+        return dt.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+    }
 
-    private static bool HasTarget(DatabaseMission m) =>
-        m.Target.Length > 0 && !string.Equals(m.Target, "UNKNOWN", StringComparison.OrdinalIgnoreCase);
+    private static bool HasTarget(DatabaseMission m) {
+        return m.Target.Length > 0 && !string.Equals(m.Target, "UNKNOWN", StringComparison.OrdinalIgnoreCase);
+    }
 
-    private static string DurationClass(DatabaseMission m) =>
-        m.DurationType is { } d
+    private static string DurationClass(DatabaseMission m) {
+        return m.DurationType is { } d
             ? "text-duration-" + Convert.ToInt32(d, CultureInfo.InvariantCulture)
             : "text-duration-3";
+    }
 
-    private static string ProperCase(string value)
-    {
+    private static string ProperCase(string value) {
         var words = value.ToLowerInvariant().Split(' ');
-        for (int i = 0; i < words.Length; i++)
-        {
-            if (words[i] is not ("of" or "the") && words[i].Length > 0)
-            {
+        for (var i = 0; i < words.Length; i++) {
+            if (words[i] is not ("of" or "the") && words[i].Length > 0) {
                 words[i] = char.ToUpperInvariant(words[i][0]) + words[i].Substring(1);
             }
         }
+
         var joined = string.Join(' ', words);
         return joined.Length > 0 ? char.ToUpperInvariant(joined[0]) + joined.Substring(1) : joined;
     }
+
 }

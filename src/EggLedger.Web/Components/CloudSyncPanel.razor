@@ -13,14 +13,11 @@
 
 <div class="px-2 py-2 text-sm text-gray-400 bg-darker rounded-md tabular-nums overflow-auto">
     <span class="mr-0_5rem font-bold text-lg text-gray-400 ledger-underline">Settings Sync</span>
-    <span class="text-gray-500 text-xs italic ml-1">(optional - requires Discord)</span><br />
+    <span class="text-gray-500 text-xs italic ml-1">(optional - requires Discord)</span><br/>
 
-    @if (_reachableChecking)
-    {
+    @if (_reachableChecking) {
         <div class="mt-0_5rem text-gray-500 italic text-xs">Checking sync server connection...</div>
-    }
-    else if (!_reachable)
-    {
+    } else if (!_reachable) {
         <div class="mt-0_5rem">
             <div class="border border-yellow-700 rounded-md px-3 py-2 text-yellow-400 text-xs space-y-1">
                 <p class="font-semibold">Could not reach the sync server</p>
@@ -28,21 +25,16 @@
             </div>
             <button type="button" class="ledger-btn apply-filter-button mt-0_5rem" @onclick="RecheckReachableAsync">Retry</button>
         </div>
-    }
-    else
-    {
+    } else {
         <div class="mt-0_5rem">
-            @if (_connected)
-            {
+            @if (_connected) {
                 <div class="flex items-center gap-2">
-                    @if (!string.IsNullOrEmpty(_avatarUrl))
-                    {
-                        <img class="w-7 h-7 rounded-full border border-gray-600" src="@_avatarUrl" alt="Discord avatar" />
+                    @if (!string.IsNullOrEmpty(_avatarUrl)) {
+                        <img class="w-7 h-7 rounded-full border border-gray-600" src="@_avatarUrl" alt="Discord avatar"/>
                     }
                     <div>
                         <span class="text-green-400 font-semibold">Connected</span>
-                        @if (!string.IsNullOrEmpty(_username))
-                        {
+                        @if (!string.IsNullOrEmpty(_username)) {
                             <span class="text-gray-400 ml-1">as <span class="text-gray-300">@_username</span></span>
                         }
                     </div>
@@ -51,15 +43,12 @@
                     <div>Last push: <span class="@(_lastPushAt > 0 ? "text-gray-400" : "text-gray-600 italic")">@PushString</span></div>
                     <div>Last pull: <span class="@(_lastPullAt > 0 ? "text-gray-400" : "text-gray-600 italic")">@PullString</span></div>
                 </div>
-            }
-            else
-            {
+            } else {
                 <span class="text-gray-500 italic">Not connected</span>
             }
         </div>
 
-        @if (_authWaiting)
-        {
+        @if (_authWaiting) {
             <div class="mt-0_5rem border border-blue-700 rounded-md px-3 py-2 text-blue-300 text-xs max-w-[50%]">
                 <p class="font-semibold">Waiting for Discord authorization...</p>
                 <p class="text-blue-300/70 mt-0.5">Your browser should have opened the authorization page. Approve it there, then return here.</p>
@@ -67,21 +56,17 @@
         }
 
         <div class="mt-0_5rem flex flex-col gap-2">
-            @if (!_connected)
-            {
+            @if (!_connected) {
                 <button type="button" class="discord-btn self-start disabled:opacity-60"
                         disabled="@_authWaiting" @onclick="ConnectAsync">
-                    @if (!_authWaiting)
-                    {
+                    @if (!_authWaiting) {
                         <svg class="discord-icon" viewBox="0 0 127.14 96.36" fill="currentColor" aria-hidden="true">
-                            <path d="M107.7 8.07A105.15 105.15 0 0 0 81.47 0a72.06 72.06 0 0 0-3.36 6.83 97.68 97.68 0 0 0-29.11 0A72.37 72.37 0 0 0 45.64 0a105.89 105.89 0 0 0-26.25 8.09C2.79 32.65-1.71 56.6.54 80.21a105.73 105.73 0 0 0 32.17 16.15 77.7 77.7 0 0 0 6.89-11.11 68.42 68.42 0 0 1-10.85-5.18c.91-.66 1.8-1.34 2.66-2a75.57 75.57 0 0 0 64.32 0c.87.71 1.76 1.39 2.66 2a68.68 68.68 0 0 1-10.87 5.19 77 77 0 0 0 6.89 11.1 105.25 105.25 0 0 0 32.19-16.14c2.64-27.38-4.51-51.11-18.9-72.15ZM42.45 65.69C36.18 65.69 31 60 31 53s5-12.74 11.43-12.74S54 46 53.89 53s-5.05 12.69-11.44 12.69Zm42.24 0C78.41 65.69 73.25 60 73.25 53s5-12.74 11.44-12.74S96.23 46 96.12 53s-5.04 12.69-11.43 12.69Z" />
+                            <path d="M107.7 8.07A105.15 105.15 0 0 0 81.47 0a72.06 72.06 0 0 0-3.36 6.83 97.68 97.68 0 0 0-29.11 0A72.37 72.37 0 0 0 45.64 0a105.89 105.89 0 0 0-26.25 8.09C2.79 32.65-1.71 56.6.54 80.21a105.73 105.73 0 0 0 32.17 16.15 77.7 77.7 0 0 0 6.89-11.11 68.42 68.42 0 0 1-10.85-5.18c.91-.66 1.8-1.34 2.66-2a75.57 75.57 0 0 0 64.32 0c.87.71 1.76 1.39 2.66 2a68.68 68.68 0 0 1-10.87 5.19 77 77 0 0 0 6.89 11.1 105.25 105.25 0 0 0 32.19-16.14c2.64-27.38-4.51-51.11-18.9-72.15ZM42.45 65.69C36.18 65.69 31 60 31 53s5-12.74 11.43-12.74S54 46 53.89 53s-5.05 12.69-11.44 12.69Zm42.24 0C78.41 65.69 73.25 60 73.25 53s5-12.74 11.44-12.74S96.23 46 96.12 53s-5.04 12.69-11.43 12.69Z"/>
                         </svg>
                     }
                     @(_authWaiting ? "Waiting for auth..." : "Connect with Discord")
                 </button>
-            }
-            else
-            {
+            } else {
                 <div class="flex flex-row flex-wrap gap-2">
                     <button type="button"
                             class="ledger-btn apply-filter-button !mt-0 !mr-0 !ml-0 !bg-blue-700 !text-white hover:!bg-blue-600 !border-blue-500"
@@ -95,50 +80,49 @@
                     </button>
                 </div>
                 <div class="flex flex-row flex-wrap gap-2">
-                    @if (_confirmingDelete)
-                    {
+                    @if (_confirmingDelete) {
                         <span class="text-xs text-red-400 self-center">Delete all remote data?</span>
                         <button type="button"
                                 class="ledger-btn apply-filter-button !mt-0 !mr-0 !ml-0 !text-gray-300 !bg-gray-700 hover:!bg-gray-600 !border-gray-500"
-                                @onclick="() => _confirmingDelete = false">Cancel</button>
+                                @onclick="() => _confirmingDelete = false">
+                            Cancel
+                        </button>
                         <button type="button"
                                 class="ledger-btn apply-filter-button !mt-0 !mr-0 !ml-0 !bg-red-900 !text-red-200 hover:!bg-red-800 !border-red-700"
                                 disabled="@_deleteInProgress" @onclick="DeleteRemoteAsync">
                             @(_deleteInProgress ? "Deleting..." : "Yes, delete")
                         </button>
-                    }
-                    else
-                    {
+                    } else {
                         <button type="button"
                                 class="ledger-btn apply-filter-button !mt-0 !mr-0 !ml-0 !bg-red-900 !text-red-200 hover:!bg-red-800 !border-red-700"
-                                @onclick="DisconnectAsync">Disconnect</button>
+                                @onclick="DisconnectAsync">
+                            Disconnect
+                        </button>
                         <button type="button"
                                 class="ledger-btn apply-filter-button !mt-0 !mr-0 !ml-0 !bg-red-900/60 !text-red-300 hover:!bg-red-900 !border-red-800"
-                                @onclick="() => _confirmingDelete = true">Delete Remote Data</button>
+                                @onclick="() => _confirmingDelete = true">
+                            Delete Remote Data
+                        </button>
                     }
                 </div>
                 <div class="flex items-center gap-2">
-                    <input id="cloudAutoSyncCheckbox" type="checkbox" class="ext-opt-check" checked="@_autoSync" @onchange="OnAutoSyncChangeAsync" />
+                    <input id="cloudAutoSyncCheckbox" type="checkbox" class="ext-opt-check" checked="@_autoSync" @onchange="OnAutoSyncChangeAsync"/>
                     <label for="cloudAutoSyncCheckbox" class="ext-opt-label">Auto-sync settings on change</label>
                 </div>
             }
         </div>
 
         <div class="mt-0_5rem space-y-1">
-            @if (!string.IsNullOrEmpty(_syncError))
-            {
+            @if (!string.IsNullOrEmpty(_syncError)) {
                 <div class="text-red-400 text-xs">Sync failed: @_syncError</div>
             }
-            @if (!string.IsNullOrEmpty(_restoreError))
-            {
+            @if (!string.IsNullOrEmpty(_restoreError)) {
                 <div class="text-red-400 text-xs">Restore failed: @_restoreError</div>
             }
-            @if (!string.IsNullOrEmpty(_deleteError))
-            {
+            @if (!string.IsNullOrEmpty(_deleteError)) {
                 <div class="text-red-400 text-xs">Delete failed: @_deleteError</div>
             }
-            @if (_restoreSuccess)
-            {
+            @if (_restoreSuccess) {
                 <div class="text-green-400 text-xs">Restore complete. Restart the app to apply synced settings.</div>
             }
         </div>
@@ -177,15 +161,14 @@
         ? DateTimeOffset.FromUnixTimeSeconds(_lastPullAt).LocalDateTime.ToString("g")
         : "Never";
 
-    protected override async Task OnInitializedAsync()
-    {
+    protected override async Task OnInitializedAsync() {
         _session = await SessionStore.GetSessionAsync();
         _connected = _session is not null && !string.IsNullOrEmpty(_session.Token);
-        if (_session is not null)
-        {
+        if (_session is not null) {
             _username = _session.Username;
             _avatarUrl = _session.AvatarUrl;
         }
+
         _lastPushAt = await SessionStore.GetLastPushAtAsync();
         _lastPullAt = await SessionStore.GetLastPullAtAsync();
         _autoSync = await SessionStore.GetAutoSyncAsync();
@@ -195,102 +178,83 @@
         _reachableChecking = false;
 
         // Resume a redirect-interrupted auth: a pending state saved before the Discord redirect means we restart the poll loop so the session lands.
-        if (_reachable && !_connected)
-        {
+        if (_reachable && !_connected) {
             var pending = await SessionStore.GetPendingAuthStateAsync();
-            if (!string.IsNullOrEmpty(pending))
-            {
+            if (!string.IsNullOrEmpty(pending)) {
                 _authWaiting = true;
                 _ = PollUntilDoneAsync(pending);
             }
         }
     }
 
-    private async Task<bool> CheckReachableAsync()
-    {
-        try
-        {
+    private async Task<bool> CheckReachableAsync() {
+        try {
             return await Cloud.CheckReachableAsync();
         }
-        catch
-        {
+        catch {
             return false;
         }
     }
 
-    private async Task RecheckReachableAsync()
-    {
+    private async Task RecheckReachableAsync() {
         _reachableChecking = true;
         StateHasChanged();
         _reachable = await CheckReachableAsync();
         _reachableChecking = false;
     }
 
-    private async Task ConnectAsync()
-    {
+    private async Task ConnectAsync() {
         _authWaiting = true;
         _syncError = "";
         _restoreError = "";
-        try
-        {
+        try {
             var state = await Cloud.BeginAuthAsync();
             // BeginAuthAsync force-navigates to Discord, so persist poll state first so the reloaded SPA resumes polling on return.
             await SessionStore.SetPendingAuthStateAsync(state);
             await PollUntilDoneAsync(state);
         }
-        catch
-        {
+        catch {
             _authWaiting = false;
         }
     }
 
-    private async Task PollUntilDoneAsync(string state)
-    {
+    private async Task PollUntilDoneAsync(string state) {
         _pollCts?.Cancel();
         _pollCts?.Dispose();
         _pollCts = new CancellationTokenSource(PollTimeout);
         var ct = _pollCts.Token;
-        try
-        {
+        try {
             using var timer = new PeriodicTimer(PollInterval);
-            while (await timer.WaitForNextTickAsync(ct))
-            {
+            while (await timer.WaitForNextTickAsync(ct)) {
                 PollResult result;
-                try
-                {
+                try {
                     result = await Cloud.PollOnceAsync(state, ct);
                 }
-                catch (CloudSyncException)
-                {
+                catch (CloudSyncException) {
                     continue;
                 }
-                if (!result.Pending && result.Session is not null)
-                {
+
+                if (!result.Pending && result.Session is not null) {
                     await OnAuthCompleteAsync(result.Session);
                     return;
                 }
             }
         }
-        catch (OperationCanceledException)
-        {
+        catch (OperationCanceledException) {
             // Clear pending state only on a real timeout, not a dispose-driven cancel where we may resume after a reload.
-            if (_pollCts is not null && _pollCts.IsCancellationRequested && !_disposed)
-            {
+            if (_pollCts is not null && _pollCts.IsCancellationRequested && !_disposed) {
                 await SessionStore.ClearPendingAuthStateAsync();
             }
         }
-        finally
-        {
+        finally {
             _authWaiting = false;
-            if (!_disposed)
-            {
+            if (!_disposed) {
                 await InvokeAsync(StateHasChanged);
             }
         }
     }
 
-    private async Task OnAuthCompleteAsync(CloudSession session)
-    {
+    private async Task OnAuthCompleteAsync(CloudSession session) {
         _session = session;
         _connected = true;
         _username = session.Username;
@@ -303,13 +267,16 @@
         await InvokeAsync(StateHasChanged);
     }
 
-    private async Task DisconnectAsync()
-    {
-        if (_session is not null)
-        {
-            try { await Cloud.DisconnectAsync(_session.Token); }
-            catch { /* server logout is best-effort */ }
+    private async Task DisconnectAsync() {
+        if (_session is not null) {
+            try {
+                await Cloud.DisconnectAsync(_session.Token);
+            }
+            catch {
+                /* server logout is best-effort */
+            }
         }
+
         await SessionStore.ClearSessionAsync();
         _session = null;
         _connected = false;
@@ -317,17 +284,15 @@
         _avatarUrl = "";
     }
 
-    private async Task SyncNowAsync()
-    {
-        if (_session is null)
-        {
+    private async Task SyncNowAsync() {
+        if (_session is null) {
             return;
         }
+
         _syncInProgress = true;
         _syncError = "";
         StateHasChanged();
-        try
-        {
+        try {
             var all = await Settings.GetAllSettingsAsync();
             var accounts = await Accounts.GetKnownAccountsAsync();
             await Cloud.PutBlobAsync(_session, CloudSyncBlobs.AccountsBlob, accounts);
@@ -337,168 +302,159 @@
             _lastPushAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             await SessionStore.SetLastPushAtAsync(_lastPushAt);
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             _syncError = ex.Message;
         }
-        finally
-        {
+        finally {
             _syncInProgress = false;
         }
     }
 
-    private async Task<CloudReportsBlob> BuildReportsBlobAsync(IReadOnlyList<AccountInfo> accounts)
-    {
+    private async Task<CloudReportsBlob> BuildReportsBlobAsync(IReadOnlyList<AccountInfo> accounts) {
         var reports = new List<ReportRow>();
         var groups = new List<ReportGroupRow>();
-        foreach (var acct in accounts)
-        {
+        foreach (var acct in accounts) {
             reports.AddRange(await Reports.RetrieveAccountReportsAsync(acct.Id));
             groups.AddRange(await Reports.RetrieveAccountGroupsAsync(acct.Id));
         }
+
         return CloudReportsBlob.Pack(reports, groups);
     }
 
-    private async Task RestoreNowAsync()
-    {
-        if (_session is null)
-        {
+    private async Task RestoreNowAsync() {
+        if (_session is null) {
             return;
         }
+
         _restoreInProgress = true;
         _restoreError = "";
         _restoreSuccess = false;
         StateHasChanged();
-        try
-        {
+        try {
             // Accounts first (reports reference account ids).
-            try
-            {
+            try {
                 var remoteAccounts = await Cloud.GetBlobAsync<List<AccountInfo>>(_session, CloudSyncBlobs.AccountsBlob);
-                foreach (var acct in remoteAccounts ?? [])
-                {
+                foreach (var acct in remoteAccounts ?? []) {
                     await Accounts.AddKnownAccountAsync(acct);
                 }
             }
-            catch (CloudSyncException) { /* nothing synced yet */ }
-            catch (Exception ex) { throw new CloudSyncException($"restore accounts: {ex.Message}", ex); }
+            catch (CloudSyncException) {
+                /* nothing synced yet */
+            }
+            catch (Exception ex) {
+                throw new CloudSyncException($"restore accounts: {ex.Message}", ex);
+            }
 
-            try
-            {
+            try {
                 var remoteSettings = await Cloud.GetBlobAsync<CloudSyncableSettings>(_session, CloudSyncBlobs.SettingsBlob);
-                if (remoteSettings is not null)
-                {
+                if (remoteSettings is not null) {
                     await Settings.SetSettingsAsync(CloudSyncBlobs.UnpackSettings(remoteSettings));
                 }
             }
-            catch (CloudSyncException) { /* nothing synced yet */ }
-            catch (Exception ex) { throw new CloudSyncException($"restore settings: {ex.Message}", ex); }
+            catch (CloudSyncException) {
+                /* nothing synced yet */
+            }
+            catch (Exception ex) {
+                throw new CloudSyncException($"restore settings: {ex.Message}", ex);
+            }
 
-            try
-            {
+            try {
                 var remoteReports = await Cloud.GetBlobAsync<CloudReportsBlob>(_session, CloudSyncBlobs.ReportsBlob);
-                if (remoteReports is not null)
-                {
+                if (remoteReports is not null) {
                     await ImportReportsAsync(remoteReports);
                 }
             }
-            catch (CloudSyncException) { /* nothing synced yet */ }
-            catch (Exception ex) { throw new CloudSyncException($"restore reports: {ex.Message}", ex); }
+            catch (CloudSyncException) {
+                /* nothing synced yet */
+            }
+            catch (Exception ex) {
+                throw new CloudSyncException($"restore reports: {ex.Message}", ex);
+            }
 
             _lastPullAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             await SessionStore.SetLastPullAtAsync(_lastPullAt);
             _restoreSuccess = true;
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             _restoreError = ex.Message;
         }
-        finally
-        {
+        finally {
             _restoreInProgress = false;
         }
     }
 
-    private async Task ImportReportsAsync(CloudReportsBlob remote)
-    {
+    private async Task ImportReportsAsync(CloudReportsBlob remote) {
         var existingGroupIds = new HashSet<string>(StringComparer.Ordinal);
         var existingReportIds = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var g in remote.Groups ?? [])
-        {
+        foreach (var g in remote.Groups ?? []) {
             var local = await Reports.RetrieveReportGroupAsync(g.Id);
-            if (local is not null)
-            {
+            if (local is not null) {
                 existingGroupIds.Add(g.Id);
             }
         }
-        foreach (var r in remote.Reports ?? [])
-        {
+
+        foreach (var r in remote.Reports ?? []) {
             var local = await Reports.RetrieveReportAsync(r.Id);
-            if (local is not null)
-            {
+            if (local is not null) {
                 existingReportIds.Add(r.Id);
             }
         }
 
         var (groups, reports) = CloudSyncBlobs.SelectReportsToImport(remote, existingGroupIds, existingReportIds);
-        foreach (var g in groups)
-        {
+        foreach (var g in groups) {
             await Reports.InsertReportGroupAsync(g);
         }
-        foreach (var r in reports)
-        {
+
+        foreach (var r in reports) {
             await Reports.InsertReportAsync(r);
         }
     }
 
-    private async Task DeleteRemoteAsync()
-    {
-        if (_session is null)
-        {
+    private async Task DeleteRemoteAsync() {
+        if (_session is null) {
             return;
         }
+
         _deleteInProgress = true;
         _deleteError = "";
         _confirmingDelete = false;
         StateHasChanged();
-        try
-        {
+        try {
             await Cloud.PutBlobAsync(_session, CloudSyncBlobs.AccountsBlob, Array.Empty<AccountInfo>());
             await Cloud.PutBlobAsync(_session, CloudSyncBlobs.SettingsBlob, new CloudSyncableSettings());
             await Cloud.PutBlobAsync(_session, CloudSyncBlobs.ReportsBlob, new CloudReportsBlob());
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             _deleteError = ex.Message;
         }
-        finally
-        {
+        finally {
             _deleteInProgress = false;
         }
     }
 
-    private async Task OnAutoSyncChangeAsync(ChangeEventArgs e)
-    {
+    private async Task OnAutoSyncChangeAsync(ChangeEventArgs e) {
         _autoSync = e.Value is bool b ? b : bool.TryParse(e.Value?.ToString(), out var p) && p;
         await SessionStore.SetAutoSyncAsync(_autoSync);
     }
 
-    /// <summary>Pushes to the cloud when auto-sync is on and connected; no-op otherwise. Called by the Settings page after a cloud-syncable setting changes.</summary>
-    public async Task AutoSyncIfEnabledAsync()
-    {
-        if (!_autoSync || !_connected || _session is null || _syncInProgress)
-        {
+    /// <summary>
+    ///     Pushes to the cloud when auto-sync is on and connected; no-op otherwise. Called by the Settings page after a
+    ///     cloud-syncable setting changes.
+    /// </summary>
+    public async Task AutoSyncIfEnabledAsync() {
+        if (!_autoSync || !_connected || _session is null || _syncInProgress) {
             return;
         }
+
         await SyncNowAsync();
     }
 
-    public ValueTask DisposeAsync()
-    {
+    public ValueTask DisposeAsync() {
         _disposed = true;
         _pollCts?.Cancel();
         _pollCts?.Dispose();
         _pollCts = null;
         return ValueTask.CompletedTask;
     }
+
 }

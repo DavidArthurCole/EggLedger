@@ -1,7 +1,6 @@
 @using System.Globalization
 @using EggLedger.Domain.Reports
 @using EggLedger.Domain.Reports.Charts
-
 @* Pie chart; slice geometry and colors from PieGeometry. Connector-line callouts are
    simplified to a compact legend beneath the pie. *@
 
@@ -10,16 +9,14 @@
         @{
             var slices = Slices();
         }
-        @foreach (var seg in slices)
-        {
+        @foreach (var seg in slices) {
             <path class="chart-hit" d="@seg.Path" fill="@seg.Color" style="cursor: pointer;"
                   data-tt="@SliceTip(seg)">
             </path>
         }
     </svg>
     <div class="flex flex-col gap-0.5 overflow-y-auto max-h-full min-w-0">
-        @foreach (var seg in Slices())
-        {
+        @foreach (var seg in Slices()) {
             <div class="flex items-center gap-1 text-xs min-w-0" title="@seg.Label">
                 <span class="w-2 h-2 rounded-sm flex-shrink-0" style="background-color: @seg.Color;"></span>
                 <span class="text-gray-400 truncate">@seg.Label</span>
@@ -32,33 +29,36 @@
 @code {
     private const double Vw = 240;
     private const double Vh = 240;
-    [Parameter, EditorRequired]
-    public ReportResult Result { get; set; } = new();
-    [Parameter, EditorRequired]
-    public string Color { get; set; } = "#6366f1";
-    [Parameter]
-    public string? LabelColors { get; set; }
+    [Parameter] [EditorRequired] public ReportResult Result { get; set; } = new();
+    [Parameter] [EditorRequired] public string Color { get; set; } = "#6366f1";
+    [Parameter] public string? LabelColors { get; set; }
     private double Cx => Vw / 2;
     private double Cy => Vh / 2;
     private double R => Math.Min(Vw, Vh) * 0.36;
 
-    private List<double> Values() =>
-        Result.IsFloat ? Result.FloatValues : Result.Values.Select(v => (double)v).ToList();
+    private List<double> Values() {
+        return Result.IsFloat ? Result.FloatValues : Result.Values.Select(v => (double)v).ToList();
+    }
 
-    private List<PieSlice> Slices() => PieGeometry.BuildSlices(
-        Result.Labels,
-        Values(),
-        Cx,
-        Cy,
-        R,
-        Color,
-        SliceColors.ParseLabelColors(LabelColors));
+    private List<PieSlice> Slices() {
+        return PieGeometry.BuildSlices(
+            Result.Labels,
+            Values(),
+            Cx,
+            Cy,
+            R,
+            Color,
+            SliceColors.ParseLabelColors(LabelColors));
+    }
 
-    private string FormatVal(double v) =>
-        Result.IsFloat
+    private string FormatVal(double v) {
+        return Result.IsFloat
             ? v.ToString("0.00", CultureInfo.InvariantCulture)
             : ((long)v).ToString(CultureInfo.InvariantCulture);
+    }
 
-    private string SliceTip(PieSlice seg) =>
-        $"{seg.Label}\n{FormatVal(seg.Value)} ({seg.Pct.ToString("0.0", CultureInfo.InvariantCulture)}%)";
+    private string SliceTip(PieSlice seg) {
+        return $"{seg.Label}\n{FormatVal(seg.Value)} ({seg.Pct.ToString("0.0", CultureInfo.InvariantCulture)}%)";
+    }
+
 }

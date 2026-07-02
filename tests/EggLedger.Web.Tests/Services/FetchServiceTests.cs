@@ -261,6 +261,49 @@ public sealed class FetchServiceTests {
     }
 
     [Fact]
+    public async Task FetchPlayerData_MissionFails_ReportsFailedMissionWithReason() {
+        var db = new FakeIndexedDb();
+        // The complete-mission handler returns null for "bad", which the routing
+        // handler turns into a 500 the ApiClient throws on.
+        var handler = new RoutingHandler(
+            FirstContactBody(new[] { "bad" }),
+            id => id == "bad" ? null : CompleteMissionBody(id));
+        var service = Make(db, handler, retry: false);
+
+        var events = new List<FetchProgress>();
+        var progress = new SynchronousProgress<FetchProgress>(events.Add);
+
+        var final = await service.FetchPlayerDataAsync(Eid, progress, CancellationToken.None);
+
+        Assert.Equal(AppState.Failed, final);
+        var failedReport = events.Last(e => e.State == AppState.Failed);
+        var failure = Assert.Single(failedReport.FailedMissions);
+        Assert.Equal("bad", failure.MissionId);
+        Assert.NotEmpty(failure.Reason);
+    }
+
+    [Fact]
+    public async Task FetchPlayerData_RetryOn_RecoversTransientFailure() {
+        var db = new FakeIndexedDb();
+        int attempts = 0;
+        var handler = new RoutingHandler(
+            FirstContactBody(new[] { "flaky" }),
+            id => {
+                if (id == "flaky" && Interlocked.Increment(ref attempts) == 1) {
+                    return null;
+                }
+                return CompleteMissionBody(id);
+            });
+        var service = Make(db, handler, retry: true);
+
+        var final = await service.FetchPlayerDataAsync(Eid, null, CancellationToken.None);
+
+        Assert.Equal(AppState.Success, final);
+        var store = new IndexedDbMissionStore(db, new LocalApiPayloadDecoder(new ApiClient()));
+        Assert.NotNull(await store.GetCompleteMissionAsync(Eid, "flaky"));
+    }
+
+    [Fact]
     public async Task FetchPlayerData_Cancellation_YieldsInterrupted() {
         var db = new FakeIndexedDb();
         using var cts = new CancellationTokenSource();

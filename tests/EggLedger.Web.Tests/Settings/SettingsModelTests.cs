@@ -12,7 +12,9 @@ public sealed class SettingsModelTests {
     public void Defaults_MatchGo() {
         var m = new SettingsModel();
         Assert.False(m.AutoRefreshMenno);
-        Assert.False(m.AutoRetry);
+        // Diverges from Go (false): silent one-shot failures with no visible reason left
+        // users unable to recover lost missions, so the C# port defaults retry to on.
+        Assert.True(m.AutoRetry);
         Assert.False(m.HideTimeoutErrors);
         Assert.Equal(1, m.WorkerCount);
         Assert.False(m.ScreenshotSafety);

@@ -1,9 +1,7 @@
 @page "/lifetime"
 @using EggLedger.Domain.MissionQuery
-@using EggLedger.Web.Components
 @using EggLedger.Web.Data
 @using EggLedger.Web.Missions
-@using EggLedger.Web.State
 @implements IDisposable
 @inject MissionQueryHandlers Queries
 @inject ActiveAccount Active
@@ -13,40 +11,33 @@
 <PageTitle>EggLedger - Lifetime Data</PageTitle>
 
 <section class="view-layout overflow-hidden">
-    @if (Active.ActiveAccountId is null)
-    {
+    @if (Active.ActiveAccountId is null) {
         <p class="text-gray-400 italic">Select an account on the Ledger tab to view its lifetime data.</p>
-    }
-    else if (_loading)
-    {
+    } else if (_loading) {
         <div class="mt-8 flex flex-col items-center justify-center gap-2">
             <span class="p-0_5rem text-lg">Lifetime data is being compiled, please wait...</span>
-            <img src="@State.ContentPaths.Asset("images/loading.gif")" alt="Loading..." class="xl-ico" />
+            <img src="@ContentPaths.Asset("images/loading.gif")" alt="Loading..." class="xl-ico"/>
         </div>
-    }
-    else if (_data is null || _data.MissionCount == 0)
-    {
-        <NoDataFallback />
-    }
-    else
-    {
+    } else if (_data is null || _data.MissionCount == 0) {
+        <NoDataFallback/>
+    } else {
         <div class="min-h-7 max-h-50 px-2 py-2 text-sm text-gray-400 bg-darkest rounded-md tabular-nums overflow-auto mt-0_75rem">
-            <span class="section-heading">Sort Method</span><br />
+            <span class="section-heading">Sort Method</span><br/>
             <span class="opt-span">
                 <label for="lifetimeSortDefault" class="ext-opt-label">Default</label>
-                <input id="lifetimeSortDefault" type="radio" name="lt-sort" class="ext-opt-check" checked="@(_sortMethod == LifetimeSortMethod.Default)" @onchange="@(() => SetSortAsync(LifetimeSortMethod.Default))" />
+                <input id="lifetimeSortDefault" type="radio" name="lt-sort" class="ext-opt-check" checked="@(_sortMethod == LifetimeSortMethod.Default)" @onchange="@(() => SetSortAsync(LifetimeSortMethod.Default))"/>
             </span>
             <span class="opt-span">
                 <label for="lifetimeSortIV" class="ext-opt-label">Inventory Visualizer</label>
-                <input id="lifetimeSortIV" type="radio" name="lt-sort" class="ext-opt-check" checked="@(_sortMethod == LifetimeSortMethod.Iv)" @onchange="@(() => SetSortAsync(LifetimeSortMethod.Iv))" />
+                <input id="lifetimeSortIV" type="radio" name="lt-sort" class="ext-opt-check" checked="@(_sortMethod == LifetimeSortMethod.Iv)" @onchange="@(() => SetSortAsync(LifetimeSortMethod.Iv))"/>
             </span>
             <span class="opt-span">
                 <label for="lifetimeSortTotalCount" class="ext-opt-label">Total Count</label>
-                <input id="lifetimeSortTotalCount" type="radio" name="lt-sort" class="ext-opt-check" checked="@(_sortMethod == LifetimeSortMethod.Count)" @onchange="@(() => SetSortAsync(LifetimeSortMethod.Count))" />
+                <input id="lifetimeSortTotalCount" type="radio" name="lt-sort" class="ext-opt-check" checked="@(_sortMethod == LifetimeSortMethod.Count)" @onchange="@(() => SetSortAsync(LifetimeSortMethod.Count))"/>
             </span>
             <span class="opt-span">
                 <label for="lifetimeSortRandom" class="ext-opt-label">Random</label>
-                <input id="lifetimeSortRandom" type="radio" name="lt-sort" class="ext-opt-check" checked="@(_sortMethod == LifetimeSortMethod.Random)" @onchange="@(() => SetSortAsync(LifetimeSortMethod.Random))" />
+                <input id="lifetimeSortRandom" type="radio" name="lt-sort" class="ext-opt-check" checked="@(_sortMethod == LifetimeSortMethod.Random)" @onchange="@(() => SetSortAsync(LifetimeSortMethod.Random))"/>
             </span>
         </div>
 
@@ -55,7 +46,7 @@
             <DropDisplayContainer Artifacts="_data.Artifacts"
                                   Stones="_data.Stones"
                                   Ingredients="_data.Ingredients"
-                                  StoneFragments="_data.StoneFragments" />
+                                  StoneFragments="_data.StoneFragments"/>
         </div>
     }
 </section>
@@ -66,8 +57,7 @@
     private LifetimeData? _data;
     private LifetimeSortMethod _sortMethod = LifetimeSortMethod.Default;
 
-    protected override async Task OnInitializedAsync()
-    {
+    protected override async Task OnInitializedAsync() {
         Active.Changed += OnAccountChanged;
         AppState.Changed += OnAppStateChanged;
         var settings = await Settings.GetAllSettingsAsync();
@@ -76,22 +66,20 @@
         await LoadAsync();
     }
 
-    private void OnAccountChanged() => InvokeAsync(LoadAsync);
+    private void OnAccountChanged() {
+        InvokeAsync(LoadAsync);
+    }
 
     // Refresh on fetch completion so new missions show without a manual reload.
-    private void OnAppStateChanged()
-    {
-        if (AppState.PipelineState == EggLedger.Web.Services.AppState.Success && Active.ActiveAccountId is not null)
-        {
+    private void OnAppStateChanged() {
+        if (AppState.PipelineState == Services.AppState.Success && Active.ActiveAccountId is not null) {
             InvokeAsync(LoadAsync);
         }
     }
 
-    private async Task LoadAsync()
-    {
+    private async Task LoadAsync() {
         var id = Active.ActiveAccountId;
-        if (id is null)
-        {
+        if (id is null) {
             _data = null;
             StateHasChanged();
             return;
@@ -101,8 +89,7 @@
         StateHasChanged();
 
         var dropsByMission = await Queries.GetAllPlayerDropsAsync(id);
-        if (dropsByMission is null)
-        {
+        if (dropsByMission is null) {
             _data = null;
             _loading = false;
             StateHasChanged();
@@ -116,20 +103,19 @@
         StateHasChanged();
     }
 
-    private async Task SetSortAsync(LifetimeSortMethod method)
-    {
+    private async Task SetSortAsync(LifetimeSortMethod method) {
         _sortMethod = method;
         await Settings.SetSettingAsync(KeySortMethod, LifetimeSorter.MethodString(method));
-        if (_data is not null)
-        {
+        if (_data is not null) {
             LifetimeSorter.Sort(_data, _sortMethod);
         }
+
         StateHasChanged();
     }
 
-    public void Dispose()
-    {
+    public void Dispose() {
         Active.Changed -= OnAccountChanged;
         AppState.Changed -= OnAppStateChanged;
     }
+
 }

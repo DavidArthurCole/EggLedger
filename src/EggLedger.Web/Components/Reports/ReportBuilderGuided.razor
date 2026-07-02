@@ -8,20 +8,17 @@
     <div class="flex items-center justify-between mb-4">
         <span class="text-xs text-gray-500">Step @DisplayStep of @TotalSteps</span>
         <div class="flex gap-1">
-            @for (int n = 1; n <= TotalSteps; n++)
-            {
+            @for (var n = 1; n <= TotalSteps; n++) {
                 <div class="w-4 h-1 rounded-full @(n <= DisplayStep ? "bg-indigo-500" : "bg-gray-600 border border-gray-500/50")"></div>
             }
         </div>
     </div>
 
-    @if (_step == 1)
-    {
+    @if (_step == 1) {
         <div class="flex flex-col gap-3">
             <p class="text-xs text-gray-400">What would you like to analyze?</p>
             <div class="grid grid-cols-3 gap-2">
-                @foreach (var opt in IntentOptions)
-                {
+                @foreach (var opt in IntentOptions) {
                     <button type="button"
                             class="flex flex-col items-center gap-1.5 p-3 rounded-lg border text-xs transition-colors focus:outline-none @(_intent == opt.Value ? "border-indigo-500 bg-indigo-900/20 text-indigo-300" : "border-gray-700 bg-darker text-gray-400 hover:border-gray-500")"
                             @onclick="() => SelectIntent(opt.Value)">
@@ -32,14 +29,11 @@
                 }
             </div>
         </div>
-    }
-    else if (_step == 2)
-    {
+    } else if (_step == 2) {
         <div class="flex flex-col gap-3">
             <p class="text-xs text-gray-400">Break it down by...</p>
             <div class="flex flex-col gap-1.5">
-                @foreach (var opt in GroupByOptions)
-                {
+                @foreach (var opt in GroupByOptions) {
                     <button type="button"
                             class="flex items-center gap-2 px-3 py-2 rounded-lg border text-xs text-left transition-colors focus:outline-none @(_groupBy == opt.Value ? "border-indigo-500 bg-indigo-900/20 text-indigo-300" : "border-gray-700 bg-darker text-gray-400 hover:border-gray-500")"
                             @onclick="() => SelectGroupBy(opt.Value)">
@@ -51,17 +45,14 @@
                 <button type="button" class="px-4 py-1.5 rounded border border-gray-600 bg-darker text-sm text-gray-300 hover:bg-gray-700 hover:text-gray-200" @onclick="GoBack">Back</button>
             </div>
         </div>
-    }
-    else if (_step == 3)
-    {
+    } else if (_step == 3) {
         <div class="flex flex-col gap-3">
             <p class="text-xs text-gray-400">Apply a quick filter? (optional)</p>
             <div class="flex flex-col gap-2">
-                @foreach (var qf in QuickFilterOptions)
-                {
+                @foreach (var qf in QuickFilterOptions) {
                     <label class="flex items-center gap-2 text-xs text-gray-400 cursor-pointer">
                         <input type="checkbox" class="rounded" checked="@_quickFilters.Contains(qf.Key)"
-                               @onchange="e => ToggleQuickFilter(qf.Key, e)" />
+                               @onchange="e => ToggleQuickFilter(qf.Key, e)"/>
                         @qf.Label
                     </label>
                 }
@@ -71,39 +62,43 @@
                 <button type="button" class="px-4 py-1.5 rounded border border-indigo-600 bg-indigo-700 text-sm text-white hover:bg-indigo-600" @onclick="() => _step = 4">Next</button>
             </div>
         </div>
-    }
-    else
-    {
+    } else {
         <div class="flex flex-col gap-3">
             <p class="text-xs text-gray-400">Give it a name</p>
             <input type="text" class="bg-darker border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 focus:outline-none focus:border-blue-500"
-                   placeholder="Report name" @bind="_reportName" @bind:event="oninput" @onkeydown="OnNameKeyDown" />
+                   placeholder="Report name" @bind="_reportName" @bind:event="oninput" @onkeydown="OnNameKeyDown"/>
             <div class="flex justify-center gap-3 mt-1">
                 <button type="button" class="px-4 py-1.5 rounded border border-gray-600 bg-darker text-sm text-gray-300 hover:bg-gray-700 hover:text-gray-200" @onclick="GoBack">Back</button>
                 <button type="button" class="px-4 py-1.5 rounded border border-indigo-600 bg-indigo-700 text-sm text-white hover:bg-indigo-600 disabled:opacity-50"
-                        disabled="@string.IsNullOrWhiteSpace(_reportName)" @onclick="Apply">Create Report</button>
+                        disabled="@string.IsNullOrWhiteSpace(_reportName)" @onclick="Apply">
+                    Create Report
+                </button>
             </div>
         </div>
     }
 </div>
 
 @code {
+
     /// <summary>Prefill result for the parent to apply to its advanced form.</summary>
     public sealed record GuidedResult(
-        string Name, string Subject, string Mode, string GroupBy, string DisplayMode,
+        string Name,
+        string Subject,
+        string Mode,
+        string GroupBy,
+        string DisplayMode,
         IReadOnlyList<WebCondition> And);
 
-    [Parameter]
-    public EventCallback<GuidedResult> OnApply { get; set; }
+    [Parameter] public EventCallback<GuidedResult> OnApply { get; set; }
 
     private sealed record IntentOption(string Value, string Icon, string Label, string Hint);
+
     private sealed record QuickFilterOption(string Key, string Label, WebCondition Condition);
 
-    private static readonly IReadOnlyList<IntentOption> IntentOptions =
-    [
+    private static readonly IReadOnlyList<IntentOption> IntentOptions = [
         new("missions", "\U0001F680", "Mission counts", "Count missions by ship, level, or duration"),
         new("artifacts", "\U0001FAA8", "Artifact drops", "Count drops by artifact, rarity, or type"),
-        new("time", "\U0001F4C8", "Activity over time", "Track mission activity across weeks or months"),
+        new("time", "\U0001F4C8", "Activity over time", "Track mission activity across weeks or months")
     ];
 
     private int _step = 1;
@@ -115,135 +110,113 @@
     private IReadOnlyList<ReportDimension> GroupByOptions =>
         _intent == "artifacts" ? ReportDimensions.Artifact : ReportDimensions.Mission;
 
-    private IReadOnlyList<QuickFilterOption> QuickFilterOptions
-    {
-        get
-        {
-            var opts = new List<QuickFilterOption>
-            {
+    private IReadOnlyList<QuickFilterOption> QuickFilterOptions {
+        get {
+            var opts = new List<QuickFilterOption> {
                 new("dubcap", "Only dub-cap missions", new WebCondition("dubcap", "true", "")),
-                new("extended", "Only extended missions", new WebCondition("duration", "=", "2")),
+                new("extended", "Only extended missions", new WebCondition("duration", "=", "2"))
             };
-            if (_intent == "artifacts")
-            {
+            if (_intent == "artifacts") {
                 opts.Add(new QuickFilterOption("legendary", "Only legendary artifacts", new WebCondition("artifact_rarity", "=", "3")));
             }
+
             return opts;
         }
     }
 
     private int TotalSteps => _intent == "time" ? 3 : 4;
 
-    private int DisplayStep
-    {
-        get
-        {
-            if (_intent != "time")
-            {
+    private int DisplayStep {
+        get {
+            if (_intent != "time") {
                 return _step;
             }
-            if (_step == 1)
-            {
+
+            if (_step == 1) {
                 return 1;
             }
+
             return _step == 3 ? 2 : 3;
         }
     }
 
-    private void SelectIntent(string value)
-    {
+    private void SelectIntent(string value) {
         _intent = value;
-        if (value == "time")
-        {
+        if (value == "time") {
             _groupBy = "time_bucket";
             AutoName();
             _step = 3;
-        }
-        else
-        {
+        } else {
             _groupBy = "";
             _step = 2;
         }
     }
 
-    private void SelectGroupBy(string value)
-    {
+    private void SelectGroupBy(string value) {
         _groupBy = value;
         AutoName();
         _step = 3;
     }
 
-    private void ToggleQuickFilter(string key, ChangeEventArgs e)
-    {
-        bool on = e.Value is bool b && b;
-        if (on)
-        {
+    private void ToggleQuickFilter(string key, ChangeEventArgs e) {
+        var on = e.Value is bool b && b;
+        if (on) {
             _quickFilters.Add(key);
-        }
-        else
-        {
+        } else {
             _quickFilters.Remove(key);
         }
     }
 
-    private void GoBack()
-    {
-        if (_step == 4)
-        {
+    private void GoBack() {
+        if (_step == 4) {
             _step = 3;
             return;
         }
-        if (_step == 3)
-        {
+
+        if (_step == 3) {
             _step = _intent == "time" ? 1 : 2;
             return;
         }
-        if (_step == 2)
-        {
+
+        if (_step == 2) {
             _step = 1;
         }
     }
 
-    private void AutoName()
-    {
-        string baseName = _intent switch
-        {
+    private void AutoName() {
+        var baseName = _intent switch {
             "missions" => "Mission counts",
             "artifacts" => "Artifact drops",
             "time" => "Activity over time",
-            _ => "",
+            _ => ""
         };
-        string by = !string.IsNullOrEmpty(_groupBy) && _groupBy != "time_bucket"
+        var by = !string.IsNullOrEmpty(_groupBy) && _groupBy != "time_bucket"
             ? " by " + ReportDimensions.DimensionLabel(_groupBy).ToLowerInvariant()
             : "";
         _reportName = baseName + by;
     }
 
-    private async Task OnNameKeyDown(KeyboardEventArgs e)
-    {
-        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(_reportName))
-        {
+    private async Task OnNameKeyDown(KeyboardEventArgs e) {
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(_reportName)) {
             await Apply();
         }
     }
 
-    private async Task Apply()
-    {
-        if (string.IsNullOrWhiteSpace(_reportName))
-        {
+    private async Task Apply() {
+        if (string.IsNullOrWhiteSpace(_reportName)) {
             return;
         }
+
         var and = QuickFilterOptions
             .Where(q => _quickFilters.Contains(q.Key))
             .Select(q => q.Condition)
             .ToList();
 
-        bool isArtifact = _intent == "artifacts";
-        string displayMode = _intent switch
-        {
+        var isArtifact = _intent == "artifacts";
+        var displayMode = _intent switch {
             "time" => "line",
             "artifacts" => "pie",
-            _ => "bar",
+            _ => "bar"
         };
         var result = new GuidedResult(
             _reportName.Trim(),
@@ -254,4 +227,5 @@
             and);
         await OnApply.InvokeAsync(result);
     }
+
 }

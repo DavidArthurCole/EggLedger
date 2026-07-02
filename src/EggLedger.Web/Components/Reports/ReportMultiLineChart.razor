@@ -1,61 +1,48 @@
 @using System.Globalization
-@using Microsoft.AspNetCore.Components
 @using EggLedger.Domain.Reports
 @using EggLedger.Domain.Reports.Charts
-
 @* Multi-series line chart over a 2D result (rows = buckets, cols = series); geometry
    from ChartGeometry. SVG <text> via MarkupString (Razor reserves the bare <text> tag). *@
 
 <div class="h-full w-full flex flex-col gap-1">
     <div class="flex-1 min-h-0">
-        @if (SeriesCount >= 1 && BucketCount >= 2)
-        {
+        @if (SeriesCount >= 1 && BucketCount >= 2) {
             var max = GlobalMax();
             var ticks = BuildTicks(max);
             var seriesPoints = AllSeriesPoints();
             var colors = SeriesColors();
             <svg viewBox="0 0 @Fmt(W) @Fmt(H)" preserveAspectRatio="xMidYMid meet" class="w-full h-full overflow-visible">
-                @if (max > 0)
-                {
-                    @foreach (var tick in ticks)
-                    {
+                @if (max > 0) {
+                    @foreach (var tick in ticks) {
                         <line x1="@Fmt(ChartGeometry.PadLeft)" y1="@Fmt(tick.Y)"
                               x2="@Fmt(W - ChartGeometry.PadRight)" y2="@Fmt(tick.Y)"
-                              stroke="#374151" stroke-dasharray="3 3" stroke-width="0.5" />
+                              stroke="#374151" stroke-dasharray="3 3" stroke-width="0.5"/>
                         @YTickText(tick)
                     }
                 }
 
-                @for (int s = 0; s < seriesPoints.Count; s++)
-                {
+                @for (var s = 0; s < seriesPoints.Count; s++) {
                     <polyline points="@PolyPoints(seriesPoints[s])" fill="none"
-                              stroke="@colors[s]" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+                              stroke="@colors[s]" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
                 }
 
-                @for (int s = 0; s < seriesPoints.Count; s++)
-                {
+                @for (var s = 0; s < seriesPoints.Count; s++) {
                     var seriesName = s < Result.ColLabels.Count ? Result.ColLabels[s] : "";
-                    @foreach (var p in seriesPoints[s])
-                    {
+                    @foreach (var p in seriesPoints[s]) {
                         <circle class="chart-hit" cx="@Fmt(p.X)" cy="@Fmt(p.Y)" r="6" fill="transparent"
-                                style="cursor: pointer;" data-tt="@PointTip(seriesName, p)" />
+                                style="cursor: pointer;" data-tt="@PointTip(seriesName, p)"/>
                     }
                 }
 
-                @foreach (var p in LabeledPoints(seriesPoints))
-                {
+                @foreach (var p in LabeledPoints(seriesPoints)) {
                     @XLabelText(p)
                 }
             </svg>
-        }
-        else if (BucketCount < 2)
-        {
+        } else if (BucketCount < 2) {
             <div class="h-full flex items-center justify-center">
                 <span class="text-xs text-gray-600 italic">Not enough data for a line chart</span>
             </div>
-        }
-        else
-        {
+        } else {
             <div class="h-full flex items-center justify-center">
                 <span class="text-xs text-gray-600 italic">No series data</span>
             </div>
@@ -66,8 +53,7 @@
         @{
             var legendColors = SeriesColors();
         }
-        @for (int c = 0; c < Result.ColLabels.Count; c++)
-        {
+        @for (var c = 0; c < Result.ColLabels.Count; c++) {
             <div class="flex items-center gap-1" title="@Result.ColLabels[c]">
                 <div class="w-2 h-2 rounded-sm shrink-0" style="background-color: @legendColors[c];"></div>
                 <span class="text-xs text-gray-400 truncate max-w-28">@Result.ColLabels[c]</span>
@@ -79,118 +65,116 @@
 @code {
     private const double W = 300;
     private const double H = 150;
-    [Parameter, EditorRequired]
-    public ReportResult Result { get; set; } = new();
-    [Parameter, EditorRequired]
-    public string Color { get; set; } = "#6366f1";
-    [Parameter]
-    public string? LabelColors { get; set; }
-    [Parameter]
-    public string? NormalizeBy { get; set; }
+    [Parameter] [EditorRequired] public ReportResult Result { get; set; } = new();
+    [Parameter] [EditorRequired] public string Color { get; set; } = "#6366f1";
+    [Parameter] public string? LabelColors { get; set; }
+    [Parameter] public string? NormalizeBy { get; set; }
     private int BucketCount => Result.RowLabels.Count;
     private int SeriesCount => Result.ColLabels.Count;
     private bool IsPct => NormalizeBy is "row_pct" or "col_pct" or "global_pct";
-    private double GlobalMax() => Result.MatrixValues.DefaultIfEmpty(0).Max();
 
-    private List<string> SeriesColors() =>
-        ChartGeometry.SeriesColors(Result.ColLabels, Color, SliceColors.ParseLabelColors(LabelColors));
+    private double GlobalMax() {
+        return Result.MatrixValues.DefaultIfEmpty(0).Max();
+    }
 
-    private List<List<ChartPoint>> AllSeriesPoints()
-    {
-        int nR = BucketCount;
+    private List<string> SeriesColors() {
+        return ChartGeometry.SeriesColors(Result.ColLabels, Color, SliceColors.ParseLabelColors(LabelColors));
+    }
+
+    private List<List<ChartPoint>> AllSeriesPoints() {
+        var nR = BucketCount;
         var result = new List<List<ChartPoint>>();
-        if (nR < 2)
-        {
+        if (nR < 2) {
             return result;
         }
-        double max = Math.Max(GlobalMax(), 1);
-        double xStep = (W - ChartGeometry.PadLeft - ChartGeometry.PadRight) / (nR - 1);
-        double yRange = H - ChartGeometry.PadTop - ChartGeometry.PadBottom;
-        for (int s = 0; s < SeriesCount; s++)
-        {
+
+        var max = Math.Max(GlobalMax(), 1);
+        var xStep = (W - ChartGeometry.PadLeft - ChartGeometry.PadRight) / (nR - 1);
+        var yRange = H - ChartGeometry.PadTop - ChartGeometry.PadBottom;
+        for (var s = 0; s < SeriesCount; s++) {
             var vals = ChartGeometry.SeriesValues(Result.MatrixValues, nR, SeriesCount, s);
             var pts = new List<ChartPoint>(nR);
-            for (int i = 0; i < vals.Count; i++)
-            {
+            for (var i = 0; i < vals.Count; i++) {
                 pts.Add(new ChartPoint(
                     ChartGeometry.PadLeft + i * xStep,
                     ChartGeometry.PadTop + yRange * (1 - vals[i] / max),
                     i < Result.RowLabels.Count ? Result.RowLabels[i] : "",
                     vals[i]));
             }
+
             result.Add(pts);
         }
+
         return result;
     }
 
-    private List<ChartPoint> LabeledPoints(List<List<ChartPoint>> seriesPoints)
-    {
+    private List<ChartPoint> LabeledPoints(List<List<ChartPoint>> seriesPoints) {
         var first = seriesPoints.Count > 0 ? seriesPoints[0] : new List<ChartPoint>();
         return ChartGeometry.ThinLabels(first);
     }
 
     /// <summary>Three y-axis ticks honoring pct / integer / float label formatting.</summary>
-    private List<YTick> BuildTicks(double max)
-    {
-        if (max == 0)
-        {
+    private List<YTick> BuildTicks(double max) {
+        if (max == 0) {
             return new List<YTick>();
         }
-        double yRange = H - ChartGeometry.PadTop - ChartGeometry.PadBottom;
+
+        var yRange = H - ChartGeometry.PadTop - ChartGeometry.PadBottom;
         var ci = CultureInfo.InvariantCulture;
         var ticks = new List<YTick>(3);
-        foreach (var frac in new[] { 0.33, 0.67, 1.0 })
-        {
-            double val = max * frac;
-            double y = ChartGeometry.PadTop + yRange * (1 - frac);
+        foreach (var frac in new[] { 0.33, 0.67, 1.0 }) {
+            var val = max * frac;
+            var y = ChartGeometry.PadTop + yRange * (1 - frac);
             string label;
-            if (IsPct)
-            {
+            if (IsPct) {
                 label = val.ToString("0", ci) + "%";
-            }
-            else if (max % 1 == 0)
-            {
+            } else if (max % 1 == 0) {
                 label = Math.Round(val).ToString(ci);
-            }
-            else
-            {
+            } else {
                 label = val.ToString("0.0", ci);
             }
+
             ticks.Add(new YTick(y, label));
         }
+
         return ticks;
     }
 
-    private MarkupString YTickText(YTick tick)
-    {
-        string x = Fmt(ChartGeometry.PadLeft - 4);
-        string y = Fmt(tick.Y);
-        string label = Esc(tick.Label);
+    private MarkupString YTickText(YTick tick) {
+        var x = Fmt(ChartGeometry.PadLeft - 4);
+        var y = Fmt(tick.Y);
+        var label = Esc(tick.Label);
         return new MarkupString(
             $"<text x=\"{x}\" y=\"{y}\" text-anchor=\"end\" dominant-baseline=\"middle\" style=\"font-size: 10px; fill: #6b7280;\">{label}</text>");
     }
 
-    private MarkupString XLabelText(ChartPoint p)
-    {
-        string tx = Fmt(p.X);
-        string ty = Fmt(H - ChartGeometry.PadBottom + 4);
-        string label = Esc(ChartGeometry.FormatXLabel(p.Label));
+    private MarkupString XLabelText(ChartPoint p) {
+        var tx = Fmt(p.X);
+        var ty = Fmt(H - ChartGeometry.PadBottom + 4);
+        var label = Esc(ChartGeometry.FormatXLabel(p.Label));
         return new MarkupString(
             $"<text transform=\"translate({tx}, {ty}) rotate(-45)\" text-anchor=\"end\" style=\"font-size: 10px; fill: #6b7280;\">{label}</text>");
     }
 
-    private string PointTip(string series, ChartPoint p)
-    {
-        string val = IsPct
+    private string PointTip(string series, ChartPoint p) {
+        var val = IsPct
             ? p.Value.ToString("0.0", CultureInfo.InvariantCulture) + "%"
-            : (Result.IsFloat ? p.Value.ToString("0.00", CultureInfo.InvariantCulture)
-                              : Math.Round(p.Value).ToString(CultureInfo.InvariantCulture));
+            : Result.IsFloat
+                ? p.Value.ToString("0.00", CultureInfo.InvariantCulture)
+                : Math.Round(p.Value).ToString(CultureInfo.InvariantCulture);
         return $"{series}\n{p.Label}: {val}";
     }
 
-    private static string PolyPoints(List<ChartPoint> pts) =>
-        string.Join(" ", pts.Select(p => Fmt(p.X) + "," + Fmt(p.Y)));
+    private static string PolyPoints(List<ChartPoint> pts) {
+        return string.Join(" ", pts.Select(p => Fmt(p.X) + "," + Fmt(p.Y)));
+    }
 
-    private static string Fmt(double v) => v.ToString("0.###", CultureInfo.InvariantCulture);
-    private static string Esc(string s) => ChartGeometry.EscapeText(s);
+    private static string Fmt(double v) {
+        return v.ToString("0.###", CultureInfo.InvariantCulture);
+    }
+
+    private static string Esc(string s) {
+        return ChartGeometry.EscapeText(s);
+    }
+
 }

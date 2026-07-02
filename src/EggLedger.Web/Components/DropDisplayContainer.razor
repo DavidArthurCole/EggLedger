@@ -1,33 +1,24 @@
 @using EggLedger.Web.Missions
-
 @* Renders the four spec-type sections inside one rounded container. *@
 
 <div class="panel-muted rounded-md px-2 pt-1 pb-0 mb-2 ml-2rem mr-2rem">
-    <DropDisplay Type="artifact" Items="Artifacts" MennoData="MennoData" ShowExpectedDrops="ShowExpectedDrops" MissionTotalDrops="TotalDrops" />
-    <DropDisplay Type="stone" Items="Stones" MennoData="MennoData" ShowExpectedDrops="ShowExpectedDrops" MissionTotalDrops="TotalDrops" />
-    <DropDisplay Type="ingredient" Items="Ingredients" MennoData="MennoData" ShowExpectedDrops="ShowExpectedDrops" MissionTotalDrops="TotalDrops" />
-    <DropDisplay Type="stone_fragment" Items="StoneFragments" MennoData="MennoData" ShowExpectedDrops="ShowExpectedDrops" MissionTotalDrops="TotalDrops" />
+    <DropDisplay Type="artifact" Items="Artifacts" MennoData="MennoData" ShowExpectedDrops="ShowExpectedDrops" MissionTotalDrops="TotalDrops"/>
+    <DropDisplay Type="stone" Items="Stones" MennoData="MennoData" ShowExpectedDrops="ShowExpectedDrops" MissionTotalDrops="TotalDrops"/>
+    <DropDisplay Type="ingredient" Items="Ingredients" MennoData="MennoData" ShowExpectedDrops="ShowExpectedDrops" MissionTotalDrops="TotalDrops"/>
+    <DropDisplay Type="stone_fragment" Items="StoneFragments" MennoData="MennoData" ShowExpectedDrops="ShowExpectedDrops" MissionTotalDrops="TotalDrops"/>
 </div>
 
 @code {
-    [Parameter]
-    public IReadOnlyList<DropLike>? Artifacts { get; set; }
-    [Parameter]
-    public IReadOnlyList<DropLike>? Stones { get; set; }
-    [Parameter]
-    public IReadOnlyList<DropLike>? Ingredients { get; set; }
-    [Parameter]
-    public IReadOnlyList<DropLike>? StoneFragments { get; set; }
-    [Parameter]
-    public MissionMennoData? MennoData { get; set; }
-    [Parameter]
-    public bool ShowExpectedDrops { get; set; }
+    [Parameter] public IReadOnlyList<DropLike>? Artifacts { get; set; }
+    [Parameter] public IReadOnlyList<DropLike>? Stones { get; set; }
+    [Parameter] public IReadOnlyList<DropLike>? Ingredients { get; set; }
+    [Parameter] public IReadOnlyList<DropLike>? StoneFragments { get; set; }
+    [Parameter] public MissionMennoData? MennoData { get; set; }
+    [Parameter] public bool ShowExpectedDrops { get; set; }
 
-    private int TotalDrops
-    {
-        get
-        {
-            int sum = 0;
+    private int TotalDrops {
+        get {
+            var sum = 0;
             sum += Sum(Artifacts);
             sum += Sum(Stones);
             sum += Sum(Ingredients);
@@ -36,16 +27,15 @@
         }
     }
 
-    private static int Sum(IReadOnlyList<DropLike>? items)
-    {
-        int s = 0;
-        if (items is not null)
-        {
-            foreach (var i in items)
-            {
+    private static int Sum(IReadOnlyList<DropLike>? items) {
+        var s = 0;
+        if (items is not null) {
+            foreach (var i in items) {
                 s += i.Count;
             }
         }
+
         return s;
     }
+
 }

@@ -1,6 +1,4 @@
 @using EggLedger.Web.Missions
-@using EggLedger.Web.State
-
 @* Searchable modal picker (port of the Vue SearchOverSelector). A readonly trigger field
    opens a Blazor-controlled overlay (full-screen fixed backdrop + centered panel). NOT a
    native <dialog>.showModal(): top-layer promotion desyncs the Blazor Server render tree
@@ -9,45 +7,38 @@
 <input type="text" readonly placeholder="@Placeholder"
        class="filter-select w-auto border-gray-300 text-gray-400 cursor-pointer"
        value="@(Selected?.Text ?? "")"
-       @onclick="Open" />
+       @onclick="Open"/>
 
-@if (_open)
-{
+@if (_open) {
     <dialog open class="popup-selector-main overlay-@OverlayKind" @onclick="Close">
         <div class="popup-selector-inner" @onclick:stopPropagation="true"
              @onkeydown="OnKeyDown" @onkeydown:preventDefault="_preventKey">
             <button type="button" class="close-button" @onclick="Close" aria-label="Close">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
             </button>
             <input @ref="_searchInput" type="text" class="input-search" placeholder="Search..."
-                   value="@_query" @oninput="OnQueryInput" />
+                   value="@_query" @oninput="OnQueryInput"/>
             <div class="popup-opt-container">
                 @{ var filtered = Filtered(); }
-                @if (filtered.Count == 0)
-                {
+                @if (filtered.Count == 0) {
                     <span class="text-gray-400">No results found.</span>
-                }
-                else
-                {
-                    @for (var i = 0; i < filtered.Count; i++)
-                    {
+                } else {
+                    @for (var i = 0; i < filtered.Count; i++) {
                         var opt = filtered[i];
                         <div class="popup-opt @(i == _activeIndex ? "selected-popup-opt" : "")"
                              @onclick="() => Choose(opt)">
-                            @if (!string.IsNullOrEmpty(opt.ImagePath))
-                            {
+                            @if (!string.IsNullOrEmpty(opt.ImagePath)) {
                                 <img class="max-w-7 mr-1rem @RingClass(opt)" loading="lazy" decoding="async"
-                                     alt="@opt.Text" src="@ImageSrc(opt)" />
+                                     alt="@opt.Text" src="@ImageSrc(opt)"/>
                             }
                             <span class="@(opt.StyleClass ?? "text-gray-400")">@opt.Text</span>
                         </div>
                     }
                 }
             </div>
-            @if (Footer is not null)
-            {
+            @if (Footer is not null) {
                 <div class="flex items-center gap-1.5 px-1 pt-1 pb-0.5 text-xs text-gray-400 border-t border-gray-600 mr-1rem">@Footer</div>
             }
         </div>
@@ -73,49 +64,53 @@
     private FilterOption? Selected =>
         SelectedValue is null ? null : Options.FirstOrDefault(o => o.Value == SelectedValue);
 
-    private List<FilterOption> Filtered() =>
-        string.IsNullOrWhiteSpace(_query)
+    private List<FilterOption> Filtered() {
+        return string.IsNullOrWhiteSpace(_query)
             ? [.. Options]
             : [.. Options.Where(o => o.Text.Contains(_query, StringComparison.OrdinalIgnoreCase))];
+    }
 
-    private string ImageSrc(FilterOption o) => ContentPaths.Asset(ImageBasePath + o.ImagePath);
+    private string ImageSrc(FilterOption o) {
+        return ContentPaths.Asset(ImageBasePath + o.ImagePath);
+    }
 
-    private string RingClass(FilterOption o) =>
-        RarityRing && o.Rarity is { } r ? $"rounded-full bg-r-{r}" : "";
+    private string RingClass(FilterOption o) {
+        return RarityRing && o.Rarity is { } r ? $"rounded-full bg-r-{r}" : "";
+    }
 
-    private void Open()
-    {
+    private void Open() {
         _query = "";
         _activeIndex = -1;
         _open = true;
         _focusPending = true;
     }
 
-    private void Close() => _open = false;
+    private void Close() {
+        _open = false;
+    }
 
     // Focus the search box after the overlay is in the DOM (interop only post-render).
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (_focusPending)
-        {
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (_focusPending) {
             _focusPending = false;
-            try { await _searchInput.FocusAsync(); }
-            catch { /* element gone (closed before focus) - ignore */ }
+            try {
+                await _searchInput.FocusAsync();
+            }
+            catch {
+                /* element gone (closed before focus) - ignore */
+            }
         }
     }
 
-    private void OnQueryInput(ChangeEventArgs e)
-    {
+    private void OnQueryInput(ChangeEventArgs e) {
         _query = e.Value?.ToString() ?? "";
         _activeIndex = -1;
     }
 
-    private void OnKeyDown(KeyboardEventArgs e)
-    {
+    private void OnKeyDown(KeyboardEventArgs e) {
         var filtered = Filtered();
         _preventKey = e.Key is "ArrowDown" or "ArrowUp" or "Enter";
-        switch (e.Key)
-        {
+        switch (e.Key) {
             case "ArrowDown":
                 _activeIndex = filtered.Count == 0 ? -1 : Math.Min(_activeIndex + 1, filtered.Count - 1);
                 break;
@@ -131,9 +126,9 @@
         }
     }
 
-    private async Task Choose(FilterOption opt)
-    {
+    private async Task Choose(FilterOption opt) {
         _open = false;
         await OnSelect.InvokeAsync(opt);
     }
+
 }

@@ -1,9 +1,6 @@
 @page "/settings"
-@using EggLedger.Web.Components
 @using EggLedger.Web.Data
-@using EggLedger.Web.Platform
 @using EggLedger.Web.Settings
-@using EggLedger.Web.State
 @inject IndexedDbSettings Settings
 @inject IPlatformCapabilities Platform
 @inject ScreenshotSafetyState ScreenshotSafety
@@ -11,37 +8,33 @@
 <PageTitle>EggLedger - Settings</PageTitle>
 
 <div class="view-layout overflow-y-scroll">
-    @if (!_loaded)
-    {
+    @if (!_loaded) {
         <p class="text-gray-500 italic mt-0_5rem">Loading settings...</p>
-    }
-    else
-    {
+    } else {
         <div class="flex-1 min-h-0 px-3 py-2 overflow-auto shadow-sm block text-sm font-mono text-gray-400 bg-darkest rounded-md">
-            @if (Platform.IsDesktop)
-            {
+            @if (Platform.IsDesktop) {
                 @* Desktop-only: window sizing and storage management need OS access. *@
-                <WindowSettingsPanel Model="_model" OnSetting="OnSettingAsync" />
+                <WindowSettingsPanel Model="_model" OnSetting="OnSettingAsync"/>
 
-                <hr class="mt-1rem mb-1rem w-full" />
+                <hr class="mt-1rem mb-1rem w-full"/>
 
-                <StorageSettingsPanel Model="_model" OnSetting="OnSettingAsync" />
+                <StorageSettingsPanel Model="_model" OnSetting="OnSettingAsync"/>
 
-                <hr class="mt-1rem mb-1rem w-full" />
+                <hr class="mt-1rem mb-1rem w-full"/>
 
                 <div class="px-2 py-2 text-sm text-gray-400 bg-darker rounded-md tabular-nums overflow-auto">
-                    <span class="mr-0_5rem font-bold text-lg text-gray-400 ledger-underline">Export Management</span><br />
-                    <ExportManagementPanel Model="_model" OnSetting="OnSettingAsync" />
+                    <span class="mr-0_5rem font-bold text-lg text-gray-400 ledger-underline">Export Management</span><br/>
+                    <ExportManagementPanel Model="_model" OnSetting="OnSettingAsync"/>
                 </div>
 
-                <hr class="mt-1rem mb-1rem w-full" />
+                <hr class="mt-1rem mb-1rem w-full"/>
             }
 
-            <OptionsPanel Model="_model" OnSetting="OnSettingAsync" />
+            <OptionsPanel Model="_model" OnSetting="OnSettingAsync"/>
 
-            <hr class="mt-1rem mb-1rem w-full" />
+            <hr class="mt-1rem mb-1rem w-full"/>
 
-            <CloudSyncPanel @ref="_cloudPanel" />
+            <CloudSyncPanel @ref="_cloudPanel"/>
         </div>
     }
 </div>
@@ -51,36 +44,37 @@
     private readonly SettingsModel _model = new();
     private CloudSyncPanel? _cloudPanel;
 
-    protected override async Task OnInitializedAsync()
-    {
+    protected override async Task OnInitializedAsync() {
         var all = await Settings.GetAllSettingsAsync();
         _model.LoadFrom(all);
         _loaded = true;
     }
 
-    private async Task OnSettingAsync((string Key, string Value) change)
-    {
+    private async Task OnSettingAsync((string Key, string Value) change) {
         await Settings.SetSettingAsync(change.Key, change.Value);
         // Mask-EID toggle is shared app-wide; push to live state so every EID re-masks immediately.
-        if (change.Key == SettingsModel.KeyScreenshotSafety)
-        {
+        if (change.Key == SettingsModel.KeyScreenshotSafety) {
             ScreenshotSafety.Enabled = change.Value == "true";
         }
+
         // A cloud-syncable setting change triggers a push when auto-sync is on and connected. Machine-local keys do not.
-        if (_cloudPanel is not null && IsCloudSyncableKey(change.Key))
-        {
+        if (_cloudPanel is not null && IsCloudSyncableKey(change.Key)) {
             await _cloudPanel.AutoSyncIfEnabledAsync();
         }
+
         StateHasChanged();
     }
 
-    private static bool IsCloudSyncableKey(string key) => key is
-        SettingsModel.KeyAutoRefreshMenno or
-        SettingsModel.KeyRetryFailedMissions or
-        SettingsModel.KeyHideTimeoutErrors or
-        SettingsModel.KeyWorkerCount or
-        SettingsModel.KeyScreenshotSafety or
-        SettingsModel.KeyShowMissionProgress or
-        SettingsModel.KeyCollapseOlderSections or
-        SettingsModel.KeyAdvancedDropFilter;
+    private static bool IsCloudSyncableKey(string key) {
+        return key is
+            SettingsModel.KeyAutoRefreshMenno or
+            SettingsModel.KeyRetryFailedMissions or
+            SettingsModel.KeyHideTimeoutErrors or
+            SettingsModel.KeyWorkerCount or
+            SettingsModel.KeyScreenshotSafety or
+            SettingsModel.KeyShowMissionProgress or
+            SettingsModel.KeyCollapseOlderSections or
+            SettingsModel.KeyAdvancedDropFilter;
+    }
+
 }

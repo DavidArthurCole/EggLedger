@@ -88,10 +88,8 @@ public sealed class FetchService {
                 },
                 fm => {
                     Interlocked.Increment(ref failed);
-                    if (retryFailed) {
-                        lock (failures) {
-                            failures.Add(fm);
-                        }
+                    lock (failures) {
+                        failures.Add(fm);
                     }
                 },
                 cancellationToken).ConfigureAwait(false);
@@ -107,6 +105,7 @@ public sealed class FetchService {
                 Interlocked.Add(ref total, failures.Count);
                 var retrySet = failures.Select(f => (f.MissionId, f.StartTimestamp)).ToList();
                 Interlocked.Exchange(ref failed, 0);
+                failures.Clear();
 
                 bool retryInterrupted = await RunWorkersAsync(
                     playerId, retrySet, workerCount, progress,
@@ -114,7 +113,12 @@ public sealed class FetchService {
                         Interlocked.Increment(ref finished);
                         Report(AppState.FetchingMissions);
                     },
-                    _ => Interlocked.Increment(ref failed),
+                    fm => {
+                        Interlocked.Increment(ref failed);
+                        lock (failures) {
+                            failures.Add(fm);
+                        }
+                    },
                     cancellationToken).ConfigureAwait(false);
 
                 if (retryInterrupted) {
@@ -124,7 +128,14 @@ public sealed class FetchService {
             }
 
             if (Volatile.Read(ref failed) > 0) {
-                Report(AppState.Failed);
+                progress?.Report(new FetchProgress {
+                    State = AppState.Failed,
+                    Total = Volatile.Read(ref total),
+                    Finished = Volatile.Read(ref finished),
+                    Failed = Volatile.Read(ref failed),
+                    Retried = Volatile.Read(ref retried),
+                    FailedMissions = failures.ToList(),
+                });
                 return AppState.Failed;
             }
         }
@@ -183,9 +194,9 @@ public sealed class FetchService {
                     await FetchOneMissionAsync(playerId, id, start, progress, cancellationToken).ConfigureAwait(false);
                 } catch (OperationCanceledException) {
                     // Outer cancellation check turns the run into Interrupted.
-                    onError(new FailedMission(id, start));
-                } catch {
-                    onError(new FailedMission(id, start));
+                    onError(new FailedMission(id, start, "cancelled"));
+                } catch (Exception ex) {
+                    onError(new FailedMission(id, start, ex.Message));
                 } finally {
                     onFinished();
                     sem.Release();

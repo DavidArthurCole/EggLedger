@@ -1,7 +1,5 @@
 @using EggLedger.Domain.Export
-@using EggLedger.Web.Platform
 @using EggLedger.Web.Settings
-@using EggLedger.Web.State
 @inject IExportManagement Exports
 @inject ScreenshotSafetyState ScreenshotSafety
 
@@ -9,18 +7,20 @@
    Sizes and counts mirror the Go ExportManagementPanel. *@
 
 <div class="mt-0_5rem">
-    <span class="section-heading">Export Pruning</span><br />
+    <span class="section-heading">Export Pruning</span><br/>
     <div class="mt-0_5rem pl-0_5rem flex flex-row items-center gap-2 flex-wrap">
         <label class="text-sm text-gray-400" for="keepCountInput">Keep</label>
         <input id="keepCountInput" type="number" class="number-input text-sm bg-darkest" style="width: 4rem"
-               value="@_keepCount" min="0" max="50" placeholder="0" @onchange="OnKeepCountChangeAsync" />
+               value="@_keepCount" min="0" max="50" placeholder="0" @onchange="OnKeepCountChangeAsync"/>
         <span class="text-sm text-gray-400">most recent exports per player (0 = unlimited)</span>
     </div>
     @if (PruneFileCount > 0) {
         <div class="mt-0_5rem pl-0_5rem flex flex-col items-start gap-1">
             <button type="button"
                     class="apply-filter-button !mt-0 !mr-0 !ml-0 !bg-orange-700 !text-white hover:!bg-orange-600 !border-orange-500"
-                    disabled="@_pruning" @onclick="PruneNowAsync">@(_pruning ? "Pruning..." : "Prune Now")</button>
+                    disabled="@_pruning" @onclick="PruneNowAsync">
+                @(_pruning ? "Pruning..." : "Prune Now")
+            </button>
             <span class="text-xs text-gray-500 italic">Removes @PruneFileCount file(s), freeing @FormatSize(PruneBytes)</span>
         </div>
     }
@@ -30,7 +30,7 @@
 </div>
 
 <div class="mt-1rem">
-    <span class="section-heading">Export Files</span><br />
+    <span class="section-heading">Export Files</span><br/>
     @if (_groups.Count == 0) {
         <div class="mt-0_5rem pl-0_5rem text-xs text-gray-500 italic">No export files found.</div>
     } else {
@@ -44,7 +44,9 @@
                         <span class="text-gray-500 w-3">@(collapsed ? "▶" : "▼")</span>
                         @if (!string.IsNullOrEmpty(group.Nickname)) {
                             <span class="font-medium group-hover:brightness-125"
-                                  style="@(string.IsNullOrEmpty(group.AccountColor) ? "" : $"color: #{group.AccountColor}")">@group.Nickname</span>
+                                  style="@(string.IsNullOrEmpty(group.AccountColor) ? "" : $"color: #{group.AccountColor}")">
+                                @group.Nickname
+                            </span>
                         }
                         <span class="font-mono">@ScreenshotSafety.Mask(group.Eid)</span>
                         <span class="text-gray-500 ml-1">· @group.Pairs.Count export(s) · @FormatSize(GroupSize(group))</span>
@@ -53,42 +55,42 @@
                         <div class="pl-4 mt-1">
                             <table class="text-xs">
                                 <thead>
-                                    <tr class="text-gray-500">
-                                        <th class="text-left pr-4 font-normal pb-0.5">Date</th>
-                                        <th class="text-left pr-4 font-normal pb-0.5">CSV</th>
-                                        <th class="text-left font-normal pb-0.5">XLSX</th>
-                                    </tr>
+                                <tr class="text-gray-500">
+                                    <th class="text-left pr-4 font-normal pb-0.5">Date</th>
+                                    <th class="text-left pr-4 font-normal pb-0.5">CSV</th>
+                                    <th class="text-left font-normal pb-0.5">XLSX</th>
+                                </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach (var pair in group.Pairs) {
-                                        <tr class="text-gray-400">
-                                            <td class="pr-4 py-0.5">@pair.DisplayDate</td>
-                                            <td class="pr-4 py-0.5">
-                                                @if (!string.IsNullOrEmpty(pair.CsvPath)) {
-                                                    <label class="flex items-center gap-1 cursor-pointer">
-                                                        <input type="checkbox" class="ext-opt-check"
-                                                               checked="@_selected.Contains(pair.CsvPath)"
-                                                               @onchange="() => TogglePath(pair.CsvPath)" />
-                                                        <span>@FormatSize(pair.CsvSize)</span>
-                                                    </label>
-                                                } else {
-                                                    <span class="text-gray-600">-</span>
-                                                }
-                                            </td>
-                                            <td class="py-0.5">
-                                                @if (!string.IsNullOrEmpty(pair.XlsxPath)) {
-                                                    <label class="flex items-center gap-1 cursor-pointer">
-                                                        <input type="checkbox" class="ext-opt-check"
-                                                               checked="@_selected.Contains(pair.XlsxPath)"
-                                                               @onchange="() => TogglePath(pair.XlsxPath)" />
-                                                        <span>@FormatSize(pair.XlsxSize)</span>
-                                                    </label>
-                                                } else {
-                                                    <span class="text-gray-600">-</span>
-                                                }
-                                            </td>
-                                        </tr>
-                                    }
+                                @foreach (var pair in group.Pairs) {
+                                    <tr class="text-gray-400">
+                                        <td class="pr-4 py-0.5">@pair.DisplayDate</td>
+                                        <td class="pr-4 py-0.5">
+                                            @if (!string.IsNullOrEmpty(pair.CsvPath)) {
+                                                <label class="flex items-center gap-1 cursor-pointer">
+                                                    <input type="checkbox" class="ext-opt-check"
+                                                           checked="@_selected.Contains(pair.CsvPath)"
+                                                           @onchange="() => TogglePath(pair.CsvPath)"/>
+                                                    <span>@FormatSize(pair.CsvSize)</span>
+                                                </label>
+                                            } else {
+                                                <span class="text-gray-600">-</span>
+                                            }
+                                        </td>
+                                        <td class="py-0.5">
+                                            @if (!string.IsNullOrEmpty(pair.XlsxPath)) {
+                                                <label class="flex items-center gap-1 cursor-pointer">
+                                                    <input type="checkbox" class="ext-opt-check"
+                                                           checked="@_selected.Contains(pair.XlsxPath)"
+                                                           @onchange="() => TogglePath(pair.XlsxPath)"/>
+                                                    <span>@FormatSize(pair.XlsxSize)</span>
+                                                </label>
+                                            } else {
+                                                <span class="text-gray-600">-</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
                                 </tbody>
                             </table>
                         </div>
@@ -100,7 +102,9 @@
                 <span class="text-xs text-gray-500">@_selected.Count file(s) selected · @FormatSize(SelectedBytes)</span>
                 <button type="button"
                         class="apply-filter-button !mt-0 !mr-0 !ml-0 !bg-red-900 !text-red-200 hover:!bg-red-800 !border-red-700"
-                        disabled="@(_selected.Count == 0 || _deleting)" @onclick="DeleteSelectedAsync">@(_deleting ? "Deleting..." : "Delete selected")</button>
+                        disabled="@(_selected.Count == 0 || _deleting)" @onclick="DeleteSelectedAsync">
+                    @(_deleting ? "Deleting..." : "Delete selected")
+                </button>
             </div>
             @if (_deleteError.Length > 0) {
                 <div class="mt-0_25rem pl-0_5rem text-xs text-red-400">@_deleteError</div>
@@ -110,11 +114,9 @@
 </div>
 
 @code {
-    [Parameter, EditorRequired]
-    public SettingsModel Model { get; set; } = default!;
+    [Parameter] [EditorRequired] public SettingsModel Model { get; set; } = default!;
 
-    [Parameter, EditorRequired]
-    public EventCallback<(string Key, string Value)> OnSetting { get; set; }
+    [Parameter] [EditorRequired] public EventCallback<(string Key, string Value)> OnSetting { get; set; }
 
     private List<ExportGroup> _groups = [];
     private int _keepCount;
@@ -130,12 +132,14 @@
             if (_keepCount <= 0) {
                 return [];
             }
+
             var result = new List<FilePair>();
             foreach (var g in _groups) {
                 if (g.Pairs.Count > _keepCount) {
                     result.AddRange(g.Pairs.GetRange(_keepCount, g.Pairs.Count - _keepCount));
                 }
             }
+
             return result;
         }
     }
@@ -153,18 +157,23 @@
                     if (!string.IsNullOrEmpty(p.CsvPath) && _selected.Contains(p.CsvPath)) {
                         total += p.CsvSize;
                     }
+
                     if (!string.IsNullOrEmpty(p.XlsxPath) && _selected.Contains(p.XlsxPath)) {
                         total += p.XlsxSize;
                     }
                 }
             }
+
             return total;
         }
     }
 
     // Go clamps the keep-count to [0, 50].
     private const int MaxKeepCount = 50;
-    private static int ClampKeep(int n) => n < 0 ? 0 : n > MaxKeepCount ? MaxKeepCount : n;
+
+    private static int ClampKeep(int n) {
+        return n < 0 ? 0 : n > MaxKeepCount ? MaxKeepCount : n;
+    }
 
     protected override async Task OnInitializedAsync() {
         _keepCount = ClampKeep(Model.ExportKeepCount);
@@ -179,7 +188,9 @@
         }
     }
 
-    private static long GroupSize(ExportGroup g) => g.Pairs.Sum(p => p.CsvSize + p.XlsxSize);
+    private static long GroupSize(ExportGroup g) {
+        return g.Pairs.Sum(p => p.CsvSize + p.XlsxSize);
+    }
 
     private void ToggleCollapse(string eid) {
         if (!_collapsed.Remove(eid)) {
@@ -208,9 +219,11 @@
             await Exports.PruneAsync(_keepCount);
             _selected.Clear();
             await LoadFilesAsync();
-        } catch (Exception ex) {
+        }
+        catch (Exception ex) {
             _pruneError = ex.Message;
-        } finally {
+        }
+        finally {
             _pruning = false;
         }
     }
@@ -223,12 +236,17 @@
             await Exports.DeleteAsync(_selected.ToList());
             _selected.Clear();
             await LoadFilesAsync();
-        } catch (Exception ex) {
+        }
+        catch (Exception ex) {
             _deleteError = ex.Message;
-        } finally {
+        }
+        finally {
             _deleting = false;
         }
     }
 
-    private static string FormatSize(long bytes) => LedgerFormatting.FormatBytes(bytes);
+    private static string FormatSize(long bytes) {
+        return LedgerFormatting.FormatBytes(bytes);
+    }
+
 }

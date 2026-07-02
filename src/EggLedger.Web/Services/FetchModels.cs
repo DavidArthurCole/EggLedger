@@ -39,7 +39,10 @@ public sealed record FetchProgress {
 
     /// <summary>Set only when <see cref="Segment"/> is set.</summary>
     public SegmentStatus? SegmentStatus { get; init; }
+
+    /// <summary>Missions still failed after the retry pass (if any), with reasons. Set only on the terminal Failed report.</summary>
+    public IReadOnlyList<FailedMission> FailedMissions { get; init; } = [];
 }
 
-/// <summary>A mission that failed to fetch, captured for the retry pass.</summary>
-public sealed record FailedMission(string MissionId, double StartTimestamp);
+/// <summary>A mission that failed to fetch, captured for the retry pass and for display.</summary>
+public sealed record FailedMission(string MissionId, double StartTimestamp, string Reason = "");

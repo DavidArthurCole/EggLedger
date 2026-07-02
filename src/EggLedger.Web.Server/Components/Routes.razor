@@ -1,7 +1,5 @@
-@using EggLedger.Web
 @using EggLedger.Web.Layout
 @using Microsoft.AspNetCore.Components.Authorization
-
 @* Router over the shared RCL: its @page components are the routable set. Data pages need an
    authenticated Discord principal (per-user storage); others see the connect prompt. *@
 <CascadingAuthenticationState>
@@ -9,12 +7,12 @@
         <Found Context="routeData">
             <AuthorizeView>
                 <Authorized>
-                    <BackfillTrigger />
-                    <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
+                    <BackfillTrigger/>
+                    <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)"/>
                 </Authorized>
                 <NotAuthorized>
                     <LayoutView Layout="@typeof(MainLayout)">
-                        <ConnectGate />
+                        <ConnectGate/>
                     </LayoutView>
                 </NotAuthorized>
             </AuthorizeView>

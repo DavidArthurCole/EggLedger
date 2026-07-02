@@ -1,7 +1,7 @@
+@using System.Text.Json
 @using EggLedger.Domain.Reports
 @using EggLedger.Web.Data
 @using EggLedger.Web.Services
-@using System.Text.Json
 @inject IReportRunner MissionDb
 @inject MennoService Menno
 @inject IndexedDbReportStore Store
@@ -16,40 +16,33 @@
         <div class="min-w-0 flex-1">
             <span class="text-sm font-medium text-gray-200 truncate block" title="@Def.Name">@DisplayName</span>
             <span class="text-xs text-gray-500 block">@Subtitle</span>
-            @if (!string.IsNullOrEmpty(Def.Description))
-            {
+            @if (!string.IsNullOrEmpty(Def.Description)) {
                 <span class="text-xs text-gray-500 truncate block mt-0.5" title="@Def.Description">@Def.Description</span>
             }
         </div>
         <span class="text-xs px-1.5 py-0.5 rounded cursor-default flex-shrink-0 @WeightClass" title="@WeightTitle">@Def.Weight</span>
     </div>
     <div class="flex-1 min-h-0 p-2">
-        @if (_error is not null)
-        {
+        @if (_error is not null) {
             <div class="h-full flex items-center justify-center text-xs text-red-400 italic">@_error</div>
-        }
-        else if (_result is null)
-        {
+        } else if (_result is null) {
             <div class="h-full flex items-center justify-center text-xs text-gray-500 animate-pulse">Running...</div>
-        }
-        else if (ShowMennoComparison)
-        {
-            @switch (Def.MennoCompareMode)
-            {
+        } else if (ShowMennoComparison) {
+            @switch (Def.MennoCompareMode) {
                 case MennoComparison.SideBySide:
                     <div class="flex gap-1 h-full">
                         <div class="flex-1 min-w-0 flex flex-col">
                             <span class="text-xs text-gray-500 text-center mb-0.5">Yours</span>
                             <div class="flex-1 min-h-0">
                                 <ReportHeatmap Result="_result" Color="ColorOr" NormalizeBy="NormalizeOr"
-                                               UnfilledColor="@Def.UnfilledColor" MinSampleSize="Def.MinSampleSize" />
+                                               UnfilledColor="@Def.UnfilledColor" MinSampleSize="Def.MinSampleSize"/>
                             </div>
                         </div>
                         <div class="flex-1 min-w-0 flex flex-col">
                             <span class="text-xs text-gray-500 text-center mb-0.5">Community</span>
                             <div class="flex-1 min-h-0">
                                 <ReportHeatmap Result="MennoAirtime" Color="ColorOr" NormalizeBy="NormalizeOr"
-                                               UnfilledColor="@Def.UnfilledColor" />
+                                               UnfilledColor="@Def.UnfilledColor"/>
                             </div>
                         </div>
                     </div>
@@ -57,90 +50,83 @@
                 case MennoComparison.Ratio:
                     <ReportHeatmap Result="RatioResult" Color="ColorOr" NormalizeBy="ratio"
                                    UnfilledColor="@Def.UnfilledColor"
-                                   MinSampleSize="Def.MinSampleSize" />
+                                   MinSampleSize="Def.MinSampleSize"/>
                     break;
                 case MennoComparison.DualValue:
                     <ReportHeatmap Result="UserPerMission" Color="ColorOr" NormalizeBy="NormalizeOr"
                                    UnfilledColor="@Def.UnfilledColor"
                                    SecondaryValues="_mennoResult!.MatrixValues"
                                    ColorValues="RatioColorValues"
-                                   MinSampleSize="Def.MinSampleSize" />
+                                   MinSampleSize="Def.MinSampleSize"/>
                     break;
                 default:
-                    <ReportChart Def="Def" Result="_result" />
+                    <ReportChart Def="Def" Result="_result"/>
                     break;
             }
-        }
-        else
-        {
-            <ReportChart Def="Def" Result="_result" />
+        } else {
+            <ReportChart Def="Def" Result="_result"/>
         }
     </div>
 
     <div class="flex justify-end items-center gap-2 px-3 pb-2 flex-shrink-0">
-        @if (EditMode)
-        {
-            @if (Groups.Count > 0)
-            {
+        @if (EditMode) {
+            @if (Groups.Count > 0) {
                 <select class="text-xs bg-darker border border-gray-700 rounded pl-1 pr-6 py-0.5 text-gray-500 focus:outline-none max-w-36 mr-auto"
                         value="@Def.GroupId" @onchange="OnGroupSelectChanged">
                     <option value="">No group</option>
-                    @foreach (var g in Groups)
-                    {
+                    @foreach (var g in Groups) {
                         <option value="@g.Id">@g.Name</option>
                     }
                 </select>
             }
+
             <button type="button" class="text-gray-400 hover:text-gray-200 px-1 text-xs leading-none disabled:opacity-40"
-                    title="Duplicate report" disabled="@(_copying || _deleting)" @onclick="CopyAsync">@(_copying ? "Copying..." : "Copy")</button>
+                    title="Duplicate report" disabled="@(_copying || _deleting)" @onclick="CopyAsync">
+                @(_copying ? "Copying..." : "Copy")
+            </button>
             <button type="button" class="text-blue-400 hover:text-blue-300 px-1 text-xs leading-none disabled:opacity-40"
-                    disabled="@(_copying || _deleting)" @onclick="() => OnEdit.InvokeAsync(Def)">Edit</button>
-            @if (_confirmingDelete)
-            {
+                    disabled="@(_copying || _deleting)" @onclick="() => OnEdit.InvokeAsync(Def)">
+                Edit
+            </button>
+            @if (_confirmingDelete) {
                 <span class="text-xs text-red-400">Delete?</span>
                 <button type="button" class="text-xs text-gray-400 hover:text-gray-200 px-1 leading-none" @onclick="() => _confirmingDelete = false">Cancel</button>
                 <button type="button" class="text-xs text-red-400 hover:text-red-300 font-semibold px-1 leading-none disabled:opacity-40"
-                        disabled="@_deleting" @onclick="DeleteAsync">@(_deleting ? "Deleting..." : "Yes")</button>
-            }
-            else
-            {
+                        disabled="@_deleting" @onclick="DeleteAsync">
+                    @(_deleting ? "Deleting..." : "Yes")
+                </button>
+            } else {
                 <button type="button" class="text-red-500 hover:text-red-400 px-1 text-xs leading-none disabled:opacity-40"
-                        disabled="@(_copying || _deleting)" @onclick="() => _confirmingDelete = true">&#10005;</button>
+                        disabled="@(_copying || _deleting)" @onclick="() => _confirmingDelete = true">
+                    &#10005;
+                </button>
             }
-        }
-        else
-        {
-            @if (ShowResultCount)
-            {
+        } else {
+            @if (ShowResultCount) {
                 <span class="text-xs text-gray-500 mr-auto">@ResultCountLabel</span>
             }
+
             <button type="button" class="text-xs text-gray-500 hover:text-gray-400 disabled:opacity-40" disabled="@(_result is null)" @onclick="ExportAsync">Export</button>
             <button type="button" class="text-xs text-indigo-400 hover:text-indigo-300 disabled:opacity-40" disabled="@(_result is null)" @onclick="RunAsync">Run</button>
         }
     </div>
 </div>
 
-<MennoLoadingModal @ref="_mennoModal" />
+<MennoLoadingModal @ref="_mennoModal"/>
 
 @code {
-    [Parameter, EditorRequired]
-    public ReportDefinition Def { get; set; } = new();
-    [Parameter, EditorRequired]
-    public GridCardPos Pos { get; set; }
-    [Parameter, EditorRequired]
-    public string AccountId { get; set; } = "";
-    [Parameter]
-    public bool EditMode { get; set; }
-    [Parameter]
-    public IReadOnlyList<ReportGroupRow> Groups { get; set; } = Array.Empty<ReportGroupRow>();
-    [Parameter]
-    public EventCallback<ReportDefinition> OnEdit { get; set; }
-    [Parameter]
-    public EventCallback<string> OnDelete { get; set; }
+    [Parameter] [EditorRequired] public ReportDefinition Def { get; set; } = new();
+    [Parameter] [EditorRequired] public GridCardPos Pos { get; set; }
+    [Parameter] [EditorRequired] public string AccountId { get; set; } = "";
+    [Parameter] public bool EditMode { get; set; }
+    [Parameter] public IReadOnlyList<ReportGroupRow> Groups { get; set; } = Array.Empty<ReportGroupRow>();
+    [Parameter] public EventCallback<ReportDefinition> OnEdit { get; set; }
+    [Parameter] public EventCallback<string> OnDelete { get; set; }
 
     /// <summary>Fires after a copy or group change, so the grid reloads its list.</summary>
     [Parameter]
     public EventCallback OnChanged { get; set; }
+
     private ReportResult? _result;
     private ReportResult? _mennoResult;
     private string? _error;
@@ -168,18 +154,16 @@
     private IReadOnlyList<double> RatioColorValues =>
         MennoComparison.RatioColorValues(_result!, _mennoResult!);
 
-    private string WeightClass => Def.Weight switch
-    {
+    private string WeightClass => Def.Weight switch {
         "HEAVY" => "bg-red-900/40 text-red-400",
         "MEDIUM" => "bg-yellow-900/40 text-yellow-400",
-        _ => "bg-green-900/40 text-green-400",
+        _ => "bg-green-900/40 text-green-400"
     };
 
-    private string WeightTitle => Def.Weight switch
-    {
+    private string WeightTitle => Def.Weight switch {
         "HEAVY" => "Heavy: full scan, may be slow on large accounts",
         "MEDIUM" => "Medium: partial index usage",
-        _ => "Light: fully indexed",
+        _ => "Light: fully indexed"
     };
 
     private string SubjectLabel => Def.Subject == "artifacts" ? "Artifacts" : "Ships";
@@ -191,20 +175,18 @@
     private string SecondaryGroupByLabel =>
         string.IsNullOrEmpty(Def.SecondaryGroupBy) ? "" : ReportDimensions.DimensionLabel(Def.SecondaryGroupBy);
 
-    private string Subtitle
-    {
-        get
-        {
+    private string Subtitle {
+        get {
             var parts = new List<string> { SubjectLabel, ModeLabel };
-            if (GroupByLabel.Length > 0)
-            {
+            if (GroupByLabel.Length > 0) {
                 parts.Add(GroupByLabel);
             }
-            string text = string.Join(" - ", parts);
-            if (SecondaryGroupByLabel.Length > 0)
-            {
+
+            var text = string.Join(" - ", parts);
+            if (SecondaryGroupByLabel.Length > 0) {
                 text += " x " + SecondaryGroupByLabel;
             }
+
             return text;
         }
     }
@@ -212,27 +194,22 @@
     private bool ShowResultCount =>
         _result is { Is2D: false } && Def.DisplayMode is not ("pie" or "bar" or "line");
 
-    private string ResultCountLabel
-    {
-        get
-        {
-            int n = _result?.Labels.Count ?? 0;
+    private string ResultCountLabel {
+        get {
+            var n = _result?.Labels.Count ?? 0;
             return $"{n} result{(n == 1 ? "" : "s")}";
         }
     }
 
-    private async Task OnGroupSelectChanged(ChangeEventArgs e)
-    {
-        string groupId = e.Value?.ToString() ?? "";
+    private async Task OnGroupSelectChanged(ChangeEventArgs e) {
+        var groupId = e.Value?.ToString() ?? "";
         await Store.SetReportGroupAsync(Def.Id, groupId);
         await OnChanged.InvokeAsync();
     }
 
-    private async Task CopyAsync()
-    {
+    private async Task CopyAsync() {
         _copying = true;
-        try
-        {
+        try {
             // ReportDefinition is a plain mutable class; JSON round-trip clones every
             // field without hand-listing them (and staying correct as fields are added).
             var copy = JsonSerializer.Deserialize<ReportDefinition>(JsonSerializer.Serialize(Def))!;
@@ -244,110 +221,94 @@
             await Store.InsertReportAsync(ReportMapping.ToRow(copy));
             await OnChanged.InvokeAsync();
         }
-        finally
-        {
+        finally {
             _copying = false;
         }
     }
 
-    private async Task DeleteAsync()
-    {
+    private async Task DeleteAsync() {
         _deleting = true;
-        try
-        {
+        try {
             await OnDelete.InvokeAsync(Def.Id);
         }
-        finally
-        {
+        finally {
             _deleting = false;
             _confirmingDelete = false;
         }
     }
 
-    private async Task ExportAsync()
-    {
-        if (_result is null)
-        {
+    private async Task ExportAsync() {
+        if (_result is null) {
             return;
         }
+
         var json = JsonSerializer.Serialize(Def, new JsonSerializerOptions { WriteIndented = true });
         await Downloader.DownloadJsonAsync(json, SafeFileName(Def.Name) + ".json");
     }
 
-    private static string SafeFileName(string name)
-    {
+    private static string SafeFileName(string name) {
         var invalid = Path.GetInvalidFileNameChars();
         var chars = name.Select(c => invalid.Contains(c) ? '_' : c).ToArray();
-        string cleaned = new string(chars).Trim();
+        var cleaned = new string(chars).Trim();
         return cleaned.Length == 0 ? "report" : cleaned;
     }
 
-    protected override async Task OnParametersSetAsync()
-    {
+    protected override async Task OnParametersSetAsync() {
         // Re-run when the definition meaningfully changes (id + updated_at).
-        string key = Def.Id + ":" + Def.UpdatedAt;
-        if (key == _ranKey)
-        {
+        var key = Def.Id + ":" + Def.UpdatedAt;
+        if (key == _ranKey) {
             return;
         }
+
         _ranKey = key;
         await RunAsync();
     }
 
-    private async Task RunAsync()
-    {
+    private async Task RunAsync() {
         _result = null;
         _mennoResult = null;
         _error = null;
-        try
-        {
+        try {
             _result = await MissionDb.RunReportAsync(Def, AccountId);
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             _error = "Failed to run: " + ex.Message;
             StateHasChanged();
             return;
         }
+
         StateHasChanged();
         await RunMennoComparisonAsync();
     }
 
-    /// <summary>Runs the Menno comparison for Menno-enabled 2D-heatmap results; a null
-    /// comparison leaves the plain user chart. Per-cell min-sample gating lives in the heatmap.</summary>
-    private async Task RunMennoComparisonAsync()
-    {
+    /// <summary>
+    ///     Runs the Menno comparison for Menno-enabled 2D-heatmap results; a null
+    ///     comparison leaves the plain user chart. Per-cell min-sample gating lives in the heatmap.
+    /// </summary>
+    private async Task RunMennoComparisonAsync() {
         if (_result is null
             || !Def.MennoEnabled
             || !_result.Is2D
             || _result.RawRowLabels.Count == 0
-            || _result.RawColLabels.Count == 0)
-        {
+            || _result.RawColLabels.Count == 0) {
             return;
         }
 
-        try
-        {
-            if (!Menno.HasData && _mennoModal is not null)
-            {
+        try {
+            if (!Menno.HasData && _mennoModal is not null) {
                 await _mennoModal.OpenAsync();
-                try
-                {
+                try {
                     await Menno.EnsureLoadedAsync();
                 }
-                finally
-                {
+                finally {
                     await _mennoModal.CloseAsync();
                 }
-            }
-            else if (!Menno.HasData)
-            {
+            } else if (!Menno.HasData) {
                 await Menno.EnsureLoadedAsync();
             }
 
             var items = Menno.CachedItems;
-            if (items is null)
-            {
+            if (items is null) {
                 return;
             }
 
@@ -355,10 +316,10 @@
                 Def, items, _result.RawRowLabels, _result.RawColLabels);
             StateHasChanged();
         }
-        catch
-        {
+        catch {
             // Failed download/comparison leaves the plain user chart; the overlay is supplementary.
             _mennoResult = null;
         }
     }
+
 }

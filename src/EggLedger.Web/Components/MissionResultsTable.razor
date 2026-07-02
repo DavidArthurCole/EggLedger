@@ -1,18 +1,14 @@
 @using System.Globalization
 @using EggLedger.Domain.MissionPacking
 @using EggLedger.Web.Missions
-
 @* Year/month/day collapse tree, each mission a clickable row. Multi-view: Row/Date adds a
    per-day "View row" button; Free Select adds a per-mission checkbox plus a Select All header. *@
 
-@if (Grouping is null || Grouping.Missions.Count == 0)
-{
+@if (Grouping is null || Grouping.Missions.Count == 0) {
     <div class="filter-form text-lg">
         <span class="mt-0_5rem ml-1rem">No missions to display.</span>
     </div>
-}
-else
-{
+} else {
     <div id="missionListDiv" class="mt-0_5rem px-2 py-1 shadow-sm block text-xs font-mono text-gray-500 bg-darkest rounded-md">
         <div class="sticky top-0 z-10 bg-darkest -mx-2 px-2 pt-1 pb-1">
             <div class="flex items-baseline gap-2 flex-wrap">
@@ -22,142 +18,121 @@ else
                         @(AllExpanded ? "Collapse All" : "Expand All")
                     </button>
                 </span>
-                @if (MultiViewMode == MultiViewMode.Free)
-                {
+                @if (MultiViewMode == MultiViewMode.Free) {
                     <button type="button" class="text-base toggle-link" disabled="@(SelectedIds.Count == 0)" @onclick="ViewSelected">
                         View Selected (@SelectedIds.Count)
                     </button>
-                    @if (SelectedIds.Count > 0)
-                    {
+                    @if (SelectedIds.Count > 0) {
                         <button type="button" class="text-base toggle-link" @onclick="DeselectAll">Deselect All</button>
                     }
-                    @if (!AllSelected)
-                    {
+
+                    @if (!AllSelected) {
                         <button type="button" class="text-base toggle-link" @onclick="SelectAll">Select All</button>
                     }
                 }
             </div>
-            <hr class="mt-0_5rem mb-0_5rem w-full" />
+            <hr class="mt-0_5rem mb-0_5rem w-full"/>
         </div>
 
-        @for (int yi = 0; yi < Grouping.Missions.Count; yi++)
-        {
-            int yearIndex = yi;
+        @for (var yi = 0; yi < Grouping.Missions.Count; yi++) {
+            var yearIndex = yi;
             var year = Grouping.Arrays.Year[yearIndex];
             <div>
-            <span class="text-lg font-bold mr-0_5rem ledger-underline">@year.Year</span>
-            <button type="button" class="text-lg toggle-link" @onclick="@(() => ToggleYear(yearIndex))">
-                @(year.Enabled ? "Collapse" : "Expand")
-            </button>
+                <span class="text-lg font-bold mr-0_5rem ledger-underline">@year.Year</span>
+                <button type="button" class="text-lg toggle-link" @onclick="@(() => ToggleYear(yearIndex))">
+                    @(year.Enabled ? "Collapse" : "Expand")
+                </button>
 
-            @if (year.Enabled)
-            {
-                @for (int mi = 0; mi < Grouping.Missions[yearIndex].Count; mi++)
-                {
-                    int monthIndex = mi;
-                    var month = Grouping.Arrays.Month[yearIndex][monthIndex];
-                    <div>
-                        <div class="mt-1rem ml-2rem">
-                            <span class="text-base font-bold mr-0_5rem ledger-underline">
-                                @year.Year-@month.Month.ToString("00", CultureInfo.InvariantCulture)
-                            </span>
-                            <button type="button" class="text-base toggle-link" @onclick="@(() => ToggleMonth(yearIndex, monthIndex))">
-                                @(month.Enabled ? "Collapse" : "Expand")
-                            </button>
+                @if (year.Enabled) {
+                    @for (var mi = 0; mi < Grouping.Missions[yearIndex].Count; mi++) {
+                        var monthIndex = mi;
+                        var month = Grouping.Arrays.Month[yearIndex][monthIndex];
+                        <div>
+                            <div class="mt-1rem ml-2rem">
+                                <span class="text-base font-bold mr-0_5rem ledger-underline">
+                                    @year.Year-@month.Month.ToString("00", CultureInfo.InvariantCulture)
+                                </span>
+                                <button type="button" class="text-base toggle-link" @onclick="@(() => ToggleMonth(yearIndex, monthIndex))">
+                                    @(month.Enabled ? "Collapse" : "Expand")
+                                </button>
 
-                            @if (month.Enabled)
-                            {
-                                @for (int di = 0; di < Grouping.Missions[yearIndex][monthIndex].Count; di++)
-                                {
-                                    int dayIndex = di;
-                                    var day = Grouping.Arrays.Day[yearIndex][monthIndex][dayIndex];
-                                    <div>
-                                        <div class="mt-1rem ml-2rem">
-                                            @if (ViewByDate)
-                                            {
-                                                <span class="text-sm font-bold mr-0_5rem ledger-underline">
-                                                    @year.Year-@month.Month.ToString("00", CultureInfo.InvariantCulture)-@day.Day.ToString("00", CultureInfo.InvariantCulture)
-                                                </span>
-                                                <button type="button" class="text-sm mr-0_5rem toggle-link"
-                                                        @onclick="@(() => ToggleDay(yearIndex, monthIndex, dayIndex))">
-                                                    @(day.Enabled ? "Collapse" : "Expand")
-                                                </button>
-                                            }
-                                            <div class="mt-1rem flex items-start gap-2">
-                                                @if (MultiViewMode == MultiViewMode.Row)
-                                                {
-                                                    <button type="button" class="text-sm toggle-link flex-shrink-0 self-center"
-                                                            @onclick="@(() => ViewRow(yearIndex, monthIndex, dayIndex))">
-                                                        View row
+                                @if (month.Enabled) {
+                                    @for (var di = 0; di < Grouping.Missions[yearIndex][monthIndex].Count; di++) {
+                                        var dayIndex = di;
+                                        var day = Grouping.Arrays.Day[yearIndex][monthIndex][dayIndex];
+                                        <div>
+                                            <div class="mt-1rem ml-2rem">
+                                                @if (ViewByDate) {
+                                                    <span class="text-sm font-bold mr-0_5rem ledger-underline">
+                                                        @year.Year-@month.Month.ToString("00", CultureInfo.InvariantCulture)-@day.Day.ToString("00", CultureInfo.InvariantCulture)
+                                                    </span>
+                                                    <button type="button" class="text-sm mr-0_5rem toggle-link"
+                                                            @onclick="@(() => ToggleDay(yearIndex, monthIndex, dayIndex))">
+                                                        @(day.Enabled ? "Collapse" : "Expand")
                                                     </button>
                                                 }
-                                                <div class="mission-grid mission-items-full flex-1">
-                                                    @if (DayVisible(yearIndex, monthIndex, dayIndex))
-                                                    {
-                                                        @foreach (var mission in Grouping.Missions[yearIndex][monthIndex][dayIndex])
-                                                        {
-                                                            var m = mission;
-                                                            <div @key="m.MissiondId" class="text-sm mission-item-3 flex items-center" data-missionid="@m.MissiondId">
-                                                                @if (MultiViewMode == MultiViewMode.Free)
-                                                                {
-                                                                    <input type="checkbox" class="mr-0_5rem flex-shrink-0"
-                                                                           checked="@SelectedIds.Contains(m.MissiondId)"
-                                                                           @onchange="@(() => ToggleSelected(m.MissiondId))" />
-                                                                }
-                                                                <button type="button" class="text-sm mr-5 font-bold btn btn-outline-dark bg-transparent" @onclick="@(() => OnView(m.MissiondId))">
-                                                                    @if (!ViewByDate)
-                                                                    {
-                                                                        <span class="@RowColor(m, false)">@DateLabel(year.Year, month.Month, day.Day)</span>
-                                                                    }
-                                                                    @if (ViewMissionTimes)
-                                                                    {
-                                                                        <span class="@RowColor(m, true)">@(" " + TimeLabel(m))</span>
-                                                                    }
-                                                                    <span class="text-gray-400 ml-0_5rem">
-                                                                        <span class="@DurationClass(m)">@m.ShipString</span>
-                                                                        @if (m.Level > 0)
-                                                                        {
-                                                                            <span> (@m.Level<span class="text-goldenstar">&#9733;</span>)</span>
-                                                                        }
-                                                                        <TargetDisplay Target="@m.Target" />
-                                                                    </span>
-                                                                </button>
-                                                            </div>
-                                                        }
+                                                <div class="mt-1rem flex items-start gap-2">
+                                                    @if (MultiViewMode == MultiViewMode.Row) {
+                                                        <button type="button" class="text-sm toggle-link flex-shrink-0 self-center"
+                                                                @onclick="@(() => ViewRow(yearIndex, monthIndex, dayIndex))">
+                                                            View row
+                                                        </button>
                                                     }
+                                                    <div class="mission-grid mission-items-full flex-1">
+                                                        @if (DayVisible(yearIndex, monthIndex, dayIndex)) {
+                                                            @foreach (var mission in Grouping.Missions[yearIndex][monthIndex][dayIndex]) {
+                                                                var m = mission;
+                                                                <div @key="m.MissiondId" class="text-sm mission-item-3 flex items-center" data-missionid="@m.MissiondId">
+                                                                    @if (MultiViewMode == MultiViewMode.Free) {
+                                                                        <input type="checkbox" class="mr-0_5rem flex-shrink-0"
+                                                                               checked="@SelectedIds.Contains(m.MissiondId)"
+                                                                               @onchange="@(() => ToggleSelected(m.MissiondId))"/>
+                                                                    }
+                                                                    <button type="button" class="text-sm mr-5 font-bold btn btn-outline-dark bg-transparent" @onclick="@(() => OnView(m.MissiondId))">
+                                                                        @if (!ViewByDate) {
+                                                                            <span class="@RowColor(m, false)">@DateLabel(year.Year, month.Month, day.Day)</span>
+                                                                        }
+                                                                        @if (ViewMissionTimes) {
+                                                                            <span class="@RowColor(m, true)">@(" " + TimeLabel(m))</span>
+                                                                        }
+                                                                        <span class="text-gray-400 ml-0_5rem">
+                                                                            <span class="@DurationClass(m)">@m.ShipString</span>
+                                                                            @if (m.Level > 0) {
+                                                                                <span> (@m.Level<span class="text-goldenstar">&#9733;</span>)</span>
+                                                                            }
+                                                                            <TargetDisplay Target="@m.Target"/>
+                                                                        </span>
+                                                                    </button>
+                                                                </div>
+                                                            }
+                                                        }
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
+                                    }
                                 }
-                            }
+                            </div>
                         </div>
-                    </div>
+                    }
+
+                    <br/>
+                    @if (yearIndex != Grouping.Missions.Count - 1) {
+                        <hr class="pt-3rem pb-3rem invisible mt-1"/>
+                    }
                 }
-                <br />
-                @if (yearIndex != Grouping.Missions.Count - 1)
-                {
-                    <hr class="pt-3rem pb-3rem invisible mt-1" />
-                }
-            }
             </div>
         }
     </div>
 }
 
 @code {
-    [Parameter]
-    public MissionGrouping? Grouping { get; set; }
-    [Parameter]
-    public bool ViewByDate { get; set; }
-    [Parameter]
-    public bool ViewMissionTimes { get; set; }
-    [Parameter]
-    public bool RecolorDc { get; set; }
-    [Parameter]
-    public bool RecolorBc { get; set; }
-    [Parameter]
-    public MultiViewMode MultiViewMode { get; set; } = MultiViewMode.Off;
+    [Parameter] public MissionGrouping? Grouping { get; set; }
+    [Parameter] public bool ViewByDate { get; set; }
+    [Parameter] public bool ViewMissionTimes { get; set; }
+    [Parameter] public bool RecolorDc { get; set; }
+    [Parameter] public bool RecolorBc { get; set; }
+    [Parameter] public MultiViewMode MultiViewMode { get; set; } = MultiViewMode.Off;
 
     /// <summary>Free-select mission ids; owned by the page, mutated here.</summary>
     [Parameter]
@@ -170,8 +145,8 @@ else
     /// <summary>Mission id shown in the overlay, highlighted in the list.</summary>
     [Parameter]
     public string? MissionBeingViewed { get; set; }
-    [Parameter]
-    public EventCallback<string> OnViewMission { get; set; }
+
+    [Parameter] public EventCallback<string> OnViewMission { get; set; }
 
     /// <summary>Raised with a set of mission ids to view together (Row/Date or Free Select).</summary>
     [Parameter]
@@ -184,170 +159,157 @@ else
     /// <summary>Raised when collapse state mutates so the page can re-render.</summary>
     [Parameter]
     public EventCallback OnGroupingChanged { get; set; }
-    private async Task OnView(string missionId) => await OnViewMission.InvokeAsync(missionId);
+
+    private async Task OnView(string missionId) {
+        await OnViewMission.InvokeAsync(missionId);
+    }
+
     private bool AllSelected => TabFiltered.Count > 0 && SelectedIds.Count >= TabFiltered.Count;
 
-    private async Task ViewRow(int yi, int mi, int di)
-    {
+    private async Task ViewRow(int yi, int mi, int di) {
         var ids = new List<string>();
-        foreach (var m in Grouping!.Missions[yi][mi][di])
-        {
+        foreach (var m in Grouping!.Missions[yi][mi][di]) {
             ids.Add(m.MissiondId);
         }
+
         await OnViewRow.InvokeAsync(ids);
     }
 
-    private async Task ViewSelected()
-    {
+    private async Task ViewSelected() {
         // Preserve display order from TabFiltered rather than HashSet order.
         var ids = new List<string>();
-        foreach (var m in TabFiltered)
-        {
-            if (SelectedIds.Contains(m.MissiondId))
-            {
+        foreach (var m in TabFiltered) {
+            if (SelectedIds.Contains(m.MissiondId)) {
                 ids.Add(m.MissiondId);
             }
         }
+
         await OnViewRow.InvokeAsync(ids);
     }
 
-    private async Task ToggleSelected(string missionId)
-    {
-        if (!SelectedIds.Remove(missionId))
-        {
+    private async Task ToggleSelected(string missionId) {
+        if (!SelectedIds.Remove(missionId)) {
             SelectedIds.Add(missionId);
         }
+
         await OnSelectionChanged.InvokeAsync();
     }
 
-    private async Task SelectAll()
-    {
-        foreach (var m in TabFiltered)
-        {
+    private async Task SelectAll() {
+        foreach (var m in TabFiltered) {
             SelectedIds.Add(m.MissiondId);
         }
+
         await OnSelectionChanged.InvokeAsync();
     }
 
-    private async Task DeselectAll()
-    {
+    private async Task DeselectAll() {
         SelectedIds.Clear();
         await OnSelectionChanged.InvokeAsync();
     }
 
-    private bool DayVisible(int yi, int mi, int di) =>
-        ViewByDate ? Grouping!.Arrays.Day[yi][mi][di].Enabled : Grouping!.Arrays.Month[yi][mi].Enabled;
+    private bool DayVisible(int yi, int mi, int di) {
+        return ViewByDate ? Grouping!.Arrays.Day[yi][mi][di].Enabled : Grouping!.Arrays.Month[yi][mi].Enabled;
+    }
 
     // True when every year section is expanded (drives the Collapse/Expand All label).
-    private bool AllExpanded
-    {
-        get
-        {
-            if (Grouping is null)
-            {
+    private bool AllExpanded {
+        get {
+            if (Grouping is null) {
                 return true;
             }
-            foreach (var y in Grouping.Arrays.Year)
-            {
-                if (!y.Enabled)
-                {
+
+            foreach (var y in Grouping.Arrays.Year) {
+                if (!y.Enabled) {
                     return false;
                 }
             }
+
             return true;
         }
     }
 
-    private async Task ToggleAll()
-    {
-        if (Grouping is null)
-        {
+    private async Task ToggleAll() {
+        if (Grouping is null) {
             return;
         }
+
         SetAll(!AllExpanded);
         await NotifyAsync();
     }
 
-    private void SetAll(bool enabled)
-    {
-        foreach (var y in Grouping!.Arrays.Year)
-        {
+    private void SetAll(bool enabled) {
+        foreach (var y in Grouping!.Arrays.Year) {
             y.Enabled = enabled;
         }
-        foreach (var months in Grouping.Arrays.Month)
-        {
-            foreach (var mo in months)
-            {
+
+        foreach (var months in Grouping.Arrays.Month) {
+            foreach (var mo in months) {
                 mo.Enabled = enabled;
             }
         }
-        foreach (var yearDays in Grouping.Arrays.Day)
-        {
-            foreach (var monthDays in yearDays)
-            {
-                foreach (var d in monthDays)
-                {
+
+        foreach (var yearDays in Grouping.Arrays.Day) {
+            foreach (var monthDays in yearDays) {
+                foreach (var d in monthDays) {
                     d.Enabled = enabled;
                 }
             }
         }
     }
 
-    private async Task ToggleYear(int yi)
-    {
+    private async Task ToggleYear(int yi) {
         var y = Grouping!.Arrays.Year[yi];
         y.Enabled = !y.Enabled;
         await NotifyAsync();
     }
 
-    private async Task ToggleMonth(int yi, int mi)
-    {
+    private async Task ToggleMonth(int yi, int mi) {
         var mo = Grouping!.Arrays.Month[yi][mi];
         mo.Enabled = !mo.Enabled;
         await NotifyAsync();
     }
 
-    private async Task ToggleDay(int yi, int mi, int di)
-    {
+    private async Task ToggleDay(int yi, int mi, int di) {
         var d = Grouping!.Arrays.Day[yi][mi][di];
         d.Enabled = !d.Enabled;
         await NotifyAsync();
     }
 
-    private async Task NotifyAsync()
-    {
+    private async Task NotifyAsync() {
         // The page handler re-renders this child; no separate local StateHasChanged needed.
         await OnGroupingChanged.InvokeAsync();
     }
 
-    private string RowColor(DatabaseMission m, bool altMode)
-    {
-        if (MissionBeingViewed == m.MissiondId)
-        {
+    private string RowColor(DatabaseMission m, bool altMode) {
+        if (MissionBeingViewed == m.MissiondId) {
             return altMode ? "text-selectedmissiondarker" : "text-selectedmission";
         }
-        if (RecolorBc && m.IsBuggedCap)
-        {
+
+        if (RecolorBc && m.IsBuggedCap) {
             return altMode ? "text-buggedcapdarker" : "text-buggedcap";
         }
-        if (RecolorDc && m.IsDubCap)
-        {
+
+        if (RecolorDc && m.IsDubCap) {
             return altMode ? "text-dubcapdarker" : "text-dubcap";
         }
+
         return altMode ? "text-gray-500" : "text-gray-400";
     }
 
-    private static string DurationClass(DatabaseMission m) =>
-        m.DurationType is { } d
+    private static string DurationClass(DatabaseMission m) {
+        return m.DurationType is { } d
             ? "text-duration-" + Convert.ToInt32(d, CultureInfo.InvariantCulture)
             : "text-duration-3";
+    }
 
-    private static string DateLabel(int year, int month, int day) =>
-        $"{year}-{month.ToString("00", CultureInfo.InvariantCulture)}-{day.ToString("00", CultureInfo.InvariantCulture)}";
+    private static string DateLabel(int year, int month, int day) {
+        return $"{year}-{month.ToString("00", CultureInfo.InvariantCulture)}-{day.ToString("00", CultureInfo.InvariantCulture)}";
+    }
 
-    private static string TimeLabel(DatabaseMission m)
-    {
+    private static string TimeLabel(DatabaseMission m) {
         var d = MissionFilterMatcher.LedgerDate(m.LaunchDT);
         return d.ToString("HH:mm:ss", CultureInfo.InvariantCulture);
     }
+
 }

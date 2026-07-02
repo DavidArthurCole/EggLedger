@@ -1,6 +1,4 @@
 @using EggLedger.Web.Missions
-@using EggLedger.Web.Missions.Model
-
 @* Faithful port of the Vue FullFilter. Each AND row builds progressively: field
    first, operator after a field is chosen, value after the operator. A complete
    row gets a yellow OR button that adds an indented "⮡ OR" sibling under it
@@ -8,39 +6,38 @@
    matcher reproduces Vue semantics exactly (see docs/filter-legacy-semantics.md). *@
 
 <div class="max-h-60 overflow-y-auto">
-    @for (var i = 0; i < _rows.Count; i++)
-    {
+    @for (var i = 0; i < _rows.Count; i++) {
         var index = i;
         var row = _rows[index];
 
-        @if (index != 0)
-        {
+        @if (index != 0) {
             <div class="text-gray-400 mt-0_5rem">-- AND --</div>
         }
 
         <div class="filter-container">
             @RenderConditionControls(row.Cond, () => OnRowChanged(index))
 
-            @if (RowComplete(row.Cond))
-            {
+            @if (RowComplete(row.Cond)) {
                 <button type="button" title="Add alternate filter condition"
                         class="mr-1rem flex items-center h-6 w-6 justify-center text-xs font-medium border text-yellow-700 border-yellow-700 bg-darkest rounded-md mt-0_5rem ledger-btn"
                         disabled="@OrAddDisabled(index)"
-                        @onclick="() => AddOr(index)">OR</button>
+                        @onclick="() => AddOr(index)">
+                    OR
+                </button>
             }
 
-            @if (FieldOf(row.Cond) is not null)
-            {
+            @if (FieldOf(row.Cond) is not null) {
                 <button type="button" title="Remove filter condition" aria-label="Remove"
                         class="mr-1rem flex items-center justify-center text-red-700 text-lg max-w-6 max-h-6 min-w-6 min-h-6 border border-red-700 rounded-md bg-transparent mt-0_5rem ledger-btn"
-                        @onclick="() => RemoveRow(index)">&times;</button>
+                        @onclick="() => RemoveRow(index)">
+                    &times;
+                </button>
             }
 
             @RenderWarning(row.Cond)
         </div>
 
-        @for (var oi = 0; oi < row.Or.Count; oi++)
-        {
+        @for (var oi = 0; oi < row.Or.Count; oi++) {
             var orIndex = oi;
             var orRow = row.Or[orIndex];
             <div class="ml-2rem filter-container">
@@ -50,7 +47,9 @@
 
                 <button type="button" title="Remove alternate condition" aria-label="Remove"
                         class="mr-1rem flex items-center justify-center text-red-700 text-lg max-w-6 max-h-6 min-w-6 min-h-6 border border-red-700 rounded-md bg-transparent mt-0_5rem ledger-btn"
-                        @onclick="() => RemoveOr(index, orIndex)">&times;</button>
+                        @onclick="() => RemoveOr(index, orIndex)">
+                    &times;
+                </button>
 
                 @RenderWarning(orRow)
             </div>
@@ -58,18 +57,18 @@
     }
 </div>
 
-@if (ShowApply)
-{
-    <hr class="mt-1rem w-full" />
+@if (ShowApply) {
+    <hr class="mt-1rem w-full"/>
 
     <button type="button" class="ledger-btn apply-filter-button" disabled="@Applying" @onclick="ApplyAsync">Apply Filter</button>
-    @if (Applying)
-    {
-        <span class="text-green-700 mt-0_5rem"><i>Applying filter, please wait...</i></span>
-    }
-    else if (LastResultText is { Length: > 0 })
-    {
-        <span class="text-gray-500 mt-0_5rem"><i>@LastResultText</i></span>
+    @if (Applying) {
+        <span class="text-green-700 mt-0_5rem">
+            <i>Applying filter, please wait...</i>
+        </span>
+    } else if (LastResultText is { Length: > 0 }) {
+        <span class="text-gray-500 mt-0_5rem">
+            <i>@LastResultText</i>
+        </span>
     }
 }
 
@@ -81,13 +80,17 @@
     [Parameter] public bool IsLifetime { get; set; }
 
     /// <summary>Show the Apply button + status. Off when embedded in a dialog that saves on its own submit.</summary>
-    [Parameter] public bool ShowApply { get; set; } = true;
+    [Parameter]
+    public bool ShowApply { get; set; } = true;
 
     /// <summary>Include artifact-scope fields (name/rarity/tier/spec type/quality). On for Reports, off for Mission Data.</summary>
-    [Parameter] public bool IncludeArtifactFields { get; set; }
+    [Parameter]
+    public bool IncludeArtifactFields { get; set; }
 
     /// <summary>Seed rows from an existing filter (Reports edit). Mission Data leaves these null (transient).</summary>
-    [Parameter] public IReadOnlyList<FilterCondition>? InitialAnd { get; set; }
+    [Parameter]
+    public IReadOnlyList<FilterCondition>? InitialAnd { get; set; }
+
     [Parameter] public IReadOnlyList<IReadOnlyList<FilterCondition>?>? InitialOr { get; set; }
 
     /// <summary>The legacy AND list + parallel per-index OR-sibling lists the matcher consumes.</summary>
@@ -101,30 +104,26 @@
     }
 
     private readonly List<Row> _rows = [];
-    private List<FilterFieldDef> _fields = [];
     private readonly Dictionary<string, List<FilterOption>> _optionCache = [];
     private bool _advancedDrops = true;
 
-    protected override void OnInitialized()
-    {
-        _fields = IncludeArtifactFields
+    protected override void OnInitialized() {
+        TopLevelFields = IncludeArtifactFields
             ? [.. FilterFields.ReportFilterFields]
             : FilterFields.ReportMissionFields();
 
-        if (InitialAnd is { Count: > 0 })
-        {
-            for (var i = 0; i < InitialAnd.Count; i++)
-            {
+        if (InitialAnd is { Count: > 0 }) {
+            for (var i = 0; i < InitialAnd.Count; i++) {
                 var row = new Row();
                 Copy(InitialAnd[i], row.Cond);
                 var siblings = InitialOr is not null && i < InitialOr.Count ? InitialOr[i] : null;
                 if (siblings is not null)
-                    foreach (var s in siblings)
-                    {
+                    foreach (var s in siblings) {
                         var sc = new FilterCondition();
                         Copy(s, sc);
                         row.Or.Add(sc);
                     }
+
                 _rows.Add(row);
             }
         }
@@ -133,20 +132,18 @@
             _rows.Add(new Row());
     }
 
-    private static void Copy(FilterCondition from, FilterCondition to)
-    {
+    private static void Copy(FilterCondition from, FilterCondition to) {
         to.TopLevel = from.TopLevel;
         to.Op = from.Op;
         to.Val = from.Val;
     }
 
-    private List<FilterFieldDef> TopLevelFields => _fields;
+    private List<FilterFieldDef> TopLevelFields { get; set; } = [];
 
     private FilterFieldDef? FieldOf(FilterCondition c) =>
         string.IsNullOrEmpty(c.TopLevel) ? null : FilterFields.GetReportField(c.TopLevel);
 
-    private bool RowComplete(FilterCondition c)
-    {
+    private bool RowComplete(FilterCondition c) {
         var def = FieldOf(c);
         if (def is null || string.IsNullOrEmpty(c.Op))
             return false;
@@ -157,8 +154,7 @@
         return c.Val.Length > 0;
     }
 
-    private bool RowIncomplete(FilterCondition c)
-    {
+    private bool RowIncomplete(FilterCondition c) {
         var def = FieldOf(c);
         // Nothing picked yet: not flagged.
         if (def is null)
@@ -166,8 +162,7 @@
         return !RowComplete(c);
     }
 
-    private bool OrAddDisabled(int index)
-    {
+    private bool OrAddDisabled(int index) {
         var or = _rows[index].Or;
         if (or.Count == 0)
             return false;
@@ -176,67 +171,74 @@
 
     // value-control rendering
 
-    private RenderFragment RenderConditionControls(FilterCondition c, Action changed) => __builder =>
-    {
+    private RenderFragment RenderConditionControls(FilterCondition c, Action changed) => __builder => {
         var def = FieldOf(c);
 
         <select class="filter-select border-gray-300 text-gray-400" value="@c.TopLevel"
-                @onchange="@(e => { SetField(c, e.Value?.ToString()); changed(); })">
+                @onchange="@(e => {
+                               SetField(c, e.Value?.ToString());
+                               changed();
+                           })">
             <option value="" class="filter-select-option">Field...</option>
-            @foreach (var f in TopLevelFields)
-            {
+            @foreach (var f in TopLevelFields) {
                 <option value="@f.Key" class="filter-select-option">@f.Label</option>
             }
         </select>
 
-        @if (def is not null)
-        {
+        @if (def is not null) {
             var ops = FilterFields.MissionBarOpsFor(def);
-            @if (def.ValueKind == FilterValueKind.Bool)
-            {
+            @if (def.ValueKind == FilterValueKind.Bool) {
                 <span class="text-gray-400 mt-0_5rem mr-1rem">is</span>
-            }
-            else
-            {
+            } else {
                 <select class="filter-select border-gray-300 text-gray-400 @(ops.Count <= 1 ? "opacity-60 cursor-not-allowed" : "")"
                         value="@c.Op" disabled="@(ops.Count <= 1)"
-                        @onchange="@(e => { c.Op = e.Value?.ToString() ?? ""; changed(); })">
-                    @foreach (var op in ops)
-                    {
+                        @onchange="@(e => {
+                                       c.Op = e.Value?.ToString() ?? "";
+                                       changed();
+                                   })">
+                    @foreach (var op in ops) {
                         <option value="@op.Value" class="filter-select-option">@op.Label</option>
                     }
                 </select>
             }
 
-            @if (!string.IsNullOrEmpty(c.Op) || def.ValueKind == FilterValueKind.Bool)
-            {
-                @switch (def.ValueKind)
-                {
+            @if (!string.IsNullOrEmpty(c.Op) || def.ValueKind == FilterValueKind.Bool) {
+                @switch (def.ValueKind) {
                     case FilterValueKind.Select:
                         <select class="filter-select border-gray-300 text-gray-400" value="@c.Val"
-                                @onchange="@(e => { c.Val = e.Value?.ToString() ?? ""; changed(); })">
-                            @foreach (var opt in OptionsFor(def))
-                            {
+                                @onchange="@(e => {
+                                               c.Val = e.Value?.ToString() ?? "";
+                                               changed();
+                                           })">
+                            @foreach (var opt in OptionsFor(def)) {
                                 <option value="@opt.Value" class="filter-select-option @opt.StyleClass">@opt.Text</option>
                             }
                         </select>
                         break;
                     case FilterValueKind.Bool:
                         <select class="filter-select border-gray-300 text-gray-400" value="@c.Val"
-                                @onchange="@(e => { c.Val = e.Value?.ToString() ?? ""; changed(); })">
-                            @foreach (var opt in FilterOptions.GetBoolFilterOptions())
-                            {
+                                @onchange="@(e => {
+                                               c.Val = e.Value?.ToString() ?? "";
+                                               changed();
+                                           })">
+                            @foreach (var opt in FilterOptions.GetBoolFilterOptions()) {
                                 <option value="@opt.Value" class="filter-select-option">@opt.Text</option>
                             }
                         </select>
                         break;
                     case FilterValueKind.Date:
                         <input type="date" class="filter-select border-gray-300 text-gray-400" value="@c.Val"
-                               @onchange="@(e => { c.Val = e.Value?.ToString() ?? ""; changed(); })" />
+                               @onchange="@(e => {
+                                              c.Val = e.Value?.ToString() ?? "";
+                                              changed();
+                                          })"/>
                         break;
                     case FilterValueKind.Number:
                         <input type="number" class="filter-select border-gray-300 text-gray-400" value="@c.Val"
-                               @onchange="@(e => { c.Val = e.Value?.ToString() ?? ""; changed(); })" />
+                               @onchange="@(e => {
+                                              c.Val = e.Value?.ToString() ?? "";
+                                              changed();
+                                          })"/>
                         break;
                     case FilterValueKind.Modal:
                         var isDrop = def.Key == "drops";
@@ -247,18 +249,16 @@
                                           RarityRing="isDrop"
                                           OverlayKind="@(isDrop ? "drop" : "target")"
                                           OnSelect="opt => { c.Val = opt.Value; changed(); }"
-                                          Footer="@(isDrop ? DropAdvancedFooter : null)" />
+                                          Footer="@(isDrop ? DropAdvancedFooter : null)"/>
                         break;
                 }
             }
         }
     };
 
-    private RenderFragment RenderWarning(FilterCondition c) => __builder =>
-    {
+    private RenderFragment RenderWarning(FilterCondition c) => __builder => {
         var def = FieldOf(c);
-        @if (def is not null && RowIncomplete(c))
-        {
+        @if (def is not null && RowIncomplete(c)) {
             <span class="filter-incomplete">(!) Incomplete, will not apply</span>
         }
     };
@@ -268,18 +268,16 @@
         string.IsNullOrEmpty(val) ? null : val;
 
     private RenderFragment DropAdvancedFooter => @<label class="flex items-center gap-1.5 text-xs text-gray-400 cursor-pointer select-none">
-        <input type="checkbox" class="ext-opt-check" checked="@_advancedDrops" @onchange="OnAdvancedDropsToggled" />
-        Advanced (family groupings)
-    </label>;
+                                                     <input type="checkbox" class="ext-opt-check" checked="@_advancedDrops" @onchange="OnAdvancedDropsToggled"/>
+                                                     Advanced (family groupings)
+                                                 </label>;
 
-    private void OnAdvancedDropsToggled(ChangeEventArgs e)
-    {
+    private void OnAdvancedDropsToggled(ChangeEventArgs e) {
         _advancedDrops = e.Value is true;
         _optionCache.Remove("drops");
     }
 
-    private List<FilterOption> OptionsFor(FilterFieldDef def)
-    {
+    private List<FilterOption> OptionsFor(FilterFieldDef def) {
         if (def.OptionsSource is null)
             return [];
         if (_optionCache.TryGetValue(def.Key, out var cached))
@@ -293,45 +291,42 @@
     }
 
     // Field change resets op + value to the new field's defaults.
-    private void SetField(FilterCondition c, string? key)
-    {
+    private void SetField(FilterCondition c, string? key) {
         c.TopLevel = key ?? "";
         var def = FieldOf(c);
-        if (def is null)
-        {
+        if (def is null) {
             c.Op = "";
             c.Val = "";
             return;
         }
+
         c.Op = FilterFields.DefaultOpForField(def);
-        c.Val = def.ValueKind switch
-        {
+        c.Val = def.ValueKind switch {
             FilterValueKind.Bool => "true",
             FilterValueKind.Select => OptionsFor(def) is { Count: > 0 } o ? o[0].Value : "",
-            _ => "",
+            _ => ""
         };
     }
 
     private void OnRowChanged(int index) => EnsureTrailingRow();
-    private void OnOrRowChanged(int index) { }
+
+    private void OnOrRowChanged(int index) {
+    }
 
     // The grid always keeps one blank trailing AND row; filling it appends another.
-    private void EnsureTrailingRow()
-    {
+    private void EnsureTrailingRow() {
         var last = _rows[^1].Cond;
         if (!string.IsNullOrEmpty(last.TopLevel))
             _rows.Add(new Row());
     }
 
-    private void AddOr(int index)
-    {
+    private void AddOr(int index) {
         if (OrAddDisabled(index))
             return;
         _rows[index].Or.Add(new FilterCondition());
     }
 
-    private void RemoveRow(int index)
-    {
+    private void RemoveRow(int index) {
         _rows.RemoveAt(index);
         if (_rows.Count == 0)
             _rows.Add(new Row());
@@ -339,14 +334,15 @@
 
     private void RemoveOr(int index, int orIndex) => _rows[index].Or.RemoveAt(orIndex);
 
-    /// <summary>Current filter as the legacy (and, orFilters) shape, incomplete rows dropped. For embedded use, read on the host's save.</summary>
-    public LegacyFilter BuildFilter()
-    {
+    /// <summary>
+    ///     Current filter as the legacy (and, orFilters) shape, incomplete rows dropped. For embedded use, read on the
+    ///     host's save.
+    /// </summary>
+    public LegacyFilter BuildFilter() {
         var and = new List<FilterCondition>();
         var or = new List<IReadOnlyList<FilterCondition>?>();
 
-        foreach (var row in _rows)
-        {
+        foreach (var row in _rows) {
             if (!RowComplete(row.Cond))
                 continue;
             and.Add(Clone(row.Cond));

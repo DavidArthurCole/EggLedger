@@ -2,7 +2,6 @@
 @using EggLedger.Domain.MissionQuery
 @using EggLedger.Web.Data
 @using EggLedger.Web.Services
-@using EggLedger.Web.State
 @inject IMissionStore Store
 @inject IndexedDbAccountStore AccountStore
 @inject IDownloadService Downloads
@@ -10,61 +9,63 @@
 @* Browser adaptation of the desktop ExportManagementPanel: manages per-account stored data (count, last fetch, export-to-download, delete) since the browser has no on-disk export files. *@
 <div class="mt-4">
     <span class="section-heading">Stored Account Data</span>
-    @if (Accounts.Count == 0 && Fetching is null)
-    {
+    @if (Accounts.Count == 0 && Fetching is null) {
         <p class="mt-2 text-xs text-gray-500 italic">No accounts with stored missions yet. Add an account above and fetch.</p>
-    }
-    else
-    {
+    } else {
         <ul class="mt-2 space-y-2">
-            @if (Fetching is { } f && !Accounts.Any(a => a.Id == f.Id))
-            {
+            @if (Fetching is { } f && !Accounts.Any(a => a.Id == f.Id)) {
                 <li class="p-2 border border-yellow-700/60 rounded-md bg-darkest animate-pulse">
                     <div class="flex items-baseline gap-2 flex-wrap">
                         <span class="font-bold" style="color: #@f.Color">@f.Nickname</span>
-                        <span class="font-mono text-xs text-gray-600"><MaskedEid Value="@f.Id" /></span>
+                        <span class="font-mono text-xs text-gray-600">
+                            <MaskedEid Value="@f.Id"/>
+                        </span>
                     </div>
                     <div class="flex items-center gap-1 mt-1 text-xs text-yellow-400">
                         <span>Fetching missions...</span>
-                        @if (f.Total > 0)
-                        {
+                        @if (f.Total > 0) {
                             <span class="text-gray-600">&middot;</span>
                             <span class="text-gray-400 tabular-nums">@f.Finished / @f.Total</span>
                         }
                     </div>
                 </li>
             }
-            @foreach (var acct in Sorted)
-            {
+            @foreach (var acct in Sorted) {
                 <li class="p-2 border border-gray-700 rounded-md bg-darkest">
                     <div class="flex items-baseline gap-2 flex-wrap">
                         <span class="font-bold" style="color: #@acct.AccountColor">@acct.Nickname</span>
                         <span class="text-gray-500 text-sm">@acct.EBString</span>
-                        <span class="font-mono text-xs text-gray-600"><MaskedEid Value="@acct.Id" /></span>
+                        <span class="font-mono text-xs text-gray-600">
+                            <MaskedEid Value="@acct.Id"/>
+                        </span>
                     </div>
                     <div class="flex items-center gap-1 mt-1 text-xs text-gray-500">
                         <span>@acct.MissionCount missions</span>
                         @{ var since = LedgerFormatting.FormatTimeSince(acct.LastMissionReturnDT, NowUnix); }
-                        @if (since != "")
-                        {
+                        @if (since != "") {
                             <span class="text-gray-600">&middot;</span>
                             <span>latest mission @since</span>
                         }
                     </div>
                     <div class="flex gap-2 mt-2 flex-wrap">
                         <button type="button" class="text-xs px-2 py-1 rounded border border-gray-700 bg-darker text-gray-300 hover:bg-darkerthandark disabled:opacity-50 disabled:cursor-default" disabled="@_busy"
-                            @onclick="() => ExportCsv(acct.Id, acct.Nickname)">Export CSV</button>
+                                @onclick="() => ExportCsv(acct.Id, acct.Nickname)">
+                            Export CSV
+                        </button>
                         <button type="button" class="text-xs px-2 py-1 rounded border border-gray-700 bg-darker text-gray-300 hover:bg-darkerthandark disabled:opacity-50 disabled:cursor-default" disabled="@_busy"
-                            @onclick="() => ExportXlsx(acct.Id, acct.Nickname)">Export XLSX</button>
+                                @onclick="() => ExportXlsx(acct.Id, acct.Nickname)">
+                            Export XLSX
+                        </button>
                         <button type="button" class="text-xs px-2 py-1 rounded border border-red-900 bg-darker text-red-300 hover:bg-red-950 disabled:opacity-50 disabled:cursor-default" disabled="@_busy"
-                            @onclick="() => Delete(acct.Id)" title="Removes the account from the list. Stored missions stay cached.">Forget account</button>
+                                @onclick="() => Delete(acct.Id)" title="Removes the account from the list. Stored missions stay cached.">
+                            Forget account
+                        </button>
                     </div>
                 </li>
             }
         </ul>
     }
-    @if (_error != "")
-    {
+    @if (_error != "") {
         <p class="mt-2 text-xs text-red-500">@_error</p>
     }
 </div>
@@ -84,81 +85,70 @@
     /// <summary>An account currently being fetched, shown as an ephemeral loading card until its data lands.</summary>
     [Parameter]
     public FetchingCard? Fetching { get; set; }
+
     public sealed record FetchingCard(string Id, string Nickname, string Color, int Finished, int Total);
+
     private static double NowUnix => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
     private IReadOnlyList<DatabaseAccount> Sorted =>
         LedgerFormatting.SortByMissionCountDescending(Accounts);
 
-    private async Task ExportCsv(string id, string nickname)
-    {
-        await ExportAsync(id, nickname, csv: true);
+    private async Task ExportCsv(string id, string nickname) {
+        await ExportAsync(id, nickname, true);
     }
 
-    private async Task ExportXlsx(string id, string nickname)
-    {
-        await ExportAsync(id, nickname, csv: false);
+    private async Task ExportXlsx(string id, string nickname) {
+        await ExportAsync(id, nickname, false);
     }
 
-    private async Task ExportAsync(string id, string nickname, bool csv)
-    {
+    private async Task ExportAsync(string id, string nickname, bool csv) {
         _busy = true;
         _error = "";
-        try
-        {
+        try {
             var responses = await Store.GetPlayerCompleteMissionsAsync(id);
-            if (responses is null || responses.Count == 0)
-            {
+            if (responses is null || responses.Count == 0) {
                 _error = "No missions to export for this account.";
                 return;
             }
+
             var missions = responses.Select(Mission.FromResponse).ToList();
-            string baseName = $"{Sanitize(nickname)}_{id}";
-            if (csv)
-            {
+            var baseName = $"{Sanitize(nickname)}_{id}";
+            if (csv) {
                 await Downloads.DownloadCsvAsync(missions, baseName + ".csv");
-            }
-            else
-            {
+            } else {
                 await Downloads.DownloadXlsxAsync(missions, baseName + ".xlsx");
             }
         }
-        catch (Exception e)
-        {
+        catch (Exception e) {
             _error = e.Message;
         }
-        finally
-        {
+        finally {
             _busy = false;
         }
     }
 
-    private async Task Delete(string id)
-    {
+    private async Task Delete(string id) {
         _busy = true;
         _error = "";
-        try
-        {
+        try {
             await AccountStore.RemoveKnownAccountAsync(id);
             await Changed.InvokeAsync();
         }
-        catch (Exception e)
-        {
+        catch (Exception e) {
             _error = e.Message;
         }
-        finally
-        {
+        finally {
             _busy = false;
         }
     }
 
-    private static string Sanitize(string name)
-    {
-        if (string.IsNullOrWhiteSpace(name))
-        {
+    private static string Sanitize(string name) {
+        if (string.IsNullOrWhiteSpace(name)) {
             return "account";
         }
+
         var chars = name.Select(c => char.IsLetterOrDigit(c) ? c : '_').ToArray();
         return new string(chars);
     }
+
 }

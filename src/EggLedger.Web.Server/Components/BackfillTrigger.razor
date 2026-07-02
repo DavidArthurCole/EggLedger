@@ -5,13 +5,16 @@
    optionally: in dev / no-DB there is no backfill service, so this is a no-op. *@
 
 @code {
-    protected override async Task OnInitializedAsync()
-    {
-        if (Services.GetService(typeof(FirstLoginBackfill)) is FirstLoginBackfill backfill)
-        {
+
+    protected override async Task OnInitializedAsync() {
+        if (Services.GetService(typeof(FirstLoginBackfill)) is FirstLoginBackfill backfill) {
             // Never block the UI on backfill; manual restore stays available.
-            try { await backfill.RunIfNeededAsync(); }
-            catch { }
+            try {
+                await backfill.RunIfNeededAsync();
+            }
+            catch {
+            }
         }
     }
+
 }
