@@ -21,16 +21,24 @@ public sealed class PhotinoDesktopWindow : IDesktopWindow {
     }
 
     /// <summary>
-    /// MANUAL-VERIFY: Photino native save dialog filtered to JSON. Returns null on cancel.
+    /// MANUAL-VERIFY: Photino native save dialog, filtered to defaultName's extension. Returns null on cancel.
     /// </summary>
     public string? ShowSaveFileDialog(string defaultName) {
+        string ext = Path.GetExtension(defaultName).TrimStart('.');
         var filters = new (string Name, string[] Extensions)[]
         {
-            ("JSON files", ["json"]),
+            (FilterName(ext), [ext]),
         };
         var chosen = Window.ShowSaveFile("Save As", defaultName, filters);
         return string.IsNullOrEmpty(chosen) ? null : chosen;
     }
+
+    private static string FilterName(string ext) => ext.ToUpperInvariant() switch {
+        "CSV" => "CSV files",
+        "XLSX" => "Excel files",
+        "JSON" => "JSON files",
+        _ => $"{ext.ToUpperInvariant()} files",
+    };
 
     public void ExitProcess() => Environment.Exit(0);
 

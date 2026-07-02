@@ -100,7 +100,8 @@ public sealed class MissionQueryHandlers {
 
     /// <summary>
     /// Port of GetAllPlayerDrops. Maps missionId to drops from pre-extracted drop rows.
-    /// Null on store error.
+    /// Seeded with every stored mission id (zero-drop missions get an empty list) so
+    /// callers counting dictionary entries get the true mission count. Null on store error.
     /// </summary>
     public async Task<Dictionary<string, List<MissionDrop>>?> GetAllPlayerDropsAsync(string playerId) {
         // Read pre-extracted drop rows instead of re-decoding every mission. In the
@@ -110,8 +111,15 @@ public sealed class MissionQueryHandlers {
         if (stored is null) {
             return null;
         }
+        var missionIds = await _store.GetCompleteMissionIdsAsync(playerId);
+        if (missionIds is null) {
+            return null;
+        }
 
         var result = new Dictionary<string, List<MissionDrop>>();
+        foreach (var id in missionIds) {
+            result[id] = [];
+        }
         foreach (var d in stored) {
             var spec = new ArtifactSpec {
                 name = (ArtifactSpec.Name)d.ArtifactId,

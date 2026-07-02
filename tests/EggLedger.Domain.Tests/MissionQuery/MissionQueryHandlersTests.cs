@@ -231,6 +231,7 @@ public class MissionQueryHandlersTests {
         // Stored drop rows (no decode): m1 = one fragment; m2 = gold + fragment.
         int frag = (int)ArtifactSpec.Name.TachyonStoneFragment;
         int gold = (int)ArtifactSpec.Name.GoldMeteorite;
+        store.CompleteMissionIds = ["m1", "m2"];
         store.StoredDrops["p"] =
         [
             new StoredDrop("m1", frag, 0, 0),
@@ -252,6 +253,7 @@ public class MissionQueryHandlersTests {
     [Fact]
     public async Task GetAllPlayerDrops_NoStoredDropsGivesEmptyMap() {
         var (h, store, _) = NewSut();
+        store.CompleteMissionIds = [];
         store.StoredDrops["p"] = [];
 
         var got = await h.GetAllPlayerDropsAsync("p");
@@ -261,9 +263,36 @@ public class MissionQueryHandlersTests {
     }
 
     [Fact]
+    public async Task GetAllPlayerDrops_ZeroDropMissionsAreSeededWithEmptyList() {
+        var (h, store, _) = NewSut();
+        // m1 has a drop; m2 completed with zero drops and so never wrote a row to
+        // StoredDrops, but it must still count as a mission (the "59 missing lifetime
+        // missions" bug: dropsByMission.Count silently excluded zero-drop missions).
+        int frag = (int)ArtifactSpec.Name.TachyonStoneFragment;
+        store.CompleteMissionIds = ["m1", "m2"];
+        store.StoredDrops["p"] = [new StoredDrop("m1", frag, 0, 0)];
+
+        var got = await h.GetAllPlayerDropsAsync("p");
+
+        Assert.NotNull(got);
+        Assert.Equal(2, got!.Count);
+        Assert.Single(got["m1"]);
+        Assert.Empty(got["m2"]);
+    }
+
+    [Fact]
     public async Task GetAllPlayerDrops_NullOnStoreError() {
         var (h, _, _) = NewSut();
         // No StoredDrops entry -> fake returns null -> handler returns null.
+        Assert.Null(await h.GetAllPlayerDropsAsync("p"));
+    }
+
+    [Fact]
+    public async Task GetAllPlayerDrops_NullMissionIds_NullOnStoreError() {
+        var (h, store, _) = NewSut();
+        store.StoredDrops["p"] = [];
+        store.CompleteMissionIds = null;
+
         Assert.Null(await h.GetAllPlayerDropsAsync("p"));
     }
 }
