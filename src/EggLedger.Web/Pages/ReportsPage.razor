@@ -26,11 +26,22 @@
                 @foreach (var g in _groups)
                 {
                     <div class="relative flex items-center">
-                        <button type="button"
-                                class="text-sm px-4 py-1.5 rounded-full transition-colors @(_selectedGroup == g.Id ? "bg-indigo-700 text-white" : "text-gray-400 hover:text-gray-200")"
-                                @onclick="() => SelectGroup(g.Id)">@g.Name</button>
+                        @if (_editMode && _renamingGroupId == g.Id)
+                        {
+                            <input class="text-sm px-2 py-1 rounded bg-darker border border-gray-600 text-gray-200 focus:outline-none focus:border-blue-500 w-28"
+                                   @bind="_renameGroupName" @bind:event="oninput"
+                                   @onkeydown="e => RenameKeyDown(e, g.Id)" @onblur="() => CommitRenameAsync(g.Id)" @onclick:stopPropagation autofocus />
+                        }
+                        else
+                        {
+                            <button type="button"
+                                    class="text-sm px-4 py-1.5 rounded-full transition-colors @(_selectedGroup == g.Id ? "bg-indigo-700 text-white" : "text-gray-400 hover:text-gray-200")"
+                                    @onclick="() => SelectGroup(g.Id)">@g.Name</button>
+                        }
                         @if (_editMode)
                         {
+                            <button type="button" class="text-gray-600 hover:text-gray-300 text-xs px-0.5" title="Rename group"
+                                    @onclick:stopPropagation @onclick="() => StartRename(g)">&#9998;</button>
                             <button type="button" class="text-gray-600 hover:text-red-400 text-sm" title="Delete group"
                                     @onclick:stopPropagation @onclick="() => DeleteGroupAsync(g.Id)">&#215;</button>
                         }
@@ -52,12 +63,14 @@
                     <button type="button"
                             class="text-sm px-3 py-1.5 rounded border @(_editMode ? "border-indigo-500 text-indigo-400" : "border-gray-700 text-gray-600 hover:text-gray-400")"
                             @onclick="() => _editMode = !_editMode">@(_editMode ? "Done" : "Edit")</button>
+                    <button type="button" class="text-sm px-3 py-1.5 rounded border border-gray-700 text-gray-500 hover:text-gray-300" @onclick="ExportAllAsync">Export All</button>
+                    <button type="button" class="text-sm px-3 py-1.5 rounded border border-gray-700 text-gray-500 hover:text-gray-300" @onclick="ImportAsync">Import</button>
                     <button type="button" class="text-sm px-3 py-1.5 rounded border border-gray-700 text-gray-500 hover:text-gray-300" @onclick="OpenCreate">+ New Report</button>
                 </div>
             </div>
 
             <ReportGrid @ref="_grid" AccountId="@Active.ActiveAccountId" GroupFilter="@_selectedGroup"
-                        EditMode="_editMode" OnEdit="OpenEdit" />
+                        EditMode="_editMode" Groups="_groups" OnEdit="OpenEdit" />
         </div>
     }
 </section>
@@ -74,6 +87,8 @@
     private bool _showNewGroup;
     private string _newGroupName = "";
     private string _loadedAccount = "";
+    private string? _renamingGroupId;
+    private string _renameGroupName = "";
 
     protected override void OnInitialized()
     {
@@ -172,6 +187,45 @@
             await _grid.ReloadAsync();
         }
     }
+
+    private void StartRename(ReportGroupRow g)
+    {
+        _renamingGroupId = g.Id;
+        _renameGroupName = g.Name;
+    }
+
+    private async Task RenameKeyDown(KeyboardEventArgs e, string groupId)
+    {
+        if (e.Key == "Enter")
+        {
+            await CommitRenameAsync(groupId);
+        }
+        else if (e.Key == "Escape")
+        {
+            _renamingGroupId = null;
+        }
+    }
+
+    private async Task CommitRenameAsync(string groupId)
+    {
+        if (_renamingGroupId != groupId)
+        {
+            return;
+        }
+        _renamingGroupId = null;
+        var name = _renameGroupName.Trim();
+        var existing = _groups.FirstOrDefault(g => g.Id == groupId);
+        if (existing is null || name.Length == 0 || name == existing.Name)
+        {
+            return;
+        }
+        await Store.UpdateReportGroupAsync(existing with { Name = name });
+        await LoadGroupsAsync();
+    }
+
+    private Task ExportAllAsync() => _grid?.ExportAllAsync() ?? Task.CompletedTask;
+
+    private Task ImportAsync() => _grid?.ImportAsync() ?? Task.CompletedTask;
 
     public void Dispose()
     {

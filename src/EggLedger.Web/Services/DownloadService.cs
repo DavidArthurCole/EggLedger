@@ -20,6 +20,16 @@ public sealed class DownloadService(IJSRuntime js) : IDownloadService, IAsyncDis
     public async ValueTask DownloadXlsxAsync(IReadOnlyList<Mission> missions, string filename)
         => await DownloadAsync(MissionExport.MissionsToXlsxBytes(missions), filename, XlsxMime);
 
+    public async ValueTask DownloadJsonAsync(string json, string filename) {
+        var module = await ModuleAsync();
+        await module.InvokeVoidAsync("downloadText", filename, json, "application/json");
+    }
+
+    public async ValueTask<string?> PickJsonFileAsync() {
+        var module = await ModuleAsync();
+        return await module.InvokeAsync<string?>("pickTextFile", ".json,application/json");
+    }
+
     private async ValueTask DownloadAsync(byte[] bytes, string filename, string mime) {
         var module = await ModuleAsync();
         await module.InvokeVoidAsync("download", filename, Convert.ToBase64String(bytes), mime);

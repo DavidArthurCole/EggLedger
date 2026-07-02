@@ -25,14 +25,17 @@ else
                                   LabelColors="@Def.LabelColors" NormalizeBy="NormalizeOr" />
             break;
         case "pie":
-            <ReportPieChart Result="Result" Color="ColorOr" LabelColors="@Def.LabelColors" />
+            <ReportPieChart Result="FilteredResult" Color="ColorOr" LabelColors="@Def.LabelColors" />
             break;
         case "line":
-            <ReportLineChart Result="Result" Color="ColorOr"
+            <ReportLineChart Result="FilteredResult" Color="ColorOr"
                              UnitLabel="@NormalizeLabel" ChartType="@Def.ChartType" />
             break;
+        case "grid":
+            <ReportGridTable Result="FilteredResult" UnitLabel="@NormalizeLabel" />
+            break;
         default:
-            <ReportBarChart Result="Result" Color="ColorOr" UnitLabel="@NormalizeLabel"
+            <ReportBarChart Result="FilteredResult" Color="ColorOr" UnitLabel="@NormalizeLabel"
                             LabelColors="@Def.LabelColors" ChartType="@Def.ChartType" />
             break;
     }
@@ -45,17 +48,22 @@ else
     public ReportResult Result { get; set; } = new();
 
     private bool IsEmpty =>
-        Result.Labels.Count == 0
+        FilteredResult.Labels.Count == 0
         && Result.RowLabels.Count == 0
         && Result.MatrixValues.Count == 0;
 
     private string ColorOr => string.IsNullOrEmpty(Def.Color) ? "#6366f1" : Def.Color;
     private string NormalizeOr => string.IsNullOrEmpty(Def.NormalizeBy) ? "none" : Def.NormalizeBy;
 
+    // 1D display modes (bar/line/pie) apply the value filter client-side; 2D modes
+    // (heatmap/grouped_bar/multi_line) ignore it (ValueFilter.Apply is a no-op on Is2D).
+    private ReportResult FilteredResult => ValueFilter.Apply(Result, Def.ValueFilterOp, Def.ValueFilterThreshold);
+
     private string? NormalizeLabel => Def.NormalizeBy switch
     {
         "row_pct" or "col_pct" or "global_pct" => "%",
-        "per_mission" => "per mission",
+        "launches" => "per launch",
+        "airtime" => "per flight hour",
         _ => null,
     };
 }

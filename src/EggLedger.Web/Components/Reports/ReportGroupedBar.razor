@@ -5,7 +5,7 @@
 @* Grouped horizontal bars over a 2D result: each row heads a stack of per-column bars,
    with an "Other" rollup once columns exceed MaxCols. Legend drag-reorder deferred. *@
 
-<div class="h-full flex flex-col gap-1 overflow-auto">
+<div class="chart-rows h-full flex flex-col gap-1 overflow-auto">
     @{
         var cols = DisplayCols();
         var colors = ColColors(cols);
@@ -23,9 +23,9 @@
                     if (raw > 0)
                     {
                         <div class="flex items-center gap-1">
-                            <div class="h-3 rounded-sm transition-all"
+                            <div class="chart-hit h-3 rounded-sm"
                                  style="width: @BarWidth(raw, max)%; background-color: @colors[cIdx]; min-width: 2px; cursor: pointer;"
-                                 title="@cols[cIdx] @row: @CellLabel(raw)">
+                                 data-tt="@($"{cols[cIdx]}\n{row}: {CellLabel(raw)}")">
                             </div>
                             <span class="text-xs text-gray-500 shrink-0">@CellLabel(raw)</span>
                         </div>

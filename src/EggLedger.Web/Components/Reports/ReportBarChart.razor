@@ -4,15 +4,15 @@
 @* Horizontal bar chart (CSS-width bars), sortable by chart_type (bar_desc / bar_asc).
    Colors come from per-label overrides or the base color. *@
 
-<div class="w-full h-full grid gap-x-2 gap-y-1 overflow-y-auto pr-3"
+<div class="chart-rows w-full h-full grid gap-x-2 gap-y-1 overflow-y-auto pr-3"
      style="grid-template-columns: max-content 1fr max-content; align-content: start;">
     @foreach (var pair in SortedPairs())
     {
         <span class="text-gray-400 text-xs text-right self-center leading-tight" style="max-width: 9rem;" title="@pair.Label">@pair.Label</span>
         <div class="bg-gray-800 rounded-sm h-4 min-w-0 self-center">
-            <div class="h-4 rounded-sm"
+            <div class="h-4 rounded-sm chart-hit"
                  style="width: @BarWidth(pair.Value)%; background-color: @BarColor(pair.Label); cursor: pointer;"
-                 title="@BarTitle(pair.Label, pair.Value)">
+                 data-tt="@BarTitle(pair.Label, pair.Value)">
             </div>
         </div>
         <span class="text-gray-300 font-mono text-xs text-right self-center">@FormatValue(pair.Value)</span>
@@ -66,7 +66,7 @@
         ParsedColors.TryGetValue(label, out var c) && !string.IsNullOrEmpty(c) ? c : Color;
 
     private string BarTitle(string label, double value) =>
-        $"{label}: {FormatValue(value)}{UnitSuffix}";
+        $"{label}\n{FormatValue(value)}{UnitSuffix}";
 
     private string FormatValue(double val) =>
         Result.IsFloat

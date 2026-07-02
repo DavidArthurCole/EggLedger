@@ -32,6 +32,16 @@
                               stroke="@colors[s]" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
                 }
 
+                @for (int s = 0; s < seriesPoints.Count; s++)
+                {
+                    var seriesName = s < Result.ColLabels.Count ? Result.ColLabels[s] : "";
+                    @foreach (var p in seriesPoints[s])
+                    {
+                        <circle class="chart-hit" cx="@Fmt(p.X)" cy="@Fmt(p.Y)" r="6" fill="transparent"
+                                style="cursor: pointer;" data-tt="@PointTip(seriesName, p)" />
+                    }
+                }
+
                 @foreach (var p in LabeledPoints(seriesPoints))
                 {
                     @XLabelText(p)
@@ -167,6 +177,15 @@
         string label = Esc(ChartGeometry.FormatXLabel(p.Label));
         return new MarkupString(
             $"<text transform=\"translate({tx}, {ty}) rotate(-45)\" text-anchor=\"end\" style=\"font-size: 10px; fill: #6b7280;\">{label}</text>");
+    }
+
+    private string PointTip(string series, ChartPoint p)
+    {
+        string val = IsPct
+            ? p.Value.ToString("0.0", CultureInfo.InvariantCulture) + "%"
+            : (Result.IsFloat ? p.Value.ToString("0.00", CultureInfo.InvariantCulture)
+                              : Math.Round(p.Value).ToString(CultureInfo.InvariantCulture));
+        return $"{series}\n{p.Label}: {val}";
     }
 
     private static string PolyPoints(List<ChartPoint> pts) =>

@@ -8,6 +8,9 @@
 #   docker build --secret id=github_token,env=GITHUB_PACKAGES_PAT -t eggledger:latest .
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
+# Release version from the git tag (falls back to the Directory.Build.props default). Stamped
+# into InformationalVersion so the app footer shows the real beta, not the bare 3.0.0 default.
+ARG EGGLEDGER_VERSION
 COPY global.json nuget.config Directory.Build.props .editorconfig EggLedger.slnx ./
 COPY src/ src/
 # Inject the GitHub Packages credential for restore only (never baked into a layer): rewrite
@@ -18,7 +21,8 @@ RUN --mount=type=secret,id=github_token \
       --password "$(cat /run/secrets/github_token)" \
       --store-password-in-clear-text \
       --configfile nuget.config \
-    && dotnet publish src/EggLedger.Web.Server/EggLedger.Web.Server.csproj -c Release -o /app
+    && dotnet publish src/EggLedger.Web.Server/EggLedger.Web.Server.csproj -c Release -o /app \
+      ${EGGLEDGER_VERSION:+-p:EggLedgerVersion=$EGGLEDGER_VERSION}
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 # Npgsql probes GSSAPI/Kerberos at connect; the slim image lacks the lib (logs a load error

@@ -27,7 +27,7 @@
                         var cell = Cell(r, c);
                         <td class="text-center px-1 py-0.5 transition-[filter] hover:brightness-[1.4]"
                             style="background-color: @cell.Style.BackgroundColor; color: @cell.Style.Color; cursor: pointer;"
-                            title="@Result.ColLabels[c] @Result.RowLabels[r]: @cell.Display">
+                            data-tt="@($"{Result.RowLabels[r]}\n{Result.ColLabels[c]}: {cell.Display}")">
                             <div class="leading-none">@cell.Display</div>
                             @if (SecondaryValues is not null)
                             {

@@ -48,9 +48,9 @@
 
             @foreach (var p in pts)
             {
-                <circle cx="@Fmt(p.X)" cy="@Fmt(p.Y)" r="2.5" fill="@Color" style="cursor: pointer;">
-                    <title>@p.Label: @FormatValue(p.Value)@UnitSuffix</title>
-                </circle>
+                <circle cx="@Fmt(p.X)" cy="@Fmt(p.Y)" r="2.5" fill="@Color" />
+                <circle class="chart-hit" cx="@Fmt(p.X)" cy="@Fmt(p.Y)" r="7" fill="transparent"
+                        style="cursor: pointer;" data-tt="@PointTip(p)" />
             }
         </svg>
     }
@@ -102,6 +102,8 @@
         Result.IsFloat
             ? v.ToString("0.00", CultureInfo.InvariantCulture)
             : Math.Round(v).ToString(CultureInfo.InvariantCulture);
+
+    private string PointTip(ChartPoint p) => $"{p.Label}\n{FormatValue(p.Value)}{UnitSuffix}";
 
     private static string Fmt(double v) => v.ToString("0.###", CultureInfo.InvariantCulture);
     private static string Esc(string s) => ChartGeometry.EscapeText(s);

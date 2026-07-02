@@ -5,15 +5,15 @@
 @* Pie chart; slice geometry and colors from PieGeometry. Connector-line callouts are
    simplified to a compact legend beneath the pie. *@
 
-<div class="w-full h-full flex items-center justify-center gap-2">
+<div class="chart-rows w-full h-full flex items-center justify-center gap-2">
     <svg viewBox="0 0 @Vw @Vh" preserveAspectRatio="xMidYMid meet" class="h-full" style="max-width: 60%; aspect-ratio: 1 / 1;">
         @{
             var slices = Slices();
         }
         @foreach (var seg in slices)
         {
-            <path d="@seg.Path" fill="@seg.Color" style="cursor: pointer; transition: opacity 0.1s;">
-                <title>@seg.Label: @FormatVal(seg.Value) (@seg.Pct.ToString("0.0", CultureInfo.InvariantCulture)%)</title>
+            <path class="chart-hit" d="@seg.Path" fill="@seg.Color" style="cursor: pointer;"
+                  data-tt="@SliceTip(seg)">
             </path>
         }
     </svg>
@@ -58,4 +58,7 @@
         Result.IsFloat
             ? v.ToString("0.00", CultureInfo.InvariantCulture)
             : ((long)v).ToString(CultureInfo.InvariantCulture);
+
+    private string SliceTip(PieSlice seg) =>
+        $"{seg.Label}\n{FormatVal(seg.Value)} ({seg.Pct.ToString("0.0", CultureInfo.InvariantCulture)}%)";
 }

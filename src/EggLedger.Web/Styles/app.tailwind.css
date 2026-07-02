@@ -576,3 +576,105 @@ input[type=number] {
 .dismiss-btn {
   @apply p-0_75rem text-blue-500 border border-blue-500 rounded-md;
 }
+
+/* Report chart hover affordance: the hovered bar/segment/cell stays full opacity, the rest
+   of the chart dims. The JS tooltip (reportChartTooltip.js) reads data-tt off the same node. */
+.chart-hit {
+  transition: opacity 0.12s, filter 0.12s;
+}
+
+.chart-rows:hover .chart-hit {
+  opacity: 0.4;
+}
+
+.chart-rows .chart-hit:hover {
+  opacity: 1;
+}
+
+.report-tooltip {
+  z-index: 10000;
+}
+
+/* Floating GitHub link, fixed lower-right on every page. */
+.gh-bubble {
+  @apply fixed bottom-4 right-4 z-[900] w-11 h-11 inline-flex items-center justify-center
+         rounded-full bg-dark border border-gray-600 text-gray-400 no-underline;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .35);
+  transition: color .12s, border-color .12s, transform .12s;
+}
+
+.gh-bubble:hover {
+  @apply text-gray-200 border-blue-500;
+  transform: translateY(-2px);
+}
+
+.gh-bubble svg {
+  @apply w-6 h-6;
+}
+
+/* Support bubble: a second float above the GitHub one; hover reveals a compact card. */
+.support-bubble-wrap {
+  @apply fixed right-4 bottom-[4.5rem] z-[900];
+}
+
+.support-bubble {
+  @apply w-11 h-11 inline-flex items-center justify-center rounded-full bg-dark border border-gray-600
+         text-gray-400 cursor-pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .35);
+  transition: color .12s, border-color .12s, transform .12s;
+}
+
+.support-bubble:hover {
+  @apply text-blue-500 border-blue-500;
+  transform: translateY(-2px);
+}
+
+.support-bubble svg {
+  @apply w-6 h-6;
+}
+
+.support-pop {
+  @apply absolute bottom-0 right-full mr-2 w-72 p-3 rounded-lg bg-darkerer border border-gray-600
+         opacity-0 invisible translate-y-1 pointer-events-none;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .45);
+  transition: opacity .12s, transform .12s, visibility .12s;
+}
+
+/* Invisible bridge over the gap so moving the cursor into the card never drops the hover. */
+.support-pop::after {
+  content: "";
+  @apply absolute top-0 bottom-0 left-full w-3;
+}
+
+.support-bubble-wrap:hover .support-pop,
+.support-pop:hover {
+  @apply opacity-100 visible translate-y-0 pointer-events-auto;
+}
+
+.support-pop-head {
+  @apply text-sm font-semibold text-gray-200 mb-1;
+}
+
+.support-pop-lede {
+  @apply text-xs text-gray-400 leading-snug m-0 mb-2.5;
+}
+
+.support-pop-rails {
+  @apply flex flex-col gap-1.5 mb-2.5;
+}
+
+.support-pop-rail {
+  @apply block px-2.5 py-1.5 rounded-md bg-dark border border-gray-600 text-sm text-gray-200 no-underline;
+}
+
+.support-pop-rail:hover {
+  @apply border-blue-500;
+}
+
+.support-pop-more {
+  @apply text-xs text-blue-500 no-underline;
+}
+
+.support-pop-more:hover {
+  @apply underline;
+}
