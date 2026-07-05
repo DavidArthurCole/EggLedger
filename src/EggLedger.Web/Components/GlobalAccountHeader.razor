@@ -1,7 +1,9 @@
 @using EggLedger.Domain.MissionQuery
+@using EggLedger.Web.Data
 @implements IDisposable
 @inject ActiveAccount Active
 @inject AppStateService AppStateSvc
+@inject AccountLoader Loader
 
 <div class="relative">
     <button type="button"
@@ -37,16 +39,20 @@
                     </span>
                 </li>
             }
-            @if (Accounts.Count == 0) {
-                <li class="px-3 py-2.5 text-gray-500 italic">No known accounts yet</li>
-            }
+            <li class="px-3 py-2 text-center text-privacy_blue hover:bg-darker transition-colors cursor-pointer"
+                @onclick="OpenAddDialog">
+                + Add Account
+            </li>
         </ul>
     }
 </div>
 
+<AddAccountDialog @ref="_addDialog" Added="OnAccountAdded"/>
+
 @code {
     private bool _open;
     private KnownAccount? _active;
+    private AddAccountDialog? _addDialog;
 
     private IReadOnlyList<KnownAccount> Accounts =>
         AppStateSvc.KnownAccounts;
@@ -73,6 +79,16 @@
     private void Select(string id) {
         Active.SetActive(id);
         _open = false;
+    }
+
+    private void OpenAddDialog() {
+        _open = false;
+        _addDialog?.Open();
+    }
+
+    private async Task OnAccountAdded(AccountInfo account) {
+        await Loader.RefreshAsync();
+        Active.SetActive(account.Id);
     }
 
     public void Dispose() {

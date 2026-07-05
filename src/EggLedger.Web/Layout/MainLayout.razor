@@ -9,6 +9,7 @@
 @inject AdminState AdminState
 @inject AdminService Admin
 @inject CloudSessionStore SessionStore
+@inject AccountLoader Loader
 
 <div class="h-full flex flex-col space-y-3 pb-3 bg-darker">
     <TabBar Tabs="Tabs">
@@ -59,6 +60,10 @@
     protected override async Task OnInitializedAsync() {
         AdminState.Changed += OnAdminChanged;
         AppStateSvc.AppVersion = AppVersionInfo.Current;
+
+        // Load once per circuit here (not per-page) so the active account is set
+        // regardless of which tab the user lands on first.
+        await Loader.EnsureLoadedAsync();
 
         // Seed the shared mask-EID toggle so masking components reflect it on first render.
         var settings = await Settings.GetAllSettingsAsync();
