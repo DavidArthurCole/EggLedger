@@ -23,5 +23,5 @@ public sealed class CurrentUser(AuthenticationStateProvider auth) {
     public async Task<string> RequireAsync() =>
         await GetDiscordIdAsync().ConfigureAwait(false)
         ?? throw new InvalidOperationException(
-            "storage accessed without an authenticated Discord principal; the data UI must be gated behind authentication");
+            "your session has expired. Please refresh the page and log in with Discord again");
 }

@@ -99,9 +99,12 @@ public sealed class HandshakeListener : IDisposable {
     public void Dispose() {
         _cts?.Cancel();
         _cts?.Dispose();
-        if (_listener.IsListening) {
-            _listener.Stop();
+        // Close() alone stops + deregisters the prefix; calling Stop() first double-removes
+        // it from the managed HttpListener's static EndPointManager on Linux, throwing
+        // "Address already in use" if another listener has since claimed the port.
+        try {
+            _listener.Close();
+        } catch (HttpListenerException) {
         }
-        _listener.Close();
     }
 }
