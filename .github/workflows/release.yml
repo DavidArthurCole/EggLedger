@@ -9,9 +9,18 @@ permissions:
   packages: write
 
 jobs:
+  # Create the release once up front so the per-RID matrix jobs below only ever attach
+  # assets to an existing release, instead of racing each other to create it (which hit
+  # "Validation Failed: already_exists" when multiple matrix jobs finished close together).
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: softprops/action-gh-release@v3
+
   # Desktop builds per RID. Asset names must match GithubReleaseClient.ExpectedAssetName().
   desktop:
     name: Desktop (${{ matrix.rid }})
+    needs: create-release
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
