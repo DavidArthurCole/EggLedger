@@ -84,8 +84,14 @@ ALTER TABLE users ALTER COLUMN discord_id DROP DEFAULT;
 UPDATE users SET discord_id = NULL WHERE discord_id = '';
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_discord_id ON users(discord_id) WHERE discord_id IS NOT NULL;
 
-ALTER TABLE sessions ADD CONSTRAINT sessions_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE;
-ALTER TABLE blobs ADD CONSTRAINT blobs_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE;
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'sessions_user_id_fkey') THEN
+        ALTER TABLE sessions ADD CONSTRAINT sessions_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'blobs_user_id_fkey') THEN
+        ALTER TABLE blobs ADD CONSTRAINT blobs_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE;
+    END IF;
+END $$;
 
 -- Every write path (PostgresIndexedDb, AuthEndpoints, BlobEndpoints) now inserts user_id only
 -- and never sets discord_id, so the old discord_id NOT NULL constraints and discord_id-keyed
