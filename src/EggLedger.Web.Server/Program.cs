@@ -68,11 +68,16 @@ if (hasDb) {
             o.XmlRepository = new EggLedger.Web.Server.Auth.PostgresXmlRepository(dataSource));
 
     // Cert-encrypt the keyring at rest so a raw Postgres dump doesn't leak usable keys.
-    // Prod cert provisioning happens separately, so a missing cert only warns, never crashes.
+    // Prod cert provisioning happens separately, so a missing/unreadable cert only warns,
+    // never crashes boot - losing at-rest encryption is recoverable, a crash loop isn't.
     if (!string.IsNullOrEmpty(cfg.DataProtectionCertPath)) {
-        var cert = System.Security.Cryptography.X509Certificates.X509CertificateLoader.LoadPkcs12FromFile(
-            cfg.DataProtectionCertPath, cfg.DataProtectionCertPassword);
-        dp.ProtectKeysWithCertificate(cert);
+        try {
+            var cert = System.Security.Cryptography.X509Certificates.X509CertificateLoader.LoadPkcs12FromFile(
+                cfg.DataProtectionCertPath, cfg.DataProtectionCertPassword);
+            dp.ProtectKeysWithCertificate(cert);
+        } catch (Exception ex) {
+            Console.Error.WriteLine($"eggledger: WARNING - failed to load DataProtection cert from {cfg.DataProtectionCertPath}: {ex.Message}. DataProtection keyring is stored unencrypted in Postgres.");
+        }
     } else {
         Console.Error.WriteLine("eggledger: WARNING - DATA_PROTECTION_CERT_PATH not set. DataProtection keyring is stored unencrypted in Postgres.");
     }
