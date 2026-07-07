@@ -3,6 +3,7 @@ using EggLedger.Web.Data;
 using EggLedger.Web.Server.Components;
 using EggLedger.Web.Server.Sync;
 using EggLedger.Web.Services;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -52,6 +53,17 @@ var authBuilder = builder.Services.AddAuthentication(EggLedger.Web.Server.Auth.A
         o.Cookie.SecurePolicy = CookieSecurePolicy.Always;
         o.ExpireTimeSpan = TimeSpan.FromDays(30);
         o.SlidingExpiration = true;
+        // A cookie can decrypt fine but carry a stale/unparseable user_id claim (e.g. after
+        // a user_id migration or DB reset) - reject it here so the request is treated as
+        // unauthenticated before a Blazor circuit ever starts, instead of crashing the
+        // circuit deep inside a write path (CurrentUser.RequireUserIdAsync).
+        o.Events.OnValidatePrincipal = async ctx => {
+            var claim = ctx.Principal?.FindFirst(EggLedger.Web.Server.Auth.AuthScheme.UserIdClaim)?.Value;
+            if (!Guid.TryParse(claim, out _)) {
+                ctx.RejectPrincipal();
+                await ctx.HttpContext.SignOutAsync(EggLedger.Web.Server.Auth.AuthScheme.Cookie);
+            }
+        };
     });
 builder.Services.AddAuthorization();
 builder.Services.AddCascadingAuthenticationState();

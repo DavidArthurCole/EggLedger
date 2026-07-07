@@ -148,9 +148,25 @@ ALTER TABLE el_reports ALTER COLUMN discord_id DROP NOT NULL;
 ALTER TABLE el_report_groups DROP CONSTRAINT IF EXISTS el_report_groups_pkey;
 ALTER TABLE el_report_groups ALTER COLUMN discord_id DROP NOT NULL;
 
-ALTER TABLE blobs ADD PRIMARY KEY USING INDEX idx_blobs_user_name;
-ALTER TABLE el_mission ADD PRIMARY KEY USING INDEX idx_el_mission_user_player_mission;
-ALTER TABLE el_backup ADD PRIMARY KEY USING INDEX idx_el_backup_user_player;
-ALTER TABLE el_settings ADD PRIMARY KEY USING INDEX idx_el_settings_user_key;
-ALTER TABLE el_reports ADD PRIMARY KEY USING INDEX idx_el_reports_user_id;
-ALTER TABLE el_report_groups ADD PRIMARY KEY USING INDEX idx_el_report_groups_user_id;
+-- ADD PRIMARY KEY USING INDEX has no IF NOT EXISTS form, so each is guarded against a
+-- prior partial run having already promoted the index to a PK.
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'blobs'::regclass AND contype = 'p') THEN
+        ALTER TABLE blobs ADD PRIMARY KEY USING INDEX idx_blobs_user_name;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'el_mission'::regclass AND contype = 'p') THEN
+        ALTER TABLE el_mission ADD PRIMARY KEY USING INDEX idx_el_mission_user_player_mission;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'el_backup'::regclass AND contype = 'p') THEN
+        ALTER TABLE el_backup ADD PRIMARY KEY USING INDEX idx_el_backup_user_player;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'el_settings'::regclass AND contype = 'p') THEN
+        ALTER TABLE el_settings ADD PRIMARY KEY USING INDEX idx_el_settings_user_key;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'el_reports'::regclass AND contype = 'p') THEN
+        ALTER TABLE el_reports ADD PRIMARY KEY USING INDEX idx_el_reports_user_id;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'el_report_groups'::regclass AND contype = 'p') THEN
+        ALTER TABLE el_report_groups ADD PRIMARY KEY USING INDEX idx_el_report_groups_user_id;
+    END IF;
+END $$;
