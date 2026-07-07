@@ -73,9 +73,16 @@ ALTER TABLE el_report_groups ALTER COLUMN user_id SET NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_el_report_groups_user_id ON el_report_groups(user_id, id);
 
 -- Drop the discord_id-referencing FKs before repointing the users PK: Postgres refuses to
--- drop users_pkey while sessions/blobs still reference it via their discord_id FK.
+-- drop users_pkey while sessions/blobs/el_* still reference it via their discord_id FK
+-- (sessions/blobs from migration 1, the six el_* FKs from migration 7).
 ALTER TABLE sessions DROP CONSTRAINT IF EXISTS sessions_discord_id_fkey;
 ALTER TABLE blobs DROP CONSTRAINT IF EXISTS blobs_discord_id_fkey;
+ALTER TABLE el_mission DROP CONSTRAINT IF EXISTS fk_el_mission_discord_id;
+ALTER TABLE el_backup DROP CONSTRAINT IF EXISTS fk_el_backup_discord_id;
+ALTER TABLE el_artifact_drops DROP CONSTRAINT IF EXISTS fk_el_artifact_drops_discord_id;
+ALTER TABLE el_settings DROP CONSTRAINT IF EXISTS fk_el_settings_discord_id;
+ALTER TABLE el_reports DROP CONSTRAINT IF EXISTS fk_el_reports_discord_id;
+ALTER TABLE el_report_groups DROP CONSTRAINT IF EXISTS fk_el_report_groups_discord_id;
 
 ALTER TABLE users DROP CONSTRAINT IF EXISTS users_pkey;
 ALTER TABLE users ADD PRIMARY KEY (user_id);
