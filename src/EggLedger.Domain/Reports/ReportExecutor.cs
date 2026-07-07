@@ -140,7 +140,8 @@ public sealed class ReportExecutor {
                 var nC = f.ColLabels.Count;
                 for (var r = 0; r < f.RowLabels.Count; r++) {
                     for (var c = 0; c < nC; c++) {
-                        if (TryDenom(denomMap, f.RowLabels[r], f.ColLabels[c], out var d) && d > 0) {
+                        var d = Denom(denomMap, f.RowLabels[r], f.ColLabels[c]);
+                        if (d > 0) {
                             matrixValues[(r * nC) + c] /= d;
                         }
                     }
@@ -363,7 +364,8 @@ public sealed class ReportExecutor {
                 var denomMap = Denom2D(def, col1, col2, pctMode, baseWhere, baseArgs);
                 for (var r = 0; r < rowLabels.Count; r++) {
                     for (var c = 0; c < nC; c++) {
-                        if (TryDenom(denomMap, rowLabels[r], colLabels[c], out var d) && d > 0) {
+                        var d = Denom(denomMap, rowLabels[r], colLabels[c]);
+                        if (d > 0) {
                             matrixValues[(r * nC) + c] /= d;
                         }
                     }
@@ -507,11 +509,6 @@ public sealed class ReportExecutor {
 
     private static double Denom(Dictionary<string, Dictionary<string, double>> m, string k1, string k2) =>
         m.TryGetValue(k1, out var inner) && inner.TryGetValue(k2, out var v) ? v : 0;
-
-    private static bool TryDenom(Dictionary<string, Dictionary<string, double>> m, string k1, string k2, out double v) {
-        v = Denom(m, k1, k2);
-        return true;
-    }
 
     // Stable descending sort of values in-place, mirroring Go sort.SliceStable on
     // a float slice. Equal values keep insertion order.

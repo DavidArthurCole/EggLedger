@@ -6,6 +6,7 @@ using EggLedger.Web.Services;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using Npgsql;
 using SyncKit.Auth;
 using SyncKit.Bot;
@@ -19,8 +20,12 @@ var builder = WebApplication.CreateBuilder(args);
 var cfg = AppConfig.FromEnv(Environment.GetEnvironmentVariable);
 var hasDb = !string.IsNullOrEmpty(cfg.DatabaseUrl);
 
+// Registered so components (e.g. ConnectGate) can check cfg.AuthentikAuthority to decide
+// whether to show the Authentik login option, without threading it through as a parameter.
+builder.Services.AddSingleton(cfg);
+
 builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents(o => o.DetailedErrors = true);
+    .AddInteractiveServerComponents(o => o.DetailedErrors = builder.Environment.IsDevelopment());
 
 // Behind nginx TLS termination: trust the forwarded proto/host so the app knows it is
 // HTTPS (secure cookies + correct OAuth redirect scheme). Only forwarded headers from the
@@ -39,7 +44,7 @@ builder.Services.Configure<ForwardedHeadersOptions>(o => {
 
 // Cookie auth carries the Discord identity into the Blazor circuit via the framework
 // AuthenticationStateProvider (the OAuth callback signs in; the circuit reads claims).
-builder.Services.AddAuthentication(EggLedger.Web.Server.Auth.AuthScheme.Cookie)
+var authBuilder = builder.Services.AddAuthentication(EggLedger.Web.Server.Auth.AuthScheme.Cookie)
     .AddCookie(EggLedger.Web.Server.Auth.AuthScheme.Cookie, o => {
         o.Cookie.Name = "el_session";
         o.Cookie.HttpOnly = true;
@@ -57,10 +62,26 @@ if (hasDb) {
 
     // Persist the DataProtection key ring to Postgres so cookie-auth keys survive
     // container redeploys (otherwise every deploy invalidates all sessions).
-    builder.Services.AddDataProtection()
+    var dp = builder.Services.AddDataProtection()
         .SetApplicationName("EggLedger")
         .AddKeyManagementOptions(o =>
             o.XmlRepository = new EggLedger.Web.Server.Auth.PostgresXmlRepository(dataSource));
+
+    // Cert-encrypt the keyring at rest so a raw Postgres dump doesn't leak usable keys.
+    // Prod cert provisioning happens separately, so a missing cert only warns, never crashes.
+    if (!string.IsNullOrEmpty(cfg.DataProtectionCertPath)) {
+        var cert = System.Security.Cryptography.X509Certificates.X509CertificateLoader.LoadPkcs12FromFile(
+            cfg.DataProtectionCertPath, cfg.DataProtectionCertPassword);
+        dp.ProtectKeysWithCertificate(cert);
+    } else {
+        Console.Error.WriteLine("eggledger: WARNING - DATA_PROTECTION_CERT_PATH not set. DataProtection keyring is stored unencrypted in Postgres.");
+    }
+
+    // Authentik OIDC login needs a real data source to resolve identities against; there's
+    // no meaningful OIDC login without a database to store identities in anyway (mirrors
+    // DiscordOAuth.Init below, also gated on hasDb).
+    var resolver = new EggLedger.Web.Server.Auth.AuthentikIdentityResolver(dataSource);
+    EggLedger.Web.Server.Auth.AuthentikAuth.AddIfConfigured(authBuilder, cfg, resolver);
 }
 
 // Self-origin base for the shared UI's HttpClient (in-process /api/v1 + /egg-api calls).
@@ -134,15 +155,20 @@ app.Map("/egg-api/{**rest}", async (HttpContext ctx, IHttpClientFactory factory,
 
 // Sync server endpoints (/api/v1/*). Explicit routes win over the component fallback.
 if (hasDb) {
-    var build = new VerifyInfo { Name = "EggLedger", Sha256 = "dev", Version = EggLedger.Web.AppVersionInfo.Current, Date = "dev" };
+    // Discord OAuth backs /api/v1/auth/*, which Api.Map always wires up when hasDb. Fail
+    // startup here instead of letting every auth request 500 confusingly at request time.
+    if (string.IsNullOrEmpty(cfg.DiscordClientId) || string.IsNullOrEmpty(cfg.DiscordClientSecret)) {
+        app.Logger.LogCritical("eggledger: DATABASE_URL is set but DISCORD_CLIENT_ID/DISCORD_CLIENT_SECRET are missing. Auth routes cannot function; refusing to start.");
+        throw new InvalidOperationException("Discord OAuth is not configured but a database is; set DISCORD_CLIENT_ID/DISCORD_CLIENT_SECRET or unset DATABASE_URL.");
+    }
+    DiscordOAuth.Init(cfg.DiscordClientId, cfg.DiscordClientSecret, cfg.RedirectUrl);
 
-    if (!string.IsNullOrEmpty(cfg.DiscordClientId))
-        DiscordOAuth.Init(cfg.DiscordClientId, cfg.DiscordClientSecret, cfg.RedirectUrl);
+    var build = new VerifyInfo { Name = "EggLedger", Sha256 = cfg.BuildSha, Version = EggLedger.Web.AppVersionInfo.Current, Date = cfg.BuildDate };
 
-    Console.WriteLine($"eggledger: DB configured, running migrations. selfBase={selfBase}");
+    app.Logger.LogInformation("eggledger: DB configured, running migrations. selfBase={SelfBase}", selfBase);
     var conn = await Database.InitAsync(cfg.DatabaseUrl);
     await Migrator.MigrateAsync(conn, Path.Combine(AppContext.BaseDirectory, "Migrations"));
-    Console.WriteLine("eggledger: migrations complete, /api/v1 + Postgres storage active");
+    app.Logger.LogInformation("eggledger: migrations complete, /api/v1 + Postgres storage active");
 
     if (!string.IsNullOrEmpty(cfg.BotToken)) {
         try {
@@ -158,13 +184,13 @@ if (hasDb) {
                 SharedRoleId = cfg.SharedRoleId,
             });
         } catch (Exception ex) {
-            Console.Error.WriteLine($"synckit: bot start failed, continuing: {ex.Message}");
+            app.Logger.LogWarning(ex, "synckit: bot start failed, continuing");
         }
     }
 
     Api.Map(app, cfg, build);
 } else {
-    Console.WriteLine("eggledger: WARNING - DATABASE_URL not set. /api/v1 + Postgres storage DISABLED; auth/sync will not work. UI boots only.");
+    app.Logger.LogWarning("eggledger: WARNING - DATABASE_URL not set. /api/v1 + Postgres storage DISABLED; auth/sync will not work. UI boots only.");
 }
 
 app.MapRazorComponents<AppHost>()

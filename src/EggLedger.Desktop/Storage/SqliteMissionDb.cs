@@ -24,7 +24,7 @@ public sealed class SqliteMissionDb : IMissionDb {
 
     public IReadOnlyList<object?[]> Query(string sql, IReadOnlyList<object?> args) {
         using var cmd = _connection.CreateCommand();
-        cmd.CommandText = BindPositional(sql, args, cmd);
+        cmd.CommandText = SqlPlaceholderBinder.Rewrite(sql, args, cmd, "a");
 
         var rows = new List<object?[]>();
         using var reader = cmd.ExecuteReader();
@@ -57,28 +57,5 @@ public sealed class SqliteMissionDb : IMissionDb {
         }
         // CAST(... AS TEXT) and strftime produce text; COUNT(*) is integer affinity.
         return reader.GetString(i);
-    }
-
-    // Rewrites "?" placeholders to named @aN params bound in order (the provider
-    // won't bind bare "?"). Relies on QueryBuilder never emitting a literal "?";
-    // a placeholder/arg count mismatch throws.
-    private static string BindPositional(string sql, IReadOnlyList<object?> args, SqliteCommand cmd) {
-        var result = sql;
-        var idx = 0;
-        while (true) {
-            var pos = result.IndexOf('?', StringComparison.Ordinal);
-            if (pos < 0) {
-                break;
-            }
-            var name = "@a" + idx.ToString(System.Globalization.CultureInfo.InvariantCulture);
-            result = result.Remove(pos, 1).Insert(pos, name);
-            cmd.Parameters.AddWithValue(name, idx < args.Count ? args[idx] ?? DBNull.Value : DBNull.Value);
-            idx++;
-        }
-        if (idx != args.Count) {
-            throw new InvalidOperationException(
-                $"placeholder/arg mismatch: {idx} '?' placeholders but {args.Count} args");
-        }
-        return result;
     }
 }

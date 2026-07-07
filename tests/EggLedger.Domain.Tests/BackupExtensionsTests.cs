@@ -4,16 +4,11 @@ using Ei;
 namespace EggLedger.Domain.Tests;
 
 public class BackupExtensionsTests {
-    [Fact]
-    public void Sum_Ints() {
-        var got = BackupExtensions.Sum(new[] { 1, 2, 3, 4 }, v => (double)v);
-        Assert.Equal(10.0, got);
-    }
-
-    [Fact]
-    public void Sum_Empty() {
-        var got = BackupExtensions.Sum(Array.Empty<int>(), v => (double)v);
-        Assert.Equal(0.0, got);
+    [Theory]
+    [InlineData(new[] { 1, 2, 3, 4 }, 10.0)]
+    [InlineData(new int[0], 0.0)]
+    public void Sum(int[] values, double want) {
+        Assert.Equal(want, BackupExtensions.Sum(values, v => (double)v));
     }
 
     [Fact]

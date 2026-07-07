@@ -145,22 +145,14 @@ public sealed class MennoServiceTests {
         Assert.Equal(new[] { "9", "10" }, result.RawRowLabels);
         Assert.Equal(new[] { "0", "1" }, result.RawColLabels);
 
-        // Hand-traced from fixture + embedded eiafx capacities:
-        // [0,0] Henerprise Short: (900+1900) / (900/45 + 1900/95) = 2800/40 = 70
-        // [0,1] Henerprise Long:  620 / (620/62)               = 62
-        // [1,0] Atreggies Short:  1200 / (1200/60)             = 60
-        // [1,1] Atreggies Long:   780 / (780/78)               = 78
+        // Hand-traced from fixture + embedded eiafx capacities, weight = eggs / (eggs/capacity summed per ship).
         var expected = new[] { 70.0, 62.0, 60.0, 78.0 };
         Assert.Equal(expected.Length, result.MatrixValues.Count);
         for (int i = 0; i < expected.Length; i++) {
             Assert.Equal(expected[i], result.MatrixValues[i], 9);
         }
 
-        // airtime = matrix / (nominalSeconds / 3600):
-        // [0,0] 70 / (86400/3600=24)  = 2.91666...
-        // [0,1] 62 / (172800/3600=48) = 1.29166...
-        // [1,0] 60 / (172800/3600=48) = 1.25
-        // [1,1] 78 / (259200/3600=72) = 1.08333...
+        // airtime = matrix / (nominalSeconds / 3600).
         Assert.NotNull(result.AirtimeMatrixValues);
         var expectedAir = new[] { 70.0 / 24, 62.0 / 48, 60.0 / 48, 78.0 / 72 };
         for (int i = 0; i < expectedAir.Length; i++) {

@@ -24,39 +24,33 @@ internal static class Program {
         var debugMode = args.Contains("--debug")
             || string.Equals(Environment.GetEnvironmentVariable("EGGLEDGER_DEBUG"), "1", StringComparison.Ordinal);
 
-        // D4 self-update startup: clean stale _new binaries and run the takeover if launched
-        // as EggLedger_new. Runs before the window so the on-disk binary is canonical by first paint.
-        // MANUAL-VERIFY: the cross-process takeover only runs in a real second process.
+        // D4 self-update startup: clean stale _new binaries and run the takeover if launched as
+        // EggLedger_new, before the window builds so the on-disk binary is canonical by first paint.
         var updateBootstrap = new UpdateBootstrap(new ProcessProbe(), new BinaryReplacement(new ProcessProbe()));
         updateBootstrap.RunStartup(args, Environment.ProcessPath);
 
-        // Single-file packaging: the RCL static web assets do not fold into the exe, so the build
-        // embeds them as a wwwroot.zip assembly resource. Photino's default file provider reads
-        // BaseDir/wwwroot, so extract the resource there before the window builds.
+        // Single-file packaging embeds the RCL's static web assets as a wwwroot.zip resource
+        // (they don't fold into the exe); extract to BaseDir/wwwroot before the window builds.
         EnsureWwwrootExtracted();
 
         var appBuilder = PhotinoBlazorAppBuilder.CreateDefault(args);
 
         // Shared UI service set; desktop swaps in native storage (D2), platform caps (D3),
-        // updater (D4), and export (D5) below. Base address is the production cloud-sync origin.
-        // MANUAL-VERIFY: confirm this matches the deployed sync server origin.
+        // updater (D4), and export (D5) below.
         appBuilder.Services.AddEggLedgerWeb(CloudSyncBaseAddress());
 
-        // D2 native SQLite storage: replaces browser IndexedDB with a live SQL ReportExecutor.
-        // Data lives under the exe data root (honors bootstrap.json relocation); must run after
-        // AddEggLedgerWeb so overrides win.
+        // D2 native SQLite storage replaces browser IndexedDB; must run after AddEggLedgerWeb
+        // so overrides win.
         var dataRootDir = StoragePaths.ResolveDataRootDir(StoragePaths.DefaultRootDir());
         appBuilder.Services.AddDesktopSqliteStorage(dataRootDir);
 
         // D3 native platform capabilities (open/reveal file, save dialog, restart, window size).
-        // The Photino window only exists after Build, so the window seam is a late-bound holder
-        // attached below; must run after AddEggLedgerWeb.
+        // The window only exists after Build, so desktopWindow is a late-bound seam attached below.
         var desktopWindow = new PhotinoDesktopWindow();
         appBuilder.Services.AddDesktopPlatformCapabilities(new ProcessRunner(), desktopWindow);
 
-        // D4 live self-update status provider for the About overlay; running version is the
-        // assembly informational version. The default exit action is the OLD-instance exit after
-        // the new instance reports /ready, letting it rename EggLedger_new -> EggLedger.
+        // D4 live self-update status provider for the About overlay. Default exit action is the
+        // OLD-instance exit once the new instance reports /ready, letting it rename to EggLedger.
         var runningVersion = AppVersionInfo.Current;
         appBuilder.Services.AddDesktopUpdater(() => runningVersion);
 
@@ -130,7 +124,11 @@ internal static class Program {
         try {
             var logDir = Path.GetDirectoryName(Environment.ProcessPath) ?? AppContext.BaseDirectory;
             File.AppendAllText(Path.Combine(logDir, "EggLedger.fatal.log"), text + Environment.NewLine);
-        } catch { }
+        } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) {
+        } catch (Exception ex) {
+            // Genuinely unexpected failure writing the crash log; last-resort surface to stderr.
+            Console.Error.WriteLine("failed to write fatal log: " + ex);
+        }
     }
 
     // Trailing slash required so relative "api/v1/..." URIs resolve under the host root.
@@ -144,13 +142,13 @@ internal static class Program {
             using var scope = services.CreateScope();
             var settings = scope.ServiceProvider.GetRequiredService<IndexedDbSettings>();
             model.LoadFrom(settings.GetAllSettingsAsync().GetAwaiter().GetResult());
-        } catch { }
+        } catch (Exception ex) when (ex is Microsoft.Data.Sqlite.SqliteException or System.Text.Json.JsonException or IOException) {
+        }
         return model;
     }
 
-    // Extract the embedded wwwroot.zip resource to BaseDir/wwwroot. Stamps with the assembly
-    // MVID so a swapped-in update (self-updater) re-extracts; a matching stamp skips the work.
-    // When the resource is absent (loose dev/publish wwwroot) the existing tree is left alone.
+    // Stamps with the assembly MVID so a self-updater swap re-extracts; a matching stamp skips
+    // the work, and a missing resource (loose dev/publish wwwroot) leaves the existing tree alone.
     private static void EnsureWwwrootExtracted() {
         var assembly = System.Reflection.Assembly.GetExecutingAssembly();
         using var zipStream = assembly.GetManifestResourceStream("EggLedger.Desktop.wwwroot.zip");

@@ -12,8 +12,15 @@ public sealed record AppConfig(
     string DeployAgentUrl,
     string DeployAgentSecret,
     string MennoFunctionKey,
-    IReadOnlySet<string> AdminDiscordIds,
-    IReadOnlyList<string> TrustedProxyNetworks) {
+    IReadOnlySet<string> AdminUserIds,
+    string AuthentikAuthority,
+    string AuthentikClientId,
+    string AuthentikClientSecret,
+    IReadOnlyList<string> TrustedProxyNetworks,
+    string BuildSha,
+    string BuildDate,
+    string DataProtectionCertPath,
+    string DataProtectionCertPassword) {
     public const string MennoUpstreamUrl = "https://eggincdatacollection.azurewebsites.net/api/SubmitEid";
 
     // Private + ULA + loopback ranges. The container sits behind nginx on a private docker network,
@@ -43,7 +50,14 @@ public sealed record AppConfig(
             DeployAgentUrl: V("DEPLOY_AGENT_URL"),
             DeployAgentSecret: V("DEPLOY_AGENT_SECRET"),
             MennoFunctionKey: V("MENNO_FUNCTION_KEY"),
-            AdminDiscordIds: admins,
-            TrustedProxyNetworks: proxyNets.Length > 0 ? proxyNets : DefaultProxyNetworks);
+            AdminUserIds: admins,
+            AuthentikAuthority: V("AUTHENTIK_AUTHORITY"),
+            AuthentikClientId: V("AUTHENTIK_CLIENT_ID"),
+            AuthentikClientSecret: V("AUTHENTIK_CLIENT_SECRET"),
+            TrustedProxyNetworks: proxyNets.Length > 0 ? proxyNets : DefaultProxyNetworks,
+            BuildSha: get("BUILD_SHA") is { Length: > 0 } sha ? sha : "dev",
+            BuildDate: get("BUILD_DATE") is { Length: > 0 } date ? date : "dev",
+            DataProtectionCertPath: V("DATA_PROTECTION_CERT_PATH"),
+            DataProtectionCertPassword: V("DATA_PROTECTION_CERT_PASSWORD"));
     }
 }

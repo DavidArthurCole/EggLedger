@@ -10,7 +10,7 @@ namespace EggLedger.Domain.Reports.Charts;
 public static class SliceColors {
     private const string DefaultBase = "#6366f1";
 
-    /// <summary>Converts #rrggbb to (hue[0..360), saturation[0..1], lightness[0..1]). Malformed input falls back to the default base color (JS parseInt yielded NaN there; the strict port threw). Port of useSliceColors hexToHsl.</summary>
+    /// <summary>Converts #rrggbb to (hue[0..360), saturation[0..1], lightness[0..1]). Malformed input falls back to the default base color.</summary>
     public static (double H, double S, double L) HexToHsl(string hex) {
         if (!IsHexColor(hex)) {
             hex = DefaultBase;

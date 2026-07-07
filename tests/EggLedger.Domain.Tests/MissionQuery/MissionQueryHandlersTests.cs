@@ -265,9 +265,8 @@ public class MissionQueryHandlersTests {
     [Fact]
     public async Task GetAllPlayerDrops_ZeroDropMissionsAreSeededWithEmptyList() {
         var (h, store, _) = NewSut();
-        // m1 has a drop; m2 completed with zero drops and so never wrote a row to
-        // StoredDrops, but it must still count as a mission (the "59 missing lifetime
-        // missions" bug: dropsByMission.Count silently excluded zero-drop missions).
+        // m2 completed with zero drops (no StoredDrops row) must still count as a mission
+        // (regression: dropsByMission.Count silently excluded zero-drop missions).
         int frag = (int)ArtifactSpec.Name.TachyonStoneFragment;
         store.CompleteMissionIds = ["m1", "m2"];
         store.StoredDrops["p"] = [new StoredDrop("m1", frag, 0, 0)];

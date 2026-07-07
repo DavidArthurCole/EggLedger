@@ -96,6 +96,8 @@ dotnet_diagnostic.CA1720.severity = none   # identifier 'String' (proto enum mem
 dotnet_diagnostic.CA1036.severity = suggestion # comparison operators on IComparable types
 dotnet_diagnostic.CA1305.severity = suggestion # IFormatProvider on ToString (invariant intent)
 dotnet_diagnostic.CA1822.severity = suggestion # 'mark static' must not force public-API changes
+dotnet_diagnostic.CA1848.severity = suggestion # LoggerMessage source-gen: overkill for our low-volume warn/info logging
+dotnet_diagnostic.CA1873.severity = suggestion # "expensive" log arg evaluation: our args are cheap string interpolations
 
 [*.{razor,cshtml}]
 # Razor: the generated backing partial trips some analyzers; relax a few.

@@ -30,7 +30,6 @@ public sealed class FilterOption {
     public string? StyleClass { get; set; }
     public string? ImagePath { get; set; }
     public int? Rarity { get; set; }
-    public string? RarityGif { get; set; }
 }
 
 /// <summary>An operator choice (value + label).</summary>

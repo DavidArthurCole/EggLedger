@@ -45,7 +45,6 @@ public class PieGeometryTests {
         Assert.Equal(2, slices.Count);
         Assert.Equal(75, slices[0].Pct, 5);
         Assert.Equal(25, slices[1].Pct, 5);
-        // First slice gets the base color (auto index 0).
         Assert.Equal("#6366f1", slices[0].Color);
     }
 

@@ -11,7 +11,7 @@ namespace EggLedger.Web.Server.Storage;
 /// <c>el_*</c> table; rows round-trip through JSON, same contract as desktop SqliteIndexedDb.
 /// </summary>
 /// <remarks>
-/// Multi-tenant invariant: EVERY query is scoped by <c>discord_id = @user</c> and every
+/// Multi-tenant invariant: EVERY query is scoped by <c>user_id = @user</c> and every
 /// insert carries it, injected centrally here so a row can never cross users. User id is
 /// read per op from <see cref="CurrentUser"/>.
 /// </remarks>
@@ -29,8 +29,8 @@ public sealed class PostgresIndexedDb : IIndexedDb {
     // Writes require an authenticated user (throw otherwise). Reads tolerate the
     // unauthenticated/gated state by returning empty, so shared RCL components that read
     // settings on init (before the auth gate decides) don't crash the circuit.
-    private Task<string> UserAsync() => _user.RequireAsync();
-    private Task<string?> TryUserAsync() => _user.GetDiscordIdAsync();
+    private Task<Guid> UserAsync() => _user.RequireUserIdAsync();
+    private Task<Guid?> TryUserAsync() => _user.GetUserIdAsync();
     private static readonly JsonSerializerOptions JsonOpts = Rows.JsonOptions;
 
     public async ValueTask PutAsync(string store, object value) {
@@ -59,7 +59,7 @@ public sealed class PostgresIndexedDb : IIndexedDb {
         var (where, keyArgs) = KeyPredicate(meta, key);
         await using var conn = await _source.OpenConnectionAsync().ConfigureAwait(false);
         await using var cmd = conn.CreateCommand();
-        cmd.CommandText = $"SELECT * FROM {meta.Table} WHERE discord_id = @user AND {where} LIMIT 1;";
+        cmd.CommandText = $"SELECT * FROM {meta.Table} WHERE user_id = @user AND {where} LIMIT 1;";
         cmd.Parameters.AddWithValue("user", user);
         BindKeyArgs(cmd, keyArgs);
         await using var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false);
@@ -76,7 +76,7 @@ public sealed class PostgresIndexedDb : IIndexedDb {
         var meta = Meta(store);
         await using var conn = await _source.OpenConnectionAsync().ConfigureAwait(false);
         await using var cmd = conn.CreateCommand();
-        cmd.CommandText = $"SELECT * FROM {meta.Table} WHERE discord_id = @user;";
+        cmd.CommandText = $"SELECT * FROM {meta.Table} WHERE user_id = @user;";
         cmd.Parameters.AddWithValue("user", user);
         return await ReadAllAsync<T>(meta, cmd).ConfigureAwait(false);
     }
@@ -89,7 +89,7 @@ public sealed class PostgresIndexedDb : IIndexedDb {
         var meta = Meta(store);
         await using var conn = await _source.OpenConnectionAsync().ConfigureAwait(false);
         await using var cmd = conn.CreateCommand();
-        cmd.CommandText = $"SELECT * FROM {meta.Table} WHERE discord_id = @user AND {Ident(index)} = @idx;";
+        cmd.CommandText = $"SELECT * FROM {meta.Table} WHERE user_id = @user AND {Ident(index)} = @idx;";
         cmd.Parameters.AddWithValue("user", user);
         cmd.Parameters.AddWithValue("idx", value ?? (object)DBNull.Value);
         return await ReadAllAsync<T>(meta, cmd).ConfigureAwait(false);
@@ -104,7 +104,7 @@ public sealed class PostgresIndexedDb : IIndexedDb {
         var cols = string.Join(", ", RowColumns.Of<T>().Select(Ident));
         await using var conn = await _source.OpenConnectionAsync().ConfigureAwait(false);
         await using var cmd = conn.CreateCommand();
-        cmd.CommandText = $"SELECT {cols} FROM {meta.Table} WHERE discord_id = @user AND {Ident(index)} = @idx;";
+        cmd.CommandText = $"SELECT {cols} FROM {meta.Table} WHERE user_id = @user AND {Ident(index)} = @idx;";
         cmd.Parameters.AddWithValue("user", user);
         cmd.Parameters.AddWithValue("idx", value ?? (object)DBNull.Value);
         return await ReadAllAsync<T>(meta, cmd).ConfigureAwait(false);
@@ -115,7 +115,7 @@ public sealed class PostgresIndexedDb : IIndexedDb {
         var (where, keyArgs) = KeyPredicate(meta, key);
         await using var conn = await _source.OpenConnectionAsync().ConfigureAwait(false);
         await using var cmd = conn.CreateCommand();
-        cmd.CommandText = $"DELETE FROM {meta.Table} WHERE discord_id = @user AND {where};";
+        cmd.CommandText = $"DELETE FROM {meta.Table} WHERE user_id = @user AND {where};";
         cmd.Parameters.AddWithValue("user", await UserAsync());
         BindKeyArgs(cmd, keyArgs);
         await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
@@ -125,7 +125,7 @@ public sealed class PostgresIndexedDb : IIndexedDb {
         var meta = Meta(store);
         await using var conn = await _source.OpenConnectionAsync().ConfigureAwait(false);
         await using var cmd = conn.CreateCommand();
-        cmd.CommandText = $"DELETE FROM {meta.Table} WHERE discord_id = @user;";
+        cmd.CommandText = $"DELETE FROM {meta.Table} WHERE user_id = @user;";
         cmd.Parameters.AddWithValue("user", await UserAsync());
         await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
     }
@@ -137,7 +137,7 @@ public sealed class PostgresIndexedDb : IIndexedDb {
         var meta = Meta(store);
         await using var conn = await _source.OpenConnectionAsync().ConfigureAwait(false);
         await using var cmd = conn.CreateCommand();
-        cmd.CommandText = $"SELECT COUNT(*) FROM {meta.Table} WHERE discord_id = @user;";
+        cmd.CommandText = $"SELECT COUNT(*) FROM {meta.Table} WHERE user_id = @user;";
         cmd.Parameters.AddWithValue("user", user);
         var result = await cmd.ExecuteScalarAsync().ConfigureAwait(false);
         return result is null or DBNull ? 0 : Convert.ToInt32(result, CultureInfo.InvariantCulture);
@@ -147,9 +147,9 @@ public sealed class PostgresIndexedDb : IIndexedDb {
         using var doc = JsonSerializer.SerializeToDocument(value, value.GetType(), JsonOpts);
         var user = await UserAsync().ConfigureAwait(false);
 
-        // discord_id is always the first column; the row's own JSON columns follow.
+        // user_id is always the first column; the row's own JSON columns follow.
         // The autoincrement column is skipped when null so Postgres assigns it.
-        var cols = new List<string> { "discord_id" };
+        var cols = new List<string> { "user_id" };
         var values = new List<(string Param, object Value)> { ("p_user", user) };
         int p = 0;
         foreach (var prop in doc.RootElement.EnumerateObject()) {
@@ -166,9 +166,9 @@ public sealed class PostgresIndexedDb : IIndexedDb {
         if (meta.AutoIncrementColumn is not null) {
             conflict = "";
         } else {
-            // Conflict target is (discord_id, <key columns>) since every table is
-            // scoped by discord_id.
-            var keyCols = new List<string> { "discord_id" };
+            // Conflict target is (user_id, <key columns>) since every table is
+            // scoped by user_id.
+            var keyCols = new List<string> { "user_id" };
             keyCols.AddRange(meta.KeyColumns);
             var updates = cols
                 .Where(c => !keyCols.Contains(c, StringComparer.Ordinal))
@@ -208,7 +208,7 @@ public sealed class PostgresIndexedDb : IIndexedDb {
             isBool: _ => false,
             isBlob: meta.BlobColumns.Contains,
             JsonOpts,
-            skipColumn: name => name == "discord_id");
+            skipColumn: name => name == "user_id");
 
     private static void BindKeyArgs(NpgsqlCommand cmd, object[] args) {
         for (var i = 0; i < args.Length; i++) {
@@ -216,7 +216,7 @@ public sealed class PostgresIndexedDb : IIndexedDb {
         }
     }
 
-    // Emits "col = @k0 AND col2 = @k1" (no discord_id; the caller prepends it).
+    // Emits "col = @k0 AND col2 = @k1" (no user_id; the caller prepends it).
     private static (string where, object[] args) KeyPredicate(StoreMeta meta, object key) =>
         JsonRowCodec.KeyPredicate(meta.Table, meta.KeyColumns, key, Ident, JsonRowCodec.Postgres);
 

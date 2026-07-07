@@ -16,8 +16,7 @@ public static class WebServiceRegistration {
     public static IServiceCollection AddEggLedgerWeb(this IServiceCollection services, Uri httpBaseAddress) {
         services.AddScoped(_ => new HttpClient { BaseAddress = httpBaseAddress });
 
-        // Desktop swaps these for native SQLite-backed stores.
-        services.AddScoped<IIndexedDb, IndexedDb>();
+        // No default IIndexedDb here: both hosts must register a backend (Postgres/SQLite).
         services.AddScoped<IndexedDbSettings>();
         services.AddScoped<IndexedDbAccountStore>();
         services.AddScoped<IndexedDbReportStore>();

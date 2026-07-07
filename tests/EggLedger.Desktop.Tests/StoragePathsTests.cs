@@ -10,9 +10,8 @@ namespace EggLedger.Desktop.Tests;
 public sealed class StoragePathsTests {
     [Fact]
     public void Resolvers_FallBackToRootDir_WhenNoBootstrap() {
-        // No bootstrap.json -> resolvers fall back to rootDir-relative; if one happens
-        // to exist the data_root_dir branch runs. Either way internal/exports/logs
-        // share the resolved data root.
+        // No bootstrap.json -> resolvers fall back to rootDir-relative; internal/exports/logs
+        // all share the resolved data root.
         var root = Path.Combine(Path.GetTempPath(), "egl_paths_" + Guid.NewGuid().ToString("N"));
 
         var dataRoot = StoragePaths.ResolveDataRootDir(root);

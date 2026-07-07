@@ -20,10 +20,16 @@
     <ProjectReference Include="..\..\src\EggLedger.Web.Server\EggLedger.Web.Server.csproj" />
   </ItemGroup>
 
-  <!-- The isolation test runs the storage migration; copy it into the test output. -->
+  <!-- The isolation/migration tests run migrations directly; copy the ones they need into the test output. -->
   <ItemGroup>
+    <Content Include="..\..\src\EggLedger.Web.Server\Migrations\1_initial_schema.up.sql"
+             Link="Migrations\1_initial_schema.up.sql"
+             CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\..\src\EggLedger.Web.Server\Migrations\4_eggledger_storage.up.sql"
              Link="Migrations\4_eggledger_storage.up.sql"
+             CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\src\EggLedger.Web.Server\Migrations\7_identities.up.sql"
+             Link="Migrations\7_identities.up.sql"
              CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 

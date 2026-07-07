@@ -157,13 +157,6 @@ public static class FilterOptions {
         return "artifacts/" + fixedName + "/" + fixedName + "_" + (drop.Level + 1 + addendum) + ".png";
     }
 
-    private static string DropRarityPath(PossibleArtifact drop) => drop.Rarity switch {
-        1 => "images/rare.gif",
-        2 => "images/epic.gif",
-        3 => "images/legendary.gif",
-        _ => "",
-    };
-
     /// <summary>Insertion order preserved: "Any Rare/Epic/Legendary" trio first, then per family/tier in first-seen order. Value encoding is name_level_rarity_baseQuality, "%" marks a wildcard segment.</summary>
     public static List<FilterOption> GetDropFilterOptions(
         IReadOnlyList<PossibleArtifact> artifactConfigs,
@@ -231,7 +224,6 @@ public static class FilterOptions {
                         Value = a.Name + "_" + a.Level + "_" + a.Rarity + "_" + a.BaseQuality.ToString(CultureInfo.InvariantCulture),
                         Rarity = a.Rarity,
                         ImagePath = DropPath(a),
-                        RarityGif = DropRarityPath(a),
                     });
                 }
             }

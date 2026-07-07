@@ -5,4 +5,7 @@ public static class AuthScheme {
 
     /// <summary>Claim type carrying the Discord user id in the auth cookie.</summary>
     public const string DiscordIdClaim = "discord_id";
+
+    /// <summary>Claim type carrying the provider-neutral user id (UUID) in the auth cookie.</summary>
+    public const string UserIdClaim = "user_id";
 }

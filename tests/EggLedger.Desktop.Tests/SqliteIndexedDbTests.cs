@@ -17,8 +17,8 @@ public sealed class SqliteIndexedDbTests : IDisposable {
 
     public SqliteIndexedDbTests() {
         var tag = Guid.NewGuid().ToString("N");
-        _missionDb = SqliteDatabase.Open($"Data Source=m_{tag};Mode=Memory;Cache=Shared");
-        _reportDb = SqliteDatabase.Open($"Data Source=r_{tag};Mode=Memory;Cache=Shared");
+        _missionDb = SqliteDatabase.Open($"Data Source=m_{tag};Mode=Memory;Cache=Shared", isConnectionString: true);
+        _reportDb = SqliteDatabase.Open($"Data Source=r_{tag};Mode=Memory;Cache=Shared", isConnectionString: true);
         SqliteMigrationRunner.MigrateMissionDb(_missionDb.Connection);
         SqliteMigrationRunner.MigrateReportDb(_reportDb.Connection);
         _db = new SqliteIndexedDb(_missionDb, _reportDb);
@@ -178,9 +178,8 @@ public sealed class SqliteIndexedDbTests : IDisposable {
 
     [Fact]
     public async Task Backup_RoundTripTimestampAndPayload() {
-        // Direct store round-trip against the migrated backup table (id PK,
-        // backed_up_at column). Catches the recorded_at/backed_up_at + ON CONFLICT
-        // bugs: an INSERT against a stale column name or a missing UNIQUE would throw.
+        // Direct store round-trip against the migrated backup table (id PK, backed_up_at
+        // column): a stale column name or missing UNIQUE would throw on INSERT.
         var payload = new byte[] { 9, 8, 7, 254, 255, 0 };
         await _db.PutAsync("backup", new BackupRow {
             PlayerId = "EI1",

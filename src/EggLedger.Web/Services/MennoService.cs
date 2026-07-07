@@ -339,6 +339,7 @@ public sealed class MennoService {
 
     private delegate bool MennoMatcher(ConfigurationItem item, string rawVal);
 
+    // Null-forgives assume MennoDecode.Validate already ran and guaranteed these non-null.
     private static MennoMatcher? MatcherFor(string groupBy) => groupBy switch {
         "ship_type" => (item, raw) => TryInt(raw, out var v) && item.ShipConfiguration!.ShipType!.Id == v,
         "duration_type" => (item, raw) => TryInt(raw, out var v) && item.ShipConfiguration!.ShipDurationType!.Id == v,

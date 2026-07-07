@@ -1,12 +1,14 @@
 @page "/"
 @using EggLedger.Domain.MissionQuery
 @using EggLedger.Web.Services
+@using Microsoft.Extensions.Logging
 @implements IDisposable
 @inject MissionQueryHandlers Queries
 @inject FetchService Fetch
 @inject AccountLoader Loader
 @inject ActiveAccount Active
 @inject AppStateService AppStateSvc
+@inject ILogger<LedgerPage> Logger
 
 <PageTitle>EggLedger - Ledger</PageTitle>
 
@@ -210,7 +212,8 @@
             var result = await Fetch.FetchPlayerDataAsync(id, progress, _cts.Token);
             _terminalState = result;
         }
-        catch (Exception) {
+        catch (Exception ex) {
+            Logger.LogError(ex, "Fetch failed for account {AccountId}", id);
             _terminalState = AppState.Failed;
         }
 

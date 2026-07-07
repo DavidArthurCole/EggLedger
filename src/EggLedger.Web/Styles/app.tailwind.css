@@ -678,3 +678,18 @@ input[type=number] {
 .support-pop-more:hover {
   @apply underline;
 }
+
+/* Legal pages (/terms, /privacy): readable long-form prose in the app's flat dark aesthetic. */
+.legal-title { @apply text-[1.4rem] font-semibold leading-tight text-gray-100 m-0 mb-1; }
+.legal-updated { @apply text-xs text-gray-500 m-0 mb-6; }
+.legal-disclaimer {
+  @apply text-sm text-gray-300 leading-relaxed border border-gray-600 rounded-lg bg-dark px-4 py-3 mb-8 max-w-[80ch];
+  border-left: 2px solid rgb(59 130 246);
+}
+.legal-section { @apply mb-7; }
+.legal-h2 { @apply text-base font-semibold text-gray-100 mt-0 mb-2; }
+.legal-p { @apply text-sm text-gray-400 leading-relaxed max-w-[80ch] m-0 mb-3; }
+.legal-p:last-child { @apply mb-0; }
+.legal-list { @apply text-sm text-gray-400 leading-relaxed max-w-[80ch] list-disc pl-5 my-3 flex flex-col gap-1.5; }
+.legal-link { @apply text-blue-500 no-underline; }
+.legal-link:hover { @apply underline; }

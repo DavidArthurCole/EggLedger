@@ -48,9 +48,8 @@ public sealed class DesktopCommandBuilderTests {
     public void BuildOpenInFolderCommand_Linux_OpensContainingDirectory() {
         var (exe, args) = DesktopCommandBuilder.BuildOpenInFolderCommand(OSPlatform.Linux, "/home/me/sub/file.json");
         Assert.Equal("xdg-open", exe);
-        // Linux cannot select a file generically, so it opens the containing dir
-        // (Go does filepath.Dir). Path.GetDirectoryName uses the host separator;
-        // assert the directory component is what was passed.
+        // Linux cannot select a file generically, so it opens the containing dir.
+        // Path.GetDirectoryName uses the host separator; assert what was passed.
         Assert.Single(args);
         Assert.EndsWith("file.json", "/home/me/sub/file.json");
         Assert.DoesNotContain("file.json", args[0]);

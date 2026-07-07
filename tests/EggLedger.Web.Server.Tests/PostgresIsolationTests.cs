@@ -14,18 +14,18 @@ namespace EggLedger.Web.Server.Tests;
 public sealed class PostgresIsolationTests {
     private static string? TestDbUrl => Environment.GetEnvironmentVariable("EGGLEDGER_TEST_DB_URL");
 
-    // Fixed auth principal for one discord id, mimicking the cookie-auth claim.
-    private sealed class FakeAuth(string? discordId) : AuthenticationStateProvider {
+    // Fixed auth principal for one user id, mimicking the cookie-auth claim.
+    private sealed class FakeAuth(Guid? userId) : AuthenticationStateProvider {
         public override Task<AuthenticationState> GetAuthenticationStateAsync() {
-            var identity = discordId is null
+            var identity = userId is null
                 ? new ClaimsIdentity()
-                : new ClaimsIdentity([new Claim(AuthScheme.DiscordIdClaim, discordId)], "test");
+                : new ClaimsIdentity([new Claim(AuthScheme.UserIdClaim, userId.Value.ToString())], "test");
             return Task.FromResult(new AuthenticationState(new ClaimsPrincipal(identity)));
         }
     }
 
-    private static PostgresIndexedDb StoreFor(NpgsqlDataSource src, string? discordId) =>
-        new(src, new CurrentUser(new FakeAuth(discordId)));
+    private static PostgresIndexedDb StoreFor(NpgsqlDataSource src, Guid? userId) =>
+        new(src, new CurrentUser(new FakeAuth(userId)));
 
     private static MissionRow Mission(string player, string id) => new() {
         PlayerId = player,
@@ -42,8 +42,8 @@ public sealed class PostgresIsolationTests {
         await using var src = NpgsqlDataSource.Create(TestDbUrl!);
         await CreateSchemaAsync(src);
         try {
-            var a = StoreFor(src, "USER_A");
-            var b = StoreFor(src, "USER_B");
+            var a = StoreFor(src, Guid.NewGuid());
+            var b = StoreFor(src, Guid.NewGuid());
 
             await a.PutAsync("mission", Mission("EI_A", "m1"));
             await a.PutAsync("mission", Mission("EI_A", "m2"));
@@ -97,7 +97,14 @@ public sealed class PostgresIsolationTests {
 
     private static async Task CreateSchemaAsync(NpgsqlDataSource src) {
         await Exec(src, $"DROP SCHEMA IF EXISTS {Schema} CASCADE; CREATE SCHEMA {Schema}; SET search_path TO {Schema};");
-        var sqlPath = Path.Combine(AppContext.BaseDirectory, "Migrations", "4_eggledger_storage.up.sql");
+        // user_id only exists after migration 7 backfills it onto the migration-4 tables.
+        await ApplyMigrationAsync(src, "1_initial_schema.up.sql");
+        await ApplyMigrationAsync(src, "4_eggledger_storage.up.sql");
+        await ApplyMigrationAsync(src, "7_identities.up.sql");
+    }
+
+    private static async Task ApplyMigrationAsync(NpgsqlDataSource src, string fileName) {
+        var sqlPath = Path.Combine(AppContext.BaseDirectory, "Migrations", fileName);
         var sql = await File.ReadAllTextAsync(sqlPath);
         await Exec(src, $"SET search_path TO {Schema}; {sql}");
     }

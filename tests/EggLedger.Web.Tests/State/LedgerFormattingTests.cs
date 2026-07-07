@@ -45,7 +45,6 @@ public sealed class LedgerFormattingTests {
 
     [Fact]
     public void FormatTimeSinceMinutesOnly() {
-        // 5 minutes ago.
         Assert.Equal("5m ago", LedgerFormatting.FormatTimeSince(0 + 1, 1 + 5 * 60));
     }
 

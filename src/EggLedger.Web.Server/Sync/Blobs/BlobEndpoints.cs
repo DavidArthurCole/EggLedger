@@ -1,16 +1,20 @@
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 using Npgsql;
 
 namespace EggLedger.Web.Server.Sync.Blobs;
 
 // Go parity: the original server swallowed DB errors on best-effort writes (fire-and-forget);
-// the catch blocks below ignore failures to stay behavior-identical.
-public sealed class BlobEndpoints(NpgsqlDataSource source) {
+// the catch blocks below ignore failures to stay behavior-identical, but now log them.
+public sealed class BlobEndpoints(NpgsqlDataSource source, ILogger<BlobEndpoints> logger) {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
     private static long Now() => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-    private static string DiscordId(HttpContext ctx) => ctx.Request.Headers["X-Discord-ID"].ToString();
+
+    // X-Discord-ID now carries the provider-neutral user_id string (header name unchanged;
+    // only its semantic meaning changed, per SessionStore).
+    private static Guid UserId(HttpContext ctx) => Guid.Parse(ctx.Request.Headers["X-Discord-ID"].ToString());
 
     private static async Task WriteTextAsync(HttpContext ctx, int statusCode, string text) {
         ctx.Response.StatusCode = statusCode;
@@ -25,7 +29,7 @@ public sealed class BlobEndpoints(NpgsqlDataSource source) {
     }
 
     public async Task Put(HttpContext ctx, string name) {
-        var discordId = DiscordId(ctx);
+        var userId = UserId(ctx);
         PutBlobRequest? body;
         try { body = await JsonSerializer.DeserializeAsync<PutBlobRequest>(ctx.Request.Body, Json, ctx.RequestAborted); } catch (JsonException) {
             await WriteTextAsync(ctx, StatusCodes.Status400BadRequest, "bad request\n");
@@ -35,21 +39,20 @@ public sealed class BlobEndpoints(NpgsqlDataSource source) {
             await WriteTextAsync(ctx, StatusCodes.Status400BadRequest, "bad request\n");
             return;
         }
-        await using (var u = source.CreateCommand("INSERT INTO users (discord_id, created_at) VALUES ($1, $2) ON CONFLICT DO NOTHING")) {
-            u.Parameters.AddWithValue(discordId);
-            u.Parameters.AddWithValue(Now());
-            try { await u.ExecuteNonQueryAsync(ctx.RequestAborted); } catch { }
-        }
+        // No users upsert here: RequireAuth only lets a request through with a token minted by
+        // AuthEndpoints.StorePending, which already created the users row for this user_id, so
+        // by the time a request reaches this handler the row is guaranteed to exist.
         try {
             await using var cmd = source.CreateCommand(
-                "INSERT INTO blobs (discord_id, name, ciphertext, updated_at) VALUES ($1, $2, $3, $4) " +
-                "ON CONFLICT (discord_id, name) DO UPDATE SET ciphertext = EXCLUDED.ciphertext, updated_at = EXCLUDED.updated_at");
-            cmd.Parameters.AddWithValue(discordId);
+                "INSERT INTO blobs (user_id, name, ciphertext, updated_at) VALUES ($1, $2, $3, $4) " +
+                "ON CONFLICT (user_id, name) DO UPDATE SET ciphertext = EXCLUDED.ciphertext, updated_at = EXCLUDED.updated_at");
+            cmd.Parameters.AddWithValue(userId);
             cmd.Parameters.AddWithValue(name);
             cmd.Parameters.AddWithValue(body.Ciphertext);
             cmd.Parameters.AddWithValue(Now());
             await cmd.ExecuteNonQueryAsync(ctx.RequestAborted);
-        } catch {
+        } catch (Exception ex) {
+            logger.LogWarning(ex, "blobs: failed to put blob {Name} for {UserId}", name, userId);
             await WriteTextAsync(ctx, StatusCodes.Status500InternalServerError, "internal error\n");
             return;
         }
@@ -57,10 +60,10 @@ public sealed class BlobEndpoints(NpgsqlDataSource source) {
     }
 
     public async Task Get(HttpContext ctx, string name) {
-        var discordId = DiscordId(ctx);
+        var userId = UserId(ctx);
         try {
-            await using var cmd = source.CreateCommand("SELECT ciphertext, updated_at FROM blobs WHERE discord_id = $1 AND name = $2");
-            cmd.Parameters.AddWithValue(discordId);
+            await using var cmd = source.CreateCommand("SELECT ciphertext, updated_at FROM blobs WHERE user_id = $1 AND name = $2");
+            cmd.Parameters.AddWithValue(userId);
             cmd.Parameters.AddWithValue(name);
             await using var reader = await cmd.ExecuteReaderAsync(ctx.RequestAborted);
             if (!await reader.ReadAsync(ctx.RequestAborted)) {
@@ -69,40 +72,54 @@ public sealed class BlobEndpoints(NpgsqlDataSource source) {
             }
             var resp = new GetBlobResponse(reader.GetString(0), reader.GetInt64(1));
             await WriteJsonAsync(ctx, resp);
-        } catch {
+        } catch (Exception ex) {
+            logger.LogWarning(ex, "blobs: failed to get blob {Name} for {UserId}", name, userId);
             await WriteTextAsync(ctx, StatusCodes.Status500InternalServerError, "internal error\n");
         }
     }
 
     public async Task List(HttpContext ctx) {
-        var discordId = DiscordId(ctx);
+        var userId = UserId(ctx);
         try {
-            await using var cmd = source.CreateCommand("SELECT name, updated_at FROM blobs WHERE discord_id = $1");
-            cmd.Parameters.AddWithValue(discordId);
+            await using var cmd = source.CreateCommand("SELECT name, updated_at FROM blobs WHERE user_id = $1");
+            cmd.Parameters.AddWithValue(userId);
             var items = new List<BlobListEntry>();
             await using var reader = await cmd.ExecuteReaderAsync(ctx.RequestAborted);
             while (await reader.ReadAsync(ctx.RequestAborted))
                 items.Add(new BlobListEntry(reader.GetString(0), reader.GetInt64(1)));
             await WriteJsonAsync(ctx, items);
-        } catch {
+        } catch (Exception ex) {
+            logger.LogWarning(ex, "blobs: failed to list blobs for {UserId}", userId);
             await WriteTextAsync(ctx, StatusCodes.Status500InternalServerError, "internal error\n");
         }
     }
 
     public async Task Delete(HttpContext ctx, string name) {
-        var discordId = DiscordId(ctx);
-        await using var cmd = source.CreateCommand("DELETE FROM blobs WHERE discord_id = $1 AND name = $2");
-        cmd.Parameters.AddWithValue(discordId);
+        var userId = UserId(ctx);
+        await using var cmd = source.CreateCommand("DELETE FROM blobs WHERE user_id = $1 AND name = $2");
+        cmd.Parameters.AddWithValue(userId);
         cmd.Parameters.AddWithValue(name);
-        try { await cmd.ExecuteNonQueryAsync(ctx.RequestAborted); } catch { }
+        try {
+            await cmd.ExecuteNonQueryAsync(ctx.RequestAborted);
+        } catch (Exception ex) {
+            logger.LogWarning(ex, "blobs: failed to delete blob {Name} for {UserId}", name, userId);
+            await WriteTextAsync(ctx, StatusCodes.Status500InternalServerError, "internal error\n");
+            return;
+        }
         ctx.Response.StatusCode = StatusCodes.Status204NoContent;
     }
 
     public async Task DeleteUser(HttpContext ctx) {
-        var discordId = DiscordId(ctx);
-        await using var cmd = source.CreateCommand("DELETE FROM users WHERE discord_id = $1");
-        cmd.Parameters.AddWithValue(discordId);
-        try { await cmd.ExecuteNonQueryAsync(ctx.RequestAborted); } catch { }
+        var userId = UserId(ctx);
+        await using var cmd = source.CreateCommand("DELETE FROM users WHERE user_id = $1");
+        cmd.Parameters.AddWithValue(userId);
+        try {
+            await cmd.ExecuteNonQueryAsync(ctx.RequestAborted);
+        } catch (Exception ex) {
+            logger.LogWarning(ex, "blobs: failed to delete user {UserId}", userId);
+            await WriteTextAsync(ctx, StatusCodes.Status500InternalServerError, "internal error\n");
+            return;
+        }
         ctx.Response.StatusCode = StatusCodes.Status204NoContent;
     }
 }

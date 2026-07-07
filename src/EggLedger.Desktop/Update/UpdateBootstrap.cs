@@ -1,8 +1,23 @@
 namespace EggLedger.Desktop.Update;
 
-/// <summary>Startup update plumbing run before the UI: parse --replace-* / --handshake-* flags, clean stale binaries, and (when this process is the launched EggLedger_new) run the takeover that renames itself to canonical EggLedger[.exe] once the old instance exits.</summary>
+/// <summary>Startup update plumbing run before the UI: clean stale binaries, then (when launched as EggLedger_new) take over and rename to canonical EggLedger[.exe] once the old instance exits.</summary>
 /// <remarks>MANUAL-VERIFY: the takeover only runs in a real second process; the pieces it calls are unit-tested but the two-process orchestration is verified by hand.</remarks>
 public sealed class UpdateBootstrap(IProcessProbe probe, BinaryReplacement replacement) {
+    /// <summary>How long the takeover waits for the old instance to exit before giving up on the rename.</summary>
+    public static readonly TimeSpan OldExitWaitTimeout = TimeSpan.FromSeconds(30);
+
+    /// <summary>Rename-retry attempts when the old PID was unknown (name-only launch). Matches Go's 60 * 500ms.</summary>
+    public const int RenameRetryAttemptsUnknownPid = 60;
+
+    /// <summary>Rename-retry attempts when the old PID was known. Matches Go's 10 * 300ms.</summary>
+    public const int RenameRetryAttemptsKnownPid = 10;
+
+    /// <summary>Rename-retry spacing when the old PID was unknown.</summary>
+    public static readonly TimeSpan RenameRetryDelayUnknownPid = TimeSpan.FromMilliseconds(500);
+
+    /// <summary>Rename-retry spacing when the old PID was known.</summary>
+    public static readonly TimeSpan RenameRetryDelayKnownPid = TimeSpan.FromMilliseconds(300);
+
     private readonly IProcessProbe _probe = probe;
     private readonly BinaryReplacement _replacement = replacement;
 
@@ -84,7 +99,7 @@ public sealed class UpdateBootstrap(IProcessProbe probe, BinaryReplacement repla
         }
 
         if (oldPid > 0) {
-            ProcessWait.WaitForExit(_probe, oldPid, TimeSpan.FromSeconds(30));
+            ProcessWait.WaitForExit(_probe, oldPid, OldExitWaitTimeout);
         }
 
         if (string.IsNullOrEmpty(self) || string.IsNullOrEmpty(oldPath)) {
@@ -102,10 +117,9 @@ public sealed class UpdateBootstrap(IProcessProbe probe, BinaryReplacement repla
                 return;
             }
 
-            // More attempts/longer delay when we did not know the old PID (name-only
-            // launch), matching Go's 60 * 500ms vs 10 * 300ms.
-            var attempts = oldPid == 0 ? 60 : 10;
-            var delay = oldPid == 0 ? TimeSpan.FromMilliseconds(500) : TimeSpan.FromMilliseconds(300);
+            // More attempts/longer delay when we did not know the old PID (name-only launch).
+            var attempts = oldPid == 0 ? RenameRetryAttemptsUnknownPid : RenameRetryAttemptsKnownPid;
+            var delay = oldPid == 0 ? RenameRetryDelayUnknownPid : RenameRetryDelayKnownPid;
             BinaryReplacement.RenameWithRetry(self, oldPath, attempts, delay);
         } finally {
             release?.Invoke();

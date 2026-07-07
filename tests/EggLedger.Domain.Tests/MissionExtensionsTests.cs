@@ -4,34 +4,15 @@ using Ei;
 namespace EggLedger.Domain.Tests;
 
 public class MissionExtensionsTests {
-    [Fact]
-    public void GetDurationString_Zero() {
-        var m = new MissionInfo { DurationSeconds = 0 };
-        Assert.Equal("0m", m.GetDurationString());
-    }
-
-    [Fact]
-    public void GetDurationString_Seconds() {
-        var m = new MissionInfo { DurationSeconds = 30 };
-        Assert.Equal("30s", m.GetDurationString());
-    }
-
-    [Fact]
-    public void GetDurationString_Minutes() {
-        var m = new MissionInfo { DurationSeconds = 90 };
-        Assert.Equal("1m", m.GetDurationString());
-    }
-
-    [Fact]
-    public void GetDurationString_HoursAndMinutes() {
-        var m = new MissionInfo { DurationSeconds = (3 * 3600) + (45 * 60) };
-        Assert.Equal("3h45m", m.GetDurationString());
-    }
-
-    [Fact]
-    public void GetDurationString_DaysHoursMinutes() {
-        var m = new MissionInfo { DurationSeconds = (2 * 86400) + (3 * 3600) + (15 * 60) };
-        Assert.Equal("2d3h15m", m.GetDurationString());
+    [Theory]
+    [InlineData(0, "0m")]
+    [InlineData(30, "30s")]
+    [InlineData(90, "1m")]
+    [InlineData((3 * 3600) + (45 * 60), "3h45m")]
+    [InlineData((2 * 86400) + (3 * 3600) + (15 * 60), "2d3h15m")]
+    public void GetDurationString(int secs, string want) {
+        var m = new MissionInfo { DurationSeconds = secs };
+        Assert.Equal(want, m.GetDurationString());
     }
 
     [Theory]

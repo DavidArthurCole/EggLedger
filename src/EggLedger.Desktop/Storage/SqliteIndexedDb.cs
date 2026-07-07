@@ -214,25 +214,8 @@ public sealed class SqliteIndexedDb : IIndexedDb {
     private static (string where, object[] args) KeyPredicate(StoreMeta meta, object key) =>
         JsonRowCodec.KeyPredicate(meta.Table, meta.KeyColumns, key, c => c, JsonRowCodec.Sqlite);
 
-    private static void BindArgs(SqliteCommand cmd, object[] args) {
-        // IIndexedDb passes positional "?" args; bind them in order.
-        for (var i = 0; i < args.Length; i++) {
-            cmd.Parameters.AddWithValue("@k" + i.ToString(CultureInfo.InvariantCulture), args[i] ?? DBNull.Value);
-        }
-        // Rewrite "?" placeholders to the named parameters Microsoft.Data.Sqlite binds.
-        var sql = cmd.CommandText;
-        var idx = 0;
-        while (sql.Contains('?')) {
-            var pos = sql.IndexOf('?');
-            sql = sql.Remove(pos, 1).Insert(pos, "@k" + idx.ToString(CultureInfo.InvariantCulture));
-            idx++;
-        }
-        if (idx != args.Length) {
-            throw new InvalidOperationException(
-                $"placeholder/arg mismatch: {idx} '?' placeholders but {args.Length} args");
-        }
-        cmd.CommandText = sql;
-    }
+    private static void BindArgs(SqliteCommand cmd, object[] args) =>
+        cmd.CommandText = SqlPlaceholderBinder.Rewrite(cmd.CommandText, args, cmd, "k");
 
     private static Dictionary<string, StoreMeta> BuildStoreMeta() => new(StringComparer.Ordinal) {
         [IndexedDbStores.Mission] = new StoreMeta(

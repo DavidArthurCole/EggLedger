@@ -13,8 +13,10 @@ public static class MissionExtensions {
             ? name
             : EnumNames.ProtoName(s);
 
-    public static string GetDurationString(this MissionInfo d) {
-        double seconds = d.DurationSeconds;
+    public static string GetDurationString(this MissionInfo d) => GetDurationString(d.DurationSeconds);
+
+    /// <summary>Compact human-readable duration string, e.g. "1d2h3m". Mirrors Go durationStringFromSecs.</summary>
+    public static string GetDurationString(double seconds) {
         if (seconds == 0) {
             return "0m";
         }

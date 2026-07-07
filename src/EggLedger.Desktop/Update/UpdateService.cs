@@ -20,6 +20,9 @@ public sealed class UpdateService : IUpdateStatusProvider {
     /// <remarks>Within this window an unforced check skips the GitHub poll and decides from the stored snapshot.</remarks>
     public static readonly TimeSpan UpdateCheckInterval = TimeSpan.FromHours(12);
 
+    /// <summary>Default wait for the new instance's /ready handshake before giving up.</summary>
+    public static readonly TimeSpan DefaultHandshakeTimeout = TimeSpan.FromSeconds(90);
+
     /// <summary>Settings key for the last-check timestamp. Matches Go (RFC3339Nano string).</summary>
     public const string LastUpdateCheckAtKey = "last_update_check_at";
 
@@ -61,7 +64,7 @@ public sealed class UpdateService : IUpdateStatusProvider {
         _exePath = exePath ?? (() => Environment.ProcessPath);
         _processRunner = processRunner ?? new ProcessRunner();
         _exitAction = exitAction ?? (() => Task.CompletedTask);
-        _handshakeTimeout = handshakeTimeout ?? TimeSpan.FromSeconds(90);
+        _handshakeTimeout = handshakeTimeout ?? DefaultHandshakeTimeout;
         _exitDelay = exitDelay ?? OldExitDelay;
         _settings = settings;
         _now = now ?? (() => DateTimeOffset.UtcNow);
@@ -225,7 +228,7 @@ public sealed class UpdateService : IUpdateStatusProvider {
         }
 
         var tempPath = NewBinaryTempPath(exePath);
-        TryDelete(tempPath);
+        BinaryReplacement.TryDelete(tempPath);
 
         // Expected SHA-256 from the release's SHA256SUMS asset. Verified against the downloaded
         // bytes before extract/launch. Null (asset absent on older releases) skips the check.
@@ -236,32 +239,32 @@ public sealed class UpdateService : IUpdateStatusProvider {
         var assetName = GithubReleaseClient.ExpectedAssetName();
         if (ArchiveExtraction.IsArchive(assetName)) {
             var archivePath = Path.Combine(Path.GetTempPath(), assetName);
-            TryDelete(archivePath);
+            BinaryReplacement.TryDelete(archivePath);
             try {
                 await _github.DownloadAsync(assetUrl, archivePath, OnProgress).ConfigureAwait(false);
                 if (!VerifySha256(archivePath, expectedSha)) {
-                    TryDelete(archivePath);
+                    BinaryReplacement.TryDelete(archivePath);
                     Fail("checksum mismatch: downloaded archive does not match the published SHA-256");
                     return;
                 }
                 ArchiveExtraction.Extract(archivePath, tempPath);
             } catch (Exception ex) when (ex is HttpRequestException or IOException or TaskCanceledException or InvalidOperationException) {
-                TryDelete(archivePath);
-                TryDelete(tempPath);
+                BinaryReplacement.TryDelete(archivePath);
+                BinaryReplacement.TryDelete(tempPath);
                 Fail($"download failed: {ex.Message}");
                 return;
             }
-            TryDelete(archivePath);
+            BinaryReplacement.TryDelete(archivePath);
         } else {
             try {
                 await _github.DownloadAsync(assetUrl, tempPath, OnProgress).ConfigureAwait(false);
                 if (!VerifySha256(tempPath, expectedSha)) {
-                    TryDelete(tempPath);
+                    BinaryReplacement.TryDelete(tempPath);
                     Fail("checksum mismatch: downloaded binary does not match the published SHA-256");
                     return;
                 }
             } catch (Exception ex) when (ex is HttpRequestException or IOException or TaskCanceledException) {
-                TryDelete(tempPath);
+                BinaryReplacement.TryDelete(tempPath);
                 Fail($"download failed: {ex.Message}");
                 return;
             }
@@ -275,14 +278,14 @@ public sealed class UpdateService : IUpdateStatusProvider {
         await RunSelfReplaceHandoffAsync(_exitAction, _handshakeTimeout, _exitDelay).ConfigureAwait(false);
     }
 
-    /// <summary>Launch the downloaded binary as the NEW instance, open a loopback handshake listener, wait for its /ready ping, and exit after <see cref="OldExitDelay"/> so it can rename itself. Returns false if the launch failed.</summary>
+    /// <summary>Launch the downloaded binary as the NEW instance and wait for its /ready ping, then exit after <see cref="OldExitDelay"/> so it can rename itself.</summary>
     /// <remarks>MANUAL-VERIFY: the live two-process choreography is not unit-tested.</remarks>
     /// <param name="exitAction">Run once the new instance reports in or the wait times out (injected for testing).</param>
     public async Task<bool> RunSelfReplaceHandoffAsync(
         Func<Task> exitAction,
         TimeSpan? handshakeTimeout = null,
         TimeSpan? exitDelay = null) {
-        var hsTimeout = handshakeTimeout ?? TimeSpan.FromSeconds(90);
+        var hsTimeout = handshakeTimeout ?? DefaultHandshakeTimeout;
         var oldExitDelay = exitDelay ?? OldExitDelay;
         var exePath = _exePath();
         if (string.IsNullOrEmpty(exePath)) {
@@ -304,8 +307,10 @@ public sealed class UpdateService : IUpdateStatusProvider {
         var args = BuildReplaceArgs(Environment.ProcessId, exePath, listener?.Address, token);
         try {
             await _processRunner.RunAsync(tempPath, args).ConfigureAwait(false);
-        } catch {
+        } catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or IOException) {
             listener?.Dispose();
+            // The staged binary is still valid (Ready): only the live handoff attempt failed.
+            Message = $"could not launch the updated instance: {ex.Message}";
             return false;
         }
 
@@ -349,13 +354,6 @@ public sealed class UpdateService : IUpdateStatusProvider {
     private void Fail(string message) {
         Message = message;
         SetPhase(UpdatePhase.Failed);
-    }
-
-    private static void TryDelete(string path) {
-        try {
-            File.Delete(path);
-        } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) {
-        }
     }
 
     // True when expected is null (no published sum to check) or the file's SHA-256 matches it.

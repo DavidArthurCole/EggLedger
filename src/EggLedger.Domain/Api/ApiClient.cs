@@ -155,8 +155,8 @@ public sealed partial class ApiClient {
     }
 
     /// <summary>
-    /// Flattens an exception chain into "Outer -> Inner -> ..." text. WASM strips exception-message
-    /// resource strings, so the real cause sits one or more InnerExceptions down; this surfaces it.
+    /// Flattens an exception chain into "Outer -> Inner -> ..." text, since the real cause often
+    /// sits one or more InnerExceptions down and would otherwise be lost from diagnostics.
     /// </summary>
     private static string ChainText(Exception ex) {
         var parts = new List<string>();

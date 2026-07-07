@@ -94,7 +94,7 @@ public static class Weight {
         foreach (var group in f.Or) {
             all.AddRange(group);
         }
-        var now = DateTime.Now;
+        var now = DateTime.UtcNow;
         foreach (var c in all) {
             if (c.TopLevel is not "launchDT" and not "returnDT") {
                 continue;

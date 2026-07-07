@@ -83,7 +83,7 @@ public sealed class BinaryReplacement(IProcessProbe probe) {
     /// glob but still needs to rename itself.
     /// </summary>
     public void CleanStaleBinaries(string exeDir, string selfPath) {
-        string[] patterns = ["EggLedger*_new", "EggLedger*_new.exe"];
+        string[] patterns = [$"EggLedger*{BinaryNaming.NewBinarySuffix}", $"EggLedger*{BinaryNaming.NewBinarySuffix}.exe"];
         foreach (var pattern in patterns) {
             string[] matches;
             try {
@@ -150,11 +150,11 @@ public sealed class BinaryReplacement(IProcessProbe probe) {
         }
     }
 
-    private static void TryDelete(string path) {
+    /// <summary>Best-effort delete shared with <see cref="UpdateService"/>; ignores lock/permission failures.</summary>
+    internal static void TryDelete(string path) {
         try {
             File.Delete(path);
         } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) {
-            // Best-effort, matching Go's ignored os.Remove errors.
         }
     }
 }

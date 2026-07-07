@@ -1,21 +1,27 @@
 @using EggLedger.Web.Layout
+@using EggLedger.Web.Pages
 @using Microsoft.AspNetCore.Components.Authorization
 @* Router over the shared RCL: its @page components are the routable set. Data pages need an
-   authenticated Discord principal (per-user storage); others see the connect prompt. *@
+   authenticated Discord principal (per-user storage); others see the connect prompt. Privacy/
+   Terms must stay reachable by anonymous visitors (legal requirement), so they skip the gate. *@
 <CascadingAuthenticationState>
     <Router AppAssembly="@typeof(App).Assembly">
         <Found Context="routeData">
-            <AuthorizeView>
-                <Authorized>
-                    <BackfillTrigger/>
-                    <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)"/>
-                </Authorized>
-                <NotAuthorized>
-                    <LayoutView Layout="@typeof(MainLayout)">
-                        <ConnectGate/>
-                    </LayoutView>
-                </NotAuthorized>
-            </AuthorizeView>
+            @if (routeData.PageType == typeof(PrivacyPage) || routeData.PageType == typeof(TermsPage)) {
+                <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)"/>
+            } else {
+                <AuthorizeView>
+                    <Authorized>
+                        <BackfillTrigger/>
+                        <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)"/>
+                    </Authorized>
+                    <NotAuthorized>
+                        <LayoutView Layout="@typeof(MainLayout)">
+                            <ConnectGate/>
+                        </LayoutView>
+                    </NotAuthorized>
+                </AuthorizeView>
+            }
         </Found>
         <NotFound>
             <LayoutView Layout="@typeof(MainLayout)">

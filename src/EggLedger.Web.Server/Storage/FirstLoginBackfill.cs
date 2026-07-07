@@ -1,8 +1,11 @@
+using System.Security.Cryptography;
 using System.Text.Json;
 using EggLedger.Domain.MissionQuery;
 using EggLedger.Web.Data;
 using EggLedger.Web.Services;
 using EggLedger.Web.Settings;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.Extensions.Logging;
 using Npgsql;
 
 namespace EggLedger.Web.Server.Storage;
@@ -22,17 +25,18 @@ public sealed class FirstLoginBackfill(
     IBlobCipher cipher,
     IndexedDbAccountStore accounts,
     IndexedDbSettings settings,
-    IndexedDbReportStore reports) {
+    IndexedDbReportStore reports,
+    IDataProtectionProvider dataProtection,
+    ILogger<FirstLoginBackfill> logger) {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
+    private readonly IDataProtector _keyProtector = dataProtection.CreateProtector("EggLedger.EncryptionKey");
 
     public async Task RunIfNeededAsync(CancellationToken ct = default) {
-        var discordId = await user.GetDiscordIdAsync().ConfigureAwait(false);
+        var discordId = await DiscordIdForCurrentUserAsync(ct).ConfigureAwait(false);
         if (discordId is null) {
             return;
         }
 
-        // Fresh-store signal: no known accounts yet. (Settings are written early by the app,
-        // so settings-empty is unreliable; accounts only exist after restore or a fetch.)
         var known = await accounts.GetKnownAccountsAsync().ConfigureAwait(false);
         if (known.Count > 0) {
             return;
@@ -84,11 +88,32 @@ public sealed class FirstLoginBackfill(
         }
     }
 
+    // Looks up the current user's linked Discord identity via the provider-neutral `identities`
+    // table, since CurrentUser only knows user_id, not Discord ids, post-migration.
+    private async Task<string?> DiscordIdForCurrentUserAsync(CancellationToken ct) {
+        var userId = await user.GetUserIdAsync().ConfigureAwait(false);
+        if (userId is null) {
+            return null;
+        }
+        await using var cmd = source.CreateCommand("SELECT subject FROM identities WHERE user_id = $1 AND provider = 'discord'");
+        cmd.Parameters.AddWithValue(userId.Value);
+        var result = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+        return result as string;
+    }
+
     private async Task<string?> EncryptionKeyAsync(string discordId, CancellationToken ct) {
         await using var cmd = source.CreateCommand("SELECT encryption_key FROM users WHERE discord_id = $1");
         cmd.Parameters.AddWithValue(discordId);
         var result = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
-        return result as string;
+        if (result is not string { Length: > 0 } stored) {
+            return null;
+        }
+        // Tolerates rows written before this protector existed (plain 64-char hex).
+        try {
+            return _keyProtector.Unprotect(stored);
+        } catch (CryptographicException) {
+            return stored;
+        }
     }
 
     private async Task<T?> DecryptBlobAsync<T>(string discordId, string encKey, string name, CancellationToken ct) {
@@ -105,9 +130,10 @@ public sealed class FirstLoginBackfill(
         try {
             var plaintext = await cipher.DecryptAsync(encKey, ciphertext, ct).ConfigureAwait(false);
             return JsonSerializer.Deserialize<T>(plaintext, Json);
-        } catch {
+        } catch (Exception ex) {
             // Corrupt/incompatible blob: skip rather than block login. The manual restore
             // in the Settings tab remains available.
+            logger.LogWarning(ex, "backfill: failed to decrypt blob {Name}", name);
             return default;
         }
     }

@@ -17,7 +17,7 @@ public sealed class IndexedDbMissionStore : IMissionStore {
     private readonly IndexedDbAccountStore? _accounts;
 
     /// <param name="db">IndexedDB wrapper.</param>
-    /// <param name="decoder">Payload decoder. Desktop uses in-process protobuf-net; WASM delegates to the sync server (browser cannot emit).</param>
+    /// <param name="decoder">Payload decoder (in-process protobuf-net).</param>
     /// <param name="packer">Mission compiler. When null, built from the canonical eiafx config via <see cref="EiafxMissionConfigSource.Instance"/>.</param>
     /// <param name="accounts">Known-account store. When null, <see cref="GetKnownAccountsAsync"/> returns empty (mission/backup schema has no account rows).</param>
     public IndexedDbMissionStore(IIndexedDb db, IApiPayloadDecoder decoder, MissionPacker? packer = null, IndexedDbAccountStore? accounts = null) {
@@ -108,8 +108,7 @@ public sealed class IndexedDbMissionStore : IMissionStore {
     public async Task<IReadOnlyList<CompleteMissionResponse>?> GetPlayerCompleteMissionsAsync(string eid) {
         var rows = (await PlayerRowsAsync(eid)).OrderBy(r => r.StartTimestamp).ToList();
         try {
-            // Decode is a server round-trip per mission in WASM; bounded-concurrency
-            // batches (order preserved) over sequential ~20s on a full history.
+            // Bounded-concurrency batches (order preserved); decode is CPU-bound protobuf-net work.
             var result = new CompleteMissionResponse[rows.Count];
             const int batch = 16;
             for (int start = 0; start < rows.Count; start += batch) {

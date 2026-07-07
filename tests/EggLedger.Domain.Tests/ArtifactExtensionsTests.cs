@@ -42,49 +42,15 @@ public class ArtifactExtensionsTests {
         Assert.Equal("", spec.DropEffectString());
     }
 
-    [Fact]
-    public void TierName_ArtifactT1() {
-        var spec = new ArtifactSpec {
-            name = ArtifactSpec.Name.TachyonDeflector,
-            level = ArtifactSpec.Level.Inferior,
-        };
-        Assert.Equal("WEAK", spec.TierName());
-    }
-
-    [Fact]
-    public void TierName_ArtifactT4() {
-        var spec = new ArtifactSpec {
-            name = ArtifactSpec.Name.TachyonDeflector,
-            level = ArtifactSpec.Level.Greater,
-        };
-        Assert.Equal("EGGCEPTIONAL", spec.TierName());
-    }
-
-    [Fact]
-    public void TierName_StoneFragment() {
-        var spec = new ArtifactSpec {
-            name = ArtifactSpec.Name.TachyonStoneFragment,
-            level = ArtifactSpec.Level.Inferior,
-        };
-        Assert.Equal("FRAGMENT", spec.TierName());
-    }
-
-    [Fact]
-    public void TierName_Ingredient() {
-        var spec = new ArtifactSpec {
-            name = ArtifactSpec.Name.GoldMeteorite,
-            level = ArtifactSpec.Level.Normal,
-        };
-        Assert.Equal("SOLID", spec.TierName());
-    }
-
-    [Fact]
-    public void TierName_UnknownArtifact() {
-        var spec = new ArtifactSpec {
-            name = ArtifactSpec.Name.Unknown,
-            level = ArtifactSpec.Level.Inferior,
-        };
-        Assert.Equal("?", spec.TierName());
+    [Theory]
+    [InlineData(ArtifactSpec.Name.TachyonDeflector, ArtifactSpec.Level.Inferior, "WEAK")]
+    [InlineData(ArtifactSpec.Name.TachyonDeflector, ArtifactSpec.Level.Greater, "EGGCEPTIONAL")]
+    [InlineData(ArtifactSpec.Name.TachyonStoneFragment, ArtifactSpec.Level.Inferior, "FRAGMENT")]
+    [InlineData(ArtifactSpec.Name.GoldMeteorite, ArtifactSpec.Level.Normal, "SOLID")]
+    [InlineData(ArtifactSpec.Name.Unknown, ArtifactSpec.Level.Inferior, "?")]
+    public void TierName(ArtifactSpec.Name name, ArtifactSpec.Level level, string want) {
+        var spec = new ArtifactSpec { name = name, level = level };
+        Assert.Equal(want, spec.TierName());
     }
 
     [Fact]
@@ -130,14 +96,12 @@ public class ArtifactExtensionsTests {
         Assert.Equal("", spec.GenericBenefitString());
     }
 
-    [Fact]
-    public void InventoryVisualizerOrder_Artifact() {
-        Assert.Equal(33, ArtifactSpec.Name.BookOfBasan.InventoryVisualizerOrder());
-    }
-
-    [Fact]
-    public void InventoryVisualizerOrder_Stone() {
-        Assert.Equal(6, ArtifactSpec.Name.TachyonStone.InventoryVisualizerOrder());
+    [Theory]
+    [InlineData(ArtifactSpec.Name.BookOfBasan, 33)]
+    [InlineData(ArtifactSpec.Name.TachyonStone, 6)]
+    [InlineData(ArtifactSpec.Name.Unknown, 0)]
+    public void InventoryVisualizerOrder(ArtifactSpec.Name name, int want) {
+        Assert.Equal(want, name.InventoryVisualizerOrder());
     }
 
     [Fact]
@@ -147,36 +111,14 @@ public class ArtifactExtensionsTests {
         Assert.Equal(stone, frag);
     }
 
-    [Fact]
-    public void InventoryVisualizerOrder_Unknown() {
-        Assert.Equal(0, ArtifactSpec.Name.Unknown.InventoryVisualizerOrder());
-    }
-
-    [Fact]
-    public void ArtifactType_Artifact() {
-        Assert.Equal(ArtifactSpec.Type.Artifact, ArtifactSpec.Name.BookOfBasan.ArtifactType());
-    }
-
-    [Fact]
-    public void ArtifactType_Stone() {
-        Assert.Equal(ArtifactSpec.Type.Stone, ArtifactSpec.Name.TachyonStone.ArtifactType());
-    }
-
-    [Fact]
-    public void ArtifactType_StoneIngredient() {
-        Assert.Equal(
-            ArtifactSpec.Type.StoneIngredient,
-            ArtifactSpec.Name.TachyonStoneFragment.ArtifactType());
-    }
-
-    [Fact]
-    public void ArtifactType_Ingredient() {
-        Assert.Equal(ArtifactSpec.Type.Ingredient, ArtifactSpec.Name.GoldMeteorite.ArtifactType());
-    }
-
-    [Fact]
-    public void ArtifactType_Unknown() {
-        Assert.Equal(ArtifactSpec.Type.Artifact, ArtifactSpec.Name.Unknown.ArtifactType());
+    [Theory]
+    [InlineData(ArtifactSpec.Name.BookOfBasan, ArtifactSpec.Type.Artifact)]
+    [InlineData(ArtifactSpec.Name.TachyonStone, ArtifactSpec.Type.Stone)]
+    [InlineData(ArtifactSpec.Name.TachyonStoneFragment, ArtifactSpec.Type.StoneIngredient)]
+    [InlineData(ArtifactSpec.Name.GoldMeteorite, ArtifactSpec.Type.Ingredient)]
+    [InlineData(ArtifactSpec.Name.Unknown, ArtifactSpec.Type.Artifact)]
+    public void ArtifactType(ArtifactSpec.Name name, ArtifactSpec.Type want) {
+        Assert.Equal(want, name.ArtifactType());
     }
 
     [Fact]

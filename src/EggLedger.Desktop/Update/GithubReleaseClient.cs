@@ -11,6 +11,9 @@ public sealed class GithubReleaseClient(HttpClient httpClient) {
     /// <summary>Repo the updater polls. Matches Go _githubRepo.</summary>
     public const string GithubRepo = "DavidArthurCole/EggLedger";
 
+    /// <summary>Download read-buffer size and progress-report granularity.</summary>
+    private const int DownloadChunkBytes = 64 * 1024;
+
     private readonly HttpClient _httpClient = httpClient;
 
     /// <summary>A release tag plus its body (notes).</summary>
@@ -26,18 +29,14 @@ public sealed class GithubReleaseClient(HttpClient httpClient) {
         if (json is null) {
             return null;
         }
-        try {
-            using var doc = JsonDocument.Parse(json);
-            var root = doc.RootElement;
+        return TryParseJson(json, root => {
             var tag = root.TryGetProperty("tag_name", out var t) ? t.GetString() : null;
             if (string.IsNullOrEmpty(tag)) {
-                return null;
+                return (Release?)null;
             }
             var body = root.TryGetProperty("body", out var b) ? b.GetString() ?? "" : "";
             return new Release(tag, body);
-        } catch (JsonException) {
-            return null;
-        }
+        });
     }
 
     /// <summary>
@@ -51,14 +50,13 @@ public sealed class GithubReleaseClient(HttpClient httpClient) {
             return null;
         }
 
-        try {
-            using var doc = JsonDocument.Parse(json);
-            if (doc.RootElement.ValueKind != JsonValueKind.Array) {
+        return TryParseJson(json, root => {
+            if (root.ValueKind != JsonValueKind.Array) {
                 return null;
             }
             EggLedger.Domain.Util.SemVersion? highest = null;
             Release? best = null;
-            foreach (var rel in doc.RootElement.EnumerateArray()) {
+            foreach (var rel in root.EnumerateArray()) {
                 if (rel.TryGetProperty("draft", out var d) && d.ValueKind == JsonValueKind.True) {
                     continue;
                 }
@@ -73,9 +71,7 @@ public sealed class GithubReleaseClient(HttpClient httpClient) {
                 }
             }
             return best;
-        } catch (JsonException) {
-            return null;
-        }
+        });
     }
 
     /// <summary>
@@ -107,9 +103,8 @@ public sealed class GithubReleaseClient(HttpClient httpClient) {
             return null;
         }
 
-        try {
-            using var doc = JsonDocument.Parse(json);
-            if (!doc.RootElement.TryGetProperty("assets", out var assets) || assets.ValueKind != JsonValueKind.Array) {
+        return TryParseJson(json, root => {
+            if (!root.TryGetProperty("assets", out var assets) || assets.ValueKind != JsonValueKind.Array) {
                 return null;
             }
             var want = ExpectedAssetName();
@@ -121,9 +116,7 @@ public sealed class GithubReleaseClient(HttpClient httpClient) {
                 }
             }
             return null;
-        } catch (JsonException) {
-            return null;
-        }
+        });
     }
 
     /// <summary>
@@ -136,21 +129,17 @@ public sealed class GithubReleaseClient(HttpClient httpClient) {
         if (json is null) {
             return null;
         }
-        string? sumsUrl = null;
-        try {
-            using var doc = JsonDocument.Parse(json);
-            if (!doc.RootElement.TryGetProperty("assets", out var assets) || assets.ValueKind != JsonValueKind.Array) {
+        var sumsUrl = TryParseJson(json, root => {
+            if (!root.TryGetProperty("assets", out var assets) || assets.ValueKind != JsonValueKind.Array) {
                 return null;
             }
             foreach (var asset in assets.EnumerateArray()) {
                 if ((asset.TryGetProperty("name", out var n) ? n.GetString() : null) == "SHA256SUMS") {
-                    sumsUrl = asset.TryGetProperty("browser_download_url", out var u) ? u.GetString() : null;
-                    break;
+                    return asset.TryGetProperty("browser_download_url", out var u) ? u.GetString() : null;
                 }
             }
-        } catch (JsonException) {
             return null;
-        }
+        });
         if (string.IsNullOrEmpty(sumsUrl)) {
             return null;
         }
@@ -189,14 +178,14 @@ public sealed class GithubReleaseClient(HttpClient httpClient) {
         var total = resp.Content.Headers.ContentLength ?? 0;
         await using var src = await resp.Content.ReadAsStreamAsync(cancel).ConfigureAwait(false);
         await using var dst = new FileStream(destPath, FileMode.Create, FileAccess.Write, FileShare.None);
-        var buffer = new byte[64 * 1024];
+        var buffer = new byte[DownloadChunkBytes];
         long downloaded = 0;
         long lastReport = 0;
         int read;
         while ((read = await src.ReadAsync(buffer, cancel).ConfigureAwait(false)) > 0) {
             await dst.WriteAsync(buffer.AsMemory(0, read), cancel).ConfigureAwait(false);
             downloaded += read;
-            if (downloaded - lastReport >= 64 * 1024) {
+            if (downloaded - lastReport >= DownloadChunkBytes) {
                 progress?.Invoke(downloaded, total);
                 lastReport = downloaded;
             }
@@ -206,6 +195,17 @@ public sealed class GithubReleaseClient(HttpClient httpClient) {
 
         if (total > 0 && downloaded != total) {
             throw new IOException($"incomplete download: received {downloaded} of {total} bytes");
+        }
+    }
+
+    // Shared JSON-parse-and-extract wrapper: parses json and hands the root element to
+    // extract, returning null on any parse failure instead of throwing.
+    private static T? TryParseJson<T>(string json, Func<JsonElement, T?> extract) {
+        try {
+            using var doc = JsonDocument.Parse(json);
+            return extract(doc.RootElement);
+        } catch (JsonException) {
+            return default;
         }
     }
 

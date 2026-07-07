@@ -3,10 +3,14 @@ using EggLedger.Web.Server.Sync.Blobs;
 using EggLedger.Web.Server.Sync.Db;
 using EggLedger.Web.Server.Sync.Menno;
 using EggLedger.Web.Server.Sync.Verify;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Npgsql;
 using SyncKit.Auth;
 using SyncKit.Contract;
@@ -17,18 +21,19 @@ public static class Api {
     public static void Map(WebApplication app, AppConfig cfg, VerifyInfo build) {
         var source = app.Services.GetService<NpgsqlDataSource>()
                      ?? NpgsqlDataSource.Create(cfg.DatabaseUrl);
+        var dataProtection = app.Services.GetRequiredService<IDataProtectionProvider>();
+        var loggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
 
-        var auth = new AuthEndpoints(source);
-        var blobs = new BlobEndpoints(source);
+        var auth = new AuthEndpoints(source, dataProtection, loggerFactory.CreateLogger<AuthEndpoints>());
+        var blobs = new BlobEndpoints(source, loggerFactory.CreateLogger<BlobEndpoints>());
         var menno = new MennoEndpoint(new HttpClient(), cfg.MennoFunctionKey, AppConfig.MennoUpstreamUrl);
         var store = new SessionStore(source);
         var metrics = new Admin.ApiMetrics(TimeProvider.System);
         var spam = new Admin.SpamLog(source);
-        var admin = new Admin.AdminEndpoints(source, metrics, spam, cfg.AdminDiscordIds);
+        var admin = new Admin.AdminEndpoints(source, metrics, spam, cfg.AdminUserIds);
 
-        // Routing runs in Program.cs (one pass for the whole pipeline) so ctx.GetEndpoint() is
-        // populated here. Valid /api/v1 hits are count-only; unmatched ones (404 probes) get the
-        // client logged to el_api_spam for the admin spam view.
+        // Routing runs in Program.cs so ctx.GetEndpoint() is populated here: valid /api/v1 hits
+        // are count-only, unmatched ones (404 probes) get the client logged to el_api_spam.
         app.Use(async (ctx, next) => {
             if (ctx.Request.Path.StartsWithSegments("/api/v1")) {
                 if (ctx.GetEndpoint() is not null) {
@@ -38,10 +43,13 @@ public static class Api {
                     var ua = ctx.Request.Headers.UserAgent.ToString();
                     var now = TimeProvider.System.GetUtcNow().ToUnixTimeSeconds();
                     // Logging the probe must never break the response.
+                    var apiLogger = loggerFactory.CreateLogger("EggLedger.Web.Server.Sync.Api");
                     _ = Task.Run(async () => {
                         try {
                             await spam.RecordAsync(ip, ctx.Request.Method, ctx.Request.Path.Value ?? "", ua, now);
-                        } catch { }
+                        } catch (Exception ex) {
+                            apiLogger.LogWarning(ex, "spam log: failed to record probe from {Ip}", ip);
+                        }
                     });
                 }
             }
@@ -51,6 +59,12 @@ public static class Api {
         // public
         app.MapGet("/api/v1/auth/discord", (HttpContext c) => auth.Discord(c));
         app.MapGet("/api/v1/auth/login", (HttpContext c) => auth.Login(c));
+        if (!string.IsNullOrEmpty(cfg.AuthentikAuthority)) {
+            app.MapGet("/api/v1/auth/authentik-login", (HttpContext c) =>
+                Results.Challenge(
+                    new AuthenticationProperties { RedirectUri = "/" },
+                    [OpenIdConnectDefaults.AuthenticationScheme]));
+        }
         app.MapGet("/api/v1/auth/callback", (HttpContext c) => auth.Callback(c));
         app.MapGet("/api/v1/auth/poll", (HttpContext c) => auth.Poll(c, c.Request.Query["state"].ToString()));
         app.MapDelete("/api/v1/auth/session", (HttpContext c) => auth.DeleteSession(c));
@@ -80,7 +94,7 @@ public static class Api {
         // Ship 3D assets: authed + admin-allowlist gated. Bytes live in a server-local dir
         // (not wwwroot), served only here, until licensing is confirmed.
         var ships = app.Services.GetRequiredService<Ships.ShipAssetService>();
-        var adminIds = cfg.AdminDiscordIds;
+        var adminIds = cfg.AdminUserIds;
         MapAuthed(app, ["GET"], "/api/ships/manifest", store, async ctx => {
             if (!adminIds.Contains(ctx.Request.Headers["X-Discord-ID"].ToString())) {
                 ctx.Response.StatusCode = StatusCodes.Status403Forbidden;

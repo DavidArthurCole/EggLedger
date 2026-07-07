@@ -85,6 +85,12 @@ public static class ArtifactExtensions {
     }
 
     public static string DropEffectString(this ArtifactSpec a) {
+        var v = EffectTableValue(a);
+        return v == "" ? "" : "[" + v + "]";
+    }
+
+    /// <summary>Looks up the effect-table value for this artifact's level/rarity; "" when absent.</summary>
+    private static string EffectTableValue(ArtifactSpec a) {
         if (!a.ShouldSerializename()) {
             return "";
         }
@@ -96,11 +102,7 @@ public static class ArtifactExtensions {
         if (!a.ShouldSerializerarity() || (int)a.rarity >= row.Length) {
             return "";
         }
-        var v = row[(int)a.rarity];
-        if (v == "") {
-            return "";
-        }
-        return "[" + v + "]";
+        return row[(int)a.rarity];
     }
 
     /// <summary>
@@ -108,18 +110,7 @@ public static class ArtifactExtensions {
     /// are returned as-is; normal values substitute into the generic template where [^b] appears.
     /// </summary>
     public static string CombinedEffectString(this ArtifactSpec a) {
-        if (!a.ShouldSerializename()) {
-            return "";
-        }
-        if (!Config.ArtifactEffects.TryGetValue(EnumNames.ProtoName(a.name), out var effects)
-            || !a.ShouldSerializelevel() || (int)a.level >= effects.Length) {
-            return "";
-        }
-        var row = effects[(int)a.level];
-        if (!a.ShouldSerializerarity() || (int)a.rarity >= row.Length) {
-            return "";
-        }
-        var v = row[(int)a.rarity];
+        var v = EffectTableValue(a);
         if (v == "") {
             return "";
         }

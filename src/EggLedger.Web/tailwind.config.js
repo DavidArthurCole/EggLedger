@@ -1,7 +1,7 @@
 /*
   Ported from EggLedger/www/tailwind.config.js (the original Vue Tailwind theme).
   Compiled by the standalone Tailwind CLI (no Node), wired in EggLedger.Web.csproj.
-  content scans this RCL's .razor markup plus both host index pages. blue/emerald
+  content scans this RCL's .razor markup plus the Desktop host's index page. blue/emerald
   come from the CLI's bundled default palette via require('tailwindcss/colors').
   Omitted vs the Vue config: the @tailwindcss/forms plugin (the standalone CLI
   cannot load npm plugins); a minimal checkbox/input reset lives in
@@ -12,7 +12,6 @@ const colors = require('tailwindcss/colors');
 module.exports = {
   content: [
     './**/*.razor',
-    '../EggLedger.Web.Wasm/wwwroot/index.html',
     '../EggLedger.Desktop/wwwroot/desktop.html',
   ],
   theme: {

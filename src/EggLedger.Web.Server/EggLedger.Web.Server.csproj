@@ -16,6 +16,7 @@
     <PackageReference Include="SyncKit.Contract" Version="0.2.0-preview.1" />
     <PackageReference Include="SyncKit.Db" Version="0.2.0-preview.1" />
     <PackageReference Include="Npgsql" Version="10.0.3" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="10.0.0" />
   </ItemGroup>
 
   <ItemGroup>

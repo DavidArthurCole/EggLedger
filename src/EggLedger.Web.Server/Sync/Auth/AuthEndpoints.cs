@@ -1,10 +1,13 @@
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 using Npgsql;
 using SyncKit.Auth;
 
@@ -23,9 +26,20 @@ public sealed record PollResponse(
     [property: JsonPropertyName("avatarUrl")] string AvatarUrl,
     [property: JsonPropertyName("encryptionKey")] string EncryptionKey);
 
-public sealed class AuthEndpoints(NpgsqlDataSource source) {
+public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvider dataProtection, ILogger<AuthEndpoints> logger) {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
+    private readonly IDataProtector _keyProtector = dataProtection.CreateProtector("EggLedger.EncryptionKey");
     private static long Now() => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+    // Tolerates rows written before this protector existed (plain 64-char hex): unprotect
+    // fails on those, so fall back to the raw stored value instead of losing the key.
+    private string UnprotectKey(string stored) {
+        try {
+            return _keyProtector.Unprotect(stored);
+        } catch (CryptographicException) {
+            return stored;
+        }
+    }
 
     private static async Task WriteTextAsync(HttpContext ctx, int statusCode, string text) {
         ctx.Response.StatusCode = statusCode;
@@ -58,7 +72,7 @@ public sealed class AuthEndpoints(NpgsqlDataSource source) {
             "INSERT INTO pending_auth (state, expires_at) VALUES ($1, $2) ON CONFLICT (state) DO UPDATE SET expires_at = EXCLUDED.expires_at");
         cmd.Parameters.AddWithValue(state);
         cmd.Parameters.AddWithValue(Now() + 600);
-        try { await cmd.ExecuteNonQueryAsync(ctx.RequestAborted); } catch { }
+        try { await cmd.ExecuteNonQueryAsync(ctx.RequestAborted); } catch (Exception ex) { logger.LogWarning(ex, "auth: failed to seed pending_auth row"); }
         return (url, state);
     }
 
@@ -79,18 +93,24 @@ public sealed class AuthEndpoints(NpgsqlDataSource source) {
                 code, state,
                 (s, token, user) => { authedUser = user; return StorePending(s, token, user); },
                 ctx.RequestAborted);
-        } catch {
+        } catch (Exception ex) {
+            logger.LogWarning(ex, "auth: Discord callback failed");
             await WriteTextAsync(ctx, StatusCodes.Status500InternalServerError, "auth failed\n");
             return;
         }
 
-        // Sign the cookie-auth principal carrying the Discord id; the framework
-        // AuthenticationStateProvider flows it into the Blazor circuit (server cookie session).
+        // Sign the cookie-auth principal carrying both the legacy Discord id and the
+        // provider-neutral user id; the framework AuthenticationStateProvider flows it into
+        // the Blazor circuit (server cookie session).
         if (authedUser is { } u) {
             var claims = new List<Claim> {
                 new(EggLedger.Web.Server.Auth.AuthScheme.DiscordIdClaim, u.Id),
                 new(ClaimTypes.Name, u.Username),
             };
+            var userId = await UserIdForDiscordIdAsync(u.Id, ctx.RequestAborted).ConfigureAwait(false);
+            if (userId is { } id) {
+                claims.Add(new Claim(EggLedger.Web.Server.Auth.AuthScheme.UserIdClaim, id.ToString()));
+            }
             var identity = new ClaimsIdentity(claims, EggLedger.Web.Server.Auth.AuthScheme.Cookie);
             await ctx.SignInAsync(
                 EggLedger.Web.Server.Auth.AuthScheme.Cookie,
@@ -103,6 +123,17 @@ public sealed class AuthEndpoints(NpgsqlDataSource source) {
         await ctx.Response.Body.WriteAsync(Encoding.UTF8.GetBytes(SuccessPage.Html), ctx.RequestAborted);
     }
 
+    private async Task<Guid?> UserIdForDiscordIdAsync(string discordId, CancellationToken ct) {
+        await using var cmd = source.CreateCommand("SELECT user_id FROM users WHERE discord_id = $1");
+        cmd.Parameters.AddWithValue(discordId);
+        try {
+            var result = await cmd.ExecuteScalarAsync(ct);
+            return result is Guid id ? id : null;
+        } catch {
+            return null;
+        }
+    }
+
     private async Task<bool> StateIsPending(string state, CancellationToken ct) {
         await using var cmd = source.CreateCommand(
             "SELECT 1 FROM pending_auth WHERE state = $1 AND expires_at > $2");
@@ -110,20 +141,34 @@ public sealed class AuthEndpoints(NpgsqlDataSource source) {
         cmd.Parameters.AddWithValue(Now());
         try {
             return await cmd.ExecuteScalarAsync(ct) is not null;
-        } catch {
+        } catch (Exception ex) {
+            logger.LogWarning(ex, "auth: failed to check pending state");
             return false;
         }
     }
 
     public async Task StorePending(string state, string token, DiscordUser user) {
+        Guid userId;
         await using (var u = source.CreateCommand(
             "INSERT INTO users (discord_id, created_at, username, avatar_url) VALUES ($1,$2,$3,$4) " +
-            "ON CONFLICT (discord_id) DO UPDATE SET username = EXCLUDED.username, avatar_url = EXCLUDED.avatar_url")) {
+            // discord_id's uniqueness is now a partial index (WHERE discord_id IS NOT NULL,
+            // since Authentik-only accounts leave it null) - ON CONFLICT must repeat that
+            // predicate to target it, a plain ON CONFLICT (discord_id) no longer matches.
+            "ON CONFLICT (discord_id) WHERE discord_id IS NOT NULL " +
+            "DO UPDATE SET username = EXCLUDED.username, avatar_url = EXCLUDED.avatar_url " +
+            "RETURNING user_id")) {
             u.Parameters.AddWithValue(user.Id);
             u.Parameters.AddWithValue(Now());
             u.Parameters.AddWithValue(user.Username);
             u.Parameters.AddWithValue(user.AvatarUrl);
-            try { await u.ExecuteNonQueryAsync(); } catch { }
+            userId = (Guid)(await u.ExecuteScalarAsync())!;
+        }
+
+        await using (var ident = source.CreateCommand(
+            "INSERT INTO identities (user_id, provider, subject) VALUES ($1, 'discord', $2) ON CONFLICT (provider, subject) DO NOTHING")) {
+            ident.Parameters.AddWithValue(userId);
+            ident.Parameters.AddWithValue(user.Id);
+            try { await ident.ExecuteNonQueryAsync(); } catch (Exception ex) { logger.LogWarning(ex, "auth: failed to link discord identity for {DiscordId}", user.Id); }
         }
 
         string encKey = "";
@@ -132,22 +177,25 @@ public sealed class AuthEndpoints(NpgsqlDataSource source) {
             // On error encKey stays empty and is regenerated below (Go parity).
             try {
                 var result = await sel.ExecuteScalarAsync();
-                if (result is string s)
-                    encKey = s;
-            } catch { }
+                if (result is string { Length: > 0 } stored)
+                    encKey = UnprotectKey(stored);
+            } catch (Exception ex) {
+                logger.LogWarning(ex, "auth: failed to read encryption_key for {DiscordId}", user.Id);
+            }
         }
         if (string.IsNullOrEmpty(encKey)) {
             encKey = DiscordOAuth.GenerateEncryptionKey();
             await using var upd = source.CreateCommand("UPDATE users SET encryption_key = $1 WHERE discord_id = $2");
-            upd.Parameters.AddWithValue(encKey);
+            upd.Parameters.AddWithValue(_keyProtector.Protect(encKey));
             upd.Parameters.AddWithValue(user.Id);
-            try { await upd.ExecuteNonQueryAsync(); } catch { }
+            try { await upd.ExecuteNonQueryAsync(); } catch (Exception ex) { logger.LogWarning(ex, "auth: failed to store encryption_key for {DiscordId}", user.Id); }
         }
 
         await using (var ins = source.CreateCommand(
-            "INSERT INTO sessions (token, discord_id, expires_at) VALUES ($1,$2,$3)")) {
+            "INSERT INTO sessions (token, discord_id, user_id, expires_at) VALUES ($1,$2,$3,$4)")) {
             ins.Parameters.AddWithValue(token);
             ins.Parameters.AddWithValue(user.Id);
+            ins.Parameters.AddWithValue(userId);
             ins.Parameters.AddWithValue(Now() + 30L * 24 * 3600);
             await ins.ExecuteNonQueryAsync();
         }
@@ -157,7 +205,7 @@ public sealed class AuthEndpoints(NpgsqlDataSource source) {
         pend.Parameters.AddWithValue(token);
         pend.Parameters.AddWithValue(user.Username);
         pend.Parameters.AddWithValue(user.AvatarUrl);
-        pend.Parameters.AddWithValue(encKey);
+        pend.Parameters.AddWithValue(_keyProtector.Protect(encKey));
         pend.Parameters.AddWithValue(state);
         await pend.ExecuteNonQueryAsync();
     }
@@ -181,7 +229,9 @@ public sealed class AuthEndpoints(NpgsqlDataSource source) {
                 avatarUrl = reader.IsDBNull(3) ? "" : reader.GetString(3);
                 encryptionKey = reader.IsDBNull(4) ? "" : reader.GetString(4);
             }
-        } catch { }
+        } catch (Exception ex) {
+            logger.LogWarning(ex, "auth: poll query failed for state {State}", state);
+        }
 
         if (!found || Now() > expiresAt) {
             await WriteTextAsync(ctx, StatusCodes.Status404NotFound, "not found\n");
@@ -193,9 +243,10 @@ public sealed class AuthEndpoints(NpgsqlDataSource source) {
         }
         await using (var del = source.CreateCommand("DELETE FROM pending_auth WHERE state = $1")) {
             del.Parameters.AddWithValue(state);
-            try { await del.ExecuteNonQueryAsync(ctx.RequestAborted); } catch { }
+            try { await del.ExecuteNonQueryAsync(ctx.RequestAborted); } catch (Exception ex) { logger.LogWarning(ex, "auth: failed to delete pending_auth row for state {State}", state); }
         }
-        await WriteJsonAsync(ctx, new PollResponse(token, username, avatarUrl, encryptionKey));
+        var plainKey = string.IsNullOrEmpty(encryptionKey) ? "" : UnprotectKey(encryptionKey);
+        await WriteJsonAsync(ctx, new PollResponse(token, username, avatarUrl, plainKey));
     }
 
     public async Task DeleteSession(HttpContext ctx) {
@@ -206,7 +257,7 @@ public sealed class AuthEndpoints(NpgsqlDataSource source) {
         if (token.Length > 0) {
             await using var cmd = source.CreateCommand("DELETE FROM sessions WHERE token = $1");
             cmd.Parameters.AddWithValue(token);
-            try { await cmd.ExecuteNonQueryAsync(ctx.RequestAborted); } catch { }
+            try { await cmd.ExecuteNonQueryAsync(ctx.RequestAborted); } catch (Exception ex) { logger.LogWarning(ex, "auth: failed to delete session"); }
         }
         ctx.Response.StatusCode = StatusCodes.Status204NoContent;
     }

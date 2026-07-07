@@ -1,4 +1,3 @@
-using System.Globalization;
 using EggLedger.Domain.Ei;
 using EggLedger.Domain.MissionQuery;
 using Ei;
@@ -68,30 +67,8 @@ public sealed class MissionPacker : IMissionCompiler {
         name is null ? "" : EnumNames.ProtoName(name.Value);
 
     /// <summary>Compact human-readable duration string. Mirrors Go durationStringFromSecs.</summary>
-    public static string DurationStringFromSecs(double seconds) {
-        if (seconds == 0) {
-            return "0m";
-        }
-        if (seconds < 60) {
-            return $"{(int)seconds}s";
-        }
-        if (seconds < 3600) {
-            return $"{(int)(seconds / 60)}m";
-        }
-        if (seconds < 86400) {
-            return string.Format(
-                CultureInfo.InvariantCulture,
-                "{0}h{1}m",
-                (int)(seconds / 3600),
-                (int)(seconds / 60) % 60);
-        }
-        return string.Format(
-            CultureInfo.InvariantCulture,
-            "{0}d{1}h{2}m",
-            (int)(seconds / 86400),
-            (int)(seconds / 3600) % 24,
-            (int)(seconds / 60) % 60);
-    }
+    public static string DurationStringFromSecs(double seconds) =>
+        MissionExtensions.GetDurationString(seconds);
 
     /// <summary>
     /// Extracts migration-6 filter columns from a decoded mission; false when Info is null.
@@ -249,7 +226,10 @@ public sealed class MissionPacker : IMissionCompiler {
     /// Mirrors Go isDubCap.
     /// </summary>
     public bool IsDubCap(CompleteMissionResponse mission) {
-        var info = mission.Info!;
+        if (mission.Info is null) {
+            return false;
+        }
+        var info = mission.Info;
         int level = (int)info.Level;
         if (!TryGetShipCapacities(info.Ship, info.duration_type, out var caps) || level >= caps.Length) {
             return false;
@@ -261,6 +241,10 @@ public sealed class MissionPacker : IMissionCompiler {
     /// <summary>
     /// True when launched inside the 2024-04-10..2024-04-16 bugged window (exclusive). Mirrors Go isBuggedCap.
     /// </summary>
-    public bool IsBuggedCap(CompleteMissionResponse mission) =>
-        mission.Info!.StartTimeDerived is > BuggedCapLower and < BuggedCapUpper;
+    public bool IsBuggedCap(CompleteMissionResponse mission) {
+        if (mission.Info is null) {
+            return false;
+        }
+        return mission.Info.StartTimeDerived is > BuggedCapLower and < BuggedCapUpper;
+    }
 }
