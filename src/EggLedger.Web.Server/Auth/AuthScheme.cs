@@ -8,4 +8,7 @@ public static class AuthScheme {
 
     /// <summary>Claim type carrying the provider-neutral user id (UUID) in the auth cookie.</summary>
     public const string UserIdClaim = "user_id";
+
+    /// <summary>Claim type carrying the SyncKit.Identity role (viewer/contributor/admin) in the auth cookie.</summary>
+    public const string RoleClaim = "role";
 }

@@ -24,13 +24,15 @@ public static class Api {
         var dataProtection = app.Services.GetRequiredService<IDataProtectionProvider>();
         var loggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
 
-        var auth = new AuthEndpoints(source, dataProtection, loggerFactory.CreateLogger<AuthEndpoints>());
+        var identity = app.Services.GetRequiredService<SyncKit.Identity.Client.IdentityApiClient>();
+        var currentUser = app.Services.GetRequiredService<EggLedger.Web.Server.Sync.Auth.ICurrentUser>();
+        var auth = new AuthEndpoints(source, dataProtection, identity, loggerFactory.CreateLogger<AuthEndpoints>());
         var blobs = new BlobEndpoints(source, loggerFactory.CreateLogger<BlobEndpoints>());
         var menno = new MennoEndpoint(new HttpClient(), cfg.MennoFunctionKey, AppConfig.MennoUpstreamUrl);
         var store = new SessionStore(source);
         var metrics = new Admin.ApiMetrics(TimeProvider.System);
         var spam = new Admin.SpamLog(source);
-        var admin = new Admin.AdminEndpoints(source, metrics, spam, cfg.AdminUserIds);
+        var admin = new Admin.AdminEndpoints(source, metrics, spam, currentUser, identity);
 
         // Routing runs in Program.cs so ctx.GetEndpoint() is populated here: valid /api/v1 hits
         // are count-only, unmatched ones (404 probes) get the client logged to el_api_spam.
@@ -94,9 +96,8 @@ public static class Api {
         // Ship 3D assets: authed + admin-allowlist gated. Bytes live in a server-local dir
         // (not wwwroot), served only here, until licensing is confirmed.
         var ships = app.Services.GetRequiredService<Ships.ShipAssetService>();
-        var adminIds = cfg.AdminUserIds;
         MapAuthed(app, ["GET"], "/api/ships/manifest", store, async ctx => {
-            if (!adminIds.Contains(ctx.Request.Headers["X-Discord-ID"].ToString())) {
+            if (!await currentUser.IsAtLeastAsync(ctx, EggLedger.Web.Server.Sync.Auth.UserRole.Admin, ctx.RequestAborted)) {
                 ctx.Response.StatusCode = StatusCodes.Status403Forbidden;
                 return;
             }
@@ -106,7 +107,7 @@ public static class Api {
                 ctx.RequestAborted);
         });
         MapAuthed(app, ["GET"], "/api/ships/{key}.glb", store, async ctx => {
-            bool isAdmin = adminIds.Contains(ctx.Request.Headers["X-Discord-ID"].ToString());
+            bool isAdmin = await currentUser.IsAtLeastAsync(ctx, EggLedger.Web.Server.Sync.Auth.UserRole.Admin, ctx.RequestAborted);
             var key = (string)ctx.Request.RouteValues["key"]!;
             var r = await Ships.ShipEndpoints.HandleGlb(ships, isAdmin, key, ctx.RequestAborted);
             ctx.Response.StatusCode = r.Status;

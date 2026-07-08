@@ -28,8 +28,23 @@
     <Content Include="..\..\src\EggLedger.Web.Server\Migrations\4_eggledger_storage.up.sql"
              Link="Migrations\4_eggledger_storage.up.sql"
              CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="..\..\src\EggLedger.Web.Server\Migrations\7_identities.up.sql"
-             Link="Migrations\7_identities.up.sql"
+    <Content Include="..\..\src\EggLedger.Web.Server\Migrations\2_add_user_profile.up.sql"
+             Link="Migrations\2_add_user_profile.up.sql"
+             CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\src\EggLedger.Web.Server\Migrations\3_add_encryption_key.up.sql"
+             Link="Migrations\3_add_encryption_key.up.sql"
+             CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\src\EggLedger.Web.Server\Migrations\5_data_protection_keys.up.sql"
+             Link="Migrations\5_data_protection_keys.up.sql"
+             CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\src\EggLedger.Web.Server\Migrations\6_api_spam_log.up.sql"
+             Link="Migrations\6_api_spam_log.up.sql"
+             CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\src\EggLedger.Web.Server\Migrations\7_cascade_eggledger_storage.up.sql"
+             Link="Migrations\7_cascade_eggledger_storage.up.sql"
+             CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\src\EggLedger.Web.Server\Migrations\8_identities.up.sql"
+             Link="Migrations\8_identities.up.sql"
              CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 

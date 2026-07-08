@@ -94,11 +94,17 @@ if (hasDb) {
         Console.Error.WriteLine("eggledger: WARNING - DATA_PROTECTION_CERT_PATH not set. DataProtection keyring is stored unencrypted in Postgres.");
     }
 
-    // Authentik OIDC login needs a real data source to resolve identities against; there's
-    // no meaningful OIDC login without a database to store identities in anyway (mirrors
-    // DiscordOAuth.Init below, also gated on hasDb).
-    var resolver = new EggLedger.Web.Server.Auth.AuthentikIdentityResolver(dataSource);
-    EggLedger.Web.Server.Auth.AuthentikAuth.AddIfConfigured(authBuilder, cfg, resolver);
+    // Both Discord and Authentik logins resolve their user_id through SyncKit.Identity now;
+    // there's no meaningful login without a database to store the local app-data row in
+    // anyway (mirrors DiscordOAuth.Init below, also gated on hasDb). Constructed inline (not
+    // via AddHttpClient<T>) since AuthentikAuth.AddIfConfigured needs it now, before app.Build().
+    var identityHttp = new HttpClient { BaseAddress = new Uri(cfg.IdentityApiUrl) };
+    identityHttp.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", cfg.IdentityApiSecret);
+    var identityClient = new SyncKit.Identity.Client.IdentityApiClient(identityHttp);
+    builder.Services.AddSingleton(identityClient);
+    builder.Services.AddSingleton<EggLedger.Web.Server.Sync.Auth.ICurrentUser, EggLedger.Web.Server.Sync.Auth.CurrentUser>();
+
+    EggLedger.Web.Server.Auth.AuthentikAuth.AddIfConfigured(authBuilder, cfg, identityClient);
 }
 
 // Self-origin base for the shared UI's HttpClient (in-process /api/v1 + /egg-api calls).

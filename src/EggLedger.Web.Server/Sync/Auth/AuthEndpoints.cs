@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Npgsql;
 using SyncKit.Auth;
+using SyncKit.Identity.Client;
 
 namespace EggLedger.Web.Server.Sync.Auth;
 
@@ -26,7 +27,7 @@ public sealed record PollResponse(
     [property: JsonPropertyName("avatarUrl")] string AvatarUrl,
     [property: JsonPropertyName("encryptionKey")] string EncryptionKey);
 
-public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvider dataProtection, ILogger<AuthEndpoints> logger) {
+public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvider dataProtection, IdentityApiClient identity, ILogger<AuthEndpoints> logger) {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
     private readonly IDataProtector _keyProtector = dataProtection.CreateProtector("EggLedger.EncryptionKey");
     private static long Now() => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
@@ -88,10 +89,11 @@ public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvid
         }
 
         DiscordUser? authedUser = null;
+        (Guid UserId, string Role)? resolved = null;
         try {
             await DiscordOAuth.HandleCallbackAsync(
                 code, state,
-                (s, token, user) => { authedUser = user; return StorePending(s, token, user); },
+                async (s, token, user) => { authedUser = user; resolved = await StorePending(s, token, user); },
                 ctx.RequestAborted);
         } catch (Exception ex) {
             logger.LogWarning(ex, "auth: Discord callback failed");
@@ -100,16 +102,16 @@ public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvid
         }
 
         // Sign the cookie-auth principal carrying both the legacy Discord id and the
-        // provider-neutral user id; the framework AuthenticationStateProvider flows it into
-        // the Blazor circuit (server cookie session).
+        // provider-neutral user id/role; the framework AuthenticationStateProvider flows it
+        // into the Blazor circuit (server cookie session).
         if (authedUser is { } u) {
             var claims = new List<Claim> {
                 new(EggLedger.Web.Server.Auth.AuthScheme.DiscordIdClaim, u.Id),
                 new(ClaimTypes.Name, u.Username),
             };
-            var userId = await UserIdForDiscordIdAsync(u.Id, ctx.RequestAborted).ConfigureAwait(false);
-            if (userId is { } id) {
-                claims.Add(new Claim(EggLedger.Web.Server.Auth.AuthScheme.UserIdClaim, id.ToString()));
+            if (resolved is { } r) {
+                claims.Add(new Claim(EggLedger.Web.Server.Auth.AuthScheme.UserIdClaim, r.UserId.ToString()));
+                claims.Add(new Claim(EggLedger.Web.Server.Auth.AuthScheme.RoleClaim, r.Role));
             }
             var identity = new ClaimsIdentity(claims, EggLedger.Web.Server.Auth.AuthScheme.Cookie);
             await ctx.SignInAsync(
@@ -121,17 +123,6 @@ public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvid
         ctx.Response.StatusCode = StatusCodes.Status200OK;
         ctx.Response.ContentType = "text/html; charset=utf-8";
         await ctx.Response.Body.WriteAsync(Encoding.UTF8.GetBytes(SuccessPage.Html), ctx.RequestAborted);
-    }
-
-    private async Task<Guid?> UserIdForDiscordIdAsync(string discordId, CancellationToken ct) {
-        await using var cmd = source.CreateCommand("SELECT user_id FROM users WHERE discord_id = $1");
-        cmd.Parameters.AddWithValue(discordId);
-        try {
-            var result = await cmd.ExecuteScalarAsync(ct);
-            return result is Guid id ? id : null;
-        } catch {
-            return null;
-        }
     }
 
     private async Task<bool> StateIsPending(string state, CancellationToken ct) {
@@ -147,28 +138,22 @@ public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvid
         }
     }
 
-    public async Task StorePending(string state, string token, DiscordUser user) {
-        Guid userId;
+    public async Task<(Guid UserId, string Role)> StorePending(string state, string token, DiscordUser user) {
+        var resolved = await identity.ResolveAsync("discord", user.Id, user.Id, user.Username, user.AvatarUrl, CancellationToken.None);
+        var userId = resolved.UserId;
+
+        // The local users row (username/avatar_url/encryption_key) is still EggLedger app data
+        // until the post-verification migration drops the identity columns here; user_id now
+        // comes from SyncKit.Identity above rather than a local INSERT ... RETURNING.
         await using (var u = source.CreateCommand(
-            "INSERT INTO users (discord_id, created_at, username, avatar_url) VALUES ($1,$2,$3,$4) " +
-            // discord_id's uniqueness is now a partial index (WHERE discord_id IS NOT NULL,
-            // since Authentik-only accounts leave it null) - ON CONFLICT must repeat that
-            // predicate to target it, a plain ON CONFLICT (discord_id) no longer matches.
-            "ON CONFLICT (discord_id) WHERE discord_id IS NOT NULL " +
-            "DO UPDATE SET username = EXCLUDED.username, avatar_url = EXCLUDED.avatar_url " +
-            "RETURNING user_id")) {
+            "INSERT INTO users (user_id, discord_id, created_at, username, avatar_url) VALUES ($1,$2,$3,$4,$5) " +
+            "ON CONFLICT (user_id) DO UPDATE SET username = EXCLUDED.username, avatar_url = EXCLUDED.avatar_url")) {
+            u.Parameters.AddWithValue(userId);
             u.Parameters.AddWithValue(user.Id);
             u.Parameters.AddWithValue(Now());
             u.Parameters.AddWithValue(user.Username);
             u.Parameters.AddWithValue(user.AvatarUrl);
-            userId = (Guid)(await u.ExecuteScalarAsync())!;
-        }
-
-        await using (var ident = source.CreateCommand(
-            "INSERT INTO identities (user_id, provider, subject) VALUES ($1, 'discord', $2) ON CONFLICT (provider, subject) DO NOTHING")) {
-            ident.Parameters.AddWithValue(userId);
-            ident.Parameters.AddWithValue(user.Id);
-            try { await ident.ExecuteNonQueryAsync(); } catch (Exception ex) { logger.LogWarning(ex, "auth: failed to link discord identity for {DiscordId}", user.Id); }
+            await u.ExecuteNonQueryAsync();
         }
 
         string encKey = "";
@@ -208,6 +193,8 @@ public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvid
         pend.Parameters.AddWithValue(_keyProtector.Protect(encKey));
         pend.Parameters.AddWithValue(state);
         await pend.ExecuteNonQueryAsync();
+
+        return (userId, resolved.Role);
     }
 
     public async Task Poll(HttpContext ctx, string state) {

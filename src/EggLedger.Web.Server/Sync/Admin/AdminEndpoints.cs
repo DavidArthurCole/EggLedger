@@ -1,16 +1,19 @@
 using System.Text.Json;
+using EggLedger.Web.Server.Sync.Auth;
 using Microsoft.AspNetCore.Http;
 using Npgsql;
+using SyncKit.Identity.Client;
 
 namespace EggLedger.Web.Server.Sync.Admin;
 
-// Admin-only management API, gated by the ADMIN_DISCORD_IDS allowlist. Every
-// handler runs behind RequireAuth (sets X-Discord-ID, which now carries the
-// provider-neutral user_id string post-migration; header name is unchanged).
-public sealed class AdminEndpoints(NpgsqlDataSource source, ApiMetrics metrics, SpamLog spam, IReadOnlySet<string> adminIds) {
+// Admin-only management API, gated by role (SyncKit.Identity's role model, replacing the old
+// flat ADMIN_DISCORD_IDS allowlist check). Every handler runs behind RequireAuth (sets
+// X-Discord-ID, which now carries the provider-neutral user_id string post-migration; header
+// name is unchanged).
+public sealed class AdminEndpoints(NpgsqlDataSource source, ApiMetrics metrics, SpamLog spam, ICurrentUser currentUser, IdentityApiClient identity) {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
     private static string UserId(HttpContext ctx) => ctx.Request.Headers["X-Discord-ID"].ToString();
-    private bool IsAdmin(HttpContext ctx) => adminIds.Contains(UserId(ctx));
+    private Task<bool> IsAdminAsync(HttpContext ctx) => currentUser.IsAtLeastAsync(ctx, UserRole.Admin, ctx.RequestAborted);
 
     private static async Task ForbidAsync(HttpContext ctx) {
         ctx.Response.StatusCode = StatusCodes.Status403Forbidden;
@@ -26,10 +29,17 @@ public sealed class AdminEndpoints(NpgsqlDataSource source, ApiMetrics metrics, 
 
     // GET /api/v1/admin/me -> { isAdmin }. Lets the client show/hide the Admin tab.
     public async Task Me(HttpContext ctx) =>
-        await JsonAsync(ctx, new { isAdmin = IsAdmin(ctx) });
+        await JsonAsync(ctx, new { isAdmin = await IsAdminAsync(ctx) });
 
     public async Task Users(HttpContext ctx) {
-        if (!IsAdmin(ctx)) { await ForbidAsync(ctx); return; }
+        if (!await IsAdminAsync(ctx)) { await ForbidAsync(ctx); return; }
+
+        // Role now lives in SyncKit.Identity, not a local CSV allowlist - one batch call here
+        // (not one per row) keeps this endpoint's own admin-flag agreeing with IsAdminAsync's
+        // gate above, since both now derive from the same source.
+        var roleByUserId = (await identity.ListAdminUsersAsync(ctx.RequestAborted))
+            .ToDictionary(u => u.UserId, u => u.Role);
+
         var users = new List<object>();
         await using var cmd = source.CreateCommand(
             "SELECT u.discord_id, u.username, u.avatar_url, u.user_id, " +
@@ -39,15 +49,16 @@ public sealed class AdminEndpoints(NpgsqlDataSource source, ApiMetrics metrics, 
             "FROM users u ORDER BY u.username");
         await using var reader = await cmd.ExecuteReaderAsync(ctx.RequestAborted);
         while (await reader.ReadAsync(ctx.RequestAborted)) {
+            var rowUserId = reader.GetGuid(3);
             users.Add(new {
                 discordId = reader.IsDBNull(0) ? "" : reader.GetString(0),
                 username = reader.GetString(1),
                 avatarUrl = reader.GetString(2),
-                userId = reader.GetGuid(3),
+                userId = rowUserId,
                 blobCount = reader.GetInt64(4),
                 storageBytes = reader.GetInt64(5),
                 lastSession = reader.IsDBNull(6) ? (long?)null : reader.GetInt64(6),
-                isAdmin = !reader.IsDBNull(0) && adminIds.Contains(reader.GetString(0)),
+                isAdmin = roleByUserId.GetValueOrDefault(rowUserId) == "admin",
             });
         }
         await JsonAsync(ctx, users);
@@ -55,7 +66,7 @@ public sealed class AdminEndpoints(NpgsqlDataSource source, ApiMetrics metrics, 
 
     // GET /api/v1/admin/metrics -> per-minute request totals + per-path tallies.
     public async Task Metrics(HttpContext ctx) {
-        if (!IsAdmin(ctx)) { await ForbidAsync(ctx); return; }
+        if (!await IsAdminAsync(ctx)) { await ForbidAsync(ctx); return; }
         await JsonAsync(ctx, new {
             minutes = metrics.SnapshotMinutes(),
             paths = metrics.SnapshotPaths(),
@@ -65,7 +76,7 @@ public sealed class AdminEndpoints(NpgsqlDataSource source, ApiMetrics metrics, 
 
     // DELETE /api/v1/admin/users/{userId}: remove a user (cascades sessions + blobs).
     public async Task DeleteUser(HttpContext ctx, string userId) {
-        if (!IsAdmin(ctx)) { await ForbidAsync(ctx); return; }
+        if (!await IsAdminAsync(ctx)) { await ForbidAsync(ctx); return; }
         if (!Guid.TryParse(userId, out var parsedUserId)) {
             ctx.Response.StatusCode = StatusCodes.Status400BadRequest;
             await JsonAsync(ctx, new { error = "invalid user id" });

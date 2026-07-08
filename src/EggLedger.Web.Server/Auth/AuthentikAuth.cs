@@ -3,16 +3,17 @@ using EggLedger.Web.Server.Sync;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
+using SyncKit.Identity.Client;
 
 namespace EggLedger.Web.Server.Auth;
 
 // Additional OIDC challenge scheme against the self-hosted Authentik instance, dual-run
 // alongside the existing direct Discord OAuth (AuthEndpoints/DiscordOAuth). Wired only when
 // AUTHENTIK_AUTHORITY is set, mirroring the existing conditional Discord wiring in Program.cs.
-// OnTicketReceived resolves the OIDC login to a provider-neutral user_id (see
-// AuthentikIdentityResolver) and stamps it onto the principal before sign-in completes.
+// OnTicketReceived resolves the OIDC login to a provider-neutral user_id via SyncKit.Identity
+// and stamps it (plus role) onto the principal before sign-in completes.
 public static class AuthentikAuth {
-    public static bool AddIfConfigured(AuthenticationBuilder builder, AppConfig cfg, AuthentikIdentityResolver resolver) {
+    public static bool AddIfConfigured(AuthenticationBuilder builder, AppConfig cfg, IdentityApiClient identity) {
         if (string.IsNullOrEmpty(cfg.AuthentikAuthority)) {
             return false;
         }
@@ -40,12 +41,15 @@ public static class AuthentikAuth {
                     return;
                 }
                 var discordId = principal.FindFirstValue("discord_id");
-                var userId = await resolver.ResolveAsync(sub, discordId, ctx.HttpContext.RequestAborted);
+                var username = principal.FindFirstValue("preferred_username") ?? principal.FindFirstValue("name") ?? "";
+                var result = await identity.ResolveAsync(
+                    "authentik", sub, discordId, username, avatar: null, ctx.HttpContext.RequestAborted);
 
-                var identity = (ClaimsIdentity)principal.Identity!;
-                identity.AddClaim(new Claim(AuthScheme.UserIdClaim, userId.ToString()));
+                var claimsIdentity = (ClaimsIdentity)principal.Identity!;
+                claimsIdentity.AddClaim(new Claim(AuthScheme.UserIdClaim, result.UserId.ToString()));
+                claimsIdentity.AddClaim(new Claim(AuthScheme.RoleClaim, result.Role));
                 if (!string.IsNullOrEmpty(discordId)) {
-                    identity.AddClaim(new Claim(AuthScheme.DiscordIdClaim, discordId));
+                    claimsIdentity.AddClaim(new Claim(AuthScheme.DiscordIdClaim, discordId));
                 }
             };
             o.Events.OnRemoteFailure = ctx => {

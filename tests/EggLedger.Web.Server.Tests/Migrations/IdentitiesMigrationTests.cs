@@ -34,7 +34,7 @@ public sealed class IdentitiesMigrationTests {
                     ('USER_B', 'EI_B', 'm9', 3, '\x010203', 0);
                 """);
 
-            await ApplyMigrationAsync(src, "7_identities.up.sql");
+            await ApplyMigrationAsync(src, "8_identities.up.sql");
 
             // Every users row has a non-null, unique user_id.
             await using (var cmd = src.CreateCommand($"SET search_path TO {Schema}; SELECT discord_id, user_id FROM users ORDER BY discord_id;")) {

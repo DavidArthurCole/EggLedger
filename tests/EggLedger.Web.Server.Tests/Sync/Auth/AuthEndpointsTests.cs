@@ -1,8 +1,10 @@
+using System.Net;
 using EggLedger.Web.Server.Sync.Auth;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql;
 using SyncKit.Auth;
+using SyncKit.Identity.Client;
 
 namespace EggLedger.Web.Server.Tests.Sync.Auth;
 
@@ -29,24 +31,25 @@ public sealed class AuthEndpointsTests {
         var scopedBuilder = new NpgsqlConnectionStringBuilder(TestDbUrl!) { SearchPath = Schema };
         await using var src = NpgsqlDataSource.Create(scopedBuilder.ConnectionString);
         try {
-            var endpoints = new AuthEndpoints(src, new EphemeralDataProtectionProvider(), NullLogger<AuthEndpoints>.Instance);
+            // Identity resolution (user_id minting + the identities link) now happens via
+            // SyncKit.Identity, not local INSERTs - stub its response so this test stays a pure
+            // StorePending unit test (users/encryption_key/sessions writes) without a live API.
+            var stubUserId = Guid.NewGuid();
+            var handler = new StubHttpMessageHandler(_ => StubHttpMessageHandler.Json(HttpStatusCode.OK,
+                $$"""{"userId":"{{stubUserId}}","role":"viewer","discordId":"12345","isNew":true}"""));
+            var identity = new IdentityApiClient(new HttpClient(handler) { BaseAddress = new Uri("http://localhost:8090") });
+
+            var endpoints = new AuthEndpoints(src, new EphemeralDataProtectionProvider(), identity, NullLogger<AuthEndpoints>.Instance);
             var discordUser = new DiscordUser("12345", "tester", "");
 
-            await endpoints.StorePending("state-1", "token-1", discordUser);
+            var (userId, role) = await endpoints.StorePending("state-1", "token-1", discordUser);
 
-            Guid userId;
-            await using (var cmd = src.CreateCommand($"SET search_path TO {Schema}; SELECT user_id FROM users WHERE discord_id = '12345';")) {
-                var result = await cmd.ExecuteScalarAsync();
-                Assert.NotNull(result);
-                userId = Assert.IsType<Guid>(result);
-                Assert.NotEqual(Guid.Empty, userId);
-            }
+            Assert.Equal(stubUserId, userId);
+            Assert.Equal("viewer", role);
 
-            await using (var cmd = src.CreateCommand($"SET search_path TO {Schema}; SELECT user_id FROM identities WHERE provider = 'discord' AND subject = '12345';")) {
-                var result = await cmd.ExecuteScalarAsync();
-                Assert.NotNull(result);
-                Assert.Equal(userId, Assert.IsType<Guid>(result));
-            }
+            await using var cmd = src.CreateCommand($"SET search_path TO {Schema}; SELECT user_id FROM users WHERE discord_id = '12345';");
+            var result = await cmd.ExecuteScalarAsync();
+            Assert.Equal(stubUserId, Assert.IsType<Guid>(result));
         } finally {
             await DropSchemaAsync(setupSrc);
         }
@@ -64,7 +67,8 @@ public sealed class AuthEndpointsTests {
         await ApplyMigrationAsync(src, "4_eggledger_storage.up.sql");
         await ApplyMigrationAsync(src, "5_data_protection_keys.up.sql");
         await ApplyMigrationAsync(src, "6_api_spam_log.up.sql");
-        await ApplyMigrationAsync(src, "7_identities.up.sql");
+        await ApplyMigrationAsync(src, "7_cascade_eggledger_storage.up.sql");
+        await ApplyMigrationAsync(src, "8_identities.up.sql");
     }
 
     private static async Task ApplyMigrationAsync(NpgsqlDataSource src, string fileName) {
