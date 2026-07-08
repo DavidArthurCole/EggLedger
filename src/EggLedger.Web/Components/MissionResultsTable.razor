@@ -12,6 +12,7 @@
     <div id="missionListDiv" class="mt-0_5rem px-2 py-1 shadow-sm block text-xs font-mono text-gray-500 bg-darkest rounded-md">
         <div class="sticky top-0 z-10 bg-darkest -mx-2 px-2 pt-1 pb-1">
             <div class="flex items-baseline gap-2 flex-wrap">
+                @TileSelector
                 <span class="text-xl">
                     Missions
                     <button type="button" class="text-xl toggle-link" @onclick="ToggleAll">
@@ -133,6 +134,10 @@
     [Parameter] public bool RecolorDc { get; set; }
     [Parameter] public bool RecolorBc { get; set; }
     [Parameter] public MultiViewMode MultiViewMode { get; set; } = MultiViewMode.Off;
+
+    /// <summary>Mission-type tile pill widget, rendered next to the "Missions" header when present.</summary>
+    [Parameter]
+    public RenderFragment? TileSelector { get; set; }
 
     /// <summary>Free-select mission ids; owned by the page, mutated here.</summary>
     [Parameter]

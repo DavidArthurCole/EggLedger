@@ -19,7 +19,7 @@
 
             @if (RowComplete(row.Cond)) {
                 <button type="button" title="Add alternate filter condition"
-                        class="mr-1rem flex items-center h-6 w-6 justify-center text-xs font-medium border text-yellow-700 border-yellow-700 bg-darkest rounded-md mt-0_5rem ledger-btn"
+                        class="mr-1rem flex items-center h-6 w-6 justify-center text-sml border text-yellow-700 border-yellow-700 bg-darkest rounded-md bg-transparent py-2 px-4 mt-0_5rem ledger-btn"
                         disabled="@OrAddDisabled(index)"
                         @onclick="() => AddOr(index)">
                     OR
@@ -244,7 +244,7 @@
                         var isDrop = def.Key == "drops";
                         <SearchablePicker Options="OptionsFor(def)"
                                           SelectedValue="@ModalSelectedValue(def, c.Val)"
-                                          Placeholder="@($"Select {def.Label}...")"
+                                          Placeholder="Click to select"
                                           ImageBasePath="@(isDrop ? "images/" : "images/targets/")"
                                           RarityRing="isDrop"
                                           OverlayKind="@(isDrop ? "drop" : "target")"

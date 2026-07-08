@@ -1,16 +1,19 @@
 @using System.Globalization
 @using EggLedger.Domain.Reports
 @using EggLedger.Domain.Reports.Charts
-@* Line / area chart; geometry from ChartGeometry, fixed viewBox (responsive via CSS).
+@implements IAsyncDisposable
+@inject IJSRuntime Js
+@* Line / area chart; geometry from ChartGeometry. viewBox tracks the container's actual
+   rendered size via ResizeObserver (reportChart.js) so geometry is never CSS-distorted.
    SVG <text> is emitted via MarkupString helpers because Razor reserves the bare
    <text> tag for its own text-transition control block. *@
 
-<div class="h-full w-full">
+<div class="h-full w-full" @ref="_containerRef">
     @if (Points().Count >= 2) {
         var pts = Points();
         var max = MaxVal();
-        var ticks = ChartGeometry.YTicks(max, H, Result.IsFloat);
-        <svg viewBox="0 0 @Fmt(W) @Fmt(H)" preserveAspectRatio="xMidYMid meet" class="w-full h-full overflow-visible">
+        var ticks = ChartGeometry.YTicks(max, _h, Result.IsFloat);
+        <svg viewBox="0 0 @Fmt(_w) @Fmt(_h)" preserveAspectRatio="xMidYMid meet" class="w-full h-full overflow-visible">
             <defs>
                 <linearGradient id="@_gradId" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stop-color="@Color" stop-opacity="0.3"/>
@@ -21,14 +24,14 @@
             @if (max > 0) {
                 @foreach (var tick in ticks) {
                     <line x1="@Fmt(ChartGeometry.PadLeft)" y1="@Fmt(tick.Y)"
-                          x2="@Fmt(W - ChartGeometry.PadRight)" y2="@Fmt(tick.Y)"
+                          x2="@Fmt(_w - ChartGeometry.PadRight)" y2="@Fmt(tick.Y)"
                           stroke="#374151" stroke-dasharray="3 3" stroke-width="0.5"/>
                     @YTickText(tick)
                 }
             }
 
             @if (ChartType != "line") {
-                <path d="@ChartGeometry.AreaPath(pts, H)" fill="url(#@_gradId)"/>
+                <path d="@ChartGeometry.AreaPath(pts, _h)" fill="url(#@_gradId)"/>
             }
 
             <polyline points="@ChartGeometry.PolylinePoints(pts)" fill="none"
@@ -52,8 +55,12 @@
 </div>
 
 @code {
-    private const double W = 300;
-    private const double H = 150;
+    private double _w = 300;
+    private double _h = 150;
+    private ElementReference _containerRef;
+    private IJSObjectReference? _module;
+    private IJSObjectReference? _observerHandle;
+    private DotNetObjectReference<ReportLineChart>? _selfRef;
     private readonly string _gradId = "line-grad-" + Guid.NewGuid().ToString("N").Substring(0, 5);
     [Parameter] [EditorRequired] public ReportResult Result { get; set; } = new();
     [Parameter] [EditorRequired] public string Color { get; set; } = "#6366f1";
@@ -74,7 +81,22 @@
     }
 
     private List<ChartPoint> Points() {
-        return ChartGeometry.Points(Values(), Result.Labels, W, H);
+        return ChartGeometry.Points(Values(), Result.Labels, _w, _h);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            _selfRef = DotNetObjectReference.Create(this);
+            _module = await Js.InvokeAsync<IJSObjectReference>("import", "./_content/EggLedger.Web/js/reportChart.js");
+            _observerHandle = await _module.InvokeAsync<IJSObjectReference>("observe", _containerRef, _selfRef);
+        }
+    }
+
+    [JSInvokable]
+    public void OnChartResized(double width, double height) {
+        _w = width > 0 ? width : 300;
+        _h = height > 0 ? height : 150;
+        StateHasChanged();
     }
 
     private MarkupString YTickText(YTick tick) {
@@ -86,7 +108,7 @@
 
     private MarkupString XLabelText(ChartPoint p) {
         var tx = Fmt(p.X);
-        var ty = Fmt(H - ChartGeometry.PadBottom + 4);
+        var ty = Fmt(_h - ChartGeometry.PadBottom + 4);
         var label = Esc(ChartGeometry.FormatXLabel(p.Label));
         return new MarkupString(
             $"<text transform=\"translate({tx}, {ty}) rotate(-45)\" text-anchor=\"end\" style=\"font-size: 10px; fill: #6b7280;\">{label}</text>");
@@ -108,6 +130,19 @@
 
     private static string Esc(string s) {
         return ChartGeometry.EscapeText(s);
+    }
+
+    public async ValueTask DisposeAsync() {
+        if (_observerHandle is not null && _module is not null) {
+            await _module.InvokeVoidAsync("unobserve", _observerHandle);
+            await _observerHandle.DisposeAsync();
+        }
+
+        if (_module is not null) {
+            await _module.DisposeAsync();
+        }
+
+        _selfRef?.Dispose();
     }
 
 }

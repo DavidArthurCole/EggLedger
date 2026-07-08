@@ -15,7 +15,7 @@
         </div>
     } else {
         <div class="flex-1 min-h-0 bg-darkest rounded-md overflow-hidden flex flex-col">
-            <div class="flex items-center gap-1.5 px-2 pt-1.5 pb-2 flex-shrink-0 flex-wrap">
+            <div class="flex items-center gap-1.5 px-2 pt-1.5 pb-0 flex-shrink-0 flex-wrap">
                 <button type="button"
                         class="text-sm px-4 py-1.5 rounded-full transition-colors @(_selectedGroup is null ? "bg-indigo-700 text-white" : "text-gray-400 hover:text-gray-200")"
                         @onclick="() => SelectGroup(null)">
@@ -46,7 +46,9 @@
                         }
                     </div>
                 }
+            </div>
 
+            <div class="flex items-center gap-1.5 px-2 pt-1.5 pb-1.5 flex-shrink-0">
                 <div class="ml-auto flex items-center gap-1.5">
                     @if (_showNewGroup) {
                         <input class="text-sm px-2 py-1 rounded bg-darker border border-gray-600 text-gray-200 focus:outline-none focus:border-blue-500 w-32"

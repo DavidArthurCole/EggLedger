@@ -45,37 +45,33 @@
                 </div>
                 @if (!_hideOptions) {
                     <div>
-                        <label class="inline-block mr-5"><input type="checkbox" class="ext-opt-check mr-0_5rem" checked="@_opts.ViewByDate" @onchange="@(e => SetOpt(MissionViewOptions.KeyViewByDate, b => _opts.ViewByDate = b, e))"/> Separate missions by day</label>
-                        <label class="inline-block mr-5"><input type="checkbox" class="ext-opt-check mr-0_5rem" checked="@_opts.ViewMissionTimes" @onchange="@(e => SetOpt(MissionViewOptions.KeyViewTimes, b => _opts.ViewMissionTimes = b, e))"/> Show launch times</label>
-                        <label class="inline-block mr-5"><input type="checkbox" class="ext-opt-check mr-0_5rem" checked="@_opts.RecolorDc" @onchange="@(e => SetOpt(MissionViewOptions.KeyRecolorDc, b => _opts.RecolorDc = b, e))"/> Re-color dubcaps</label>
-                        <label class="inline-block mr-5"><input type="checkbox" class="ext-opt-check mr-0_5rem" checked="@_opts.RecolorBc" @onchange="@(e => SetOpt(MissionViewOptions.KeyRecolorBc, b => _opts.RecolorBc = b, e))"/> Re-color bugged-caps</label>
-                        <label class="inline-block mr-5"><input type="checkbox" class="ext-opt-check mr-0_5rem" checked="@_opts.ShowExpectedDropsPerShip" @onchange="@(e => SetOpt(MissionViewOptions.KeyShowExpectedDrops, b => _opts.ShowExpectedDropsPerShip = b, e))"/> Show "Expected Drops Per Ship"</label>
+                        <span class="font-bold text-gray-400">Display</span>
+                        <div class="flex flex-col gap-1 mt-1">
+                            <label><input type="checkbox" class="ext-opt-check mr-0_5rem" checked="@_opts.ViewByDate" @onchange="@(e => SetOpt(MissionViewOptions.KeyViewByDate, b => _opts.ViewByDate = b, e))"/> Separate missions by day</label>
+                            <label><input type="checkbox" class="ext-opt-check mr-0_5rem" checked="@_opts.ViewMissionTimes" @onchange="@(e => SetOpt(MissionViewOptions.KeyViewTimes, b => _opts.ViewMissionTimes = b, e))"/> Show launch times</label>
+                            <label><input type="checkbox" class="ext-opt-check mr-0_5rem" checked="@_opts.RecolorDc" @onchange="@(e => SetOpt(MissionViewOptions.KeyRecolorDc, b => _opts.RecolorDc = b, e))"/> Re-color dubcaps</label>
+                            <label><input type="checkbox" class="ext-opt-check mr-0_5rem" checked="@_opts.RecolorBc" @onchange="@(e => SetOpt(MissionViewOptions.KeyRecolorBc, b => _opts.RecolorBc = b, e))"/> Re-color bugged-caps</label>
+                            <label><input type="checkbox" class="ext-opt-check mr-0_5rem" checked="@_opts.ShowExpectedDropsPerShip" @onchange="@(e => SetOpt(MissionViewOptions.KeyShowExpectedDrops, b => _opts.ShowExpectedDropsPerShip = b, e))"/> Show "Expected Drops Per Ship"</label>
+                        </div>
                     </div>
-                    <div class="mt-1">
-                        <span class="font-bold text-gray-400 mr-0_5rem">Multi-View Method</span>
-                        <label class="inline-block mr-4"><input type="radio" name="multiview" class="mr-0_5rem" checked="@(_opts.MultiViewMode == MultiViewMode.Off)" @onchange="@(() => SetMultiView(MultiViewMode.Off))"/> Off</label>
-                        <label class="inline-block mr-4"><input type="radio" name="multiview" class="mr-0_5rem" checked="@(_opts.MultiViewMode == MultiViewMode.Row)" @onchange="@(() => SetMultiView(MultiViewMode.Row))"/> Row/Date Select</label>
-                        <label class="inline-block mr-4"><input type="radio" name="multiview" class="mr-0_5rem" checked="@(_opts.MultiViewMode == MultiViewMode.Free)" @onchange="@(() => SetMultiView(MultiViewMode.Free))"/> Free Select</label>
+                    <div class="mt-2">
+                        <span class="font-bold text-gray-400">Multi-View Method</span>
+                        <div class="tile-group mt-1">
+                            <button type="button" class="tile-group-item @(_opts.MultiViewMode == MultiViewMode.Off ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover")" @onclick="@(() => SetMultiView(MultiViewMode.Off))">Off</button>
+                            <button type="button" class="tile-group-item @(_opts.MultiViewMode == MultiViewMode.Row ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover")" @onclick="@(() => SetMultiView(MultiViewMode.Row))">Row/Date Select</button>
+                            <button type="button" class="tile-group-item @(_opts.MultiViewMode == MultiViewMode.Free ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover")" @onclick="@(() => SetMultiView(MultiViewMode.Free))">Free Select</button>
+                        </div>
                     </div>
-                    <div class="mt-1">
-                        <span class="font-bold text-gray-400 mr-0_5rem">Drops Sort Method</span>
-                        <label class="inline-block mr-4"><input type="radio" name="dropsort" class="mr-0_5rem" checked="@(_opts.SortMethod == MissionSortMethod.Default)" @onchange="@(() => SetSortMethod(MissionSortMethod.Default))"/> Default</label>
-                        <label class="inline-block mr-4"><input type="radio" name="dropsort" class="mr-0_5rem" checked="@(_opts.SortMethod == MissionSortMethod.Iv)" @onchange="@(() => SetSortMethod(MissionSortMethod.Iv))"/> Inventory Visualizer</label>
+                    <div class="mt-2">
+                        <span class="font-bold text-gray-400">Drops Sort Method</span>
+                        <div class="tile-group mt-1">
+                            <button type="button" class="tile-group-item @(_opts.SortMethod == MissionSortMethod.Default ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover")" @onclick="@(() => SetSortMethod(MissionSortMethod.Default))">Default</button>
+                            <button type="button" class="tile-group-item @(_opts.SortMethod == MissionSortMethod.Iv ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover")" @onclick="@(() => SetSortMethod(MissionSortMethod.Iv))">Inventory Visualizer</button>
+                        </div>
                     </div>
                 }
             </div>
         </div>
-
-        @if (_hasBothTypes) {
-            <div class="flex items-center gap-2 mt-0_75rem text-sm">
-                <div class="tile-group">
-                    <button type="button" class="tile-group-item @(_opts.MissionTypeTab is null ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover")" @onclick="@(() => SelectTab(null))">All <span class="text-gray-500 ml-1">(@(_filtered?.Count ?? 0))</span></button>
-                    <button type="button" class="tile-group-item @(_opts.MissionTypeTab == 0 ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover")" @onclick="@(() => SelectTab(0))">Home <span class="text-gray-500 ml-1">(@CountOfType(0))</span></button>
-                    <button type="button" class="tile-group-item @(_opts.MissionTypeTab == 1 ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover")" @onclick="@(() => SelectTab(1))">Virtue <span class="text-gray-500 ml-1">(@CountOfType(1))</span></button>
-                </div>
-                <span class="font-bold text-gray-400">Missions</span>
-            </div>
-        }
 
         <div class="flex-1 min-h-0 px-2 overflow-auto shadow-sm bg-darkest rounded-md mt-0_75rem">
             <MissionResultsTable Grouping="_grouping"
@@ -90,7 +86,8 @@
                                  OnViewMission="ViewMissionAsync"
                                  OnViewRow="ViewRowAsync"
                                  OnSelectionChanged="StateHasChanged"
-                                 OnGroupingChanged="StateHasChanged"/>
+                                 OnGroupingChanged="StateHasChanged"
+                                 TileSelector="@(_hasBothTypes ? RenderTileSelector() : null)"/>
         </div>
 
         <MissionOverlay @ref="_overlay"
@@ -227,6 +224,14 @@
         Regroup();
         StateHasChanged();
     }
+
+    private RenderFragment RenderTileSelector() => __builder => {
+        <div class="tile-group">
+            <button type="button" class="tile-group-item @(_opts.MissionTypeTab is null ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover")" @onclick="@(() => SelectTab(null))">All <span class="text-gray-500 ml-1">(@(_filtered?.Count ?? 0))</span></button>
+            <button type="button" class="tile-group-item @(_opts.MissionTypeTab == 0 ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover")" @onclick="@(() => SelectTab(0))">Home <span class="text-gray-500 ml-1">(@CountOfType(0))</span></button>
+            <button type="button" class="tile-group-item @(_opts.MissionTypeTab == 1 ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover")" @onclick="@(() => SelectTab(1))">Virtue <span class="text-gray-500 ml-1">(@CountOfType(1))</span></button>
+        </div>
+    };
 
     private int CountOfType(int type) {
         if (_filtered is null) {
