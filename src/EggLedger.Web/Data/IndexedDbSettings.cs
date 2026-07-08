@@ -23,6 +23,9 @@ public sealed class IndexedDbSettings {
     public async Task SetSettingAsync(string key, string value) =>
         await _db.PutAsync(IndexedDbStores.Settings, new SettingRow { Key = key, Value = value });
 
+    public async Task RemoveSettingAsync(string key) =>
+        await _db.DeleteAsync(IndexedDbStores.Settings, key);
+
     /// <summary>Single-transaction batch upsert. Mirrors Go <c>SetSettings</c>.</summary>
     public async Task SetSettingsAsync(IReadOnlyDictionary<string, string> settings) {
         var rows = settings.Select(kv => (object)new SettingRow { Key = kv.Key, Value = kv.Value });

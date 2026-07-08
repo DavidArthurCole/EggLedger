@@ -1,3 +1,4 @@
+using EggLedger.Web.Data;
 using EggLedger.Web.State;
 using Microsoft.Extensions.Logging;
 
@@ -5,15 +6,26 @@ namespace EggLedger.Web.Services;
 
 /// <summary>Owns fetch execution and live progress at circuit scope, so a fetch survives navigating away from whatever page started it. Single fetch at a time per circuit.</summary>
 public sealed class FetchOrchestrator : IDisposable {
+    private const string InProgressKeyPrefix = "fetch_in_progress:";
+
     private readonly FetchService _fetch;
     private readonly AppStateService _appState;
+    private readonly IndexedDbSettings _settings;
     private readonly ILogger<FetchOrchestrator> _logger;
     private CancellationTokenSource? _cts;
 
-    public FetchOrchestrator(FetchService fetch, AppStateService appState, ILogger<FetchOrchestrator> logger) {
+    public FetchOrchestrator(FetchService fetch, AppStateService appState, IndexedDbSettings settings, ILogger<FetchOrchestrator> logger) {
         _fetch = fetch;
         _appState = appState;
+        _settings = settings;
         _logger = logger;
+    }
+
+    /// <summary>Account ids whose last fetch never reached a terminal state (interrupted by a circuit teardown, e.g. a page refresh mid-fetch). Callers resume these on next load.</summary>
+    public static async Task<List<string>> GetIncompleteAccountsAsync(IndexedDbSettings settings) {
+        var all = await settings.GetAllSettingsAsync().ConfigureAwait(false);
+        return [.. all.Keys.Where(k => k.StartsWith(InProgressKeyPrefix, StringComparison.Ordinal))
+            .Select(k => k[InProgressKeyPrefix.Length..])];
     }
 
     public FetchProgress? Progress { get; private set; }
@@ -36,6 +48,10 @@ public sealed class FetchOrchestrator : IDisposable {
         _cts?.Cancel();
         _cts?.Dispose();
         _cts = new CancellationTokenSource();
+
+        // Cleared only on a clean terminal state below; a circuit teardown mid-fetch (e.g. a
+        // page refresh) leaves this set, so GetIncompleteAccountsAsync picks it up next load.
+        await _settings.SetSettingAsync(InProgressKeyPrefix + accountId, "1").ConfigureAwait(false);
 
         var progress = new Progress<FetchProgress>(p => {
             // Segment events carry no counts, so carry last-known counts forward to avoid clobbering the counter.
@@ -62,6 +78,11 @@ public sealed class FetchOrchestrator : IDisposable {
             _logger.LogError(ex, "Fetch failed for account {AccountId}", accountId);
             TerminalState = AppState.Failed;
         }
+
+        // Reaching here at all (success, failure, or user-cancelled) means the pipeline ran to
+        // completion in this circuit; only a circuit teardown mid-fetch skips this line, which is
+        // the exact "never resumed" case GetIncompleteAccountsAsync exists to catch.
+        await _settings.RemoveSettingAsync(InProgressKeyPrefix + accountId).ConfigureAwait(false);
 
         _appState.PipelineState = TerminalState;
         Changed?.Invoke();

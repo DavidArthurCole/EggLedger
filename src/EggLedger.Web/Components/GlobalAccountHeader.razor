@@ -7,6 +7,7 @@
 @inject AccountLoader Loader
 @inject FetchOrchestrator Fetch
 @inject MissionQueryHandlers Queries
+@inject EggLedger.Web.Data.IndexedDbSettings SettingsStore
 @inject IJSRuntime Js
 
 <div class="relative" @ref="_rootRef">
@@ -105,6 +106,7 @@
     private ElementReference _rootRef;
     private DotNetObjectReference<GlobalAccountHeader>? _selfRef;
     private IReadOnlyList<DatabaseAccount> _existing = [];
+    private bool _lastWarnedFetchActive;
     private static int _nextId;
     private readonly string _registrationId = $"account-header-{Interlocked.Increment(ref _nextId)}";
 
@@ -127,11 +129,40 @@
         Fetch.Changed += OnStateChanged;
         RefreshActive();
         await RefreshExistingAsync();
+        await ResumeIncompleteFetchAsync();
+    }
+
+    // A prior circuit's fetch can be abandoned mid-run by a page refresh/close, which never
+    // reaches StartFetchAsync's terminal-state cleanup. The mission diff against IndexedDB is
+    // already idempotent, so silently restarting it here just picks up the missing missions.
+    private async Task ResumeIncompleteFetchAsync() {
+        if (!Fetch.IsIdle) {
+            return;
+        }
+        var incomplete = await FetchOrchestrator.GetIncompleteAccountsAsync(SettingsStore);
+        var knownIds = AppStateSvc.KnownAccounts.Select(a => a.Id).ToHashSet();
+        if (incomplete.FirstOrDefault(knownIds.Contains) is { } resumeId) {
+            _ = StartFetchFor(resumeId);
+        }
     }
 
     private void OnStateChanged() {
         RefreshActive();
+        _ = SyncUnloadWarningAsync();
         InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SyncUnloadWarningAsync() {
+        var active = !Fetch.IsIdle;
+        if (active == _lastWarnedFetchActive) {
+            return;
+        }
+        _lastWarnedFetchActive = active;
+        try {
+            await Js.InvokeVoidAsync("setFetchInProgressWarning", active);
+        } catch (JSDisconnectedException) {
+            // Circuit already tearing down; nothing to warn about.
+        }
     }
 
     private void RefreshActive() {
@@ -146,7 +177,10 @@
         if (Active.ActiveAccountId is not { } id) {
             return;
         }
+        await StartFetchFor(id);
+    }
 
+    private async Task StartFetchFor(string id) {
         await Fetch.StartFetchAsync(id);
         await RefreshExistingAsync();
         await Loader.RefreshAsync();
