@@ -97,6 +97,62 @@ public sealed class AuthEndpointsTests {
         }
     }
 
+    // Regression: SyncKit.Identity mints user_id independently of EggLedger's local table, so a
+    // returning user's local row can carry a stale user_id under the same discord_id once
+    // identity resolves a different one. StorePending must repoint the existing row (and any
+    // el_* rows under the old id) instead of colliding on idx_users_discord_id.
+    [SkippableFact]
+    public async Task StorePending_repoints_stale_local_user_id_to_identitys_resolved_id() {
+        Skip.If(string.IsNullOrEmpty(TestDbUrl), "EGGLEDGER_TEST_DB_URL not set; live Postgres auth test skipped.");
+
+        await using var setupSrc = NpgsqlDataSource.Create(TestDbUrl!);
+        await CreateSchemaAsync(setupSrc);
+
+        var scopedBuilder = new NpgsqlConnectionStringBuilder(TestDbUrl!) { SearchPath = Schema };
+        await using var src = NpgsqlDataSource.Create(scopedBuilder.ConnectionString);
+        try {
+            var staleUserId = Guid.NewGuid();
+            await using (var seed = src.CreateCommand(
+                "INSERT INTO users (user_id, discord_id, created_at, username) VALUES ($1, '12345', $2, 'old-name')")) {
+                seed.Parameters.AddWithValue(staleUserId);
+                seed.Parameters.AddWithValue(1000L);
+                await seed.ExecuteNonQueryAsync();
+            }
+            await using (var seedMission = src.CreateCommand(
+                "INSERT INTO el_mission (user_id, discord_id, player_id, mission_id, start_timestamp, complete_payload) " +
+                "VALUES ($1, '12345', 'player-1', 'mission-1', 1000, $2)")) {
+                seedMission.Parameters.AddWithValue(staleUserId);
+                seedMission.Parameters.AddWithValue(Array.Empty<byte>());
+                await seedMission.ExecuteNonQueryAsync();
+            }
+
+            var resolvedUserId = Guid.NewGuid();
+            var handler = new StubHttpMessageHandler(_ => StubHttpMessageHandler.Json(HttpStatusCode.OK,
+                $$"""{"userId":"{{resolvedUserId}}","role":"viewer","discordId":"12345","isNew":false}"""));
+            var identity = new IdentityApiClient(new HttpClient(handler) { BaseAddress = new Uri("http://localhost:8090") });
+            var endpoints = new AuthEndpoints(src, new EphemeralDataProtectionProvider(), identity, NullLogger<AuthEndpoints>.Instance);
+            var discordUser = new DiscordUser("12345", "new-name", "");
+
+            var (userId, _) = await endpoints.StorePending("state-1", "token-1", discordUser);
+
+            Assert.Equal(resolvedUserId, userId);
+
+            await using var usersCmd = src.CreateCommand("SELECT user_id, username FROM users WHERE discord_id = '12345'");
+            await using var usersReader = await usersCmd.ExecuteReaderAsync();
+            Assert.True(await usersReader.ReadAsync());
+            Assert.Equal(resolvedUserId, usersReader.GetGuid(0));
+            Assert.Equal("new-name", usersReader.GetString(1));
+            Assert.False(await usersReader.ReadAsync(), "stale user_id row must not survive alongside the repointed one");
+            await usersReader.CloseAsync();
+
+            await using var missionCmd = src.CreateCommand("SELECT user_id FROM el_mission WHERE discord_id = '12345'");
+            var missionUserId = Assert.IsType<Guid>(await missionCmd.ExecuteScalarAsync());
+            Assert.Equal(resolvedUserId, missionUserId);
+        } finally {
+            await DropSchemaAsync(setupSrc);
+        }
+    }
+
     // The new-user (non-Discord) case: a row with a user_id but no discord_id must still get
     // a key generated and persisted, queryable back out by user_id - this is the actual bug fix,
     // since the old discord_id-keyed lookup could never match such a row.
@@ -283,6 +339,7 @@ public sealed class AuthEndpointsTests {
         await ApplyMigrationAsync(src, "6_api_spam_log.up.sql");
         await ApplyMigrationAsync(src, "7_cascade_eggledger_storage.up.sql");
         await ApplyMigrationAsync(src, "8_identities.up.sql");
+        await ApplyMigrationAsync(src, "9_identity_user_id_cascade.up.sql");
     }
 
     private static async Task ApplyMigrationAsync(NpgsqlDataSource src, string fileName) {

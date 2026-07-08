@@ -46,6 +46,9 @@
     <Content Include="..\..\src\EggLedger.Web.Server\Migrations\8_identities.up.sql"
              Link="Migrations\8_identities.up.sql"
              CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\src\EggLedger.Web.Server\Migrations\9_identity_user_id_cascade.up.sql"
+             Link="Migrations\9_identity_user_id_cascade.up.sql"
+             CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

@@ -29,6 +29,10 @@ public sealed record PollResponse(
 
 public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvider dataProtection, IdentityApiClient identity, ILogger<AuthEndpoints> logger) {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
+
+    private static readonly string[] ElUserTables = [
+        "el_mission", "el_backup", "el_artifact_drops", "el_settings", "el_reports", "el_report_groups",
+    ];
     private readonly IDataProtector _keyProtector = dataProtection.CreateProtector("EggLedger.EncryptionKey");
     private static long Now() => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
@@ -166,6 +170,26 @@ public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvid
     public async Task<(Guid UserId, string Role)> StorePending(string state, string token, DiscordUser user) {
         var resolved = await identity.ResolveAsync("discord", user.Id, user.Id, user.Username, user.AvatarUrl, CancellationToken.None);
         var userId = resolved.UserId;
+
+        // Identity's user_id space is independent of EggLedger's own (seeded separately at
+        // cutover), so a returning user's local row can still carry a stale user_id under this
+        // discord_id. Repoint it to identity's authoritative value first (cascades to
+        // sessions/blobs via migration 9's FK, el_* tables have no FK so get updated explicitly)
+        // so the upsert below never collides on idx_users_discord_id.
+        await using (var repoint = source.CreateCommand(
+            "UPDATE users SET user_id = $1 WHERE discord_id = $2 AND user_id <> $1")) {
+            repoint.Parameters.AddWithValue(userId);
+            repoint.Parameters.AddWithValue(user.Id);
+            if (await repoint.ExecuteNonQueryAsync() > 0) {
+                foreach (var table in ElUserTables) {
+                    await using var move = source.CreateCommand(
+                        $"UPDATE {table} SET user_id = $1 WHERE discord_id = $2 AND user_id <> $1");
+                    move.Parameters.AddWithValue(userId);
+                    move.Parameters.AddWithValue(user.Id);
+                    await move.ExecuteNonQueryAsync();
+                }
+            }
+        }
 
         // The local users row (username/avatar_url/encryption_key) is still EggLedger app data
         // until the post-verification migration drops the identity columns here; user_id now
