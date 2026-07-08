@@ -1,6 +1,9 @@
 using System.Net;
+using System.Security.Claims;
+using System.Text.Json;
 using EggLedger.Web.Server.Sync.Auth;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql;
 using SyncKit.Auth;
@@ -18,6 +21,8 @@ public sealed class AuthEndpointsTests {
     private static string? TestDbUrl => Environment.GetEnvironmentVariable("EGGLEDGER_TEST_DB_URL");
 
     private const string Schema = "eltest_authendpoints";
+
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     [SkippableFact]
     public async Task StorePending_creates_user_and_discord_identity_row() {
@@ -50,6 +55,215 @@ public sealed class AuthEndpointsTests {
             await using var cmd = src.CreateCommand($"SET search_path TO {Schema}; SELECT user_id FROM users WHERE discord_id = '12345';");
             var result = await cmd.ExecuteScalarAsync();
             Assert.Equal(stubUserId, Assert.IsType<Guid>(result));
+        } finally {
+            await DropSchemaAsync(setupSrc);
+        }
+    }
+
+    // Regression guard for the user_id-keyed lookup fix: an existing Discord-linked user
+    // (row already has both discord_id and user_id) must get back the SAME key it already had,
+    // not a freshly generated one, since the lookup now goes through user_id instead of discord_id.
+    [SkippableFact]
+    public async Task EnsureEncryptionKeyAsync_returns_existing_key_for_discord_linked_user() {
+        Skip.If(string.IsNullOrEmpty(TestDbUrl), "EGGLEDGER_TEST_DB_URL not set; live Postgres auth test skipped.");
+
+        await using var setupSrc = NpgsqlDataSource.Create(TestDbUrl!);
+        await CreateSchemaAsync(setupSrc);
+
+        var scopedBuilder = new NpgsqlConnectionStringBuilder(TestDbUrl!) { SearchPath = Schema };
+        await using var src = NpgsqlDataSource.Create(scopedBuilder.ConnectionString);
+        try {
+            var protector = new EphemeralDataProtectionProvider();
+            var identity = new IdentityApiClient(new HttpClient(new StubHttpMessageHandler(_ =>
+                StubHttpMessageHandler.Json(HttpStatusCode.OK, "{}"))) { BaseAddress = new Uri("http://localhost:8090") });
+            var endpoints = new AuthEndpoints(src, protector, identity, NullLogger<AuthEndpoints>.Instance);
+
+            var userId = Guid.NewGuid();
+            var protectedKey = protector.CreateProtector("EggLedger.EncryptionKey").Protect("existing-key-value");
+            await using (var seed = src.CreateCommand(
+                "INSERT INTO users (user_id, discord_id, created_at, encryption_key) VALUES ($1, $2, $3, $4)")) {
+                seed.Parameters.AddWithValue(userId);
+                seed.Parameters.AddWithValue("99999");
+                seed.Parameters.AddWithValue(1000L);
+                seed.Parameters.AddWithValue(protectedKey);
+                await seed.ExecuteNonQueryAsync();
+            }
+
+            var key = await endpoints.EnsureEncryptionKeyAsync(userId);
+
+            Assert.Equal("existing-key-value", key);
+        } finally {
+            await DropSchemaAsync(setupSrc);
+        }
+    }
+
+    // The new-user (non-Discord) case: a row with a user_id but no discord_id must still get
+    // a key generated and persisted, queryable back out by user_id - this is the actual bug fix,
+    // since the old discord_id-keyed lookup could never match such a row.
+    [SkippableFact]
+    public async Task EnsureEncryptionKeyAsync_generates_and_persists_key_for_non_discord_user() {
+        Skip.If(string.IsNullOrEmpty(TestDbUrl), "EGGLEDGER_TEST_DB_URL not set; live Postgres auth test skipped.");
+
+        await using var setupSrc = NpgsqlDataSource.Create(TestDbUrl!);
+        await CreateSchemaAsync(setupSrc);
+
+        var scopedBuilder = new NpgsqlConnectionStringBuilder(TestDbUrl!) { SearchPath = Schema };
+        await using var src = NpgsqlDataSource.Create(scopedBuilder.ConnectionString);
+        try {
+            var identity = new IdentityApiClient(new HttpClient(new StubHttpMessageHandler(_ =>
+                StubHttpMessageHandler.Json(HttpStatusCode.OK, "{}"))) { BaseAddress = new Uri("http://localhost:8090") });
+            var endpoints = new AuthEndpoints(src, new EphemeralDataProtectionProvider(), identity, NullLogger<AuthEndpoints>.Instance);
+
+            var userId = Guid.NewGuid();
+            await using (var seed = src.CreateCommand(
+                "INSERT INTO users (user_id, discord_id, created_at) VALUES ($1, NULL, $2)")) {
+                seed.Parameters.AddWithValue(userId);
+                seed.Parameters.AddWithValue(2000L);
+                await seed.ExecuteNonQueryAsync();
+            }
+
+            var key = await endpoints.EnsureEncryptionKeyAsync(userId);
+
+            Assert.False(string.IsNullOrEmpty(key));
+
+            await using var cmd = src.CreateCommand("SELECT encryption_key FROM users WHERE user_id = $1");
+            cmd.Parameters.AddWithValue(userId);
+            var stored = Assert.IsType<string>(await cmd.ExecuteScalarAsync());
+            Assert.False(string.IsNullOrEmpty(stored));
+        } finally {
+            await DropSchemaAsync(setupSrc);
+        }
+    }
+
+    [SkippableFact]
+    public async Task SessionFromLogin_Unauthenticated_Returns401() {
+        Skip.If(string.IsNullOrEmpty(TestDbUrl), "EGGLEDGER_TEST_DB_URL not set; live Postgres auth test skipped.");
+
+        await using var setupSrc = NpgsqlDataSource.Create(TestDbUrl!);
+        await CreateSchemaAsync(setupSrc);
+
+        var scopedBuilder = new NpgsqlConnectionStringBuilder(TestDbUrl!) { SearchPath = Schema };
+        await using var src = NpgsqlDataSource.Create(scopedBuilder.ConnectionString);
+        try {
+            var identity = new IdentityApiClient(new HttpClient(new StubHttpMessageHandler(_ =>
+                StubHttpMessageHandler.Json(HttpStatusCode.OK, "{}"))) { BaseAddress = new Uri("http://localhost:8090") });
+            var endpoints = new AuthEndpoints(src, new EphemeralDataProtectionProvider(), identity, NullLogger<AuthEndpoints>.Instance);
+
+            var ctx = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity()) };
+            ctx.Response.Body = new MemoryStream();
+
+            await endpoints.SessionFromLogin(ctx);
+
+            Assert.Equal(StatusCodes.Status401Unauthorized, ctx.Response.StatusCode);
+        } finally {
+            await DropSchemaAsync(setupSrc);
+        }
+    }
+
+    // Covers a pure-Authentik user: no discord_id claim, so sessions.discord_id must be
+    // written as NULL and the response must still carry a usable token/encryption key.
+    [SkippableFact]
+    public async Task SessionFromLogin_AuthenticatedNoDiscordId_CreatesSessionWithNullDiscordId() {
+        Skip.If(string.IsNullOrEmpty(TestDbUrl), "EGGLEDGER_TEST_DB_URL not set; live Postgres auth test skipped.");
+
+        await using var setupSrc = NpgsqlDataSource.Create(TestDbUrl!);
+        await CreateSchemaAsync(setupSrc);
+
+        var scopedBuilder = new NpgsqlConnectionStringBuilder(TestDbUrl!) { SearchPath = Schema };
+        await using var src = NpgsqlDataSource.Create(scopedBuilder.ConnectionString);
+        try {
+            var identity = new IdentityApiClient(new HttpClient(new StubHttpMessageHandler(_ =>
+                StubHttpMessageHandler.Json(HttpStatusCode.OK, "{}"))) { BaseAddress = new Uri("http://localhost:8090") });
+            var endpoints = new AuthEndpoints(src, new EphemeralDataProtectionProvider(), identity, NullLogger<AuthEndpoints>.Instance);
+
+            var userId = Guid.NewGuid();
+            await using (var seed = src.CreateCommand(
+                "INSERT INTO users (user_id, discord_id, created_at) VALUES ($1, NULL, $2)")) {
+                seed.Parameters.AddWithValue(userId);
+                seed.Parameters.AddWithValue(3000L);
+                await seed.ExecuteNonQueryAsync();
+            }
+
+            var claims = new List<Claim> {
+                new(EggLedger.Web.Server.Auth.AuthScheme.UserIdClaim, userId.ToString()),
+                new(ClaimTypes.Name, "authentik-user"),
+            };
+            var ctx = new DefaultHttpContext {
+                User = new ClaimsPrincipal(new ClaimsIdentity(claims, EggLedger.Web.Server.Auth.AuthScheme.Cookie)),
+            };
+            ctx.Response.Body = new MemoryStream();
+
+            await endpoints.SessionFromLogin(ctx);
+
+            Assert.Equal(StatusCodes.Status200OK, ctx.Response.StatusCode);
+            ctx.Response.Body.Seek(0, SeekOrigin.Begin);
+            var body = await JsonSerializer.DeserializeAsync<PollResponse>(ctx.Response.Body, JsonOptions);
+            Assert.NotNull(body);
+            Assert.False(string.IsNullOrEmpty(body!.Token));
+
+            await using var cmd = src.CreateCommand(
+                "SELECT user_id, discord_id FROM sessions WHERE token = $1");
+            cmd.Parameters.AddWithValue(body.Token);
+            await using var reader = await cmd.ExecuteReaderAsync();
+            Assert.True(await reader.ReadAsync());
+            Assert.Equal(userId, reader.GetGuid(0));
+            Assert.True(reader.IsDBNull(1));
+        } finally {
+            await DropSchemaAsync(setupSrc);
+        }
+    }
+
+    // Covers a Discord-linked user hitting the endpoint from a cookie session: the
+    // discord_id claim must flow through into sessions.discord_id, not be dropped.
+    [SkippableFact]
+    public async Task SessionFromLogin_AuthenticatedWithDiscordId_CreatesSessionWithDiscordId() {
+        Skip.If(string.IsNullOrEmpty(TestDbUrl), "EGGLEDGER_TEST_DB_URL not set; live Postgres auth test skipped.");
+
+        await using var setupSrc = NpgsqlDataSource.Create(TestDbUrl!);
+        await CreateSchemaAsync(setupSrc);
+
+        var scopedBuilder = new NpgsqlConnectionStringBuilder(TestDbUrl!) { SearchPath = Schema };
+        await using var src = NpgsqlDataSource.Create(scopedBuilder.ConnectionString);
+        try {
+            var identity = new IdentityApiClient(new HttpClient(new StubHttpMessageHandler(_ =>
+                StubHttpMessageHandler.Json(HttpStatusCode.OK, "{}"))) { BaseAddress = new Uri("http://localhost:8090") });
+            var endpoints = new AuthEndpoints(src, new EphemeralDataProtectionProvider(), identity, NullLogger<AuthEndpoints>.Instance);
+
+            var userId = Guid.NewGuid();
+            await using (var seed = src.CreateCommand(
+                "INSERT INTO users (user_id, discord_id, created_at, avatar_url) VALUES ($1, $2, $3, $4)")) {
+                seed.Parameters.AddWithValue(userId);
+                seed.Parameters.AddWithValue("54321");
+                seed.Parameters.AddWithValue(4000L);
+                seed.Parameters.AddWithValue("http://example.com/avatar.png");
+                await seed.ExecuteNonQueryAsync();
+            }
+
+            var claims = new List<Claim> {
+                new(EggLedger.Web.Server.Auth.AuthScheme.UserIdClaim, userId.ToString()),
+                new(EggLedger.Web.Server.Auth.AuthScheme.DiscordIdClaim, "54321"),
+                new(ClaimTypes.Name, "discord-user"),
+            };
+            var ctx = new DefaultHttpContext {
+                User = new ClaimsPrincipal(new ClaimsIdentity(claims, EggLedger.Web.Server.Auth.AuthScheme.Cookie)),
+            };
+            ctx.Response.Body = new MemoryStream();
+
+            await endpoints.SessionFromLogin(ctx);
+
+            Assert.Equal(StatusCodes.Status200OK, ctx.Response.StatusCode);
+            ctx.Response.Body.Seek(0, SeekOrigin.Begin);
+            var body = await JsonSerializer.DeserializeAsync<PollResponse>(ctx.Response.Body, JsonOptions);
+            Assert.NotNull(body);
+            Assert.Equal("http://example.com/avatar.png", body!.AvatarUrl);
+
+            await using var cmd = src.CreateCommand(
+                "SELECT user_id, discord_id FROM sessions WHERE token = $1");
+            cmd.Parameters.AddWithValue(body.Token);
+            await using var reader = await cmd.ExecuteReaderAsync();
+            Assert.True(await reader.ReadAsync());
+            Assert.Equal(userId, reader.GetGuid(0));
+            Assert.Equal("54321", reader.GetString(1));
         } finally {
             await DropSchemaAsync(setupSrc);
         }

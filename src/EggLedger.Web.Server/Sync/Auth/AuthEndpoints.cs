@@ -138,6 +138,31 @@ public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvid
         }
     }
 
+    // Keyed by user_id (the table's real PK since migration 8), not discord_id, so it also
+    // works for non-Discord identities whose row has no discord_id at all.
+    internal async Task<string> EnsureEncryptionKeyAsync(Guid userId) {
+        var encKey = "";
+        await using (var sel = source.CreateCommand("SELECT encryption_key FROM users WHERE user_id = $1")) {
+            sel.Parameters.AddWithValue(userId);
+            // On error encKey stays empty and is regenerated below (Go parity).
+            try {
+                var result = await sel.ExecuteScalarAsync();
+                if (result is string { Length: > 0 } stored)
+                    encKey = UnprotectKey(stored);
+            } catch (Exception ex) {
+                logger.LogWarning(ex, "auth: failed to read encryption_key for {UserId}", userId);
+            }
+        }
+        if (string.IsNullOrEmpty(encKey)) {
+            encKey = DiscordOAuth.GenerateEncryptionKey();
+            await using var upd = source.CreateCommand("UPDATE users SET encryption_key = $1 WHERE user_id = $2");
+            upd.Parameters.AddWithValue(_keyProtector.Protect(encKey));
+            upd.Parameters.AddWithValue(userId);
+            try { await upd.ExecuteNonQueryAsync(); } catch (Exception ex) { logger.LogWarning(ex, "auth: failed to store encryption_key for {UserId}", userId); }
+        }
+        return encKey;
+    }
+
     public async Task<(Guid UserId, string Role)> StorePending(string state, string token, DiscordUser user) {
         var resolved = await identity.ResolveAsync("discord", user.Id, user.Id, user.Username, user.AvatarUrl, CancellationToken.None);
         var userId = resolved.UserId;
@@ -156,25 +181,7 @@ public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvid
             await u.ExecuteNonQueryAsync();
         }
 
-        string encKey = "";
-        await using (var sel = source.CreateCommand("SELECT encryption_key FROM users WHERE discord_id = $1")) {
-            sel.Parameters.AddWithValue(user.Id);
-            // On error encKey stays empty and is regenerated below (Go parity).
-            try {
-                var result = await sel.ExecuteScalarAsync();
-                if (result is string { Length: > 0 } stored)
-                    encKey = UnprotectKey(stored);
-            } catch (Exception ex) {
-                logger.LogWarning(ex, "auth: failed to read encryption_key for {DiscordId}", user.Id);
-            }
-        }
-        if (string.IsNullOrEmpty(encKey)) {
-            encKey = DiscordOAuth.GenerateEncryptionKey();
-            await using var upd = source.CreateCommand("UPDATE users SET encryption_key = $1 WHERE discord_id = $2");
-            upd.Parameters.AddWithValue(_keyProtector.Protect(encKey));
-            upd.Parameters.AddWithValue(user.Id);
-            try { await upd.ExecuteNonQueryAsync(); } catch (Exception ex) { logger.LogWarning(ex, "auth: failed to store encryption_key for {DiscordId}", user.Id); }
-        }
+        var encKey = await EnsureEncryptionKeyAsync(userId);
 
         await using (var ins = source.CreateCommand(
             "INSERT INTO sessions (token, discord_id, user_id, expires_at) VALUES ($1,$2,$3,$4)")) {
@@ -234,6 +241,64 @@ public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvid
         }
         var plainKey = string.IsNullOrEmpty(encryptionKey) ? "" : UnprotectKey(encryptionKey);
         await WriteJsonAsync(ctx, new PollResponse(token, username, avatarUrl, plainKey));
+    }
+
+    // Mints a sync session directly from the caller's authenticated cookie identity (Blazor
+    // Server login), skipping the Discord OAuth handshake entirely - for Web, where the user
+    // is already logged in via whatever provider (Discord or Authentik) gated the app itself.
+    public async Task SessionFromLogin(HttpContext ctx) {
+        if (ctx.User.Identity?.IsAuthenticated != true) {
+            ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return;
+        }
+
+        var userIdClaim = ctx.User.FindFirst(EggLedger.Web.Server.Auth.AuthScheme.UserIdClaim)?.Value;
+        if (!Guid.TryParse(userIdClaim, out var userId)) {
+            await WriteTextAsync(ctx, StatusCodes.Status401Unauthorized, "no resolved user identity\n");
+            return;
+        }
+
+        var username = ctx.User.Identity?.Name ?? "";
+        var discordIdClaim = ctx.User.FindFirst(EggLedger.Web.Server.Auth.AuthScheme.DiscordIdClaim)?.Value;
+
+        var encKey = await EnsureEncryptionKeyAsync(userId);
+        var token = Guid.NewGuid().ToString("N");
+
+        await using (var ins = source.CreateCommand(
+            "INSERT INTO sessions (token, discord_id, user_id, expires_at) VALUES ($1, $2, $3, $4)")) {
+            ins.Parameters.AddWithValue(token);
+            if (string.IsNullOrEmpty(discordIdClaim)) {
+                ins.Parameters.AddWithValue(DBNull.Value);
+            } else {
+                ins.Parameters.AddWithValue(discordIdClaim);
+            }
+            ins.Parameters.AddWithValue(userId);
+            ins.Parameters.AddWithValue(Now() + 30L * 24 * 3600);
+            try {
+                await ins.ExecuteNonQueryAsync(ctx.RequestAborted);
+            } catch (Exception ex) {
+                logger.LogWarning(ex, "auth: failed to create session-from-login for {UserId}", userId);
+                await WriteTextAsync(ctx, StatusCodes.Status500InternalServerError, "internal error\n");
+                return;
+            }
+        }
+
+        var avatarUrl = await UserAvatarUrlAsync(userId, ctx.RequestAborted);
+        await WriteJsonAsync(ctx, new PollResponse(token, username, avatarUrl, encKey));
+    }
+
+    // Discord-linked identity carries an avatar synced from the last Discord OAuth login;
+    // non-Discord users have none, and CloudSyncPanel already renders an empty avatar gracefully.
+    private async Task<string> UserAvatarUrlAsync(Guid userId, CancellationToken ct) {
+        await using var cmd = source.CreateCommand("SELECT avatar_url FROM users WHERE user_id = $1");
+        cmd.Parameters.AddWithValue(userId);
+        try {
+            var result = await cmd.ExecuteScalarAsync(ct);
+            return result as string ?? "";
+        } catch (Exception ex) {
+            logger.LogWarning(ex, "auth: failed to read avatar_url for {UserId}", userId);
+            return "";
+        }
     }
 
     public async Task DeleteSession(HttpContext ctx) {

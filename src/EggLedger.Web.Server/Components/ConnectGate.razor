@@ -1,6 +1,7 @@
+@using EggLedger.Web.Server.Sync
 @* Unauthenticated prompt. Uses a plain anchor (not Blazor-circuit navigation, which tore the
    circuit down mid-redirect) to the login endpoint that 302s to Discord. *@
-@inject EggLedger.Web.Server.Sync.AppConfig Cfg
+@inject AppConfig Cfg
 <div class="flex flex-col items-center justify-center gap-4 py-16 text-center">
     <h1 class="text-xl font-semibold text-gray-200">Connect your Discord account</h1>
     <p class="max-w-md text-sm text-gray-400">

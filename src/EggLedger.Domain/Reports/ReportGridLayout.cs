@@ -162,4 +162,10 @@ public static class ReportGridLayout {
         }
         return zones;
     }
+
+    /// <summary>Row height in px so grid cells stay roughly square at the given container width. 80px floor matches the Go reference.</summary>
+    public static int ComputeRowHeightPx(double containerWidthPx) {
+        var raw = (containerWidthPx - (GridCols - 1) * GridGap) / GridCols;
+        return Math.Max(80, (int)Math.Floor(raw));
+    }
 }

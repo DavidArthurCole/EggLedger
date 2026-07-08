@@ -8,12 +8,13 @@
 @inject IndexedDbSettings Settings
 @inject IndexedDbAccountStore Accounts
 @inject IndexedDbReportStore Reports
+@inject IPlatformCapabilities Platform
 
 @* Owns the 2s/5min auth poll loop around CloudSyncService.PollOnceAsync with cancellation so navigating away cannot leak it. *@
 
 <div class="px-2 py-2 text-sm text-gray-400 bg-darker rounded-md tabular-nums overflow-auto">
     <span class="mr-0_5rem font-bold text-lg text-gray-400 ledger-underline">Settings Sync</span>
-    <span class="text-gray-500 text-xs italic ml-1">(optional - requires Discord)</span><br/>
+    <span class="text-gray-500 text-xs italic ml-1">@(Platform.IsDesktop ? "(optional - requires Discord)" : "(optional)")</span><br/>
 
     @if (_reachableChecking) {
         <div class="mt-0_5rem text-gray-500 italic text-xs">Checking sync server connection...</div>
@@ -36,12 +37,21 @@
                         <span class="text-green-400 font-semibold">Connected</span>
                         @if (!string.IsNullOrEmpty(_username)) {
                             <span class="text-gray-400 ml-1">as <span class="text-gray-300">@_username</span></span>
+                            @if (!Platform.IsDesktop) {
+                                <span class="text-gray-500 ml-1">(from your login)</span>
+                            }
                         }
                     </div>
                 </div>
-                <div class="mt-0_25rem text-xs text-gray-500 space-y-0.5">
-                    <div>Last push: <span class="@(_lastPushAt > 0 ? "text-gray-400" : "text-gray-600 italic")">@PushString</span></div>
-                    <div>Last pull: <span class="@(_lastPullAt > 0 ? "text-gray-400" : "text-gray-600 italic")">@PullString</span></div>
+                <div class="mt-0_25rem inline-flex text-xs bg-darkest rounded-md overflow-hidden border border-gray-700">
+                    <div class="px-2 py-1 border-r border-gray-700">
+                        <span class="text-gray-500">Push</span>
+                        <span class="ml-1 @(_lastPushAt > 0 ? "text-gray-400" : "text-gray-600 italic")">@PushString</span>
+                    </div>
+                    <div class="px-2 py-1">
+                        <span class="text-gray-500">Pull</span>
+                        <span class="ml-1 @(_lastPullAt > 0 ? "text-gray-400" : "text-gray-600 italic")">@PullString</span>
+                    </div>
                 </div>
             } else {
                 <span class="text-gray-500 italic">Not connected</span>
@@ -56,7 +66,7 @@
         }
 
         <div class="mt-0_5rem flex flex-col gap-2">
-            @if (!_connected) {
+            @if (Platform.IsDesktop && !_connected) {
                 <button type="button" class="discord-btn self-start disabled:opacity-60"
                         disabled="@_authWaiting" @onclick="ConnectAsync">
                     @if (!_authWaiting) {
@@ -69,14 +79,24 @@
             } else {
                 <div class="flex flex-row flex-wrap gap-2">
                     <button type="button"
-                            class="ledger-btn apply-filter-button !mt-0 !mr-0 !ml-0 !bg-blue-700 !text-white hover:!bg-blue-600 !border-blue-500"
+                            class="ledger-btn apply-filter-button !mt-0 !mr-0 !ml-0 !bg-blue-700 !text-white hover:!bg-blue-600 !border-blue-500 flex items-center gap-1.5"
                             disabled="@_syncInProgress" @onclick="SyncNowAsync">
-                        @(_syncInProgress ? "Syncing..." : "Sync now")
+                        @if (!_syncInProgress) {
+                            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 16V4m0 0l-4 4m4-4l4 4M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2"/>
+                            </svg>
+                        }
+                        @(_syncInProgress ? "Syncing..." : "Sync")
                     </button>
                     <button type="button"
-                            class="ledger-btn apply-filter-button !mt-0 !mr-0 !ml-0 !bg-gray-700 !text-gray-200 hover:!bg-gray-600 !border-gray-500"
+                            class="ledger-btn apply-filter-button !mt-0 !mr-0 !ml-0 !bg-gray-700 !text-gray-200 hover:!bg-gray-600 !border-gray-500 flex items-center gap-1.5"
                             disabled="@_restoreInProgress" @onclick="RestoreNowAsync">
-                        @(_restoreInProgress ? "Restoring..." : "Restore from cloud")
+                        @if (!_restoreInProgress) {
+                            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"/>
+                            </svg>
+                        }
+                        @(_restoreInProgress ? "Restoring..." : "Restore")
                     </button>
                 </div>
                 <div class="flex flex-row flex-wrap gap-2">
@@ -98,11 +118,13 @@
                                 @onclick="DisconnectAsync">
                             Disconnect
                         </button>
-                        <button type="button"
-                                class="ledger-btn apply-filter-button !mt-0 !mr-0 !ml-0 !bg-red-900/60 !text-red-300 hover:!bg-red-900 !border-red-800"
-                                @onclick="() => _confirmingDelete = true">
-                            Delete Remote Data
-                        </button>
+                        @if (Platform.IsDesktop) {
+                            <button type="button"
+                                    class="ledger-btn apply-filter-button !mt-0 !mr-0 !ml-0 !bg-red-900/60 !text-red-300 hover:!bg-red-900 !border-red-800"
+                                    @onclick="() => _confirmingDelete = true">
+                                Delete Remote Data
+                            </button>
+                        }
                     }
                 </div>
                 <div class="flex items-center gap-2">
@@ -183,6 +205,18 @@
             if (!string.IsNullOrEmpty(pending)) {
                 _authWaiting = true;
                 _ = PollUntilDoneAsync(pending);
+            }
+        }
+
+        if (_reachable && !_connected && !Platform.IsDesktop) {
+            try {
+                var session = await Cloud.ConnectViaLoginAsync();
+                await OnAuthCompleteAsync(session);
+            }
+            catch (CloudSyncException) {
+                // Not logged in, or session-from-login unavailable - Web user stays "Not connected"
+                // and no button is shown to retry (see markup change in Step 4); this should not
+                // normally happen since reaching this page already requires being logged in.
             }
         }
     }
@@ -268,13 +302,26 @@
     }
 
     private async Task DisconnectAsync() {
-        if (_session is not null) {
+        if (Platform.IsDesktop) {
+            if (_session is not null) {
+                try {
+                    await Cloud.DisconnectAsync(_session.Token);
+                }
+                catch {
+                    /* server logout is best-effort */
+                }
+            }
+        } else {
             try {
-                await Cloud.DisconnectAsync(_session.Token);
+                await DeleteAllRemoteBlobsAsync();
             }
-            catch {
-                /* server logout is best-effort */
+            catch (Exception ex) {
+                _deleteError = ex.Message;
+                return;
             }
+
+            await SessionStore.SetAutoSyncAsync(false);
+            _autoSync = false;
         }
 
         await SessionStore.ClearSessionAsync();
@@ -410,6 +457,19 @@
         }
     }
 
+    // Deletes every remote blob for the current session's account. Does not touch the
+    // users/identities row - re-syncing later reuses the same account, no duplicate identity.
+    private async Task DeleteAllRemoteBlobsAsync() {
+        if (_session is null) {
+            return;
+        }
+
+        var blobs = await Cloud.ListBlobsAsync(_session);
+        foreach (var blob in blobs) {
+            await Cloud.DeleteBlobAsync(_session, blob.Name);
+        }
+    }
+
     private async Task DeleteRemoteAsync() {
         if (_session is null) {
             return;
@@ -420,9 +480,7 @@
         _confirmingDelete = false;
         StateHasChanged();
         try {
-            await Cloud.PutBlobAsync(_session, CloudSyncBlobs.AccountsBlob, Array.Empty<AccountInfo>());
-            await Cloud.PutBlobAsync(_session, CloudSyncBlobs.SettingsBlob, new CloudSyncableSettings());
-            await Cloud.PutBlobAsync(_session, CloudSyncBlobs.ReportsBlob, new CloudReportsBlob());
+            await DeleteAllRemoteBlobsAsync();
         }
         catch (Exception ex) {
             _deleteError = ex.Message;

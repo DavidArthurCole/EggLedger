@@ -19,7 +19,7 @@ public sealed class AppStateService {
     public string ActiveTab {
         get;
         set => Set(ref field, value);
-    } = "Ledger";
+    } = "Mission Data";
 
     /// <summary>Current fetch pipeline state, or null before the first fetch.</summary>
     public AppState? PipelineState {

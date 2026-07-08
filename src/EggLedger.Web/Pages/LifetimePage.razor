@@ -1,12 +1,16 @@
 @page "/lifetime"
+@using System.Diagnostics
+@using EggLedger.Domain.MissionPacking
 @using EggLedger.Domain.MissionQuery
 @using EggLedger.Web.Data
 @using EggLedger.Web.Missions
 @implements IDisposable
 @inject MissionQueryHandlers Queries
+@inject MissionConfigProvider Config
 @inject ActiveAccount Active
 @inject AppStateService AppState
 @inject IndexedDbSettings Settings
+@inject MissionDataCache DataCache
 
 <PageTitle>EggLedger - Lifetime Data</PageTitle>
 
@@ -21,24 +25,27 @@
     } else if (_data is null || _data.MissionCount == 0) {
         <NoDataFallback/>
     } else {
+        <div class="filter-panel">
+            <span class="mr-0_5rem h-20 font-bold text-gray-400">Filter</span>
+            <button type="button" class="text-base toggle-link" @onclick="@(() => _hideFilter = !_hideFilter)">
+                @(_hideFilter ? "Show" : "Hide")
+            </button>
+            @if (!_hideFilter) {
+                <MissionFilterBar FieldCtx="Config.FieldCtx"
+                                  Applying="_applying"
+                                  LastResultText="@_resultText"
+                                  OnApply="ApplyFilterAsync"/>
+            }
+        </div>
+
         <div class="min-h-7 max-h-50 px-2 py-2 text-sm text-gray-400 bg-darkest rounded-md tabular-nums overflow-auto mt-0_75rem">
-            <span class="section-heading">Sort Method</span><br/>
-            <span class="opt-span">
-                <label for="lifetimeSortDefault" class="ext-opt-label">Default</label>
-                <input id="lifetimeSortDefault" type="radio" name="lt-sort" class="ext-opt-check" checked="@(_sortMethod == LifetimeSortMethod.Default)" @onchange="@(() => SetSortAsync(LifetimeSortMethod.Default))"/>
-            </span>
-            <span class="opt-span">
-                <label for="lifetimeSortIV" class="ext-opt-label">Inventory Visualizer</label>
-                <input id="lifetimeSortIV" type="radio" name="lt-sort" class="ext-opt-check" checked="@(_sortMethod == LifetimeSortMethod.Iv)" @onchange="@(() => SetSortAsync(LifetimeSortMethod.Iv))"/>
-            </span>
-            <span class="opt-span">
-                <label for="lifetimeSortTotalCount" class="ext-opt-label">Total Count</label>
-                <input id="lifetimeSortTotalCount" type="radio" name="lt-sort" class="ext-opt-check" checked="@(_sortMethod == LifetimeSortMethod.Count)" @onchange="@(() => SetSortAsync(LifetimeSortMethod.Count))"/>
-            </span>
-            <span class="opt-span">
-                <label for="lifetimeSortRandom" class="ext-opt-label">Random</label>
-                <input id="lifetimeSortRandom" type="radio" name="lt-sort" class="ext-opt-check" checked="@(_sortMethod == LifetimeSortMethod.Random)" @onchange="@(() => SetSortAsync(LifetimeSortMethod.Random))"/>
-            </span>
+            <span class="section-heading">Sort Method</span>
+            <div class="tile-group mt-1">
+                <button type="button" class="tile-group-item @(_sortMethod == LifetimeSortMethod.Default ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover")" @onclick="@(() => SetSortAsync(LifetimeSortMethod.Default))">Default</button>
+                <button type="button" class="tile-group-item @(_sortMethod == LifetimeSortMethod.Iv ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover")" @onclick="@(() => SetSortAsync(LifetimeSortMethod.Iv))">Inventory Visualizer</button>
+                <button type="button" class="tile-group-item @(_sortMethod == LifetimeSortMethod.Count ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover")" @onclick="@(() => SetSortAsync(LifetimeSortMethod.Count))">Total Count</button>
+                <button type="button" class="tile-group-item @(_sortMethod == LifetimeSortMethod.Random ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover")" @onclick="@(() => SetSortAsync(LifetimeSortMethod.Random))">Random</button>
+            </div>
         </div>
 
         <div class="flex-1 min-h-0 px-2 py-1 overflow-auto shadow-sm block text-xs font-mono text-gray-300 bg-darkest rounded-md text-center">
@@ -56,6 +63,12 @@
     private bool _loading;
     private LifetimeData? _data;
     private LifetimeSortMethod _sortMethod = LifetimeSortMethod.Default;
+    private bool _hideFilter;
+    private bool _applying;
+    private string _resultText = "";
+    private MissionFilterMatcher? _matcher;
+    private IReadOnlyList<DatabaseMission>? _allMissions;
+    private Dictionary<string, List<MissionDrop>>? _allDropsCache;
 
     protected override async Task OnInitializedAsync() {
         Active.Changed += OnAccountChanged;
@@ -73,6 +86,7 @@
     // Refresh on fetch completion so new missions show without a manual reload.
     private void OnAppStateChanged() {
         if (AppState.PipelineState == Services.AppState.Success && Active.ActiveAccountId is not null) {
+            DataCache.InvalidateAll();
             InvokeAsync(LoadAsync);
         }
     }
@@ -85,21 +99,85 @@
             return;
         }
 
-        _loading = true;
-        StateHasChanged();
+        var cached = DataCache.GetDrops(id, DateTime.UtcNow);
+        Dictionary<string, List<MissionDrop>>? dropsByMission;
+        if (cached is not null) {
+            dropsByMission = cached;
+        } else {
+            _loading = true;
+            StateHasChanged();
+            dropsByMission = await Queries.GetAllPlayerDropsAsync(id);
+            if (dropsByMission is not null) {
+                DataCache.SetDrops(id, dropsByMission, DateTime.UtcNow);
+            }
 
-        var dropsByMission = await Queries.GetAllPlayerDropsAsync(id);
+            _loading = false;
+        }
+
         if (dropsByMission is null) {
             _data = null;
-            _loading = false;
             StateHasChanged();
             return;
         }
 
+        var cachedMissions = DataCache.GetMissions(id, DateTime.UtcNow);
+        if (cachedMissions is not null) {
+            _allMissions = cachedMissions;
+        } else {
+            var rows = await Queries.ViewMissionsOfEidAsync(id);
+            var missions = rows?.Cast<DatabaseMission>().ToList() ?? new List<DatabaseMission>();
+            DataCache.SetMissions(id, missions, DateTime.UtcNow);
+            _allMissions = missions;
+        }
+
+        _allDropsCache = dropsByMission;
+        _matcher = new MissionFilterMatcher(Config.DurationConfigs, id, DropsFetcher);
+
         var data = LifetimeAggregator.Aggregate(dropsByMission);
         LifetimeSorter.Sort(data, _sortMethod);
         _data = data;
-        _loading = false;
+        StateHasChanged();
+    }
+
+    private async Task<IReadOnlyList<MissionDrop>?> DropsFetcher(string accountId, string missionId) {
+        return _allDropsCache is not null && _allDropsCache.TryGetValue(missionId, out var drops)
+            ? drops
+            : [];
+    }
+
+    private async Task ApplyFilterAsync(MissionFilterBar.LegacyFilter filter) {
+        if (_allMissions is null || _matcher is null || _allDropsCache is null) {
+            return;
+        }
+
+        _applying = true;
+        StateHasChanged();
+
+        var sw = Stopwatch.StartNew();
+        var matchedIds = new HashSet<string>();
+        foreach (var mission in _allMissions) {
+            if (await _matcher.MissionMatchesFilterAsync(mission, filter.And, filter.Or)) {
+                matchedIds.Add(mission.MissiondId);
+            }
+        }
+
+        sw.Stop();
+
+        var filteredDrops = new Dictionary<string, List<MissionDrop>>();
+        foreach (var kvp in _allDropsCache) {
+            if (matchedIds.Contains(kvp.Key)) {
+                filteredDrops[kvp.Key] = kvp.Value;
+            }
+        }
+
+        var data = LifetimeAggregator.Aggregate(filteredDrops);
+        LifetimeSorter.Sort(data, _sortMethod);
+        _data = data;
+
+        var shown = matchedIds.Count;
+        var filteredOut = _allMissions.Count - shown;
+        _resultText = $"Filtered in {sw.Elapsed.TotalSeconds:0.###}s ({shown} shown, {filteredOut} filtered out)";
+        _applying = false;
         StateHasChanged();
     }
 

@@ -14,6 +14,13 @@ module.exports = {
     './**/*.razor',
     '../EggLedger.Desktop/wwwroot/desktop.html',
   ],
+  // text-rarity-N is only ever built via C# interpolation (DropDisplay.razor) and
+  // text-rare/epic/legendary live in FilterOptions.cs, outside the .razor content
+  // glob above - neither literal class name is scannable, so JIT needs a safelist.
+  safelist: [
+    'text-rarity-0', 'text-rarity-1', 'text-rarity-2', 'text-rarity-3',
+    'text-rare', 'text-epic', 'text-legendary',
+  ],
   theme: {
     extend: {
       colors: {
@@ -37,6 +44,15 @@ module.exports = {
         selectedmissiondarker: 'rgb(7, 120, 56)',
         buggedcap: 'rgb(198, 10, 10)',
         buggedcapdarker: 'rgb(138, 7, 7)',
+      },
+      textColor: {
+        'rarity-0': 'rgb(156 163 175)',
+        'rarity-1': '#6ab6ff',
+        'rarity-2': '#c03fe2',
+        'rarity-3': '#eeab42',
+        'rare': '#6ab6ff',
+        'epic': '#c03fe2',
+        'legendary': '#eeab42',
       },
       zIndex: {
         '3': '3',

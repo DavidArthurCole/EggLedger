@@ -1,9 +1,15 @@
 @page "/settings"
+@using EggLedger.Domain.MissionQuery
 @using EggLedger.Web.Data
+@using EggLedger.Web.Services
 @using EggLedger.Web.Settings
+@implements IDisposable
 @inject IndexedDbSettings Settings
 @inject IPlatformCapabilities Platform
 @inject ScreenshotSafetyState ScreenshotSafety
+@inject MissionQueryHandlers Queries
+@inject FetchOrchestrator Fetch
+@inject AccountLoader Loader
 
 <PageTitle>EggLedger - Settings</PageTitle>
 
@@ -35,6 +41,10 @@
             <hr class="mt-1rem mb-1rem w-full"/>
 
             <CloudSyncPanel @ref="_cloudPanel"/>
+
+            <hr class="mt-1rem mb-1rem w-full"/>
+
+            <AccountDataPanel Accounts="_existing" Changed="ReloadAccountsAsync" Fetching="FetchingCardInfo"/>
         </div>
     }
 </div>
@@ -43,11 +53,35 @@
     private bool _loaded;
     private readonly SettingsModel _model = new();
     private CloudSyncPanel? _cloudPanel;
+    private IReadOnlyList<DatabaseAccount> _existing = [];
+
+    // Ephemeral loading card for the account being fetched, until its stored data lands.
+    private AccountDataPanel.FetchingCard? FetchingCardInfo =>
+        !Fetch.IsIdle && Fetch.FetchingAccountId is { } id && Loader.Accounts.FirstOrDefault(a => a.Id == id) is { } info
+            ? new AccountDataPanel.FetchingCard(id, info.Nickname, info.AccountColor, Fetch.Progress?.Finished ?? 0, Fetch.Progress?.Total ?? 0)
+            : null;
 
     protected override async Task OnInitializedAsync() {
         var all = await Settings.GetAllSettingsAsync();
         _model.LoadFrom(all);
         _loaded = true;
+
+        Fetch.Changed += OnFetchChanged;
+        await Loader.EnsureLoadedAsync();
+        await ReloadAccountsAsync();
+    }
+
+    private void OnFetchChanged() {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ReloadAccountsAsync() {
+        _existing = await Queries.GetExistingDataAsync();
+        StateHasChanged();
+    }
+
+    public void Dispose() {
+        Fetch.Changed -= OnFetchChanged;
     }
 
     private async Task OnSettingAsync((string Key, string Value) change) {

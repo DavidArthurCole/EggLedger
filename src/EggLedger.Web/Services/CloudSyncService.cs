@@ -71,6 +71,20 @@ public sealed class CloudSyncService {
         return PollResult.Done(session);
     }
 
+    /// <summary>Mints a sync session from the caller's already-authenticated cookie login (Web only - no Discord OAuth handshake). Same-origin POST, cookie flows automatically.</summary>
+    public async Task<CloudSession> ConnectViaLoginAsync(CancellationToken cancellationToken = default) {
+        using var resp = await _http.PostAsync($"{ApiPrefix}/auth/session-from-login", content: null, cancellationToken).ConfigureAwait(false);
+        if (resp.StatusCode == HttpStatusCode.Unauthorized) {
+            throw new CloudSyncException("session-from-login: not logged in");
+        }
+        if (!resp.IsSuccessStatusCode) {
+            throw new CloudSyncException($"session-from-login: server returned {(int)resp.StatusCode}");
+        }
+        var poll = await resp.Content.ReadFromJsonAsync<PollResponse>(Json, cancellationToken).ConfigureAwait(false)
+            ?? throw new CloudSyncException("session-from-login: malformed response");
+        return new CloudSession(poll.Token, poll.Username, poll.AvatarUrl, poll.EncryptionKey);
+    }
+
     /// <summary>Invalidates the server-side session (<c>DELETE /api/v1/auth/session</c>). Server always returns 204; clearing local creds is the caller's job.</summary>
     public async Task DisconnectAsync(string token, CancellationToken cancellationToken = default) {
         using var req = new HttpRequestMessage(HttpMethod.Delete, $"{ApiPrefix}/auth/session");

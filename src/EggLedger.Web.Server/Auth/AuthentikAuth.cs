@@ -3,6 +3,7 @@ using EggLedger.Web.Server.Sync;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
+using Npgsql;
 using SyncKit.Identity.Client;
 
 namespace EggLedger.Web.Server.Auth;
@@ -13,7 +14,7 @@ namespace EggLedger.Web.Server.Auth;
 // OnTicketReceived resolves the OIDC login to a provider-neutral user_id via SyncKit.Identity
 // and stamps it (plus role) onto the principal before sign-in completes.
 public static class AuthentikAuth {
-    public static bool AddIfConfigured(AuthenticationBuilder builder, AppConfig cfg, IdentityApiClient identity) {
+    public static bool AddIfConfigured(AuthenticationBuilder builder, AppConfig cfg, IdentityApiClient identity, NpgsqlDataSource source) {
         if (string.IsNullOrEmpty(cfg.AuthentikAuthority)) {
             return false;
         }
@@ -44,6 +45,16 @@ public static class AuthentikAuth {
                 var username = principal.FindFirstValue("preferred_username") ?? principal.FindFirstValue("name") ?? "";
                 var result = await identity.ResolveAsync(
                     "authentik", sub, discordId, username, avatar: null, ctx.HttpContext.RequestAborted);
+
+                // SyncKit.Identity only manages the (provider, subject) -> user_id mapping in
+                // its own store; the local users row (which EnsureEncryptionKeyAsync updates)
+                // must be created here since only the Discord OAuth path did so before.
+                await using (var cmd = source.CreateCommand(
+                    "INSERT INTO users (user_id, created_at) VALUES ($1, $2) ON CONFLICT (user_id) DO NOTHING")) {
+                    cmd.Parameters.AddWithValue(result.UserId);
+                    cmd.Parameters.AddWithValue(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+                    await cmd.ExecuteNonQueryAsync(ctx.HttpContext.RequestAborted);
+                }
 
                 var claimsIdentity = (ClaimsIdentity)principal.Identity!;
                 claimsIdentity.AddClaim(new Claim(AuthScheme.UserIdClaim, result.UserId.ToString()));

@@ -97,25 +97,47 @@ hr {
 
 /* Shared button base: bg + focus/hover/disabled states. The four button classes
    (fetch/view-form/apply-filter and bare ledger-btn usages) layer their own size
-   and border utilities on top. */
-.ledger-btn {
-  @apply bg-darkerer;
-}
+   and border utilities on top. Wrapped in @layer components so utility classes
+   (e.g. bg-darkest, bg-transparent) placed alongside ledger-btn on the same
+   element still win the cascade, per Tailwind's layer-ordering guarantee. */
+@layer components {
+  .ledger-btn {
+    @apply bg-darkerer;
+  }
 
-.ledger-btn:focus {
-  @apply outline-none ring-1 ring-blue-500 border-blue-500;
-}
+  .ledger-btn:focus {
+    @apply outline-none ring-1 ring-blue-500 border-blue-500;
+  }
 
-.ledger-btn:hover {
-  @apply bg-dark_tab_hover;
-}
+  .ledger-btn:hover {
+    @apply bg-dark_tab_hover;
+  }
 
-.ledger-btn:disabled {
-  @apply opacity-50;
-}
+  .ledger-btn:disabled {
+    @apply opacity-50;
+  }
 
-.ledger-btn:disabled:hover {
-  @apply bg-darker_tab_hover cursor-not-allowed;
+  .ledger-btn:disabled:hover {
+    @apply bg-darker_tab_hover cursor-not-allowed;
+  }
+
+  /* Joined multi-button selector (e.g. mission-type tabs). Children share one
+     continuous border; only the outer corners round. */
+  .tile-group {
+    @apply inline-flex;
+  }
+
+  .tile-group-item {
+    @apply px-3 py-1 border font-medium transition-colors -ml-px;
+  }
+
+  .tile-group-item:first-child {
+    @apply ml-0 rounded-l-md;
+  }
+
+  .tile-group-item:last-child {
+    @apply rounded-r-md;
+  }
 }
 
 .discord-btn {
@@ -595,16 +617,19 @@ input[type=number] {
   z-index: 10000;
 }
 
-/* Floating GitHub link, fixed lower-right on every page. */
+/* Floating GitHub link, fixed lower-right on every page. Icon color is GitHub's own
+   light-mark brand color (#f0f6fc), legible against the dark bg-dark circle. */
 .gh-bubble {
   @apply fixed bottom-4 right-4 z-[900] w-11 h-11 inline-flex items-center justify-center
-         rounded-full bg-dark border border-gray-600 text-gray-400 no-underline;
+         rounded-full bg-dark border border-gray-600 no-underline;
+  color: #f0f6fc;
   box-shadow: 0 4px 14px rgba(0, 0, 0, .35);
   transition: color .12s, border-color .12s, transform .12s;
 }
 
 .gh-bubble:hover {
-  @apply text-gray-200 border-blue-500;
+  @apply border-gray-400;
+  color: #ffffff;
   transform: translateY(-2px);
 }
 
@@ -619,13 +644,13 @@ input[type=number] {
 
 .support-bubble {
   @apply w-11 h-11 inline-flex items-center justify-center rounded-full bg-dark border border-gray-600
-         text-gray-400 cursor-pointer;
+         text-rose-500 cursor-pointer;
   box-shadow: 0 4px 14px rgba(0, 0, 0, .35);
   transition: color .12s, border-color .12s, transform .12s;
 }
 
 .support-bubble:hover {
-  @apply text-blue-500 border-blue-500;
+  @apply text-rose-400 border-rose-500;
   transform: translateY(-2px);
 }
 

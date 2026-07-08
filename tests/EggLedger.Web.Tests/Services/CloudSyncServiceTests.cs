@@ -33,6 +33,9 @@ public sealed class CloudSyncServiceTests {
         public string ExpectedBearer = Token;
         // Force 401 on authed routes.
         public bool RejectAuth;
+        // Force 401 on session-from-login.
+        public bool RejectLogin;
+        public PollResponse? LoginPayload;
         public int PutHits;
         public int GetHits;
         public IReadOnlyDictionary<string, string> Blobs => _blobs;
@@ -59,6 +62,14 @@ public sealed class CloudSyncServiceTests {
             // Public: logout.
             if (method == HttpMethod.Delete && path == "/api/v1/auth/session") {
                 return new HttpResponseMessage(HttpStatusCode.NoContent);
+            }
+
+            // Public (cookie-based): session-from-login.
+            if (method == HttpMethod.Post && path == "/api/v1/auth/session-from-login") {
+                if (RejectLogin) {
+                    return new HttpResponseMessage(HttpStatusCode.Unauthorized);
+                }
+                return Json200(LoginPayload ?? new PollResponse(Token, "user#1", "https://cdn/a.png", HexKey));
             }
 
             // Everything below is authed: enforce the bearer the way RequireAuth does.
@@ -280,6 +291,28 @@ public sealed class CloudSyncServiceTests {
         var svc = Make(server);
         await svc.DisconnectAsync(Token);
         Assert.Equal($"Bearer {Token}", server.LastAuth);
+    }
+
+    [Fact]
+    public async Task ConnectViaLogin_Success_ReturnsSessionWithKey() {
+        var server = new FakeServer { LoginPayload = new PollResponse(Token, "user#1", "https://cdn/a.png", HexKey) };
+        var svc = Make(server);
+
+        var session = await svc.ConnectViaLoginAsync();
+
+        Assert.Equal(Token, session.Token);
+        Assert.Equal("user#1", session.Username);
+        Assert.Equal("https://cdn/a.png", session.AvatarUrl);
+        Assert.Equal(HexKey, session.EncryptionKey);
+    }
+
+    [Fact]
+    public async Task ConnectViaLogin_NotLoggedIn_ThrowsLoudly() {
+        var server = new FakeServer { RejectLogin = true };
+        var svc = Make(server);
+
+        var ex = await Assert.ThrowsAsync<CloudSyncException>(() => svc.ConnectViaLoginAsync());
+        Assert.Contains("not logged in", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

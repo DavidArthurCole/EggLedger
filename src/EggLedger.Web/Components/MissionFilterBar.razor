@@ -66,8 +66,8 @@
             <i>Applying filter, please wait...</i>
         </span>
     } else if (LastResultText is { Length: > 0 }) {
-        <span class="text-gray-500 mt-0_5rem">
-            <i>@LastResultText</i>
+        <span class="text-green-700 mt-0_5rem">
+            <i>@RenderResultText(LastResultText)</i>
         </span>
     }
 }
@@ -261,6 +261,25 @@
         @if (def is not null && RowIncomplete(c)) {
             <span class="filter-incomplete">(!) Incomplete, will not apply</span>
         }
+    };
+
+    // Splits "Filtered in Xs (N shown, M filtered out)" into a green outer phrase
+    // with a gray parenthetical wrapping a green inner count, matching the Go/Vue layout.
+    private static RenderFragment RenderResultText(string text) => __builder => {
+        var openParen = text.IndexOf('(');
+        var closeParen = openParen < 0 ? -1 : text.LastIndexOf(')');
+        if (openParen < 0 || closeParen < openParen) {
+            @text
+            return;
+        }
+
+        var prefix = text[..openParen];
+        var inner = text[(openParen + 1)..closeParen];
+
+        @prefix
+        <span class="text-gray-500">
+            (<span class="text-green-700">@inner</span>)
+        </span>
     };
 
     // The modal value shows the option's label; SearchablePicker matches by Value, so pass the raw stored value.

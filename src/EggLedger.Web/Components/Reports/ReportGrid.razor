@@ -1,15 +1,17 @@
+@inject IndexedDbReportStore Store
+@inject IDownloadService Downloader
+@inject IJSRuntime Js
 @using System.Text.Json
 @using EggLedger.Domain.Reports
 @using EggLedger.Web.Data
 @using EggLedger.Web.Services
-@inject IndexedDbReportStore Store
-@inject IDownloadService Downloader
+@implements IAsyncDisposable
 
 @* Dashboard grid of report cards, positioned via ReportGridLayout packing. Drag-reorder
    is a simple index swap (drop onto a card swaps its position with the dragged one);
    the Vue zone-insertion drag math is not replicated. *@
 
-<div class="flex-1 min-h-0 overflow-y-auto py-2 px-3 flex flex-col gap-3">
+<div @ref="_gridRef" class="flex-1 min-h-0 overflow-y-auto pt-0 pb-2 px-3 flex flex-col gap-3">
     @if (!string.IsNullOrEmpty(_actionMessage)) {
         <span class="text-xs text-gray-400 self-end">@_actionMessage</span>
     }
@@ -17,7 +19,7 @@
         <div class="text-xs text-gray-500 text-center mt-8">No reports yet. Click "New Report" to create one.</div>
     } else {
         var (positions, _) = ReportGridLayout.BuildOccupancyFromLayout(_defs);
-        <div class="grid gap-3 relative" style="grid-template-columns: repeat(8, 1fr); grid-auto-rows: 9rem;">
+        <div class="grid gap-3 relative" style="grid-template-columns: repeat(8, 1fr); grid-auto-rows: @(_rowHeightPx)px;">
             @for (var i = 0; i < _defs.Count; i++) {
                 var index = i;
                 var def = _defs[i];
@@ -49,6 +51,11 @@
     private string _loadedKey = "";
     private int? _draggingIndex;
     private string? _actionMessage;
+    private ElementReference _gridRef;
+    private IJSObjectReference? _module;
+    private IJSObjectReference? _observerHandle;
+    private DotNetObjectReference<ReportGrid>? _selfRef;
+    private int _rowHeightPx = 144;
 
     protected override async Task OnParametersSetAsync() {
         var key = AccountId + "|" + (GroupFilter ?? "");
@@ -58,6 +65,23 @@
 
         _loadedKey = key;
         await ReloadAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            _selfRef = DotNetObjectReference.Create(this);
+            _module = await Js.InvokeAsync<IJSObjectReference>("import", "./_content/EggLedger.Web/js/reportGrid.js");
+            _observerHandle = await _module.InvokeAsync<IJSObjectReference>("observe", _gridRef, _selfRef);
+        }
+    }
+
+    [JSInvokable]
+    public void OnGridResized(double width) {
+        var next = ReportGridLayout.ComputeRowHeightPx(width);
+        if (next != _rowHeightPx) {
+            _rowHeightPx = next;
+            StateHasChanged();
+        }
     }
 
     public async Task ReloadAsync() {
@@ -159,6 +183,19 @@
         await Task.Delay(5000);
         _actionMessage = null;
         await InvokeAsync(StateHasChanged);
+    }
+
+    public async ValueTask DisposeAsync() {
+        if (_observerHandle is not null && _module is not null) {
+            await _module.InvokeVoidAsync("unobserve", _observerHandle);
+            await _observerHandle.DisposeAsync();
+        }
+
+        if (_module is not null) {
+            await _module.DisposeAsync();
+        }
+
+        _selfRef?.Dispose();
     }
 
 }

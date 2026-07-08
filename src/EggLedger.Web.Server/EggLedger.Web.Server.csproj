@@ -10,18 +10,22 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="SyncKit.Core" Version="0.2.0-preview.3" />
-    <PackageReference Include="SyncKit.Auth" Version="0.2.0-preview.3" />
-    <PackageReference Include="SyncKit.Bot" Version="0.2.0-preview.3" />
-    <PackageReference Include="SyncKit.Contract" Version="0.2.0-preview.3" />
-    <PackageReference Include="SyncKit.Db" Version="0.2.0-preview.3" />
-    <PackageReference Include="SyncKit.Identity.Client" Version="0.2.0-preview.3" />
+    <PackageReference Include="SyncKit.Core" Version="0.2.0-preview.4" />
+    <PackageReference Include="SyncKit.Auth" Version="0.2.0-preview.4" />
+    <PackageReference Include="SyncKit.Bot" Version="0.2.0-preview.4" />
+    <PackageReference Include="SyncKit.Contract" Version="0.2.0-preview.4" />
+    <PackageReference Include="SyncKit.Db" Version="0.2.0-preview.4" />
+    <PackageReference Include="SyncKit.Identity.Client" Version="0.2.0-preview.4" />
     <PackageReference Include="Npgsql" Version="10.0.3" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="10.0.0" />
   </ItemGroup>
 
   <ItemGroup>
     <Content Include="Migrations\*.sql" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="EggLedger.Web.Server.Tests" />
   </ItemGroup>
 
 </Project>

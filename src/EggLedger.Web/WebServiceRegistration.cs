@@ -40,6 +40,7 @@ public static class WebServiceRegistration {
         services.AddScoped<IApiPayloadDecoder>(sp => new LocalApiPayloadDecoder(sp.GetRequiredService<ApiClient>()));
 
         services.AddScoped<FetchService>();
+        services.AddScoped<FetchOrchestrator>();
         services.AddScoped<AddAccountService>();
 
         // UI binds IDownloadService so desktop can swap a save-to-disk sink; the concrete impl stays resolvable for IAsyncDisposable cleanup.
@@ -64,6 +65,7 @@ public static class WebServiceRegistration {
         services.AddScoped<ActiveAccount>();
         services.AddScoped<ScreenshotSafetyState>();
         services.AddScoped<AppStateService>();
+        services.AddScoped<MissionDataCache>();
         services.AddScoped<AccountLoader>();
         services.AddScoped<IPlatformCapabilities, BrowserPlatformCapabilities>();
 

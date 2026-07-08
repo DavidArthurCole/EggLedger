@@ -104,7 +104,7 @@ if (hasDb) {
     builder.Services.AddSingleton(identityClient);
     builder.Services.AddSingleton<EggLedger.Web.Server.Sync.Auth.ICurrentUser, EggLedger.Web.Server.Sync.Auth.CurrentUser>();
 
-    EggLedger.Web.Server.Auth.AuthentikAuth.AddIfConfigured(authBuilder, cfg, identityClient);
+    EggLedger.Web.Server.Auth.AuthentikAuth.AddIfConfigured(authBuilder, cfg, identityClient, dataSource);
 }
 
 // Self-origin base for the shared UI's HttpClient (in-process /api/v1 + /egg-api calls).

@@ -1,7 +1,9 @@
 @using EggLedger.Web.Settings
+@implements IAsyncDisposable
+@inject IJSRuntime Js
 @* Color math lives in the pure ColorPickerMath helper. Two-way bound through Value/ValueChanged (canonical #rrggbb). *@
 
-<div class="color-picker">
+<div class="color-picker" @ref="_rootRef">
     <button type="button"
             class="cp-swatch"
             style="background-color: @CurrentHex"
@@ -60,6 +62,10 @@
     private string _hexInput = ColorPickerMath.Fallback;
     private string _lastSynced = "";
     private string CurrentHex => ColorPickerMath.NormalizeToHex(Value);
+    private ElementReference _rootRef;
+    private DotNetObjectReference<ColorPicker>? _selfRef;
+    private static int _nextId;
+    private readonly string _registrationId = $"color-picker-{Interlocked.Increment(ref _nextId)}";
 
     protected override void OnParametersSet() {
         // Re-derive the editor state when the bound value changes from outside.
@@ -69,8 +75,29 @@
         }
     }
 
-    private void Toggle() {
+    private async Task Toggle() {
         _open = !_open;
+        if (_open) {
+            await RegisterOutsideClickAsync();
+        } else {
+            await UnregisterOutsideClickAsync();
+        }
+    }
+
+    private async Task RegisterOutsideClickAsync() {
+        _selfRef ??= DotNetObjectReference.Create(this);
+        await Js.InvokeVoidAsync("outsideClickRegister", _registrationId, _rootRef, _selfRef);
+    }
+
+    private async Task UnregisterOutsideClickAsync() {
+        await Js.InvokeVoidAsync("outsideClickUnregister", _registrationId);
+    }
+
+    [JSInvokable]
+    public async Task OnOutsideClick() {
+        _open = false;
+        await UnregisterOutsideClickAsync();
+        await InvokeAsync(StateHasChanged);
     }
 
     private void SyncFromHex(string hex) {
@@ -121,6 +148,15 @@
         SyncFromHex(color);
         await EmitAsync(color);
         _open = false;
+        await UnregisterOutsideClickAsync();
+    }
+
+    public async ValueTask DisposeAsync() {
+        if (_open) {
+            await UnregisterOutsideClickAsync();
+        }
+
+        _selfRef?.Dispose();
     }
 
 }

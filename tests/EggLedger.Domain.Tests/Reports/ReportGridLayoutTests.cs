@@ -85,4 +85,13 @@ public class ReportGridLayoutTests {
         int insertPos = ReportGridLayout.FindInsertIndexForZone(defs, zones[0], 2);
         Assert.True(insertPos is >= 0 and <= 3);
     }
+
+    [Theory]
+    [InlineData(800, 89)]
+    [InlineData(1600, 189)]
+    [InlineData(100, 80)]
+    [InlineData(0, 80)]
+    public void ComputeRowHeightPx_MatchesGoFormula(double containerWidthPx, int expected) {
+        Assert.Equal(expected, ReportGridLayout.ComputeRowHeightPx(containerWidthPx));
+    }
 }

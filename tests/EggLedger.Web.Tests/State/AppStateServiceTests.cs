@@ -6,9 +6,9 @@ namespace EggLedger.Web.Tests.State;
 
 public sealed class AppStateServiceTests {
     [Fact]
-    public void DefaultsToLedgerTabAndNoVersion() {
+    public void DefaultsToMissionDataTabAndNoVersion() {
         var sut = new AppStateService();
-        Assert.Equal("Ledger", sut.ActiveTab);
+        Assert.Equal("Mission Data", sut.ActiveTab);
         Assert.Equal("", sut.AppVersion);
         Assert.Empty(sut.KnownAccounts);
         Assert.Null(sut.PipelineState);

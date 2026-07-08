@@ -3,6 +3,7 @@ using EggLedger.Web.Server.Sync;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.Extensions.DependencyInjection;
+using Npgsql;
 using SyncKit.Identity.Client;
 using Xunit;
 
@@ -24,12 +25,17 @@ public class AuthentikAuthTests {
     private static IdentityApiClient UnusedIdentityClient() =>
         new(new HttpClient { BaseAddress = new Uri("http://localhost:8090") });
 
+    // Lazy: NpgsqlDataSource.Create never dials out until a command actually runs, and these
+    // tests only check scheme registration, never invoke OnTicketReceived's users upsert.
+    private static NpgsqlDataSource UnusedDataSource() =>
+        NpgsqlDataSource.Create("Host=localhost;Username=unused;Password=unused;Database=unused");
+
     [Fact]
     public async Task AddIfConfigured_registers_oidc_scheme_when_authority_configured() {
         var services = new ServiceCollection();
         var builder = services.AddAuthentication(AuthScheme.Cookie).AddCookie(AuthScheme.Cookie);
         var registered = AuthentikAuth.AddIfConfigured(builder, ConfigWith(
-            "https://auth.davidarthurcole.me/application/o/egg-ledger/", "abc", "secret"), UnusedIdentityClient());
+            "https://auth.davidarthurcole.me/application/o/egg-ledger/", "abc", "secret"), UnusedIdentityClient(), UnusedDataSource());
         Assert.True(registered);
 
         var provider = services.BuildServiceProvider();
@@ -42,7 +48,7 @@ public class AuthentikAuthTests {
     public async Task AddIfConfigured_noop_when_authority_empty() {
         var services = new ServiceCollection();
         var builder = services.AddAuthentication(AuthScheme.Cookie).AddCookie(AuthScheme.Cookie);
-        var registered = AuthentikAuth.AddIfConfigured(builder, ConfigWith(""), UnusedIdentityClient());
+        var registered = AuthentikAuth.AddIfConfigured(builder, ConfigWith(""), UnusedIdentityClient(), UnusedDataSource());
         Assert.False(registered);
 
         var provider = services.BuildServiceProvider();

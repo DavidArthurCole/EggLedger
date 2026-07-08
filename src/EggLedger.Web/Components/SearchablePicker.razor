@@ -5,7 +5,7 @@
    (insertBefore/parentNode-null crashes). Backdrop click closes. Drops show a rarity ring. *@
 
 <input type="text" readonly placeholder="@Placeholder"
-       class="filter-select w-auto border-gray-300 text-gray-400 cursor-pointer"
+       class="filter-select w-auto border-gray-300 @(Selected?.StyleClass ?? "text-gray-400") cursor-pointer"
        value="@(Selected?.Text ?? "")"
        @onclick="Open"/>
 
