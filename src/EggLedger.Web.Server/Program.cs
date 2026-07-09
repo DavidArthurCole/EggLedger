@@ -126,7 +126,9 @@ static string SelfBaseFromUrls() {
 builder.Services.AddScoped<EggLedger.Web.Server.Storage.CurrentUser>();
 if (hasDb) {
     builder.Services.AddScoped<ISessionStore>(sp =>
-        new EggLedger.Web.Server.Sync.Db.SessionStore(sp.GetRequiredService<NpgsqlDataSource>()));
+        new EggLedger.Web.Server.Sync.Db.SessionStore(
+            sp.GetRequiredService<NpgsqlDataSource>(),
+            sp.GetRequiredService<SyncKit.Identity.Client.IdentityApiClient>()));
     builder.Services.RemoveAll<IIndexedDb>();
     builder.Services.AddScoped<IIndexedDb>(sp => new EggLedger.Web.Server.Storage.PostgresIndexedDb(
         sp.GetRequiredService<NpgsqlDataSource>(),

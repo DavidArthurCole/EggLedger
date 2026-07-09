@@ -325,6 +325,56 @@ public sealed class AuthEndpointsTests {
         }
     }
 
+    [SkippableFact]
+    public async Task DeleteSession_calls_identity_revoke() {
+        Skip.If(string.IsNullOrEmpty(TestDbUrl), "EGGLEDGER_TEST_DB_URL not set; live Postgres auth test skipped.");
+
+        await using var setupSrc = NpgsqlDataSource.Create(TestDbUrl!);
+        await CreateSchemaAsync(setupSrc);
+
+        var scopedBuilder = new NpgsqlConnectionStringBuilder(TestDbUrl!) { SearchPath = Schema };
+        await using var src = NpgsqlDataSource.Create(scopedBuilder.ConnectionString);
+        try {
+            const string token = "tok-to-revoke";
+            HttpRequestMessage? revokeRequest = null;
+            var handler = new StubHttpMessageHandler(req => {
+                revokeRequest = req;
+                return StubHttpMessageHandler.Json(HttpStatusCode.OK, "{}");
+            });
+            var identity = new IdentityApiClient(new HttpClient(handler) { BaseAddress = new Uri("http://localhost:8090") });
+            var endpoints = new AuthEndpoints(src, new EphemeralDataProtectionProvider(), identity, NullLogger<AuthEndpoints>.Instance);
+
+            var userId = Guid.NewGuid();
+            await using (var seed = src.CreateCommand(
+                "INSERT INTO users (user_id, discord_id, created_at) VALUES ($1, NULL, $2);" +
+                "INSERT INTO sessions (token, discord_id, user_id, expires_at) VALUES ($3, NULL, $1, $4)")) {
+                seed.Parameters.AddWithValue(userId);
+                seed.Parameters.AddWithValue(3000L);
+                seed.Parameters.AddWithValue(token);
+                seed.Parameters.AddWithValue(DateTimeOffset.UtcNow.AddDays(1).ToUnixTimeSeconds());
+                await seed.ExecuteNonQueryAsync();
+            }
+
+            var ctx = new DefaultHttpContext();
+            ctx.Request.Headers.Authorization = $"Bearer {token}";
+            ctx.Response.Body = new MemoryStream();
+
+            await endpoints.DeleteSession(ctx);
+
+            Assert.Equal(StatusCodes.Status204NoContent, ctx.Response.StatusCode);
+            Assert.NotNull(revokeRequest);
+            Assert.Equal("/identity/revoke-session", revokeRequest!.RequestUri!.AbsolutePath);
+            var body = await revokeRequest.Content!.ReadAsStringAsync();
+            Assert.Contains(token, body);
+
+            await using var cmd = src.CreateCommand("SELECT COUNT(*) FROM sessions WHERE token = $1");
+            cmd.Parameters.AddWithValue(token);
+            Assert.Equal(0L, await cmd.ExecuteScalarAsync());
+        } finally {
+            await DropSchemaAsync(setupSrc);
+        }
+    }
+
     // StorePending touches users.username/avatar_url/encryption_key (migrations 2, 3) and
     // sessions (migration 1) alongside user_id/identities (migration 7), so the full linear
     // chain must apply here, unlike PostgresIsolationTests/IdentitiesMigrationTests which only

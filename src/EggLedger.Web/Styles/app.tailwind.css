@@ -202,6 +202,31 @@ hr {
   @apply bg-darker;
 }
 
+/* input[type=text]/select base reset (@layer base above) sets text-gray-300 + border-gray-600
+   at equal specificity to bare rarity utilities, so it can win on source order. These
+   compound selectors are more specific and always win without needing !important. Colors
+   written directly (not @apply text-rare) since @apply-ing a same-named utility inside its
+   own selector is a circular dependency. */
+.filter-select.text-rarity-0 {
+  color: rgb(156 163 175);
+  border-color: rgb(156 163 175);
+}
+
+.filter-select.text-rare, .filter-select.text-rarity-1 {
+  color: #6ab6ff;
+  border-color: #6ab6ff;
+}
+
+.filter-select.text-epic, .filter-select.text-rarity-2 {
+  color: #c03fe2;
+  border-color: #c03fe2;
+}
+
+.filter-select.text-legendary, .filter-select.text-rarity-3 {
+  color: #eeab42;
+  border-color: #eeab42;
+}
+
 .ext-opt-label {
   @apply text-gray-400 mr-0_5rem;
 }
@@ -576,7 +601,7 @@ input[type=number] {
 }
 
 .filter-panel {
-  @apply min-h-7 px-2 py-1 text-gray-400 bg-darkest rounded-md tabular-nums overflow-auto mt-0_75rem;
+  @apply min-h-7 px-2 py-1 text-gray-400 bg-darkest rounded-md tabular-nums mt-0_75rem;
 }
 
 .panel-muted {

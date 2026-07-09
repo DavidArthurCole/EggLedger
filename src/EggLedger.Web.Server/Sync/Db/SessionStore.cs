@@ -1,9 +1,10 @@
 using Npgsql;
 using SyncKit.Auth;
+using SyncKit.Identity.Client;
 
 namespace EggLedger.Web.Server.Sync.Db;
 
-public sealed class SessionStore(NpgsqlDataSource source) : ISessionStore {
+public sealed class SessionStore(NpgsqlDataSource source, IdentityApiClient identity) : ISessionStore {
     // The tuple's "DiscordId" name is SyncKit.Auth's, predating this migration to
     // provider-neutral user_id; SyncKit can't be released mid-migration to rename it.
     // RequireAuth only stamps this string into X-Discord-ID and never inspects its contents,
@@ -15,7 +16,11 @@ public sealed class SessionStore(NpgsqlDataSource source) : ISessionStore {
         await using var reader = await cmd.ExecuteReaderAsync(ct);
         if (!await reader.ReadAsync(ct))
             return (false, string.Empty, 0);
-        return (true, reader.GetGuid(0).ToString(), reader.GetInt64(1));
+        var userId = reader.GetGuid(0).ToString();
+        var expiresAt = reader.GetInt64(1);
+        if (await identity.IsRevokedAsync(token, ct))
+            return (false, string.Empty, 0);
+        return (true, userId, expiresAt);
     }
 
     public async Task TouchAsync(string token, long newExpiresAt, CancellationToken ct) {

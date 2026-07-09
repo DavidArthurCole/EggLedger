@@ -20,6 +20,8 @@ module.exports = {
   safelist: [
     'text-rarity-0', 'text-rarity-1', 'text-rarity-2', 'text-rarity-3',
     'text-rare', 'text-epic', 'text-legendary',
+    'border-rarity-0', 'border-rarity-1', 'border-rarity-2', 'border-rarity-3',
+    'border-rare', 'border-epic', 'border-legendary',
   ],
   theme: {
     extend: {
@@ -189,6 +191,10 @@ module.exports = {
         'dark_tab': '#111211',
         'red-700': 'rgb(185 28 28)',
         'yellow-700': 'rgb(251 191 36)',
+        'rarity-0': 'rgb(156 163 175)',
+        'rarity-1': '#6ab6ff',
+        'rarity-2': '#c03fe2',
+        'rarity-3': '#eeab42',
         'rare': '#6ab6ff',
         'epic': '#c03fe2',
         'legendary': '#eeab42',

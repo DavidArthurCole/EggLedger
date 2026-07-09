@@ -1,5 +1,8 @@
+using System.Net;
 using EggLedger.Web.Server.Sync.Db;
+using EggLedger.Web.Server.Tests.Sync.Auth;
 using Npgsql;
+using SyncKit.Identity.Client;
 
 namespace EggLedger.Web.Server.Tests.Sync.Db;
 
@@ -14,6 +17,12 @@ public sealed class SessionStoreTests {
     private static string? TestDbUrl => Environment.GetEnvironmentVariable("EGGLEDGER_TEST_DB_URL");
 
     private const string Schema = "eltest_sessionstore";
+
+    private static IdentityApiClient StubIdentity(bool revoked) =>
+        new(new HttpClient(new StubHttpMessageHandler(_ =>
+            StubHttpMessageHandler.Json(HttpStatusCode.OK, revoked ? "true" : "false"))) {
+            BaseAddress = new Uri("http://localhost:8090"),
+        });
 
     [SkippableFact]
     public async Task LookupAsync_returns_user_id_not_discord_id() {
@@ -36,13 +45,45 @@ public sealed class SessionStoreTests {
                 VALUES ('{token}', '{discordId}', '{userId}', {expiresAt});
                 """);
 
-            var store = new SessionStore(src);
+            var store = new SessionStore(src, StubIdentity(revoked: false));
             var (found, returnedId, returnedExpiresAt) = await store.LookupAsync(token, CancellationToken.None);
 
             Assert.True(found);
             Assert.Equal(userId.ToString(), returnedId);
             Assert.NotEqual(discordId, returnedId);
             Assert.Equal(expiresAt, returnedExpiresAt);
+        } finally {
+            await DropSchemaAsync(setupSrc);
+        }
+    }
+
+    [SkippableFact]
+    public async Task LookupAsync_returns_not_found_when_identity_reports_session_revoked() {
+        Skip.If(string.IsNullOrEmpty(TestDbUrl), "EGGLEDGER_TEST_DB_URL not set; live Postgres session test skipped.");
+
+        await using var setupSrc = NpgsqlDataSource.Create(TestDbUrl!);
+        await CreateSchemaAsync(setupSrc);
+
+        var scopedBuilder = new NpgsqlConnectionStringBuilder(TestDbUrl!) { SearchPath = Schema };
+        await using var src = NpgsqlDataSource.Create(scopedBuilder.ConnectionString);
+        try {
+            var userId = Guid.NewGuid();
+            const string discordId = "99999999";
+            const string token = "tok-revoked";
+            var expiresAt = DateTimeOffset.UtcNow.AddDays(1).ToUnixTimeSeconds();
+
+            await Exec(src, $"""
+                INSERT INTO users (user_id, discord_id, created_at) VALUES ('{userId}', '{discordId}', 0);
+                INSERT INTO sessions (token, discord_id, user_id, expires_at)
+                VALUES ('{token}', '{discordId}', '{userId}', {expiresAt});
+                """);
+
+            var store = new SessionStore(src, StubIdentity(revoked: true));
+            var (found, returnedId, returnedExpiresAt) = await store.LookupAsync(token, CancellationToken.None);
+
+            Assert.False(found);
+            Assert.Equal(string.Empty, returnedId);
+            Assert.Equal(0, returnedExpiresAt);
         } finally {
             await DropSchemaAsync(setupSrc);
         }

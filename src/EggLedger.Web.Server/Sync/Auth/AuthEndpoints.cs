@@ -334,6 +334,7 @@ public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvid
             await using var cmd = source.CreateCommand("DELETE FROM sessions WHERE token = $1");
             cmd.Parameters.AddWithValue(token);
             try { await cmd.ExecuteNonQueryAsync(ctx.RequestAborted); } catch (Exception ex) { logger.LogWarning(ex, "auth: failed to delete session"); }
+            try { await identity.RevokeSessionAsync(token, ctx.RequestAborted); } catch (Exception ex) { logger.LogWarning(ex, "auth: failed to revoke session"); }
         }
         ctx.Response.StatusCode = StatusCodes.Status204NoContent;
     }

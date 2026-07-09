@@ -13,7 +13,6 @@ public class AuthentikAuthTests {
     private static AppConfig ConfigWith(string authority, string clientId = "", string clientSecret = "") => new(
         ListenAddr: "", DatabaseUrl: "", DiscordClientId: "", DiscordClientSecret: "", RedirectUrl: "",
         BotToken: "", GuildId: "", SharedRoleId: "", DeployAgentUrl: "", DeployAgentSecret: "", MennoFunctionKey: "",
-        AdminUserIds: new HashSet<string>(),
         AuthentikAuthority: authority, AuthentikClientId: clientId, AuthentikClientSecret: clientSecret,
         IdentityApiUrl: "http://localhost:8090", IdentityApiSecret: "unused",
         TrustedProxyNetworks: [],

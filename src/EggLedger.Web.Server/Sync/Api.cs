@@ -29,7 +29,7 @@ public static class Api {
         var auth = new AuthEndpoints(source, dataProtection, identity, loggerFactory.CreateLogger<AuthEndpoints>());
         var blobs = new BlobEndpoints(source, loggerFactory.CreateLogger<BlobEndpoints>());
         var menno = new MennoEndpoint(new HttpClient(), cfg.MennoFunctionKey, AppConfig.MennoUpstreamUrl);
-        var store = new SessionStore(source);
+        var store = new SessionStore(source, identity);
         var metrics = new Admin.ApiMetrics(TimeProvider.System);
         var spam = new Admin.SpamLog(source);
         var admin = new Admin.AdminEndpoints(source, metrics, spam, currentUser, identity);

@@ -12,7 +12,6 @@ public sealed record AppConfig(
     string DeployAgentUrl,
     string DeployAgentSecret,
     string MennoFunctionKey,
-    IReadOnlySet<string> AdminUserIds,
     string AuthentikAuthority,
     string AuthentikClientId,
     string AuthentikClientSecret,
@@ -35,9 +34,6 @@ public sealed record AppConfig(
         var addr = V("LISTEN_ADDR");
         var proxyNets = V("TRUSTED_PROXY_NETWORKS")
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        var admins = V("ADMIN_DISCORD_IDS")
-            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .ToHashSet(StringComparer.Ordinal);
         return new AppConfig(
             ListenAddr: string.IsNullOrEmpty(addr) ? ":8080" : addr,
             DatabaseUrl: V("DATABASE_URL"),
@@ -52,7 +48,6 @@ public sealed record AppConfig(
             DeployAgentUrl: V("DEPLOY_AGENT_URL"),
             DeployAgentSecret: V("DEPLOY_AGENT_SECRET"),
             MennoFunctionKey: V("MENNO_FUNCTION_KEY"),
-            AdminUserIds: admins,
             AuthentikAuthority: V("AUTHENTIK_AUTHORITY"),
             AuthentikClientId: V("AUTHENTIK_CLIENT_ID"),
             AuthentikClientSecret: V("AUTHENTIK_CLIENT_SECRET"),
