@@ -47,13 +47,17 @@ public sealed class FetchOrchestrator : IDisposable {
         FetchingAccountId = accountId;
         _cts?.Cancel();
         _cts?.Dispose();
-        _cts = new CancellationTokenSource();
+        var cts = _cts = new CancellationTokenSource();
 
         // Cleared only on a clean terminal state below; a circuit teardown mid-fetch (e.g. a
         // page refresh) leaves this set, so GetIncompleteAccountsAsync picks it up next load.
         await _settings.SetSettingAsync(InProgressKeyPrefix + accountId, "1").ConfigureAwait(false);
 
         var progress = new Progress<FetchProgress>(p => {
+            if (_cts != cts) {
+                return;
+            }
+
             // Segment events carry no counts, so carry last-known counts forward to avoid clobbering the counter.
             var segmentOnly = p.Segment is not null;
             if (segmentOnly && Progress is not null) {
@@ -71,12 +75,12 @@ public sealed class FetchOrchestrator : IDisposable {
             Changed?.Invoke();
         });
 
+        AppState result;
         try {
-            var result = await _fetch.FetchPlayerDataAsync(accountId, progress, _cts.Token);
-            TerminalState = result;
+            result = await _fetch.FetchPlayerDataAsync(accountId, progress, cts.Token);
         } catch (Exception ex) {
             _logger.LogError(ex, "Fetch failed for account {AccountId}", accountId);
-            TerminalState = AppState.Failed;
+            result = AppState.Failed;
         }
 
         // Reaching here at all (success, failure, or user-cancelled) means the pipeline ran to
@@ -84,6 +88,13 @@ public sealed class FetchOrchestrator : IDisposable {
         // the exact "never resumed" case GetIncompleteAccountsAsync exists to catch.
         await _settings.RemoveSettingAsync(InProgressKeyPrefix + accountId).ConfigureAwait(false);
 
+        // A superseded call (its _cts already replaced by a newer StartFetchAsync) must not
+        // clobber the current fetch's TerminalState with its own stale result.
+        if (_cts != cts) {
+            return;
+        }
+
+        TerminalState = result;
         _appState.PipelineState = TerminalState;
         Changed?.Invoke();
     }
