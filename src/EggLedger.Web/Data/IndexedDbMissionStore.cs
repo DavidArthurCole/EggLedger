@@ -214,6 +214,63 @@ public sealed class IndexedDbMissionStore : IMissionStore {
         ReturnTimestamp = cols.ReturnTimestamp,
     };
 
+    private readonly HashSet<string> _dropsBackfilling = [];
+
+    // Port of the Go startup goroutine db.BackfillArtifactDrops, but per-account and
+    // triggered on load instead of at process startup: populates artifact_drops for
+    // missions stored before that table existed, or fetched by an older app version
+    // that skipped the write. A mission with zero real drops gets a drop_index=-1
+    // sentinel row so it is never re-decoded on a later call (GetAllPlayerDropsAsync
+    // filters DropIndex &lt; 0 back out).
+    public void QueueArtifactDropsBackfill(string playerId) {
+        if (_dropsBackfilling.Add(playerId))
+            _ = BackfillArtifactDropsAsync(playerId);
+    }
+
+    private async Task BackfillArtifactDropsAsync(string playerId) {
+        try {
+            var missionIds = await GetCompleteMissionIdsAsync(playerId).ConfigureAwait(false);
+            if (missionIds is null)
+                return;
+            var stored = await GetStoredPlayerDropsAsync(playerId).ConfigureAwait(false);
+            if (stored is null)
+                return;
+            var haveRows = stored.Select(d => d.MissionId).ToHashSet();
+
+            foreach (var missionId in missionIds) {
+                if (haveRows.Contains(missionId))
+                    continue;
+
+                CompleteMissionResponse decoded;
+                try { decoded = await GetCompleteMissionAsync(playerId, missionId).ConfigureAwait(false) ?? throw new InvalidOperationException(); } catch { continue; }
+
+                var drops = ArtifactDrops.Build(decoded);
+                if (drops.Count == 0) {
+                    await _db.PutAsync(IndexedDbStores.ArtifactDrops, new ArtifactDropRow {
+                        MissionId = missionId,
+                        PlayerId = playerId,
+                        DropIndex = -1,
+                    }).ConfigureAwait(false);
+                    continue;
+                }
+
+                var rows = drops.Select(d => (object)new ArtifactDropRow {
+                    MissionId = missionId,
+                    PlayerId = playerId,
+                    DropIndex = d.DropIndex,
+                    ArtifactId = d.ArtifactId,
+                    SpecType = d.SpecType,
+                    Level = d.Level,
+                    Rarity = d.Rarity,
+                    Quality = d.Quality,
+                });
+                await _db.PutManyAsync(IndexedDbStores.ArtifactDrops, rows).ConfigureAwait(false);
+            }
+        } finally {
+            _dropsBackfilling.Remove(playerId);
+        }
+    }
+
     /// <summary>
     /// First-contact backup, raw payload gzipped (Go db.InsertBackup). A positive
     /// <paramref name="minimumGap"/> skips the write when the existing backup is newer
@@ -309,7 +366,7 @@ public sealed class IndexedDbMissionStore : IMissionStore {
     public async Task<IReadOnlyList<StoredDrop>?> GetStoredPlayerDropsAsync(string playerId) {
         try {
             var rows = await _db.GetAllByIndexAsync<ArtifactDropRow>(IndexedDbStores.ArtifactDrops, IndexedDbStores.PlayerIdIndex, playerId);
-            return [.. rows.Select(r => new StoredDrop(r.MissionId, r.ArtifactId, r.Level, r.Rarity))];
+            return [.. rows.Select(r => new StoredDrop(r.MissionId, r.ArtifactId, r.Level, r.Rarity, r.DropIndex))];
         } catch {
             return null;
         }

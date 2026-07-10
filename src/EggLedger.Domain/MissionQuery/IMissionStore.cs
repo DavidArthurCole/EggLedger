@@ -55,10 +55,22 @@ public interface IMissionStore {
     /// when CountPendingFilterCols succeeded and returned &gt; 0.
     /// </summary>
     void QueueFilterColBackfill(string eid);
+
+    /// <summary>
+    /// Kicks a one-time background backfill of artifact_drops rows for missions stored
+    /// before that data existed (or fetched by an older app version). Fire-and-forget,
+    /// safe to call every load; a mission with rows already (including the zero-drop
+    /// sentinel) is left alone.
+    /// </summary>
+    void QueueArtifactDropsBackfill(string playerId);
 }
 
-/// <summary>A stored artifact drop: which mission, and the spec identity needed to rebuild it.</summary>
-public sealed record StoredDrop(string MissionId, int ArtifactId, int Level, int Rarity);
+/// <summary>
+/// A stored artifact drop: which mission, and the spec identity needed to rebuild it.
+/// DropIndex -1 is the zero-drop sentinel (mission backfilled, genuinely no drops) -
+/// callers building display/filter drop lists must exclude it, mirroring InMemoryMissionDb.
+/// </summary>
+public sealed record StoredDrop(string MissionId, int ArtifactId, int Level, int Rarity, int DropIndex = 0);
 
 /// <summary>
 /// Opaque display row returned by mission listing. Concrete type is MissionPacking.DatabaseMission;

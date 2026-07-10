@@ -280,6 +280,27 @@ public class MissionQueryHandlersTests {
     }
 
     [Fact]
+    public async Task GetAllPlayerDrops_SentinelRowExcludedFromDropsButMissionCounted() {
+        var (h, store, _) = NewSut();
+        // m1 was backfilled and genuinely has zero drops (drop_index=-1 sentinel);
+        // m2 has a real drop. The sentinel must not appear as a fake drop.
+        int frag = (int)ArtifactSpec.Name.TachyonStoneFragment;
+        store.CompleteMissionIds = ["m1", "m2"];
+        store.StoredDrops["p"] =
+        [
+            new StoredDrop("m1", 0, 0, 0, DropIndex: -1),
+            new StoredDrop("m2", frag, 0, 0),
+        ];
+
+        var got = await h.GetAllPlayerDropsAsync("p");
+
+        Assert.NotNull(got);
+        Assert.Equal(2, got!.Count);
+        Assert.Empty(got["m1"]);
+        Assert.Single(got["m2"]);
+    }
+
+    [Fact]
     public async Task GetAllPlayerDrops_NullOnStoreError() {
         var (h, _, _) = NewSut();
         // No StoredDrops entry -> fake returns null -> handler returns null.

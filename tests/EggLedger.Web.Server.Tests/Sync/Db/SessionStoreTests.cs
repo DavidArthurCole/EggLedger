@@ -97,7 +97,9 @@ public sealed class SessionStoreTests {
         await ApplyMigrationAsync(src, "4_eggledger_storage.up.sql");
         await ApplyMigrationAsync(src, "5_data_protection_keys.up.sql");
         await ApplyMigrationAsync(src, "6_api_spam_log.up.sql");
-        await ApplyMigrationAsync(src, "7_identities.up.sql");
+        await ApplyMigrationAsync(src, "8_identities.up.sql");
+        await ApplyMigrationAsync(src, "9_identity_user_id_cascade.up.sql");
+        await ApplyMigrationAsync(src, "10_identities_user_id_cascade.up.sql");
     }
 
     private static async Task ApplyMigrationAsync(NpgsqlDataSource src, string fileName) {

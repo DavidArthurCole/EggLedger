@@ -16,6 +16,7 @@ internal sealed class FakeMissionStore : IMissionStore {
     public Dictionary<string, IReadOnlyList<CompleteMissionResponse>?> PlayerCompleteMissions { get; } = [];
     public Dictionary<string, IReadOnlyList<StoredDrop>?> StoredDrops { get; } = [];
     public List<string> BackfillsQueued { get; } = [];
+    public List<string> DropsBackfillsQueued { get; } = [];
 
     public Task<IReadOnlyList<string>?> GetCompleteMissionIdsAsync(string playerId) =>
         Task.FromResult(CompleteMissionIds);
@@ -54,6 +55,8 @@ internal sealed class FakeMissionStore : IMissionStore {
         Task.FromResult(StoredDrops.TryGetValue(playerId, out var d) ? d : null);
 
     public void QueueFilterColBackfill(string eid) => BackfillsQueued.Add(eid);
+
+    public void QueueArtifactDropsBackfill(string playerId) => DropsBackfillsQueued.Add(playerId);
 }
 
 internal sealed record FakeMissionRow(string Id) : IMissionRow;

@@ -49,6 +49,10 @@ public sealed class MissionQueryHandlers {
 
     /// <summary>Port of ViewMissionsOfEid -> viewMissionsOfId. Null on error.</summary>
     public async Task<IReadOnlyList<IMissionRow>?> ViewMissionsOfEidAsync(string eid) {
+        // Self-limiting (per-account in-flight guard + per-mission row check), so
+        // triggering on every view is cheap once the one-time backfill has run.
+        _store.QueueArtifactDropsBackfill(eid);
+
         int? pending = await _store.CountPendingFilterColsAsync(eid);
 
         // Fast path: every mission has filter columns; build from DB columns only.
@@ -121,6 +125,9 @@ public sealed class MissionQueryHandlers {
             result[id] = [];
         }
         foreach (var d in stored) {
+            if (d.DropIndex < 0) {
+                continue;
+            }
             var spec = new ArtifactSpec {
                 name = (ArtifactSpec.Name)d.ArtifactId,
                 level = (ArtifactSpec.Level)d.Level,

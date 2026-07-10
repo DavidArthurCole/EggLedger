@@ -1,7 +1,9 @@
 using System.Net;
 using System.Security.Claims;
+using System.Text;
 using System.Text.Json;
 using EggLedger.Web.Server.Sync.Auth;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -10,6 +12,28 @@ using SyncKit.Auth;
 using SyncKit.Identity.Client;
 
 namespace EggLedger.Web.Server.Tests.Sync.Auth;
+
+// Minimal IAuthenticationService double so RedeemCode's ctx.SignInAsync has somewhere to land -
+// DefaultHttpContext has no real auth service wired, so SignInAsync throws without this.
+internal sealed class TestAuthenticationService : IAuthenticationService {
+    public ClaimsPrincipal? SignedInPrincipal { get; private set; }
+
+    public Task SignInAsync(HttpContext context, string? scheme, ClaimsPrincipal principal, AuthenticationProperties? properties) {
+        SignedInPrincipal = principal;
+        return Task.CompletedTask;
+    }
+
+    public Task<AuthenticateResult> AuthenticateAsync(HttpContext context, string? scheme) =>
+        Task.FromResult(AuthenticateResult.NoResult());
+
+    public Task ChallengeAsync(HttpContext context, string? scheme, AuthenticationProperties? properties) => Task.CompletedTask;
+    public Task ForbidAsync(HttpContext context, string? scheme, AuthenticationProperties? properties) => Task.CompletedTask;
+    public Task SignOutAsync(HttpContext context, string? scheme, AuthenticationProperties? properties) => Task.CompletedTask;
+}
+
+internal sealed class TestServiceProvider(IAuthenticationService authService) : IServiceProvider {
+    public object? GetService(Type serviceType) => serviceType == typeof(IAuthenticationService) ? authService : null;
+}
 
 /// <summary>
 /// StorePending must create both the provider-neutral `users` row and a linked
@@ -320,6 +344,114 @@ public sealed class AuthEndpointsTests {
             Assert.True(await reader.ReadAsync());
             Assert.Equal(userId, reader.GetGuid(0));
             Assert.Equal("54321", reader.GetString(1));
+        } finally {
+            await DropSchemaAsync(setupSrc);
+        }
+    }
+
+    // Widget popup path: no bearer session token involved at all, just a cookie sign-in built
+    // straight from RedeemLoginCodeResponse - covers the Discord-identified case (discordId set).
+    [SkippableFact]
+    public async Task RedeemCode_DiscordIdentity_SignsInCookieAndUpsertsUser() {
+        Skip.If(string.IsNullOrEmpty(TestDbUrl), "EGGLEDGER_TEST_DB_URL not set; live Postgres auth test skipped.");
+
+        await using var setupSrc = NpgsqlDataSource.Create(TestDbUrl!);
+        await CreateSchemaAsync(setupSrc);
+
+        var scopedBuilder = new NpgsqlConnectionStringBuilder(TestDbUrl!) { SearchPath = Schema };
+        await using var src = NpgsqlDataSource.Create(scopedBuilder.ConnectionString);
+        try {
+            var resolvedUserId = Guid.NewGuid();
+            var handler = new StubHttpMessageHandler(_ => StubHttpMessageHandler.Json(HttpStatusCode.OK,
+                $$"""{"userId":"{{resolvedUserId}}","discordId":"77777","username":"widget-user","avatar":"http://example.com/a.png","role":"viewer","isNew":true}"""));
+            var identity = new IdentityApiClient(new HttpClient(handler) { BaseAddress = new Uri("http://localhost:8090") });
+            var endpoints = new AuthEndpoints(src, new EphemeralDataProtectionProvider(), identity, NullLogger<AuthEndpoints>.Instance);
+
+            var ctx = new DefaultHttpContext();
+            ctx.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes("""{"code":"abc123"}"""));
+            var authService = new TestAuthenticationService();
+            ctx.RequestServices = new TestServiceProvider(authService);
+            ctx.Response.Body = new MemoryStream();
+
+            await endpoints.RedeemCode(ctx);
+
+            Assert.Equal(StatusCodes.Status200OK, ctx.Response.StatusCode);
+            Assert.NotNull(authService.SignedInPrincipal);
+            Assert.Equal(resolvedUserId.ToString(), authService.SignedInPrincipal!.FindFirst(EggLedger.Web.Server.Auth.AuthScheme.UserIdClaim)?.Value);
+            Assert.Equal("77777", authService.SignedInPrincipal.FindFirst(EggLedger.Web.Server.Auth.AuthScheme.DiscordIdClaim)?.Value);
+            Assert.Equal("viewer", authService.SignedInPrincipal.FindFirst(EggLedger.Web.Server.Auth.AuthScheme.RoleClaim)?.Value);
+
+            await using var cmd = src.CreateCommand("SELECT username, avatar_url FROM users WHERE user_id = $1");
+            cmd.Parameters.AddWithValue(resolvedUserId);
+            await using var reader = await cmd.ExecuteReaderAsync();
+            Assert.True(await reader.ReadAsync());
+            Assert.Equal("widget-user", reader.GetString(0));
+            Assert.Equal("http://example.com/a.png", reader.GetString(1));
+        } finally {
+            await DropSchemaAsync(setupSrc);
+        }
+    }
+
+    // Authentik-resolved identities carry no discordId; the local users row must still be
+    // created (discord_id NULL) rather than skipped, matching AuthentikAuth's own upsert.
+    [SkippableFact]
+    public async Task RedeemCode_AuthentikIdentity_NoDiscordId_StillCreatesUser() {
+        Skip.If(string.IsNullOrEmpty(TestDbUrl), "EGGLEDGER_TEST_DB_URL not set; live Postgres auth test skipped.");
+
+        await using var setupSrc = NpgsqlDataSource.Create(TestDbUrl!);
+        await CreateSchemaAsync(setupSrc);
+
+        var scopedBuilder = new NpgsqlConnectionStringBuilder(TestDbUrl!) { SearchPath = Schema };
+        await using var src = NpgsqlDataSource.Create(scopedBuilder.ConnectionString);
+        try {
+            var resolvedUserId = Guid.NewGuid();
+            var handler = new StubHttpMessageHandler(_ => StubHttpMessageHandler.Json(HttpStatusCode.OK,
+                $$"""{"userId":"{{resolvedUserId}}","username":"authentik-user","role":"viewer","isNew":true}"""));
+            var identity = new IdentityApiClient(new HttpClient(handler) { BaseAddress = new Uri("http://localhost:8090") });
+            var endpoints = new AuthEndpoints(src, new EphemeralDataProtectionProvider(), identity, NullLogger<AuthEndpoints>.Instance);
+
+            var ctx = new DefaultHttpContext();
+            ctx.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes("""{"code":"xyz789"}"""));
+            var authService = new TestAuthenticationService();
+            ctx.RequestServices = new TestServiceProvider(authService);
+            ctx.Response.Body = new MemoryStream();
+
+            await endpoints.RedeemCode(ctx);
+
+            Assert.Equal(StatusCodes.Status200OK, ctx.Response.StatusCode);
+            Assert.Null(authService.SignedInPrincipal!.FindFirst(EggLedger.Web.Server.Auth.AuthScheme.DiscordIdClaim));
+
+            await using var cmd = src.CreateCommand("SELECT discord_id FROM users WHERE user_id = $1");
+            cmd.Parameters.AddWithValue(resolvedUserId);
+            await using var reader = await cmd.ExecuteReaderAsync();
+            Assert.True(await reader.ReadAsync());
+            Assert.True(reader.IsDBNull(0));
+        } finally {
+            await DropSchemaAsync(setupSrc);
+        }
+    }
+
+    [SkippableFact]
+    public async Task RedeemCode_MissingCode_ReturnsBadRequest() {
+        Skip.If(string.IsNullOrEmpty(TestDbUrl), "EGGLEDGER_TEST_DB_URL not set; live Postgres auth test skipped.");
+
+        await using var setupSrc = NpgsqlDataSource.Create(TestDbUrl!);
+        await CreateSchemaAsync(setupSrc);
+
+        var scopedBuilder = new NpgsqlConnectionStringBuilder(TestDbUrl!) { SearchPath = Schema };
+        await using var src = NpgsqlDataSource.Create(scopedBuilder.ConnectionString);
+        try {
+            var identity = new IdentityApiClient(new HttpClient(new StubHttpMessageHandler(_ =>
+                StubHttpMessageHandler.Json(HttpStatusCode.OK, "{}"))) { BaseAddress = new Uri("http://localhost:8090") });
+            var endpoints = new AuthEndpoints(src, new EphemeralDataProtectionProvider(), identity, NullLogger<AuthEndpoints>.Instance);
+
+            var ctx = new DefaultHttpContext();
+            ctx.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes("""{"code":""}"""));
+            ctx.Response.Body = new MemoryStream();
+
+            await endpoints.RedeemCode(ctx);
+
+            Assert.Equal(StatusCodes.Status400BadRequest, ctx.Response.StatusCode);
         } finally {
             await DropSchemaAsync(setupSrc);
         }

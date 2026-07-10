@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Npgsql;
 using SyncKit.Auth;
+using SyncKit.Contract;
 using SyncKit.Identity.Client;
 
 namespace EggLedger.Web.Server.Sync.Auth;
@@ -26,6 +27,8 @@ public sealed record PollResponse(
     [property: JsonPropertyName("username")] string Username,
     [property: JsonPropertyName("avatarUrl")] string AvatarUrl,
     [property: JsonPropertyName("encryptionKey")] string EncryptionKey);
+
+public sealed record RedeemCodeRequest([property: JsonPropertyName("code")] string Code);
 
 public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvider dataProtection, IdentityApiClient identity, ILogger<AuthEndpoints> logger) {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
@@ -127,6 +130,87 @@ public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvid
         ctx.Response.StatusCode = StatusCodes.Status200OK;
         ctx.Response.ContentType = "text/html; charset=utf-8";
         await ctx.Response.Body.WriteAsync(Encoding.UTF8.GetBytes(SuccessPage.Html), ctx.RequestAborted);
+    }
+
+    // Embedded popup widget: exchanges a short-lived SyncKit login code for this app's own
+    // cookie. Covers both Discord- and Authentik-resolved identities (RedeemLoginCodeResponse
+    // carries whichever provider actually authenticated), unlike the Discord-only Callback path.
+    public async Task RedeemCode(HttpContext ctx) {
+        RedeemCodeRequest? body;
+        try {
+            body = await JsonSerializer.DeserializeAsync<RedeemCodeRequest>(ctx.Request.Body, Json, ctx.RequestAborted);
+        } catch (JsonException) {
+            await WriteTextAsync(ctx, StatusCodes.Status400BadRequest, "invalid body\n");
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(body?.Code)) {
+            await WriteTextAsync(ctx, StatusCodes.Status400BadRequest, "missing code\n");
+            return;
+        }
+
+        RedeemLoginCodeResponse result;
+        try {
+            result = await identity.RedeemAsync(body.Code, ctx.RequestAborted);
+        } catch (HttpRequestException ex) {
+            logger.LogWarning(ex, "auth: redeem-code failed");
+            await WriteTextAsync(ctx, StatusCodes.Status400BadRequest, "redeem failed\n");
+            return;
+        }
+
+        await UpsertLocalUserAsync(result.UserId, result.DiscordId, result.Username, result.Avatar, ctx.RequestAborted);
+
+        var claims = new List<Claim> {
+            new(ClaimTypes.Name, result.Username),
+            new(EggLedger.Web.Server.Auth.AuthScheme.UserIdClaim, result.UserId.ToString()),
+            new(EggLedger.Web.Server.Auth.AuthScheme.RoleClaim, result.Role),
+        };
+        if (!string.IsNullOrEmpty(result.DiscordId)) {
+            claims.Add(new Claim(EggLedger.Web.Server.Auth.AuthScheme.DiscordIdClaim, result.DiscordId));
+        }
+        var claimsIdentity = new ClaimsIdentity(claims, EggLedger.Web.Server.Auth.AuthScheme.Cookie);
+        await ctx.SignInAsync(
+            EggLedger.Web.Server.Auth.AuthScheme.Cookie,
+            new ClaimsPrincipal(claimsIdentity),
+            new AuthenticationProperties { IsPersistent = true });
+
+        await WriteJsonAsync(ctx, new { discordId = result.DiscordId, username = result.Username, avatar = result.Avatar });
+    }
+
+    // Mirrors StorePending's repoint-then-upsert for the local users row, minus the
+    // sessions/pending_auth bookkeeping that only the bearer-token Discord OAuth path needs.
+    private async Task UpsertLocalUserAsync(Guid userId, string? discordId, string? username, string? avatar, CancellationToken ct) {
+        if (!string.IsNullOrEmpty(discordId)) {
+            await using var repoint = source.CreateCommand(
+                "UPDATE users SET user_id = $1 WHERE discord_id = $2 AND user_id <> $1");
+            repoint.Parameters.AddWithValue(userId);
+            repoint.Parameters.AddWithValue(discordId);
+            if (await repoint.ExecuteNonQueryAsync(ct) > 0) {
+                foreach (var table in ElUserTables) {
+                    await using var move = source.CreateCommand(
+                        $"UPDATE {table} SET user_id = $1 WHERE discord_id = $2 AND user_id <> $1");
+                    move.Parameters.AddWithValue(userId);
+                    move.Parameters.AddWithValue(discordId);
+                    await move.ExecuteNonQueryAsync(ct);
+                }
+            }
+        }
+
+        await using (var u = source.CreateCommand(
+            "INSERT INTO users (user_id, discord_id, created_at, username, avatar_url) VALUES ($1,$2,$3,$4,$5) " +
+            "ON CONFLICT (user_id) DO UPDATE SET username = EXCLUDED.username, avatar_url = EXCLUDED.avatar_url")) {
+            u.Parameters.AddWithValue(userId);
+            if (string.IsNullOrEmpty(discordId)) {
+                u.Parameters.AddWithValue(DBNull.Value);
+            } else {
+                u.Parameters.AddWithValue(discordId);
+            }
+            u.Parameters.AddWithValue(Now());
+            u.Parameters.AddWithValue(username ?? "");
+            u.Parameters.AddWithValue(avatar ?? "");
+            await u.ExecuteNonQueryAsync(ct);
+        }
+
+        await EnsureEncryptionKeyAsync(userId);
     }
 
     private async Task<bool> StateIsPending(string state, CancellationToken ct) {

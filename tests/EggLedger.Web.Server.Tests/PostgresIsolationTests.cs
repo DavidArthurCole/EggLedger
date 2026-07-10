@@ -97,10 +97,10 @@ public sealed class PostgresIsolationTests {
 
     private static async Task CreateSchemaAsync(NpgsqlDataSource src) {
         await Exec(src, $"DROP SCHEMA IF EXISTS {Schema} CASCADE; CREATE SCHEMA {Schema}; SET search_path TO {Schema};");
-        // user_id only exists after migration 7 backfills it onto the migration-4 tables.
+        // user_id only exists after migration 8 backfills it onto the migration-4 tables.
         await ApplyMigrationAsync(src, "1_initial_schema.up.sql");
         await ApplyMigrationAsync(src, "4_eggledger_storage.up.sql");
-        await ApplyMigrationAsync(src, "7_identities.up.sql");
+        await ApplyMigrationAsync(src, "8_identities.up.sql");
     }
 
     private static async Task ApplyMigrationAsync(NpgsqlDataSource src, string fileName) {
