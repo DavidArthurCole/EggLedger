@@ -42,4 +42,23 @@ public class ConfigTests {
         Assert.Equal("", cfg.IdentityApiUrl);
         Assert.Equal("", cfg.IdentityApiSecret);
     }
+
+    [Fact]
+    public void FromEnv_reads_identity_widget_url_when_set() {
+        var env = new Dictionary<string, string?> {
+            ["IDENTITY_API_URL"] = "http://synckit-identity:8090",
+            ["IDENTITY_WIDGET_URL"] = "https://identity.davidarthurcole.me",
+        };
+        var cfg = AppConfig.FromEnv(k => env.GetValueOrDefault(k));
+        Assert.Equal("https://identity.davidarthurcole.me", cfg.IdentityWidgetUrl);
+    }
+
+    [Fact]
+    public void FromEnv_defaults_identity_widget_url_to_identity_api_url() {
+        var env = new Dictionary<string, string?> {
+            ["IDENTITY_API_URL"] = "http://synckit-identity:8090",
+        };
+        var cfg = AppConfig.FromEnv(k => env.GetValueOrDefault(k));
+        Assert.Equal("http://synckit-identity:8090", cfg.IdentityWidgetUrl);
+    }
 }

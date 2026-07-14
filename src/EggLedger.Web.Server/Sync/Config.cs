@@ -17,6 +17,7 @@ public sealed record AppConfig(
     string AuthentikClientSecret,
     string IdentityApiUrl,
     string IdentityApiSecret,
+    string IdentityWidgetUrl,
     IReadOnlyList<string> TrustedProxyNetworks,
     string BuildSha,
     string BuildDate,
@@ -53,6 +54,11 @@ public sealed record AppConfig(
             AuthentikClientSecret: V("AUTHENTIK_CLIENT_SECRET"),
             IdentityApiUrl: V("IDENTITY_API_URL"),
             IdentityApiSecret: V("IDENTITY_API_SECRET"),
+            // Browser-facing address serving /synckit-login.js + the popup flow. Distinct from
+            // IdentityApiUrl (server-to-server, e.g. an internal/loopback address under
+            // network_mode: host) which a <script src> can't reach. Defaults to IdentityApiUrl
+            // for deploys where both happen to be the same public host.
+            IdentityWidgetUrl: get("IDENTITY_WIDGET_URL") is { Length: > 0 } widgetUrl ? widgetUrl : V("IDENTITY_API_URL"),
             TrustedProxyNetworks: proxyNets.Length > 0 ? proxyNets : DefaultProxyNetworks,
             BuildSha: get("BUILD_SHA") is { Length: > 0 } sha ? sha : "dev",
             BuildDate: get("BUILD_DATE") is { Length: > 0 } date ? date : "dev",

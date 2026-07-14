@@ -14,7 +14,7 @@ public class AuthentikAuthTests {
         ListenAddr: "", DatabaseUrl: "", DiscordClientId: "", DiscordClientSecret: "", RedirectUrl: "",
         BotToken: "", GuildId: "", SharedRoleId: "", DeployAgentUrl: "", DeployAgentSecret: "", MennoFunctionKey: "",
         AuthentikAuthority: authority, AuthentikClientId: clientId, AuthentikClientSecret: clientSecret,
-        IdentityApiUrl: "http://localhost:8090", IdentityApiSecret: "unused",
+        IdentityApiUrl: "http://localhost:8090", IdentityApiSecret: "unused", IdentityWidgetUrl: "http://localhost:8090",
         TrustedProxyNetworks: [],
         BuildSha: "dev", BuildDate: "dev", DataProtectionCertPath: "", DataProtectionCertPassword: "");
 
