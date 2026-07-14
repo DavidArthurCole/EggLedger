@@ -62,6 +62,11 @@ var authBuilder = builder.Services.AddAuthentication(EggLedger.Web.Server.Auth.A
             if (!Guid.TryParse(claim, out _)) {
                 ctx.RejectPrincipal();
                 await ctx.HttpContext.SignOutAsync(EggLedger.Web.Server.Auth.AuthScheme.Cookie);
+                return;
+            }
+            var identity = ctx.HttpContext.RequestServices.GetService<SyncKit.Identity.Client.IdentityApiClient>();
+            if (identity is not null) {
+                await SyncKit.Auth.AuthentikAspNetAuth.OnValidatePrincipalCheckRevoked(ctx, identity);
             }
         };
     });
