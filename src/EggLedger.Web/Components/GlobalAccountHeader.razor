@@ -1,5 +1,6 @@
 @implements IDisposable
 @using EggLedger.Domain.MissionQuery
+@using EggLedger.Web.Data
 @using EggLedger.Web.Services
 @implements IAsyncDisposable
 @inject ActiveAccount Active
@@ -7,7 +8,7 @@
 @inject AccountLoader Loader
 @inject FetchOrchestrator Fetch
 @inject MissionQueryHandlers Queries
-@inject EggLedger.Web.Data.IndexedDbSettings SettingsStore
+@inject IndexedDbSettings SettingsStore
 @inject IJSRuntime Js
 
 <div class="relative" @ref="_rootRef">
@@ -139,6 +140,7 @@
         if (!Fetch.IsIdle) {
             return;
         }
+
         var incomplete = await FetchOrchestrator.GetIncompleteAccountsAsync(SettingsStore);
         var knownIds = AppStateSvc.KnownAccounts.Select(a => a.Id).ToHashSet();
         if (incomplete.FirstOrDefault(knownIds.Contains) is { } resumeId) {
@@ -157,10 +159,12 @@
         if (active == _lastWarnedFetchActive) {
             return;
         }
+
         _lastWarnedFetchActive = active;
         try {
             await Js.InvokeVoidAsync("setFetchInProgressWarning", active);
-        } catch (JSDisconnectedException) {
+        }
+        catch (JSDisconnectedException) {
             // Circuit already tearing down; nothing to warn about.
         }
     }
@@ -177,6 +181,7 @@
         if (Active.ActiveAccountId is not { } id) {
             return;
         }
+
         await StartFetchFor(id);
     }
 

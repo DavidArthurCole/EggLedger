@@ -1,10 +1,10 @@
-@using EggLedger.Web.Server.Sync
-@using Microsoft.JSInterop
 @* Unauthenticated prompt. The widget button drives SyncKit's popup login and falls back to a
    plain anchor (not Blazor-circuit navigation, which tore the circuit down mid-redirect) to the
    full-page login endpoint on any failure (popup blocked/closed, script load, redeem failure). *@
 @inject AppConfig Cfg
 @inject IJSRuntime JS
+@using EggLedger.Web.Server.Sync
+@using Microsoft.JSInterop
 @implements IAsyncDisposable
 <div class="flex flex-col items-center justify-center gap-4 py-16 text-center">
     <h1 class="text-xl font-semibold text-gray-200">Connect your Discord account</h1>
@@ -44,7 +44,8 @@
         try {
             _widgetMod ??= await JS.InvokeAsync<IJSObjectReference>("import", "./interop/synckitLogin.js");
             await _widgetMod.InvokeVoidAsync("login", Cfg.IdentityApiUrl, "/api/v1/auth/login");
-        } finally {
+        }
+        finally {
             _busy = false;
             StateHasChanged();
         }
@@ -52,7 +53,12 @@
 
     public async ValueTask DisposeAsync() {
         if (_widgetMod is not null) {
-            try { await _widgetMod.DisposeAsync(); } catch (JSDisconnectedException) { }
+            try {
+                await _widgetMod.DisposeAsync();
+            }
+            catch (JSDisconnectedException) {
+            }
         }
     }
+
 }
