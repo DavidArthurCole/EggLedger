@@ -13,6 +13,7 @@ module.exports = {
   content: [
     './**/*.razor',
     '../EggLedger.Desktop/wwwroot/desktop.html',
+    '../EggLedger.Web.Server/**/*.razor',
   ],
   // text-rarity-N is only ever built via C# interpolation (DropDisplay.razor) and
   // text-rare/epic/legendary live in FilterOptions.cs, outside the .razor content
