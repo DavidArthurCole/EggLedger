@@ -6,7 +6,6 @@ using EggLedger.Web.Server.Sync.Verify;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,12 +20,11 @@ public static class Api {
     public static void Map(WebApplication app, AppConfig cfg, VerifyInfo build) {
         var source = app.Services.GetService<NpgsqlDataSource>()
                      ?? NpgsqlDataSource.Create(cfg.DatabaseUrl);
-        var dataProtection = app.Services.GetRequiredService<IDataProtectionProvider>();
         var loggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
 
         var identity = app.Services.GetRequiredService<SyncKit.Identity.Client.IdentityApiClient>();
         var currentUser = app.Services.GetRequiredService<EggLedger.Web.Server.Sync.Auth.ICurrentUser>();
-        var auth = new AuthEndpoints(source, dataProtection, identity, loggerFactory.CreateLogger<AuthEndpoints>());
+        var auth = app.Services.GetRequiredService<AuthEndpoints>();
         var blobs = new BlobEndpoints(source, loggerFactory.CreateLogger<BlobEndpoints>());
         var menno = new MennoEndpoint(new HttpClient(), cfg.MennoFunctionKey, AppConfig.MennoUpstreamUrl);
         var store = new SessionStore(source, identity);
@@ -70,7 +68,6 @@ public static class Api {
         app.MapGet("/api/v1/auth/callback", (HttpContext c) => auth.Callback(c));
         app.MapGet("/api/v1/auth/poll", (HttpContext c) => auth.Poll(c, c.Request.Query["state"].ToString()));
         app.MapDelete("/api/v1/auth/session", (HttpContext c) => auth.DeleteSession(c));
-        app.MapPost("/api/v1/auth/redeem-code", (HttpContext c) => auth.RedeemCode(c));
 
         // Cookie-authed (the Blazor Server login session), not the bearer-token RequireAuth
         // middleware below: mints a sync session for a user already logged in via Discord or

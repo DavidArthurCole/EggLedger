@@ -66,7 +66,7 @@ var authBuilder = builder.Services.AddAuthentication(EggLedger.Web.Server.Auth.A
             }
             var identity = ctx.HttpContext.RequestServices.GetService<SyncKit.Identity.Client.IdentityApiClient>();
             if (identity is not null) {
-                await SyncKit.Auth.AuthentikAspNetAuth.OnValidatePrincipalCheckRevoked(ctx, identity);
+                await SyncKit.Auth.AuthentikAspNetAuth.OnValidatePrincipalCheckRevoked(ctx, identity, EggLedger.Web.Server.Auth.AuthScheme.UserIdClaim, EggLedger.Web.Server.Auth.AuthScheme.RoleClaim);
             }
         };
     });
@@ -108,6 +108,9 @@ if (hasDb) {
     var identityClient = new SyncKit.Identity.Client.IdentityApiClient(identityHttp);
     builder.Services.AddSingleton(identityClient);
     builder.Services.AddSingleton<EggLedger.Web.Server.Sync.Auth.ICurrentUser, EggLedger.Web.Server.Sync.Auth.CurrentUser>();
+    // Registered so LoginCallbackMiddleware can resolve it per-request; Api.Map also
+    // resolves it from DI now instead of constructing its own instance.
+    builder.Services.AddSingleton<EggLedger.Web.Server.Sync.Auth.AuthEndpoints>();
 
     EggLedger.Web.Server.Auth.AuthentikAuth.AddIfConfigured(authBuilder, cfg, identityClient, dataSource);
 }
@@ -159,6 +162,11 @@ app.UseRouting();
 app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
+if (hasDb) {
+    // AuthEndpoints is only DI-registered when hasDb, so this middleware (which resolves
+    // it per-request) must only be wired up in that same branch.
+    app.UseMiddleware<EggLedger.Web.Server.Sync.Auth.LoginCallbackMiddleware>();
+}
 // Required: MapRazorComponents marks endpoints with anti-forgery metadata, so the
 // middleware must be present. Keys persist to Postgres for a stable key ring.
 app.UseAntiforgery();

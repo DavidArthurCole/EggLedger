@@ -28,8 +28,6 @@ public sealed record PollResponse(
     [property: JsonPropertyName("avatarUrl")] string AvatarUrl,
     [property: JsonPropertyName("encryptionKey")] string EncryptionKey);
 
-public sealed record RedeemCodeRequest([property: JsonPropertyName("code")] string Code);
-
 public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvider dataProtection, IdentityApiClient identity, ILogger<AuthEndpoints> logger) {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
@@ -132,32 +130,12 @@ public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvid
         await ctx.Response.Body.WriteAsync(Encoding.UTF8.GetBytes(SuccessPage.Html), ctx.RequestAborted);
     }
 
-    // Embedded popup widget: exchanges a short-lived SyncKit login code for this app's own
-    // cookie. Covers both Discord- and Authentik-resolved identities (RedeemLoginCodeResponse
-    // carries whichever provider actually authenticated), unlike the Discord-only Callback path.
-    public async Task RedeemCode(HttpContext ctx) {
-        RedeemCodeRequest? body;
-        try {
-            body = await JsonSerializer.DeserializeAsync<RedeemCodeRequest>(ctx.Request.Body, Json, ctx.RequestAborted);
-        } catch (JsonException) {
-            await WriteTextAsync(ctx, StatusCodes.Status400BadRequest, "invalid body\n");
-            return;
-        }
-        if (string.IsNullOrWhiteSpace(body?.Code)) {
-            await WriteTextAsync(ctx, StatusCodes.Status400BadRequest, "missing code\n");
-            return;
-        }
+    // Exchanges a SyncKit login code for this app's cookie. Throws HttpRequestException on
+    // redeem failure - callers decide how to respond (JSON error vs redirect).
+    public async Task<RedeemLoginCodeResponse> RedeemAndSignInAsync(HttpContext ctx, string code, CancellationToken ct) {
+        var result = await identity.RedeemAsync(code, ct);
 
-        RedeemLoginCodeResponse result;
-        try {
-            result = await identity.RedeemAsync(body.Code, ctx.RequestAborted);
-        } catch (HttpRequestException ex) {
-            logger.LogWarning(ex, "auth: redeem-code failed");
-            await WriteTextAsync(ctx, StatusCodes.Status400BadRequest, "redeem failed\n");
-            return;
-        }
-
-        await UpsertLocalUserAsync(result.UserId, result.DiscordId, result.Username, result.Avatar, ctx.RequestAborted);
+        await UpsertLocalUserAsync(result.UserId, result.DiscordId, result.Username, result.Avatar, ct);
 
         var claims = new List<Claim> {
             new(ClaimTypes.Name, result.Username),
@@ -173,7 +151,7 @@ public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvid
             new ClaimsPrincipal(claimsIdentity),
             new AuthenticationProperties { IsPersistent = true });
 
-        await WriteJsonAsync(ctx, new { discordId = result.DiscordId, username = result.Username, avatar = result.Avatar });
+        return result;
     }
 
     // Mirrors StorePending's repoint-then-upsert for the local users row, minus the
