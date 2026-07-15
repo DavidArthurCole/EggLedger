@@ -6,12 +6,12 @@ using Microsoft.Extensions.Logging;
 namespace EggLedger.Web.Server.Sync.Auth;
 
 // Catches SyncKit's redirect-mode login callback (?code=... or ?error=login_failed) on any GET
-// request, since 0.6 mode=redirect returns the browser to the exact page login started on, not
-// a fixed /auth/callback route. Redeems the code, signs in, then 302s to the same URL with the
-// auth query params stripped so a page refresh never re-submits a spent code.
+// request except /api/v1/auth/callback (the legacy Discord-OAuth route, whose own ?code is a
+// Discord code, not a SyncKit one). Redeems the code, signs in, then 302s to the same URL with
+// the auth query params stripped so a page refresh never re-submits a spent code.
 public sealed class LoginCallbackMiddleware(RequestDelegate next, ILogger<LoginCallbackMiddleware> logger) {
     public async Task InvokeAsync(HttpContext ctx, AuthEndpoints auth) {
-        if (!HttpMethods.IsGet(ctx.Request.Method)) {
+        if (!HttpMethods.IsGet(ctx.Request.Method) || ctx.Request.Path.StartsWithSegments("/api/v1/auth/callback")) {
             await next(ctx);
             return;
         }
