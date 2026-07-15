@@ -154,6 +154,11 @@ public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvid
         return result;
     }
 
+    public async Task Logout(HttpContext ctx) {
+        await ctx.SignOutAsync(EggLedger.Web.Server.Auth.AuthScheme.Cookie);
+        ctx.Response.Redirect("/");
+    }
+
     // Mirrors StorePending's repoint-then-upsert for the local users row, minus the
     // sessions/pending_auth bookkeeping that only the bearer-token Discord OAuth path needs.
     private async Task UpsertLocalUserAsync(Guid userId, string? discordId, string? username, string? avatar, CancellationToken ct) {

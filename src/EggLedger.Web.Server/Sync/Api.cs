@@ -68,6 +68,7 @@ public static class Api {
         app.MapGet("/api/v1/auth/callback", (HttpContext c) => auth.Callback(c));
         app.MapGet("/api/v1/auth/poll", (HttpContext c) => auth.Poll(c, c.Request.Query["state"].ToString()));
         app.MapDelete("/api/v1/auth/session", (HttpContext c) => auth.DeleteSession(c));
+        app.MapPost("/api/v1/auth/logout", (HttpContext c) => auth.Logout(c));
 
         // Cookie-authed (the Blazor Server login session), not the bearer-token RequireAuth
         // middleware below: mints a sync session for a user already logged in via Discord or

@@ -1,64 +1,101 @@
-@* Unauthenticated prompt. Fetches SyncKit's federated login sources and renders one native <a>
-   per source (plain top-level navigation - SyncKit 0.6 redirect mode 302s back to this exact
-   page with ?code, caught by LoginCallbackMiddleware). Falls back to the legacy Discord/
-   Authentik anchors when Identity isn't configured or the source fetch fails. *@
+@* Unauthenticated prompt. "Login" reveals a dropdown of federated providers fetched from
+   SyncKit's /login/sources (Discord, Google, Microsoft, GitHub, etc.); each is a plain
+   top-level <a> into SyncKit's /login/go/{provider} (mode=redirect), which returns the browser
+   to this exact page with ?code appended, caught by LoginCallbackMiddleware. "Connect with
+   Discord" is a direct fallback anchor to the legacy Discord OAuth path, shown when Identity
+   isn't configured or as an always-available alternative. The dropdown is fixed-positioned by
+   loginMenu.js so it escapes any overflow-clipped container. *@
 @inject AppConfig Cfg
 @inject NavigationManager Nav
 @inject IdentityApiClient Identity
+@inject IJSRuntime JS
 @using EggLedger.Web.Server.Sync
+@using Microsoft.JSInterop
 @using SyncKit.Contract
 @using SyncKit.Identity.Client
-@implements IDisposable
+@implements IAsyncDisposable
 <div class="flex flex-col items-center justify-center gap-4 py-16 text-center">
-    <h1 class="text-xl font-semibold text-gray-200">Connect your Discord account</h1>
+    <h1 class="text-xl font-semibold text-gray-200">Connect your account</h1>
     <p class="max-w-md text-sm text-gray-400">
         EggLedger stores your mission history on the server, scoped to your account.
-        Connect with Discord to get started. Your data is private to you.
+        Log in to get started. Your data is private to you.
     </p>
-    @if (_sources is { Count: > 0 }) {
-        @foreach (var source in _sources) {
-            <a class="discord-btn" href="@Abs(source.Url)">
-                @if (source.Name == "Discord") {
-                    <svg class="discord-icon" viewBox="0 0 127.14 96.36" fill="currentColor" aria-hidden="true">
-                        <path d="M107.7 8.07A105.15 105.15 0 0 0 81.47 0a72.06 72.06 0 0 0-3.36 6.83 97.68 97.68 0 0 0-29.11 0A72.37 72.37 0 0 0 45.64 0a105.89 105.89 0 0 0-26.25 8.09C2.79 32.65-1.71 56.6.54 80.21a105.73 105.73 0 0 0 32.17 16.15 77.7 77.7 0 0 0 6.89-11.11 68.42 68.42 0 0 1-10.85-5.18c.91-.66 1.8-1.34 2.66-2a75.57 75.57 0 0 0 64.32 0c.87.71 1.76 1.39 2.66 2a68.68 68.68 0 0 1-10.87 5.19 77 77 0 0 0 6.89 11.1 105.25 105.25 0 0 0 32.19-16.14c2.64-27.38-4.51-51.11-18.9-72.15ZM42.45 65.69C36.18 65.69 31 60 31 53s5-12.74 11.43-12.74S54 46 53.89 53s-5.05 12.69-11.44 12.69Zm42.24 0C78.41 65.69 73.25 60 73.25 53s5-12.74 11.44-12.74S96.23 46 96.12 53s-5.04 12.69-11.43 12.69Z"/>
-                    </svg>
-                }
-                Connect with @source.Name
-            </a>
-        }
-    } else if (!string.IsNullOrEmpty(Cfg.IdentityWidgetUrl) && !_sourcesFetchFailed) {
-        <p class="text-sm text-gray-500">Loading login options...</p>
-    } else {
+    <div class="flex flex-row items-center justify-center gap-3">
         <a class="discord-btn" href="/api/v1/auth/login">
             <svg class="discord-icon" viewBox="0 0 127.14 96.36" fill="currentColor" aria-hidden="true">
                 <path d="M107.7 8.07A105.15 105.15 0 0 0 81.47 0a72.06 72.06 0 0 0-3.36 6.83 97.68 97.68 0 0 0-29.11 0A72.37 72.37 0 0 0 45.64 0a105.89 105.89 0 0 0-26.25 8.09C2.79 32.65-1.71 56.6.54 80.21a105.73 105.73 0 0 0 32.17 16.15 77.7 77.7 0 0 0 6.89-11.11 68.42 68.42 0 0 1-10.85-5.18c.91-.66 1.8-1.34 2.66-2a75.57 75.57 0 0 0 64.32 0c.87.71 1.76 1.39 2.66 2a68.68 68.68 0 0 1-10.87 5.19 77 77 0 0 0 6.89 11.1 105.25 105.25 0 0 0 32.19-16.14c2.64-27.38-4.51-51.11-18.9-72.15ZM42.45 65.69C36.18 65.69 31 60 31 53s5-12.74 11.43-12.74S54 46 53.89 53s-5.05 12.69-11.44 12.69Zm42.24 0C78.41 65.69 73.25 60 73.25 53s5-12.74 11.44-12.74S96.23 46 96.12 53s-5.04 12.69-11.43 12.69Z"/>
             </svg>
             Connect with Discord
         </a>
-    }
-    @if (!string.IsNullOrEmpty(Cfg.AuthentikAuthority)) {
-        <a class="discord-btn" href="/api/v1/auth/authentik-login">
-            Connect with Authentik
-        </a>
-    }
+        @if (!string.IsNullOrEmpty(Cfg.IdentityWidgetUrl)) {
+            <div class="auth-source-anchor">
+                <button type="button" class="discord-btn disabled:opacity-60" disabled="@_loading" @onclick="Toggle" @ref="_button">
+                    @(_loading ? "Loading..." : "Login")
+                </button>
+                @if (_sources is not null) {
+                    <div class="auth-source-menu" @ref="_menu">
+                        @foreach (var source in _sources) {
+                            <a class="auth-source-btn" href="@Abs(source.Url)">
+                                @if (!string.IsNullOrEmpty(source.IconUrl)) {
+                                    <img class="auth-source-logo" src="@Abs(source.IconUrl)" alt=""/>
+                                }
+                                <span>@source.Name</span>
+                            </a>
+                        }
+                    </div>
+                } else if (_error is not null) {
+                    <div class="auth-source-menu" @ref="_menu">
+                        <p class="text-red-500 text-sm" style="margin:0;padding:0.3rem 0.5rem;">@_error</p>
+                    </div>
+                }
+            </div>
+        }
+    </div>
 </div>
 
 @code {
+    private ElementReference _button;
+    private ElementReference _menu;
+    private IJSObjectReference? _mod;
+    private bool _positioned;
     private List<LoginSourceResponse>? _sources;
-    private bool _sourcesFetchFailed;
-    private readonly CancellationTokenSource _cts = new();
+    private bool _loading;
+    private string? _error;
 
-    protected override async Task OnInitializedAsync() {
-        if (string.IsNullOrEmpty(Cfg.IdentityWidgetUrl)) {
+    private async Task Toggle() {
+        if (_sources is not null || _error is not null) {
+            await CloseMenuAsync();
+            _sources = null;
+            _error = null;
             return;
         }
 
+        _error = null;
+        _loading = true;
         try {
-            var response = await Identity.GetLoginSourcesAsync(Nav.Uri, "redirect", _cts.Token);
-            _sources = response.Sources;
+            var response = await Identity.GetLoginSourcesAsync(Nav.Uri, "redirect", CancellationToken.None);
+            if (response.Sources.Count == 0) {
+                _error = "No login providers configured.";
+            } else {
+                _sources = response.Sources;
+            }
         }
         catch (HttpRequestException) {
-            _sourcesFetchFailed = true;
+            _error = "Login temporarily unavailable.";
+        }
+        finally {
+            _loading = false;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        var menuOpen = _sources is not null || _error is not null;
+        if (menuOpen && !_positioned) {
+            _mod ??= await JS.InvokeAsync<IJSObjectReference>("import", "./interop/loginMenu.js");
+            await _mod.InvokeVoidAsync("open", _button, _menu, LoginMenuPlacement.BottomRight.ToString());
+            _positioned = true;
+        } else if (!menuOpen && _positioned) {
+            _positioned = false;
         }
     }
 
@@ -68,9 +105,31 @@
             : $"{Cfg.IdentityWidgetUrl.TrimEnd('/')}/{url.TrimStart('/')}";
     }
 
-    public void Dispose() {
-        _cts.Cancel();
-        _cts.Dispose();
+    private async Task CloseMenuAsync() {
+        if (_mod is not null) {
+            try {
+                await _mod.InvokeVoidAsync("close");
+            }
+            catch (JSDisconnectedException) {
+            }
+        }
+
+        _positioned = false;
+    }
+
+    public async ValueTask DisposeAsync() {
+        if (_mod is not null) {
+            try {
+                await _mod.InvokeVoidAsync("close");
+            }
+            catch (JSDisconnectedException) {
+            }
+            try {
+                await _mod.DisposeAsync();
+            }
+            catch (JSDisconnectedException) {
+            }
+        }
     }
 
 }

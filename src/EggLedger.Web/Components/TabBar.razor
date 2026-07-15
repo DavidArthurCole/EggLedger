@@ -4,11 +4,17 @@
 <div class="h-11 flex-shrink-0 bg-dark">
     <div class="h-full flex items-end w-full mx-auto px-4 gap-x-1.5 bg-dark border-b border-gray-300">
         @foreach (var tab in Tabs) {
-            <a @key="tab.Href" href="@tab.Href"
-               class="@TabClass(tab.Href)"
-               @onclick:preventDefault="false">
-                @tab.Label
-            </a>
+            @if (Enabled) {
+                <a @key="tab.Href" href="@tab.Href"
+                   class="@TabClass(tab.Href)"
+                   @onclick:preventDefault="false">
+                    @tab.Label
+                </a>
+            } else {
+                <span @key="tab.Href" class="@(TabBase + " bg-darker_tab opacity-50 cursor-not-allowed")">
+                    @tab.Label
+                </span>
+            }
         }
         @if (Right is not null) {
             <div class="ml-auto">
@@ -24,6 +30,7 @@
 
     [Parameter] public IReadOnlyList<TabItem> Tabs { get; set; } = [];
     [Parameter] public RenderFragment? Right { get; set; }
+    [Parameter] public bool Enabled { get; set; } = true;
 
     private const string TabBase =
         "relative -bottom-px px-3 pt-1.5 pb-1 text-sm font-medium text-gray-400 " +

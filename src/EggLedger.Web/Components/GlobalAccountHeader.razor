@@ -13,12 +13,22 @@
 
 <div class="relative" @ref="_rootRef">
     <div class="flex items-center">
+        @if (IsLoggedIn) {
+            <form method="post" action="/api/v1/auth/logout" style="margin:0;">
+                <button type="submit"
+                        class="relative -bottom-px mr-1.5 px-3 pt-2 pb-1.5 text-xs font-medium text-gray-400 border border-darker_tab rounded-t-md bg-darker_tab hover:bg-dark_tab_hover transition-colors whitespace-nowrap">
+                    Log out
+                </button>
+            </form>
+        }
         <button type="button"
-                class="relative -bottom-px flex items-center gap-1.5 px-4 pt-2 pb-1.5 text-sm font-medium text-gray-400 border border-darker_tab rounded-t-md bg-darker_tab hover:bg-dark_tab_hover transition-colors whitespace-nowrap"
-                @onclick="Toggle">
+                class="relative -bottom-px flex items-center gap-1.5 px-4 pt-2 pb-1.5 text-sm font-medium text-gray-400 border border-darker_tab rounded-t-md bg-darker_tab hover:bg-dark_tab_hover transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled="@(!IsLoggedIn)" @onclick="Toggle">
             @if (_active is not null) {
                 <span class="font-medium" style="color: #@_active.AccountColor">@_active.Nickname</span>
                 <span class="text-gray-500 text-xs">@_active.EBString</span>
+            } else if (!IsLoggedIn) {
+                <span class="text-gray-500 italic text-xs">Login to add an account</span>
             } else {
                 <span class="text-gray-500 italic text-xs">No account - click to add</span>
             }
@@ -101,6 +111,8 @@
 <AddAccountDialog @ref="_addDialog" Added="OnAccountAdded"/>
 
 @code {
+    [CascadingParameter(Name = "IsLoggedIn")] private bool IsLoggedIn { get; set; } = true;
+
     private bool _open;
     private KnownAccount? _active;
     private AddAccountDialog? _addDialog;
