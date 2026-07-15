@@ -79,7 +79,7 @@
             Connection lost. <a onclick="window.Blazor.reconnect()">Retry</a> or <a href=".">reload</a>.
         </div>
         <div class="reconnect-rejected-text">
-            Session expired. <a href=".">Reload</a> to continue.
+            Server updated. Reloading...
         </div>
     </div>
 </div>
@@ -87,6 +87,22 @@
 <script src="_content/EggLedger.Web/js/outsideClick.js"></script>
 <script src="_content/EggLedger.Web/js/beforeUnloadWarning.js"></script>
 <script src="_framework/blazor.web.js"></script>
+<script>
+    // A rejected reconnect means the server-side circuit is gone (redeploy/restart); it can't
+    // be resumed, so reload instead of asking the user to. Short delay so the message is seen.
+    (function () {
+        var modal = document.getElementById("components-reconnect-modal");
+        if (!modal) return;
+        var reloading = false;
+        new MutationObserver(function () {
+            if (reloading) return;
+            if (modal.classList.contains("components-reconnect-rejected")) {
+                reloading = true;
+                setTimeout(function () { location.reload(); }, 2000);
+            }
+        }).observe(modal, { attributes: true, attributeFilter: ["class"] });
+    })();
+</script>
 </body>
 </html>
 

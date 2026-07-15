@@ -72,8 +72,8 @@
                     <div class="flex justify-center mb-3 flex-shrink-0">
                         <div class="flex bg-darkerer border border-gray-700 rounded-md p-0.5 text-sm gap-0.5">
                             <button type="button"
-                                    disabled="@(_multi.Count > 20)"
-                                    class="px-3 py-1 rounded focus:outline-none transition-colors @(_displayMode == "separate" ? "bg-dark text-blue-400" : _multi.Count > 20 ? "text-gray-600 cursor-not-allowed" : "text-gray-500 hover:text-gray-300")"
+                                    disabled="@(_multi.Count > MaxSeparate)"
+                                    class="px-3 py-1 rounded focus:outline-none transition-colors @(_displayMode == "separate" ? "bg-dark text-blue-400" : _multi.Count > MaxSeparate ? "text-gray-600 cursor-not-allowed" : "text-gray-500 hover:text-gray-300")"
                                     @onclick="@(() => _displayMode = "separate")">
                                 Separate
                             </button>
@@ -176,6 +176,7 @@
     private int _loadedCount;
     private int _totalToLoad;
     private string _displayMode = "separate";
+    private const int MaxSeparate = 5;
     private bool _shipHeaderExpanded;
     private List<DropLike> _combinedArtifacts = [];
     private List<DropLike> _combinedStones = [];
@@ -227,7 +228,7 @@
         _loadedCount = 0;
         _totalToLoad = missionIds.Count;
         _shipHeaderExpanded = false;
-        _displayMode = _totalToLoad > 5 ? "combined" : "separate";
+        _displayMode = _totalToLoad > MaxSeparate ? "combined" : "separate";
         _focusPending = true;
         StateHasChanged();
         foreach (var id in missionIds) {

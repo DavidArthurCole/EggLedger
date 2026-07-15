@@ -215,12 +215,25 @@
         sw.Stop();
 
         _filtered = result;
+        PruneSelection();
         var shown = result.Count;
         var filteredOut = _allMissions.Count - shown;
         _resultText = $"Filtered in {sw.Elapsed.TotalSeconds:0.###}s ({shown} shown, {filteredOut} filtered out)";
         Regroup();
         _applying = false;
         StateHasChanged();
+    }
+
+    private void PruneSelection() {
+        if (_filtered is null) {
+            _multiSelectedIds.Clear();
+            return;
+        }
+        var valid = new HashSet<string>();
+        foreach (var m in _filtered) {
+            valid.Add(m.MissiondId);
+        }
+        _multiSelectedIds.RemoveWhere(id => !valid.Contains(id));
     }
 
     private void SelectTab(int? tab) {
