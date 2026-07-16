@@ -174,7 +174,7 @@
     private RenderFragment RenderConditionControls(FilterCondition c, Action changed) => __builder => {
         var def = FieldOf(c);
 
-        <select class="filter-select border-gray-300 text-gray-400" value="@c.TopLevel"
+        <select class="filter-select border-gray-600 text-gray-400" value="@c.TopLevel"
                 @onchange="@(e => {
                                SetField(c, e.Value?.ToString());
                                changed();
@@ -190,7 +190,7 @@
             @if (def.ValueKind == FilterValueKind.Bool) {
                 <span class="text-gray-400 mt-0_5rem mr-1rem">is</span>
             } else {
-                <select class="filter-select border-gray-300 text-gray-400 @(ops.Count <= 1 ? "opacity-60 cursor-not-allowed" : "")"
+                <select class="filter-select border-gray-600 text-gray-400 @(ops.Count <= 1 ? "opacity-60 cursor-not-allowed" : "")"
                         value="@c.Op" disabled="@(ops.Count <= 1)"
                         @onchange="@(e => {
                                        c.Op = e.Value?.ToString() ?? "";
@@ -205,7 +205,7 @@
             @if (!string.IsNullOrEmpty(c.Op) || def.ValueKind == FilterValueKind.Bool) {
                 @switch (def.ValueKind) {
                     case FilterValueKind.Select:
-                        <select class="filter-select border-gray-300 text-gray-400" value="@c.Val"
+                        <select class="filter-select border-gray-600 text-gray-400" value="@c.Val"
                                 @onchange="@(e => {
                                                c.Val = e.Value?.ToString() ?? "";
                                                changed();
@@ -216,7 +216,7 @@
                         </select>
                         break;
                     case FilterValueKind.Bool:
-                        <select class="filter-select border-gray-300 text-gray-400" value="@c.Val"
+                        <select class="filter-select border-gray-600 text-gray-400" value="@c.Val"
                                 @onchange="@(e => {
                                                c.Val = e.Value?.ToString() ?? "";
                                                changed();
@@ -227,14 +227,14 @@
                         </select>
                         break;
                     case FilterValueKind.Date:
-                        <input type="date" class="filter-select border-gray-300 text-gray-400" value="@c.Val"
+                        <input type="date" class="filter-select border-gray-600 text-gray-400" value="@c.Val"
                                @onchange="@(e => {
                                               c.Val = e.Value?.ToString() ?? "";
                                               changed();
                                           })"/>
                         break;
                     case FilterValueKind.Number:
-                        <input type="number" class="filter-select border-gray-300 text-gray-400" value="@c.Val"
+                        <input type="number" class="filter-select border-gray-600 text-gray-400" value="@c.Val"
                                @onchange="@(e => {
                                               c.Val = e.Value?.ToString() ?? "";
                                               changed();

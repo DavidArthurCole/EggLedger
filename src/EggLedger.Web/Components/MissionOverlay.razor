@@ -72,8 +72,7 @@
                     <div class="flex justify-center mb-3 flex-shrink-0">
                         <div class="flex bg-darkerer border border-gray-700 rounded-md p-0.5 text-sm gap-0.5">
                             <button type="button"
-                                    disabled="@(_multi.Count > MaxSeparate)"
-                                    class="px-3 py-1 rounded focus:outline-none transition-colors @(_displayMode == "separate" ? "bg-dark text-blue-400" : _multi.Count > MaxSeparate ? "text-gray-600 cursor-not-allowed" : "text-gray-500 hover:text-gray-300")"
+                                    class="px-3 py-1 rounded focus:outline-none transition-colors @(_displayMode == "separate" ? "bg-dark text-blue-400" : "text-gray-500 hover:text-gray-300")"
                                     @onclick="@(() => _displayMode = "separate")">
                                 Separate
                             </button>
@@ -86,16 +85,10 @@
                     </div>
 
                     @if (_displayMode == "separate") {
-                        <div class="flex justify-between gap-2 flex-1 min-h-0 overflow-auto mb-3">
-                            @for (var i = 0; i < _multi.Count; i++) {
-                                var idx = i;
-                                <div class="h-full bg-darkerer rounded-lg py-2 flex-shrink-0" style="width: @(100.0 / _multi.Count)%;">
-                                    <ShipDisplay Data="_multi[idx]"
-                                                 IsMulti="true"
-                                                 IsFirst="@(idx == 0)"
-                                                 IsLast="@(idx == _multi.Count - 1)"
-                                                 ShipCount="_multi.Count"
-                                                 ShowExpectedDrops="ShowExpectedDrops"/>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-2 flex-1 min-h-0 overflow-y-auto mb-3">
+                            @foreach (var d in _multi) {
+                                <div class="bg-darkerer rounded-lg py-2">
+                                    <ShipDisplay Data="d" IsMulti="true" ShowExpectedDrops="ShowExpectedDrops"/>
                                 </div>
                             }
                         </div>
@@ -176,7 +169,6 @@
     private int _loadedCount;
     private int _totalToLoad;
     private string _displayMode = "separate";
-    private const int MaxSeparate = 5;
     private bool _shipHeaderExpanded;
     private List<DropLike> _combinedArtifacts = [];
     private List<DropLike> _combinedStones = [];
@@ -228,7 +220,7 @@
         _loadedCount = 0;
         _totalToLoad = missionIds.Count;
         _shipHeaderExpanded = false;
-        _displayMode = _totalToLoad > MaxSeparate ? "combined" : "separate";
+        _displayMode = "separate";
         _focusPending = true;
         StateHasChanged();
         foreach (var id in missionIds) {

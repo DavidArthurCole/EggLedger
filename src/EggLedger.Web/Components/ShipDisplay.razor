@@ -3,7 +3,7 @@
 @using EggLedger.Web.Missions
 @* Single-mode ship display: identity + details + capacity badge, then drops, then the footer tip. *@
 
-<div class="@MultiClass text-gray-300 text-center@(ShipCount > 3 ? " min-w-30vw" : "")">
+<div class="@MultiClass text-gray-300 text-center">
     <div class="flex flex-row gap-2 mb-3 mx-auto items-center" style="width: fit-content;">
         <div class="@(Mission.IsBuggedCap ? "bugged-cap-span" : Mission.IsDubCap ? "double-cap-span" : "") flex items-center py-1 px-1.5 self-center"
              style="visibility: @(Mission.IsBuggedCap || Mission.IsDubCap ? "visible" : "hidden");">
@@ -62,15 +62,10 @@
     [Parameter] public ViewMissionData Data { get; set; } = new();
     [Parameter] public bool ShowExpectedDrops { get; set; }
     [Parameter] public bool IsMulti { get; set; }
-    [Parameter] public bool IsFirst { get; set; }
-    [Parameter] public bool IsLast { get; set; }
-    [Parameter] public int ShipCount { get; set; }
     [Parameter] public bool HideFooterTip { get; set; }
     private DatabaseMission Mission => Data.MissionInfo;
 
-    // Port of ShipDisplay.vue root class: multi adds first/last horizontal padding.
-    private string MultiClass =>
-        IsMulti ? (IsFirst ? "pl-7rem" : "pl-3rem") + (IsLast ? " pr-7rem" : " pr-3rem") : "";
+    private string MultiClass => IsMulti ? "px-3rem" : "";
 
     private bool HasTarget =>
         Mission.Target.Length > 0 && !string.Equals(Mission.Target, "UNKNOWN", StringComparison.OrdinalIgnoreCase);

@@ -2,7 +2,7 @@
 @inject NavigationManager Nav
 
 <div class="h-11 flex-shrink-0 bg-dark">
-    <div class="h-full flex items-end w-full mx-auto px-4 gap-x-1.5 bg-dark border-b border-gray-300">
+    <div class="h-full flex items-end w-full mx-auto px-4 gap-x-1.5 bg-dark border-b border-gray-600">
         @foreach (var tab in Tabs) {
             @if (Enabled) {
                 <a @key="tab.Href" href="@tab.Href"

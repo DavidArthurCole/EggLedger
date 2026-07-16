@@ -233,7 +233,7 @@ hr {
 }
 
 .fetch-button {
-  @apply relative w-20 text-center space-x-2 px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-400;
+  @apply relative w-20 text-center space-x-2 px-4 py-2 border border-gray-600 text-sm font-medium rounded-md text-gray-400;
 }
 
 .filter-container {
@@ -655,7 +655,7 @@ input[type=number] {
 }
 
 .filter-panel {
-  @apply min-h-7 px-2 py-1 text-gray-400 bg-darkest rounded-md tabular-nums mt-0_75rem;
+  @apply min-h-7 px-2 py-1 shadow-sm text-gray-400 bg-darkest rounded-md tabular-nums;
 }
 
 .panel-muted {
@@ -663,11 +663,11 @@ input[type=number] {
 }
 
 .view-form-button {
-  @apply -ml-px relative w-20 text-center space-x-2 px-4 py-2 border border-gray-300 text-sm font-medium rounded-r-md text-gray-400;
+  @apply -ml-px relative w-20 text-center space-x-2 px-4 py-2 border border-gray-600 text-sm font-medium rounded-r-md text-gray-400;
 }
 
 .apply-filter-button {
-  @apply mt-0_5rem mr-1rem -ml-px relative p-0.5 text-center space-x-2 px-3 py-1 border border-gray-300 text-sm font-medium rounded-md text-gray-400;
+  @apply mt-0_5rem mr-1rem -ml-px relative p-0.5 text-center space-x-2 px-3 py-1 border border-gray-600 text-sm font-medium rounded-md text-gray-400;
 }
 
 .section-heading {
