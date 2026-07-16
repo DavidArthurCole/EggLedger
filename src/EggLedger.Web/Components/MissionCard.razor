@@ -87,7 +87,10 @@
                     <span class="@DurationClass()">@Mission.ShipString</span>
                     break;
                 case CardField.LevelStars:
-                    @(Mission.Level > 0 ? $" ({new string('*', Mission.Level)})" : "")
+                    @if (Mission.Level > 0) {
+                        <text> (@Mission.Level<span class="text-goldenstar">&#9733;</span>)</text>
+                    }
+
                     break;
                 case CardField.Target:
                     <TargetDisplay Target="@Mission.Target"/>

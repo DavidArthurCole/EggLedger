@@ -494,7 +494,7 @@ input[type=number] {
 }
 
 .mission-grid {
-  @apply flex flex-wrap;
+  @apply flex flex-wrap justify-center;
   gap: 10px;
 }
 

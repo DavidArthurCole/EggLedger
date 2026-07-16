@@ -11,20 +11,22 @@
             </button>
 
             <div class="flex flex-1 min-h-0 pt-8 px-6 pb-4 gap-4">
-                <div class="w-1/2 overflow-auto flex flex-col gap-3 text-sm text-gray-300">
-                    <div>
+                <div class="w-1/2 overflow-auto flex flex-col gap-3 text-sm text-gray-300 pr-1">
+                    <div class="panel-muted rounded-md p-3">
                         <span class="font-bold text-gray-400">Preset</span>
-                        <div class="flex items-center gap-2 mt-1 flex-wrap">
+                        <div class="flex items-center gap-2 mt-2 flex-wrap">
                             @foreach (var p in PresetSet.Presets) {
                                 <button type="button" class="tile-group-item @(p.Name == _editingPresetName ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700")" @onclick="@(() => SwitchTo(p.Name))">@p.Name</button>
                             }
+                        </div>
+                        <div class="flex items-center gap-3 mt-2 flex-wrap">
                             <button type="button" class="text-xs toggle-link" @onclick="@(() => BeginNaming(NameAction.SaveAsNew))">Save as new</button>
                             <button type="button" class="text-xs toggle-link" @onclick="@(() => BeginNaming(NameAction.Duplicate))">Duplicate</button>
-                            <button type="button" class="text-xs toggle-link" disabled="@(_editingPresetName == "Classic")" @onclick="@(() => BeginNaming(NameAction.Rename))">Rename</button>
-                            <button type="button" class="text-xs toggle-link" disabled="@(_editingPresetName == "Classic")" @onclick="Delete">Delete</button>
+                            <button type="button" class="text-xs toggle-link @(_editingPresetName == "Classic" ? "opacity-40 cursor-not-allowed" : "")" disabled="@(_editingPresetName == "Classic")" @onclick="@(() => BeginNaming(NameAction.Rename))">Rename</button>
+                            <button type="button" class="text-xs toggle-link @(_editingPresetName == "Classic" ? "opacity-40 cursor-not-allowed" : "")" disabled="@(_editingPresetName == "Classic")" @onclick="Delete">Delete</button>
                         </div>
                         @if (_pendingNameAction is not null) {
-                            <div class="flex items-center gap-2 mt-1">
+                            <div class="flex items-center gap-2 mt-2">
                                 <input class="reg-filter-input text-xs" @bind="_pendingNameInput" @bind:event="oninput" placeholder="Preset name"/>
                                 <button type="button" class="text-xs toggle-link" @onclick="ConfirmNaming" disabled="@(!CanConfirmNaming)">Confirm</button>
                                 <button type="button" class="text-xs toggle-link" @onclick="@(() => _pendingNameAction = null)">Cancel</button>
@@ -35,74 +37,83 @@
                         }
                     </div>
 
-                    <div>
+                    <div class="panel-muted rounded-md p-3">
                         <span class="font-bold text-gray-400">Layout</span>
-                        <div class="tile-group mt-1">
+                        <div class="tile-group mt-2">
                             <button type="button" class="tile-group-item @(_form.Layout == CardLayout.CompactRow ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700")" @onclick="@(() => _form.Layout = CardLayout.CompactRow)">Compact row</button>
                             <button type="button" class="tile-group-item @(_form.Layout == CardLayout.Grid ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700")" @onclick="@(() => _form.Layout = CardLayout.Grid)">Grid</button>
                         </div>
                     </div>
 
-                    <div>
+                    <div class="panel-muted rounded-md p-3">
                         <span class="font-bold text-gray-400">Fields</span>
-                        <div class="flex flex-col gap-1 mt-1">
+                        <div class="flex flex-col mt-2">
                             @foreach (var slot in _form.Fields.OrderBy(f => f.Order)) {
-                                <label class="flex items-center gap-2">
+                                <div class="flex items-center gap-2 py-1 border-b border-gray-800 last:border-b-0">
                                     <input type="checkbox" checked="@slot.Enabled" @onchange="@(e => SetFieldEnabled(slot, e))"/>
-                                    <span class="flex-1">@slot.Field</span>
-                                    <button type="button" class="text-xs toggle-link" @onclick="@(() => MoveField(slot, -1))">Up</button>
-                                    <button type="button" class="text-xs toggle-link" @onclick="@(() => MoveField(slot, 1))">Down</button>
-                                </label>
+                                    <span class="flex-1 text-gray-300">@slot.Field</span>
+                                    <button type="button" class="w-6 h-6 flex items-center justify-center text-xs border border-gray-700 rounded-md bg-darkest text-gray-400 disabled:opacity-30 disabled:cursor-not-allowed" disabled="@IsFirst(slot)" @onclick="@(() => MoveField(slot, -1))" title="Move up">&uarr;</button>
+                                    <button type="button" class="w-6 h-6 flex items-center justify-center text-xs border border-gray-700 rounded-md bg-darkest text-gray-400 disabled:opacity-30 disabled:cursor-not-allowed" disabled="@IsLast(slot)" @onclick="@(() => MoveField(slot, 1))" title="Move down">&darr;</button>
+                                </div>
                             }
                         </div>
                     </div>
 
-                    <label class="flex items-center gap-2">
-                        <input type="checkbox" @bind="_form.ColorizeByDuration"/> Colorize by duration
-                    </label>
+                    <div class="panel-muted rounded-md p-3 flex flex-col gap-2">
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" @bind="_form.ColorizeByDuration"/> Colorize by duration
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" @bind="_form.ShowExpectedDropsPerShip"/> Show expected drops per ship
+                        </label>
+                    </div>
 
-                    <label class="flex items-center gap-2">
-                        <input type="checkbox" @bind="_form.ShowExpectedDropsPerShip"/> Show expected drops per ship
-                    </label>
-
-                    <div>
+                    <div class="panel-muted rounded-md p-3">
                         <span class="font-bold text-gray-400">Colors</span>
-                        <div class="flex flex-col gap-1 mt-1">
-                            <label class="flex items-center gap-2">
-                                <span class="w-24">Background</span>
-                                <input type="color" value="@(_form.BackgroundColor ?? "#000000")" @onchange="@(e => _form.BackgroundColor = e.Value?.ToString())"/>
+                        <div class="flex flex-col gap-2 mt-2">
+                            <div class="flex items-center gap-2">
+                                <span class="w-24 text-gray-400">Background</span>
+                                <input type="color" class="w-10 h-7 rounded border border-gray-700 bg-transparent cursor-pointer" value="@(_form.BackgroundColor ?? "#3a3a3a")" @onchange="@(e => _form.BackgroundColor = e.Value?.ToString())"/>
                                 <button type="button" class="text-xs toggle-link" @onclick="@(() => _form.BackgroundColor = null)">Reset</button>
-                            </label>
-                            <label class="flex items-center gap-2">
-                                <span class="w-24">Border</span>
-                                <input type="color" value="@(_form.BorderColor ?? "#000000")" @onchange="@(e => _form.BorderColor = e.Value?.ToString())"/>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="w-24 text-gray-400">Border</span>
+                                <input type="color" class="w-10 h-7 rounded border border-gray-700 bg-transparent cursor-pointer" value="@(_form.BorderColor ?? "#3a3a3a")" @onchange="@(e => _form.BorderColor = e.Value?.ToString())"/>
                                 <button type="button" class="text-xs toggle-link" @onclick="@(() => _form.BorderColor = null)">Reset</button>
-                            </label>
-                            <label class="flex items-center gap-2">
-                                <span class="w-24">Accent</span>
-                                <input type="color" value="@(_form.AccentColor ?? "#000000")" @onchange="@(e => _form.AccentColor = e.Value?.ToString())"/>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="w-24 text-gray-400">Accent</span>
+                                <input type="color" class="w-10 h-7 rounded border border-gray-700 bg-transparent cursor-pointer" value="@(_form.AccentColor ?? "#3a3a3a")" @onchange="@(e => _form.AccentColor = e.Value?.ToString())"/>
                                 <button type="button" class="text-xs toggle-link" @onclick="@(() => _form.AccentColor = null)">Reset</button>
-                            </label>
+                            </div>
                         </div>
                     </div>
 
-                    <label class="text-xs text-gray-400">
-                        Custom CSS
-                        <textarea class="reg-filter-input w-full mt-1 font-mono text-xs" rows="6" @bind="_form.CustomCss" @bind:event="oninput"></textarea>
-                        <span class="text-gray-500">@(_form.CustomCss?.Length ?? 0) / 20000</span>
-                        @if (_cssError is not null) {
-                            <div class="text-red-400">@_cssError</div>
-                        }
-                    </label>
+                    <div class="panel-muted rounded-md p-3">
+                        <label class="text-xs text-gray-400">
+                            Custom CSS
+                            <textarea class="reg-filter-input w-full mt-2 font-mono text-xs" rows="6" @bind="_form.CustomCss" @bind:event="oninput"></textarea>
+                        </label>
+                        <div class="flex items-center justify-between mt-1">
+                            <span class="text-gray-500 text-xs">@(_form.CustomCss?.Length ?? 0) / 20000</span>
+                            @if (_cssError is not null) {
+                                <span class="text-red-400 text-xs">@_cssError</span>
+                            }
+                        </div>
+                    </div>
 
                     <button type="button" class="btn-primary" @onclick="Save" disabled="@(_cssError is not null)">Save</button>
                 </div>
 
-                <div class="w-1/2 overflow-auto bg-darkerer rounded-lg p-3">
+                <div class="w-1/2 overflow-auto flex flex-col gap-2">
                     <span class="font-bold text-gray-400 text-sm">Preview</span>
-                    @if (_previewMission is not null) {
-                        <MissionCard Mission="_previewMission" Config="_form.ToConfig()" ViewByDate="false" ViewMissionTimes="true"/>
-                    }
+                    <div class="px-2 py-2 shadow-sm block text-xs font-mono text-gray-500 bg-darkest rounded-md flex-1">
+                        @if (_previewMission is not null) {
+                            <MissionCard Mission="_previewMission" Config="_form.ToConfig()" ViewByDate="false" ViewMissionTimes="true"/>
+                        } else {
+                            <span class="italic text-gray-600">No missions loaded to preview.</span>
+                        }
+                    </div>
                 </div>
             </div>
         </div>
@@ -137,6 +148,14 @@
         var idx = _form.Fields.FindIndex(f => f.Field == slot.Field);
         _form.Fields[idx] = slot with { Enabled = enabled };
         ValidateCss();
+    }
+
+    private bool IsFirst(CardFieldSlot slot) {
+        return _form.Fields.OrderBy(f => f.Order).First().Field == slot.Field;
+    }
+
+    private bool IsLast(CardFieldSlot slot) {
+        return _form.Fields.OrderBy(f => f.Order).Last().Field == slot.Field;
     }
 
     private void MoveField(CardFieldSlot slot, int delta) {
