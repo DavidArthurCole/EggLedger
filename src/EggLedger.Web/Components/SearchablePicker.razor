@@ -45,15 +45,24 @@
                                 <span class="popup-opt-group-label">@segment.GroupLabel</span>
                                 <div class="flex flex-wrap gap-1">
                                     @foreach (var (opt, idx) in segment.Items) {
-                                        <button type="button" title="@opt.Text"
-                                                class="popup-opt-chip @(idx == _activeIndex ? "selected-popup-opt" : "")"
-                                                @onclick="() => Choose(opt)">
+                                        <button type="button" class="popup-opt-chip relative @(idx == _activeIndex ? "selected-popup-opt" : "")"
+                                                @onclick="() => Choose(opt)"
+                                                @onmouseenter="@(() => _hoveredChip = opt)" @onmouseleave="@(() => _hoveredChip = null)">
                                             @if (!string.IsNullOrEmpty(opt.ImagePath)) {
                                                 <img class="w-7 h-7 @RingClass(opt)" loading="lazy" decoding="async"
                                                      alt="@opt.Text" src="@ImageSrc(opt)"/>
                                             }
                                             @if (!string.IsNullOrEmpty(opt.Badge)) {
                                                 <span class="popup-opt-chip-badge @(opt.StyleClass ?? "text-gray-400")">@opt.Badge</span>
+                                            }
+                                            @if (ReferenceEquals(_hoveredChip, opt)) {
+                                                <div class="tooltip-floating tooltip-anchored text-sm">
+                                                    @opt.Text
+                                                    @if (opt.Rarity is { } r) {
+                                                        <br/>
+                                                        <span class="@(opt.StyleClass ?? "text-gray-400")">@FilterOptions.RarityWord(r)</span>
+                                                    }
+                                                </div>
                                             }
                                         </button>
                                     }
@@ -85,6 +94,7 @@
     private ElementReference _searchInput;
     private string _query = "";
     private int _activeIndex = -1;
+    private FilterOption? _hoveredChip;
 
     private FilterOption? Selected =>
         SelectedValue is null ? null : Options.FirstOrDefault(o => o.Value == SelectedValue);
