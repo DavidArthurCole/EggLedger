@@ -1,9 +1,11 @@
 @page "/missions"
 @using System.Diagnostics
+@using System.Text.Json
 @using EggLedger.Domain.MissionPacking
 @using EggLedger.Domain.MissionQuery
 @using EggLedger.Web.Data
 @using EggLedger.Web.Missions
+@using EggLedger.Web.Missions.Model
 @implements IDisposable
 @inject MissionQueryHandlers Queries
 @inject MissionConfigProvider Config
@@ -22,8 +24,8 @@
     } else if (_allMissions is null || _allMissions.Count == 0) {
         <NoDataFallback/>
     } else {
-        <div class="flex flex-col md:flex-row md:items-stretch gap-0_75rem mt-0_75rem">
-            <div class="filter-panel min-h-50 flex-1 mt-0">
+        <div class="flex flex-col md:flex-row md:items-stretch gap-0_75rem mt-0_75rem flex-1 min-h-0">
+            <div class="filter-panel md:w-[30%] mt-0">
                 <span class="mr-0_5rem h-20 font-bold text-gray-400">Filter</span>
                 <button type="button" class="text-base toggle-link" @onclick="@(() => _hideFilter = !_hideFilter)">
                     @(_hideFilter ? "Show" : "Hide")
@@ -36,76 +38,41 @@
                 }
             </div>
 
-            <div class="min-h-50 px-2 py-2 shadow-sm text-sm text-gray-400 bg-darkest rounded-md tabular-nums overflow-auto flex-1 mt-0">
-                <div class="mb-1">
-                    <span class="font-bold text-gray-400 mr-0_5rem">Options</span>
-                    <button type="button" class="text-base toggle-link" @onclick="@(() => _hideOptions = !_hideOptions)">
-                        @(_hideOptions ? "Show" : "Hide")
-                    </button>
-                </div>
-                @if (!_hideOptions) {
-                    <div class="grid grid-cols-2 gap-x-4">
-                        <div>
-                            <span class="font-bold text-gray-400">Display</span>
-                            <div class="flex flex-col gap-1 mt-1">
-                                <label><input type="checkbox" class="ext-opt-check mr-0_5rem" checked="@_opts.ViewByDate" @onchange="@(e => SetOpt(MissionViewOptions.KeyViewByDate, b => _opts.ViewByDate = b, e))"/> Separate missions by day</label>
-                                <label><input type="checkbox" class="ext-opt-check mr-0_5rem" checked="@_opts.ViewMissionTimes" @onchange="@(e => SetOpt(MissionViewOptions.KeyViewTimes, b => _opts.ViewMissionTimes = b, e))"/> Show launch times</label>
-                                <label><input type="checkbox" class="ext-opt-check mr-0_5rem" checked="@_opts.RecolorDc" @onchange="@(e => SetOpt(MissionViewOptions.KeyRecolorDc, b => _opts.RecolorDc = b, e))"/> Re-color dubcaps</label>
-                                <label><input type="checkbox" class="ext-opt-check mr-0_5rem" checked="@_opts.RecolorBc" @onchange="@(e => SetOpt(MissionViewOptions.KeyRecolorBc, b => _opts.RecolorBc = b, e))"/> Re-color bugged-caps</label>
-                                <label><input type="checkbox" class="ext-opt-check mr-0_5rem" checked="@_opts.ShowExpectedDropsPerShip" @onchange="@(e => SetOpt(MissionViewOptions.KeyShowExpectedDrops, b => _opts.ShowExpectedDropsPerShip = b, e))"/> Show "Expected Drops Per Ship"</label>
-                            </div>
-                        </div>
-                        <div>
-                            <div>
-                                <span class="font-bold text-gray-400">Multi-View Method</span>
-                                <div class="tile-group mt-1">
-                                    <button type="button" class="tile-group-item @(_opts.MultiViewMode == MultiViewMode.Off ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover")" @onclick="@(() => SetMultiView(MultiViewMode.Off))">Off</button>
-                                    <button type="button" class="tile-group-item @(_opts.MultiViewMode == MultiViewMode.Row ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover")" @onclick="@(() => SetMultiView(MultiViewMode.Row))">Row/Date Select</button>
-                                    <button type="button" class="tile-group-item @(_opts.MultiViewMode == MultiViewMode.Free ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover")" @onclick="@(() => SetMultiView(MultiViewMode.Free))">Free Select</button>
-                                </div>
-                            </div>
-                            <div class="mt-2">
-                                <span class="font-bold text-gray-400">Drops Sort Method</span>
-                                <div class="tile-group mt-1">
-                                    <button type="button" class="tile-group-item @(_opts.SortMethod == MissionSortMethod.Default ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover")" @onclick="@(() => SetSortMethod(MissionSortMethod.Default))">Default</button>
-                                    <button type="button" class="tile-group-item @(_opts.SortMethod == MissionSortMethod.Iv ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover")" @onclick="@(() => SetSortMethod(MissionSortMethod.Iv))">Inventory Visualizer</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                }
+            <div class="md:w-[70%] flex-1 flex flex-col min-h-0 px-2 overflow-auto shadow-sm bg-darkest rounded-md">
+                <MissionResultsTable Grouping="_grouping"
+                                     ViewByDate="_opts.ViewByDate"
+                                     ViewMissionTimes="_opts.ViewMissionTimes"
+                                     MultiViewMode="_opts.MultiViewMode"
+                                     Config="_cardPresets.ActivePreset()"
+                                     SelectedIds="_multiSelectedIds"
+                                     TabFiltered="_tabFiltered ?? Array.Empty<DatabaseMission>()"
+                                     MissionBeingViewed="_missionBeingViewed"
+                                     OnViewMission="ViewMissionAsync"
+                                     OnViewRow="ViewRowAsync"
+                                     OnSelectionChanged="StateHasChanged"
+                                     OnGroupingChanged="StateHasChanged"
+                                     TileSelector="@(_hasBothTypes ? RenderTileSelector() : null)"
+                                     HeaderExtra="@RenderOptionsPopover()"/>
             </div>
-        </div>
-
-        <div class="flex-1 min-h-0 px-2 overflow-auto shadow-sm bg-darkest rounded-md mt-0_75rem">
-            <MissionResultsTable Grouping="_grouping"
-                                 ViewByDate="_opts.ViewByDate"
-                                 ViewMissionTimes="_opts.ViewMissionTimes"
-                                 RecolorDc="_opts.RecolorDc"
-                                 RecolorBc="_opts.RecolorBc"
-                                 MultiViewMode="_opts.MultiViewMode"
-                                 SelectedIds="_multiSelectedIds"
-                                 TabFiltered="_tabFiltered ?? Array.Empty<DatabaseMission>()"
-                                 MissionBeingViewed="_missionBeingViewed"
-                                 OnViewMission="ViewMissionAsync"
-                                 OnViewRow="ViewRowAsync"
-                                 OnSelectionChanged="StateHasChanged"
-                                 OnGroupingChanged="StateHasChanged"
-                                 TileSelector="@(_hasBothTypes ? RenderTileSelector() : null)"/>
         </div>
 
         <MissionOverlay @ref="_overlay"
                         AccountId="@Active.ActiveAccountId"
                         FilteredMissions="_tabFiltered ?? Array.Empty<DatabaseMission>()"
                         SortMethod="_opts.SortMethod"
-                        ShowExpectedDrops="_opts.ShowExpectedDropsPerShip"/>
+                        ShowExpectedDrops="_cardPresets.ActivePreset().ShowExpectedDropsPerShip"/>
+
+        <MissionCardConfigModal @ref="_cardConfigModal"
+                                PresetSet="_cardPresets"
+                                PreviewMission="_tabFiltered?.FirstOrDefault()"
+                                OnSave="SaveCardPresetSetAsync"/>
     }
 </section>
 
 @code {
     private bool _loading;
     private bool _hideFilter;
-    private bool _hideOptions;
+    private bool _optionsOpen;
     private bool _applying;
     private string _resultText = "";
     private string? _missionBeingViewed;
@@ -118,6 +85,9 @@
     private readonly HashSet<string> _multiSelectedIds = new();
     private MissionFilterMatcher? _matcher;
     private MissionOverlay? _overlay;
+    private CardPresetSet _cardPresets = CardPresetSet.Default;
+    private MissionCardConfigModal? _cardConfigModal;
+    private static readonly JsonSerializerOptions CardJsonOptions = new(JsonSerializerDefaults.Web);
 
     // All drops keyed by mission id, loaded once on first drop-filter so the matcher
     // reads memory instead of decoding per mission. Null = not loaded yet.
@@ -128,6 +98,9 @@
         AppState.Changed += OnAppStateChanged;
         var settings = await Settings.GetAllSettingsAsync();
         _opts.LoadFrom(settings);
+        _cardPresets = settings.TryGetValue(MissionViewOptions.KeyCardPresets, out var json) && !string.IsNullOrEmpty(json)
+            ? JsonSerializer.Deserialize<CardPresetSet>(json, CardJsonOptions) ?? CardPresetSet.Default
+            : CardPresetSet.Default;
         await LoadAsync();
     }
 
@@ -196,6 +169,13 @@
         _grouping = MissionGrouper.Group(_tabFiltered, MissionFilterMatcher.LedgerDate, true);
     }
 
+    private async Task SaveCardPresetSetAsync(CardPresetSet updated) {
+        _cardPresets = updated;
+        var json = JsonSerializer.Serialize(_cardPresets, CardJsonOptions);
+        await Settings.SetSettingAsync(MissionViewOptions.KeyCardPresets, json);
+        StateHasChanged();
+    }
+
     private async Task ApplyFilterAsync(MissionFilterBar.LegacyFilter filter) {
         if (_allMissions is null || _matcher is null) {
             return;
@@ -229,10 +209,12 @@
             _multiSelectedIds.Clear();
             return;
         }
+
         var valid = new HashSet<string>();
         foreach (var m in _filtered) {
             valid.Add(m.MissiondId);
         }
+
         _multiSelectedIds.RemoveWhere(id => !valid.Contains(id));
     }
 
@@ -247,6 +229,47 @@
             <button type="button" class="tile-group-item @(_opts.MissionTypeTab is null ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover")" @onclick="@(() => SelectTab(null))">All <span class="text-gray-500 ml-1">(@(_filtered?.Count ?? 0))</span></button>
             <button type="button" class="tile-group-item @(_opts.MissionTypeTab == 0 ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover")" @onclick="@(() => SelectTab(0))">Home <span class="text-gray-500 ml-1">(@CountOfType(0))</span></button>
             <button type="button" class="tile-group-item @(_opts.MissionTypeTab == 1 ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover")" @onclick="@(() => SelectTab(1))">Virtue <span class="text-gray-500 ml-1">(@CountOfType(1))</span></button>
+        </div>
+    };
+
+    private RenderFragment RenderOptionsPopover() => __builder => {
+        <div class="relative">
+            <button type="button" class="text-base toggle-link" @onclick="@(() => _cardConfigModal!.OpenAsync())">
+                Card Design
+            </button>
+            <button type="button" class="text-base toggle-link" @onclick="@(() => _optionsOpen = !_optionsOpen)">
+                Options
+            </button>
+            @if (_optionsOpen) {
+                <div class="absolute right-0 top-full mt-1 z-40 min-w-80 px-3 py-2 shadow-sm text-sm text-gray-400 bg-darkest border border-gray-700 rounded-md tabular-nums">
+                    <div class="grid grid-cols-2 gap-x-4">
+                        <div>
+                            <span class="font-bold text-gray-400">Display</span>
+                            <div class="flex flex-col gap-1 mt-1">
+                                <label><input type="checkbox" class="ext-opt-check mr-0_5rem" checked="@_opts.ViewByDate" @onchange="@(e => SetOpt(MissionViewOptions.KeyViewByDate, b => _opts.ViewByDate = b, e))"/> Separate missions by day</label>
+                                <label><input type="checkbox" class="ext-opt-check mr-0_5rem" checked="@_opts.ViewMissionTimes" @onchange="@(e => SetOpt(MissionViewOptions.KeyViewTimes, b => _opts.ViewMissionTimes = b, e))"/> Show launch times</label>
+                            </div>
+                        </div>
+                        <div>
+                            <div>
+                                <span class="font-bold text-gray-400">Multi-View Method</span>
+                                <div class="tile-group mt-1">
+                                    <button type="button" class="tile-group-item @(_opts.MultiViewMode == MultiViewMode.Off ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover")" @onclick="@(() => SetMultiView(MultiViewMode.Off))">Off</button>
+                                    <button type="button" class="tile-group-item @(_opts.MultiViewMode == MultiViewMode.Row ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover")" @onclick="@(() => SetMultiView(MultiViewMode.Row))">Row/Date Select</button>
+                                    <button type="button" class="tile-group-item @(_opts.MultiViewMode == MultiViewMode.Free ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover")" @onclick="@(() => SetMultiView(MultiViewMode.Free))">Free Select</button>
+                                </div>
+                            </div>
+                            <div class="mt-2">
+                                <span class="font-bold text-gray-400">Drops Sort Method</span>
+                                <div class="tile-group mt-1">
+                                    <button type="button" class="tile-group-item @(_opts.SortMethod == MissionSortMethod.Default ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover")" @onclick="@(() => SetSortMethod(MissionSortMethod.Default))">Default</button>
+                                    <button type="button" class="tile-group-item @(_opts.SortMethod == MissionSortMethod.Iv ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover")" @onclick="@(() => SetSortMethod(MissionSortMethod.Iv))">Inventory Visualizer</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
         </div>
     };
 

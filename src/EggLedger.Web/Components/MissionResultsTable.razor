@@ -1,6 +1,7 @@
 @using System.Globalization
 @using EggLedger.Domain.MissionPacking
 @using EggLedger.Web.Missions
+@using EggLedger.Web.Missions.Model
 @* Year/month/day collapse tree, each mission a clickable row. Multi-view: Row/Date adds a
    per-day "View row" button; Free Select adds a per-mission checkbox plus a Select All header. *@
 
@@ -30,6 +31,11 @@
                     @if (!AllSelected) {
                         <button type="button" class="text-base toggle-link" @onclick="SelectAll">Select All</button>
                     }
+                }
+                @if (HeaderExtra is not null) {
+                    <div class="ml-auto flex items-center gap-2">
+                        @HeaderExtra
+                    </div>
                 }
             </div>
             <hr class="mt-0_5rem mb-0_5rem w-full"/>
@@ -83,28 +89,15 @@
                                                         @if (DayVisible(yearIndex, monthIndex, dayIndex)) {
                                                             @foreach (var mission in Grouping.Missions[yearIndex][monthIndex][dayIndex]) {
                                                                 var m = mission;
-                                                                <div @key="m.MissiondId" class="text-sm mission-item-3 flex items-center" data-missionid="@m.MissiondId">
-                                                                    @if (MultiViewMode == MultiViewMode.Free) {
-                                                                        <input type="checkbox" class="mr-0_5rem flex-shrink-0"
-                                                                               checked="@SelectedIds.Contains(m.MissiondId)"
-                                                                               @onchange="@(() => ToggleSelected(m.MissiondId))"/>
-                                                                    }
-                                                                    <button type="button" class="text-sm mr-5 font-bold btn btn-outline-dark bg-transparent" @onclick="@(() => OnView(m.MissiondId))">
-                                                                        @if (!ViewByDate) {
-                                                                            <span class="@RowColor(m, false)">@DateLabel(year.Year, month.Month, day.Day)</span>
-                                                                        }
-                                                                        @if (ViewMissionTimes) {
-                                                                            <span class="@RowColor(m, true)">@(" " + TimeLabel(m))</span>
-                                                                        }
-                                                                        <span class="text-gray-400 ml-0_5rem">
-                                                                            <span class="@DurationClass(m)">@m.ShipString</span>
-                                                                            @if (m.Level > 0) {
-                                                                                <span> (@m.Level<span class="text-goldenstar">&#9733;</span>)</span>
-                                                                            }
-                                                                            <TargetDisplay Target="@m.Target"/>
-                                                                        </span>
-                                                                    </button>
-                                                                </div>
+                                                                <MissionCard Mission="m"
+                                                                             Config="Config"
+                                                                             IsSelected="@SelectedIds.Contains(m.MissiondId)"
+                                                                             IsBeingViewed="@(MissionBeingViewed == m.MissiondId)"
+                                                                             ViewByDate="ViewByDate"
+                                                                             ViewMissionTimes="ViewMissionTimes"
+                                                                             MultiViewMode="MultiViewMode"
+                                                                             OnView="OnView"
+                                                                             OnToggleSelected="ToggleSelected"/>
                                                             }
                                                         }
                                                     </div>
@@ -131,13 +124,14 @@
     [Parameter] public MissionGrouping? Grouping { get; set; }
     [Parameter] public bool ViewByDate { get; set; }
     [Parameter] public bool ViewMissionTimes { get; set; }
-    [Parameter] public bool RecolorDc { get; set; }
-    [Parameter] public bool RecolorBc { get; set; }
     [Parameter] public MultiViewMode MultiViewMode { get; set; } = MultiViewMode.Off;
+    [Parameter] public MissionCardConfig Config { get; set; } = MissionCardConfig.Classic;
 
     /// <summary>Mission-type tile pill widget, rendered next to the "Missions" header when present.</summary>
     [Parameter]
     public RenderFragment? TileSelector { get; set; }
+
+    [Parameter] public RenderFragment? HeaderExtra { get; set; }
 
     /// <summary>Free-select mission ids; owned by the page, mutated here.</summary>
     [Parameter]
@@ -284,37 +278,6 @@
     private async Task NotifyAsync() {
         // The page handler re-renders this child; no separate local StateHasChanged needed.
         await OnGroupingChanged.InvokeAsync();
-    }
-
-    private string RowColor(DatabaseMission m, bool altMode) {
-        if (MissionBeingViewed == m.MissiondId) {
-            return altMode ? "text-selectedmissiondarker" : "text-selectedmission";
-        }
-
-        if (RecolorBc && m.IsBuggedCap) {
-            return altMode ? "text-buggedcapdarker" : "text-buggedcap";
-        }
-
-        if (RecolorDc && m.IsDubCap) {
-            return altMode ? "text-dubcapdarker" : "text-dubcap";
-        }
-
-        return altMode ? "text-gray-500" : "text-gray-400";
-    }
-
-    private static string DurationClass(DatabaseMission m) {
-        return m.DurationType is { } d
-            ? "text-duration-" + Convert.ToInt32(d, CultureInfo.InvariantCulture)
-            : "text-duration-3";
-    }
-
-    private static string DateLabel(int year, int month, int day) {
-        return $"{year}-{month.ToString("00", CultureInfo.InvariantCulture)}-{day.ToString("00", CultureInfo.InvariantCulture)}";
-    }
-
-    private static string TimeLabel(DatabaseMission m) {
-        var d = MissionFilterMatcher.LedgerDate(m.LaunchDT);
-        return d.ToString("HH:mm:ss", CultureInfo.InvariantCulture);
     }
 
 }

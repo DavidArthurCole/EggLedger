@@ -1,0 +1,120 @@
+@using System.Globalization
+@using EggLedger.Domain.MissionPacking
+@using EggLedger.Web.Missions
+@using EggLedger.Web.Missions.Model
+@if (Config.Layout == CardLayout.Grid) {
+    <div @key="Mission.MissiondId" class="panel-muted rounded-md px-4 py-2 flex flex-col items-center gap-1 text-center @CustomClass" style="@InlineStyle()" data-missionid="@Mission.MissiondId">
+        @if (MultiViewMode == MultiViewMode.Free) {
+            <input type="checkbox" class="self-start"
+                   checked="@IsSelected"
+                   @onchange="@(() => OnToggleSelected.InvokeAsync(Mission.MissiondId))"/>
+        }
+        <button type="button" class="flex flex-col items-center gap-1" @onclick="@(() => OnView.InvokeAsync(Mission.MissiondId))">
+            @foreach (var slot in EnabledFieldsInOrder) {
+                <span class="@FieldSpanClass(slot)">@RenderField(slot)</span>
+            }
+        </button>
+    </div>
+} else {
+    <div @key="Mission.MissiondId" class="text-sm mission-item-3 flex items-center @CustomClass" style="@InlineStyle()" data-missionid="@Mission.MissiondId">
+        @if (MultiViewMode == MultiViewMode.Free) {
+            <input type="checkbox" class="mr-0_5rem flex-shrink-0"
+                   checked="@IsSelected"
+                   @onchange="@(() => OnToggleSelected.InvokeAsync(Mission.MissiondId))"/>
+        }
+        <button type="button" class="text-sm mr-5 font-bold btn btn-outline-dark bg-transparent" @onclick="@(() => OnView.InvokeAsync(Mission.MissiondId))">
+            @foreach (var slot in EnabledFieldsInOrder) {
+                <span class="@FieldSpanClass(slot)">@RenderField(slot)</span>
+            }
+        </button>
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(Config.CustomCss) && CustomCssSanitizer.TryScope(Config.Name, Config.CustomCss, out var scoped, out _) && scoped is not null) {
+    <style>@((MarkupString)scoped)</style>
+}
+
+@code {
+    [Parameter] public required DatabaseMission Mission { get; set; }
+    [Parameter] public required MissionCardConfig Config { get; set; }
+    [Parameter] public bool IsSelected { get; set; }
+    [Parameter] public bool IsBeingViewed { get; set; }
+    [Parameter] public bool ViewByDate { get; set; }
+    [Parameter] public bool ViewMissionTimes { get; set; }
+    [Parameter] public MultiViewMode MultiViewMode { get; set; }
+    [Parameter] public EventCallback<string> OnView { get; set; }
+    [Parameter] public EventCallback<string> OnToggleSelected { get; set; }
+
+    private string CustomClass =>
+        string.IsNullOrEmpty(Config.CustomCss) ? "" : "mission-card-custom-" + CustomCssSanitizer.SlugFor(Config.Name);
+
+    private string? InlineStyle() {
+        var styles = new List<string>();
+        if (!string.IsNullOrEmpty(Config.BackgroundColor)) {
+            styles.Add($"background-color:{Config.BackgroundColor}");
+        }
+
+        if (!string.IsNullOrEmpty(Config.BorderColor)) {
+            styles.Add($"border:1px solid {Config.BorderColor}");
+        }
+
+        if (!string.IsNullOrEmpty(Config.AccentColor)) {
+            styles.Add($"border-left:4px solid {Config.AccentColor}");
+        }
+
+        return styles.Count == 0 ? null : string.Join(";", styles);
+    }
+
+    private IEnumerable<CardFieldSlot> EnabledFieldsInOrder =>
+        Config.Fields.Where(f => f.Enabled).OrderBy(f => f.Order);
+
+    private string FieldSpanClass(CardFieldSlot slot) => slot.Field switch {
+        CardField.LaunchDate => RowColorClass(false),
+        CardField.LaunchTime => RowColorClass(true),
+        _ => "text-gray-400 ml-0_5rem"
+    };
+
+    private object RenderField(CardFieldSlot slot) => slot.Field switch {
+        CardField.LaunchDate => !ViewByDate ? DateLabel() : "",
+        CardField.LaunchTime => ViewMissionTimes ? " " + TimeLabel() : "",
+        CardField.ShipName => BuildShipNameFragment(),
+        CardField.LevelStars => Mission.Level > 0 ? $" ({new string('*', Mission.Level)})" : "",
+        CardField.Target => BuildTargetFragment(),
+        CardField.Duration => Mission.DurationString,
+        CardField.Capacity => Mission.Capacity.ToString(CultureInfo.InvariantCulture),
+        CardField.CapacityModifierBadge => Mission.IsBuggedCap ? "0.6x" : Mission.IsDubCap ? "2x" : "",
+        _ => ""
+    };
+
+    private RenderFragment BuildShipNameFragment() => __builder => {
+        <span class="@DurationClass()">@Mission.ShipString</span>
+    };
+
+    private RenderFragment BuildTargetFragment() => __builder => {
+        <TargetDisplay Target="@Mission.Target"/>
+    };
+
+    private string RowColorClass(bool altMode) {
+        if (IsBeingViewed) {
+            return altMode ? "text-selectedmissiondarker" : "text-selectedmission";
+        }
+
+        return altMode ? "text-gray-500" : "text-gray-400";
+    }
+
+    private string DurationClass() =>
+        Config.ColorizeByDuration
+            ? (Mission.DurationType is { } d ? "text-duration-" + Convert.ToInt32(d, CultureInfo.InvariantCulture) : "text-duration-3")
+            : "";
+
+    private string DateLabel() {
+        var y = MissionFilterMatcher.LedgerDate(Mission.LaunchDT);
+        return y.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+    }
+
+    private string TimeLabel() {
+        var d = MissionFilterMatcher.LedgerDate(Mission.LaunchDT);
+        return d.ToString("HH:mm:ss", CultureInfo.InvariantCulture);
+    }
+
+}

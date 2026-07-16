@@ -511,6 +511,12 @@ input[type=number] {
      renders. Removed for the server host. */
 }
 
+@media (min-width: 768px) and (max-width: 1279px) {
+  .mission-item-3 {
+    flex: 0 0 calc(50% - 10px);
+  }
+}
+
 .overlay-drop,
 .overlay-target {
   background: rgba(0, 0, 0, 0.7);

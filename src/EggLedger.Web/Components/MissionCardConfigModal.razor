@@ -1,0 +1,283 @@
+@using EggLedger.Domain.MissionPacking
+@using EggLedger.Web.Missions
+@using EggLedger.Web.Missions.Model
+@if (_open) {
+    <div class="fixed inset-0 z-40 flex items-center justify-center bg-black/60" @onclick="Close">
+        <div class="bg-dark rounded-lg relative flex flex-col w-[70vw] max-h-[85vh]" @onclick:stopPropagation="true">
+            <button class="absolute top-2 right-2 z-10 rounded-md text-gray-400 hover:text-gray-200 focus:outline-none" type="button" @onclick="Close" aria-label="Close">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+
+            <div class="flex flex-1 min-h-0 pt-8 px-6 pb-4 gap-4">
+                <div class="w-1/2 overflow-auto flex flex-col gap-3 text-sm text-gray-300">
+                    <div>
+                        <span class="font-bold text-gray-400">Preset</span>
+                        <div class="flex items-center gap-2 mt-1 flex-wrap">
+                            @foreach (var p in PresetSet.Presets) {
+                                <button type="button" class="tile-group-item @(p.Name == _editingPresetName ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700")" @onclick="@(() => SwitchTo(p.Name))">@p.Name</button>
+                            }
+                            <button type="button" class="text-xs toggle-link" @onclick="@(() => BeginNaming(NameAction.SaveAsNew))">Save as new</button>
+                            <button type="button" class="text-xs toggle-link" @onclick="@(() => BeginNaming(NameAction.Duplicate))">Duplicate</button>
+                            <button type="button" class="text-xs toggle-link" disabled="@(_editingPresetName == "Classic")" @onclick="@(() => BeginNaming(NameAction.Rename))">Rename</button>
+                            <button type="button" class="text-xs toggle-link" disabled="@(_editingPresetName == "Classic")" @onclick="Delete">Delete</button>
+                        </div>
+                        @if (_pendingNameAction is not null) {
+                            <div class="flex items-center gap-2 mt-1">
+                                <input class="reg-filter-input text-xs" @bind="_pendingNameInput" @bind:event="oninput" placeholder="Preset name"/>
+                                <button type="button" class="text-xs toggle-link" @onclick="ConfirmNaming" disabled="@(!CanConfirmNaming)">Confirm</button>
+                                <button type="button" class="text-xs toggle-link" @onclick="@(() => _pendingNameAction = null)">Cancel</button>
+                                @if (_nameError is not null) {
+                                    <span class="text-red-400 text-xs">@_nameError</span>
+                                }
+                            </div>
+                        }
+                    </div>
+
+                    <div>
+                        <span class="font-bold text-gray-400">Layout</span>
+                        <div class="tile-group mt-1">
+                            <button type="button" class="tile-group-item @(_form.Layout == CardLayout.CompactRow ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700")" @onclick="@(() => _form.Layout = CardLayout.CompactRow)">Compact row</button>
+                            <button type="button" class="tile-group-item @(_form.Layout == CardLayout.Grid ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700")" @onclick="@(() => _form.Layout = CardLayout.Grid)">Grid</button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <span class="font-bold text-gray-400">Fields</span>
+                        <div class="flex flex-col gap-1 mt-1">
+                            @foreach (var slot in _form.Fields.OrderBy(f => f.Order)) {
+                                <label class="flex items-center gap-2">
+                                    <input type="checkbox" checked="@slot.Enabled" @onchange="@(e => SetFieldEnabled(slot, e))"/>
+                                    <span class="flex-1">@slot.Field</span>
+                                    <button type="button" class="text-xs toggle-link" @onclick="@(() => MoveField(slot, -1))">Up</button>
+                                    <button type="button" class="text-xs toggle-link" @onclick="@(() => MoveField(slot, 1))">Down</button>
+                                </label>
+                            }
+                        </div>
+                    </div>
+
+                    <label class="flex items-center gap-2">
+                        <input type="checkbox" @bind="_form.ColorizeByDuration"/> Colorize by duration
+                    </label>
+
+                    <label class="flex items-center gap-2">
+                        <input type="checkbox" @bind="_form.ShowExpectedDropsPerShip"/> Show expected drops per ship
+                    </label>
+
+                    <div>
+                        <span class="font-bold text-gray-400">Colors</span>
+                        <div class="flex flex-col gap-1 mt-1">
+                            <label class="flex items-center gap-2">
+                                <span class="w-24">Background</span>
+                                <input type="color" value="@(_form.BackgroundColor ?? "#000000")" @onchange="@(e => _form.BackgroundColor = e.Value?.ToString())"/>
+                                <button type="button" class="text-xs toggle-link" @onclick="@(() => _form.BackgroundColor = null)">Reset</button>
+                            </label>
+                            <label class="flex items-center gap-2">
+                                <span class="w-24">Border</span>
+                                <input type="color" value="@(_form.BorderColor ?? "#000000")" @onchange="@(e => _form.BorderColor = e.Value?.ToString())"/>
+                                <button type="button" class="text-xs toggle-link" @onclick="@(() => _form.BorderColor = null)">Reset</button>
+                            </label>
+                            <label class="flex items-center gap-2">
+                                <span class="w-24">Accent</span>
+                                <input type="color" value="@(_form.AccentColor ?? "#000000")" @onchange="@(e => _form.AccentColor = e.Value?.ToString())"/>
+                                <button type="button" class="text-xs toggle-link" @onclick="@(() => _form.AccentColor = null)">Reset</button>
+                            </label>
+                        </div>
+                    </div>
+
+                    <label class="text-xs text-gray-400">
+                        Custom CSS
+                        <textarea class="reg-filter-input w-full mt-1 font-mono text-xs" rows="6" @bind="_form.CustomCss" @bind:event="oninput"></textarea>
+                        <span class="text-gray-500">@(_form.CustomCss?.Length ?? 0) / 20000</span>
+                        @if (_cssError is not null) {
+                            <div class="text-red-400">@_cssError</div>
+                        }
+                    </label>
+
+                    <button type="button" class="btn-primary" @onclick="Save" disabled="@(_cssError is not null)">Save</button>
+                </div>
+
+                <div class="w-1/2 overflow-auto bg-darkerer rounded-lg p-3">
+                    <span class="font-bold text-gray-400 text-sm">Preview</span>
+                    @if (_previewMission is not null) {
+                        <MissionCard Mission="_previewMission" Config="_form.ToConfig()" ViewByDate="false" ViewMissionTimes="true"/>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public CardPresetSet PresetSet { get; set; } = CardPresetSet.Default;
+    [Parameter] public EventCallback<CardPresetSet> OnSave { get; set; }
+    [Parameter] public DatabaseMission? PreviewMission { get; set; }
+
+    private bool _open;
+    private CardConfigForm _form = new();
+    private string? _cssError;
+    private DatabaseMission? _previewMission => PreviewMission;
+    private string _editingPresetName = "Classic";
+
+    public Task OpenAsync() {
+        _editingPresetName = PresetSet.ActivePresetName;
+        _form = CardConfigForm.From(PresetSet.ActivePreset());
+        _cssError = null;
+        _open = true;
+        return Task.CompletedTask;
+    }
+
+    public void Close() {
+        _open = false;
+    }
+
+    private void SetFieldEnabled(CardFieldSlot slot, ChangeEventArgs e) {
+        var enabled = e.Value is bool b && b;
+        var idx = _form.Fields.FindIndex(f => f.Field == slot.Field);
+        _form.Fields[idx] = slot with { Enabled = enabled };
+        ValidateCss();
+    }
+
+    private void MoveField(CardFieldSlot slot, int delta) {
+        var ordered = _form.Fields.OrderBy(f => f.Order).ToList();
+        var idx = ordered.FindIndex(f => f.Field == slot.Field);
+        var newIdx = idx + delta;
+        if (newIdx < 0 || newIdx >= ordered.Count) {
+            return;
+        }
+
+        (ordered[idx], ordered[newIdx]) = (ordered[newIdx], ordered[idx]);
+        for (var i = 0; i < ordered.Count; i++) {
+            var formIdx = _form.Fields.FindIndex(f => f.Field == ordered[i].Field);
+            _form.Fields[formIdx] = ordered[i] with { Order = i };
+        }
+    }
+
+    private void ValidateCss() {
+        CustomCssSanitizer.TryScope(_form.Name, _form.CustomCss, out _, out _cssError);
+    }
+
+    private async Task Save() {
+        ValidateCss();
+        if (_cssError is not null) {
+            return;
+        }
+
+        var updated = _form.ToConfig();
+        var others = PresetSet.Presets.Where(p => p.Name != _editingPresetName).ToList();
+        others.Add(updated);
+        await CommitAsync(others, updated.Name);
+        Close();
+    }
+
+    private enum NameAction {
+        SaveAsNew,
+        Duplicate,
+        Rename
+    }
+
+    private NameAction? _pendingNameAction;
+    private string _pendingNameInput = "";
+    private string? _nameError;
+
+    private bool CanConfirmNaming =>
+        !string.IsNullOrWhiteSpace(_pendingNameInput)
+        && (!PresetSet.Presets.Any(p => p.Name == _pendingNameInput) || (_pendingNameAction == NameAction.Rename && _pendingNameInput == _editingPresetName));
+
+    private void BeginNaming(NameAction action) {
+        _pendingNameAction = action;
+        _pendingNameInput = action == NameAction.Duplicate ? _editingPresetName + " copy" : "";
+        _nameError = null;
+    }
+
+    private void SwitchTo(string name) {
+        _editingPresetName = name;
+        _form = CardConfigForm.From(PresetSet.Presets.First(p => p.Name == name));
+        _pendingNameAction = null;
+        ValidateCss();
+    }
+
+    private async Task ConfirmNaming() {
+        if (!CanConfirmNaming || _pendingNameAction is not { } action) {
+            return;
+        }
+
+        var name = _pendingNameInput.Trim();
+        if (PresetSet.Presets.Any(p => p.Name == name) && !(action == NameAction.Rename && name == _editingPresetName)) {
+            _nameError = "A preset with that name already exists.";
+            return;
+        }
+
+        switch (action) {
+            case NameAction.SaveAsNew:
+                _form.Name = name;
+                _editingPresetName = name;
+                await CommitAsync(PresetSet.Presets.Append(_form.ToConfig()).ToList(), name);
+                break;
+            case NameAction.Duplicate:
+                var duplicate = PresetSet.Presets.First(p => p.Name == _editingPresetName) with { Name = name };
+                _editingPresetName = name;
+                _form = CardConfigForm.From(duplicate);
+                await CommitAsync(PresetSet.Presets.Append(duplicate).ToList(), name);
+                break;
+            case NameAction.Rename:
+                var renamed = _form.ToConfig() with { Name = name };
+                var others = PresetSet.Presets.Where(p => p.Name != _editingPresetName).ToList();
+                others.Add(renamed);
+                _editingPresetName = name;
+                _form.Name = name;
+                await CommitAsync(others, name);
+                break;
+        }
+
+        _pendingNameAction = null;
+    }
+
+    private async Task Delete() {
+        if (_editingPresetName == "Classic") {
+            return;
+        }
+
+        var remaining = PresetSet.Presets.Where(p => p.Name != _editingPresetName).ToList();
+        _editingPresetName = "Classic";
+        _form = CardConfigForm.From(remaining.First(p => p.Name == "Classic"));
+        await CommitAsync(remaining, "Classic");
+    }
+
+    private async Task CommitAsync(List<MissionCardConfig> presets, string activeName) {
+        await OnSave.InvokeAsync(new CardPresetSet(presets, activeName));
+    }
+
+    private sealed class CardConfigForm {
+        public string Name { get; set; } = "Classic";
+        public CardLayout Layout { get; set; }
+        public List<CardFieldSlot> Fields { get; set; } = [];
+        public bool ColorizeByDuration { get; set; }
+        public bool ShowExpectedDropsPerShip { get; set; }
+        public string? BackgroundColor { get; set; }
+        public string? BorderColor { get; set; }
+        public string? AccentColor { get; set; }
+        public string? CustomCss { get; set; }
+
+        public static CardConfigForm From(MissionCardConfig c) {
+            return new CardConfigForm {
+                Name = c.Name,
+                Layout = c.Layout,
+                Fields = [.. c.Fields],
+                ColorizeByDuration = c.ColorizeByDuration,
+                ShowExpectedDropsPerShip = c.ShowExpectedDropsPerShip,
+                BackgroundColor = c.BackgroundColor,
+                BorderColor = c.BorderColor,
+                AccentColor = c.AccentColor,
+                CustomCss = c.CustomCss
+            };
+        }
+
+        public MissionCardConfig ToConfig() {
+            return new MissionCardConfig(
+                Name, Layout, Fields, ColorizeByDuration, ShowExpectedDropsPerShip, BackgroundColor, BorderColor, AccentColor, CustomCss);
+        }
+    }
+
+}

@@ -12,9 +12,6 @@ public sealed class MissionViewOptionsTests {
         var o = new MissionViewOptions();
         Assert.False(o.ViewByDate);
         Assert.True(o.ViewMissionTimes);
-        Assert.False(o.RecolorDc);
-        Assert.False(o.RecolorBc);
-        Assert.True(o.ShowExpectedDropsPerShip);
         Assert.Equal(MultiViewMode.Off, o.MultiViewMode);
         Assert.Equal(MissionSortMethod.Default, o.SortMethod);
         Assert.Null(o.MissionTypeTab);
@@ -79,17 +76,13 @@ public sealed class MissionViewOptionsTests {
         o.LoadFrom(new Dictionary<string, string> {
             [MissionViewOptions.KeyViewByDate] = "true",
             [MissionViewOptions.KeyViewTimes] = "false",
-            [MissionViewOptions.KeyRecolorDc] = "true",
             [MissionViewOptions.KeyMultiViewMode] = "free",
             [MissionViewOptions.KeySortMethod] = "iv",
         });
         Assert.True(o.ViewByDate);
         Assert.False(o.ViewMissionTimes);
-        Assert.True(o.RecolorDc);
         Assert.Equal(MultiViewMode.Free, o.MultiViewMode);
         Assert.Equal(MissionSortMethod.Iv, o.SortMethod);
-        // Untouched keys keep defaults.
-        Assert.True(o.ShowExpectedDropsPerShip);
     }
 
     [Fact]

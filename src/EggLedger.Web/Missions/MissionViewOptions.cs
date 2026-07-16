@@ -5,36 +5,32 @@ namespace EggLedger.Web.Missions;
 public enum MultiViewMode {
     Off,
     Row,
-    Free,
+    Free
 }
 
 public enum MissionSortMethod {
     Default,
-    Iv,
+    Iv
 }
 
 /// <summary>Display flags default to and (de)serialize exactly as the Go storage settings do.</summary>
 public sealed class MissionViewOptions {
+    // Go storage setting keys (storage.go).
+    public const string KeyViewByDate = "mission_view_by_date";
+    public const string KeyViewTimes = "mission_view_times";
+    public const string KeyMultiViewMode = "mission_multi_view_mode";
+    public const string KeySortMethod = "mission_sort_method";
+
+    public const string KeyCardPresets = "mission_card_presets";
+
     // Vue defaults (useMissionViewOptions.ts).
     public bool ViewByDate { get; set; }
     public bool ViewMissionTimes { get; set; } = true;
-    public bool RecolorDc { get; set; }
-    public bool RecolorBc { get; set; }
-    public bool ShowExpectedDropsPerShip { get; set; } = true;
     public MultiViewMode MultiViewMode { get; set; } = MultiViewMode.Off;
     public MissionSortMethod SortMethod { get; set; } = MissionSortMethod.Default;
 
     /// <summary>null = All, 0 = Home, 1 = Virtue.</summary>
     public int? MissionTypeTab { get; set; }
-
-    // Go storage setting keys (storage.go).
-    public const string KeyViewByDate = "mission_view_by_date";
-    public const string KeyViewTimes = "mission_view_times";
-    public const string KeyRecolorDc = "mission_recolor_dc";
-    public const string KeyRecolorBc = "mission_recolor_bc";
-    public const string KeyShowExpectedDrops = "mission_show_expected_drops";
-    public const string KeyMultiViewMode = "mission_multi_view_mode";
-    public const string KeySortMethod = "mission_sort_method";
 
     /// <summary>True only when the loaded set contains at least one Home (0) and one Virtue (1) mission.</summary>
     public static bool HasBothMissionTypes(IReadOnlyList<DatabaseMission>? missions) {
@@ -50,10 +46,14 @@ public sealed class MissionViewOptions {
                 virtue = true;
             }
         }
+
         return home && virtue;
     }
 
-    /// <summary>When no tab is selected (null) the input passes through unchanged; otherwise only missions whose type equals the tab.</summary>
+    /// <summary>
+    ///     When no tab is selected (null) the input passes through unchanged; otherwise only missions whose type equals
+    ///     the tab.
+    /// </summary>
     public static IReadOnlyList<DatabaseMission>? TabFilteredMissions(
         IReadOnlyList<DatabaseMission>? filteredMissions,
         int? missionTypeTab) {
@@ -72,13 +72,13 @@ public sealed class MissionViewOptions {
     public static MultiViewMode ParseMultiViewMode(string? raw) => raw switch {
         "row" => MultiViewMode.Row,
         "free" => MultiViewMode.Free,
-        _ => MultiViewMode.Off,
+        _ => MultiViewMode.Off
     };
 
     public static string MultiViewModeToString(MultiViewMode mode) => mode switch {
         MultiViewMode.Row => "row",
         MultiViewMode.Free => "free",
-        _ => "off",
+        _ => "off"
     };
 
     public static MissionSortMethod ParseSortMethod(string? raw) =>
@@ -94,15 +94,6 @@ public sealed class MissionViewOptions {
         }
         if (settings.TryGetValue(KeyViewTimes, out var vt)) {
             ViewMissionTimes = ParseBool(vt, ViewMissionTimes);
-        }
-        if (settings.TryGetValue(KeyRecolorDc, out var dc)) {
-            RecolorDc = ParseBool(dc, RecolorDc);
-        }
-        if (settings.TryGetValue(KeyRecolorBc, out var bc)) {
-            RecolorBc = ParseBool(bc, RecolorBc);
-        }
-        if (settings.TryGetValue(KeyShowExpectedDrops, out var sed)) {
-            ShowExpectedDropsPerShip = ParseBool(sed, ShowExpectedDropsPerShip);
         }
         if (settings.TryGetValue(KeyMultiViewMode, out var mvm)) {
             MultiViewMode = ParseMultiViewMode(mvm);

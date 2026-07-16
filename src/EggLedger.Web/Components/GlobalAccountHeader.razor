@@ -111,7 +111,9 @@
 <AddAccountDialog @ref="_addDialog" Added="OnAccountAdded"/>
 
 @code {
-    [CascadingParameter(Name = "IsLoggedIn")] private bool IsLoggedIn { get; set; } = true;
+
+    [CascadingParameter(Name = "IsLoggedIn")]
+    private bool IsLoggedIn { get; set; } = true;
 
     private bool _open;
     private KnownAccount? _active;
