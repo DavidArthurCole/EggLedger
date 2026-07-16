@@ -145,14 +145,14 @@ public static class FilterOptions {
     };
 
     private static string ArtifactDisplayText(PossibleArtifact artifact) {
-        string displayName = artifact.DisplayName;
-        int level = artifact.Level;
-        string displayText = displayName;
+        return artifact.DisplayName + " (T" + TierNumber(artifact) + ")";
+    }
+
+    private static int TierNumber(PossibleArtifact artifact) {
         bool isStoneNotFragment =
-            displayName.Contains("stone", StringComparison.OrdinalIgnoreCase) &&
-            !displayName.Contains("fragment", StringComparison.OrdinalIgnoreCase);
-        displayText += " (T" + (level + (isStoneNotFragment ? 2 : 1)) + ")";
-        return displayText;
+            artifact.DisplayName.Contains("stone", StringComparison.OrdinalIgnoreCase) &&
+            !artifact.DisplayName.Contains("fragment", StringComparison.OrdinalIgnoreCase);
+        return artifact.Level + (isStoneNotFragment ? 2 : 1);
     }
 
     private static string DropPath(PossibleArtifact drop) {
@@ -211,8 +211,9 @@ public static class FilterOptions {
                 result.Add(new FilterOption {
                     Text = firstArtifact.DisplayName + " (Any)",
                     Value = familyId + "_%_%_%",
-                    Rarity = 0,
-                    ImagePath = DropPath(firstArtifact),
+                    Rarity = null,
+                    ImagePath = "icon_help.webp",
+                    Badge = "Any",
                     GroupKey = groupKey,
                     GroupLabel = familyDisplayName,
                 });
@@ -221,12 +222,12 @@ public static class FilterOptions {
             foreach (var tierLevel in tierOrder) {
                 var rarities = tierMap[tierLevel];
                 if (advanced && rarities.Exists(a => a.Rarity > 0)) {
-                    var tierRep = rarities.Find(a => a.Rarity == 0) ?? rarities[0];
                     result.Add(new FilterOption {
                         Text = ArtifactDisplayText(rarities[0]) + " (Any Rarity)",
                         Value = familyId + "_" + tierLevel + "_%_%",
-                        Rarity = 0,
-                        ImagePath = DropPath(tierRep),
+                        Rarity = null,
+                        ImagePath = "icon_help.webp",
+                        Badge = "T" + TierNumber(rarities[0]) + " Any",
                         GroupKey = groupKey,
                         GroupLabel = familyDisplayName,
                     });
@@ -238,6 +239,7 @@ public static class FilterOptions {
                         Rarity = a.Rarity,
                         StyleClass = RarityStyleClass(a.Rarity),
                         ImagePath = DropPath(a),
+                        Badge = "T" + TierNumber(a),
                         GroupKey = groupKey,
                         GroupLabel = familyDisplayName,
                     });

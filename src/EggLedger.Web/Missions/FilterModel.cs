@@ -32,6 +32,7 @@ public sealed class FilterOption {
     public int? Rarity { get; set; }
     public string? GroupKey { get; set; }
     public string? GroupLabel { get; set; }
+    public string? Badge { get; set; }
 }
 
 /// <summary>An operator choice (value + label).</summary>

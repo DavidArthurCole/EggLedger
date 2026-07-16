@@ -52,6 +52,9 @@
                                                 <img class="w-7 h-7 @RingClass(opt)" loading="lazy" decoding="async"
                                                      alt="@opt.Text" src="@ImageSrc(opt)"/>
                                             }
+                                            @if (!string.IsNullOrEmpty(opt.Badge)) {
+                                                <span class="popup-opt-chip-badge @(opt.StyleClass ?? "text-gray-400")">@opt.Badge</span>
+                                            }
                                         </button>
                                     }
                                 </div>

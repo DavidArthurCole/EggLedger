@@ -237,7 +237,7 @@ hr {
 }
 
 .filter-container {
-  @apply relative flex flex-col items-start flex-grow;
+  @apply relative flex flex-row items-center flex-grow;
 }
 
 .filter-select-option {
@@ -478,12 +478,17 @@ input[type=number] {
 }
 
 .popup-opt-chip {
-  @apply inline-flex items-center justify-center w-9 h-9 rounded-md cursor-pointer select-none bg-darkest border border-gray-700;
+  @apply inline-flex flex-col items-center justify-center gap-0.5 w-12 h-12 rounded-md cursor-pointer select-none bg-darkest border border-gray-700 py-0.5;
   outline: none;
 }
 
 .popup-opt-chip:hover {
   @apply bg-darker border-gray-500;
+}
+
+.popup-opt-chip-badge {
+  @apply text-xs leading-none whitespace-nowrap;
+  font-size: 0.6rem;
 }
 
 .filter-incomplete {
