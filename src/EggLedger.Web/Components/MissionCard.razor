@@ -11,7 +11,7 @@
         }
         <button type="button" class="flex flex-col items-center gap-1" @onclick="@(() => OnView.InvokeAsync(Mission.MissiondId))">
             @foreach (var slot in EnabledFieldsInOrder) {
-                <span class="@FieldSpanClass(slot)">@RenderField(slot)</span>
+                @RenderField(slot)
             }
         </button>
     </div>
@@ -24,7 +24,7 @@
         }
         <button type="button" class="text-sm mr-5 font-bold btn btn-outline-dark bg-transparent" @onclick="@(() => OnView.InvokeAsync(Mission.MissiondId))">
             @foreach (var slot in EnabledFieldsInOrder) {
-                <span class="@FieldSpanClass(slot)">@RenderField(slot)</span>
+                @RenderField(slot)
             }
         </button>
     </div>
@@ -74,24 +74,35 @@
         _ => "text-gray-400 ml-0_5rem"
     };
 
-    private object RenderField(CardFieldSlot slot) => slot.Field switch {
-        CardField.LaunchDate => !ViewByDate ? DateLabel() : "",
-        CardField.LaunchTime => ViewMissionTimes ? " " + TimeLabel() : "",
-        CardField.ShipName => BuildShipNameFragment(),
-        CardField.LevelStars => Mission.Level > 0 ? $" ({new string('*', Mission.Level)})" : "",
-        CardField.Target => BuildTargetFragment(),
-        CardField.Duration => Mission.DurationString,
-        CardField.Capacity => Mission.Capacity.ToString(CultureInfo.InvariantCulture),
-        CardField.CapacityModifierBadge => Mission.IsBuggedCap ? "0.6x" : Mission.IsDubCap ? "2x" : "",
-        _ => ""
-    };
-
-    private RenderFragment BuildShipNameFragment() => __builder => {
-        <span class="@DurationClass()">@Mission.ShipString</span>
-    };
-
-    private RenderFragment BuildTargetFragment() => __builder => {
-        <TargetDisplay Target="@Mission.Target"/>
+    private RenderFragment RenderField(CardFieldSlot slot) => __builder => {
+        <span class="@FieldSpanClass(slot)">
+            @switch (slot.Field) {
+                case CardField.LaunchDate:
+                    @(!ViewByDate ? DateLabel() : "")
+                    break;
+                case CardField.LaunchTime:
+                    @(ViewMissionTimes ? " " + TimeLabel() : "")
+                    break;
+                case CardField.ShipName:
+                    <span class="@DurationClass()">@Mission.ShipString</span>
+                    break;
+                case CardField.LevelStars:
+                    @(Mission.Level > 0 ? $" ({new string('*', Mission.Level)})" : "")
+                    break;
+                case CardField.Target:
+                    <TargetDisplay Target="@Mission.Target"/>
+                    break;
+                case CardField.Duration:
+                    @Mission.DurationString
+                    break;
+                case CardField.Capacity:
+                    @Mission.Capacity.ToString(CultureInfo.InvariantCulture)
+                    break;
+                case CardField.CapacityModifierBadge:
+                    @(Mission.IsBuggedCap ? "0.6x" : Mission.IsDubCap ? "2x" : "")
+                    break;
+            }
+        </span>
     };
 
     private string RowColorClass(bool altMode) {
