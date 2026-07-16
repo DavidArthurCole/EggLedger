@@ -10,50 +10,49 @@
     </div>
     <div class="ledger-af-repeat">
         @foreach (var item in Items) {
-            <div class="mission-view-rep">
+            <div class="mission-view-rep relative">
                 <a class="@RarityBgClass(item)" target="_blank" rel="noopener" href="@ExplorerUrl(item)"
-                   @onmouseenter="@(e => ShowTooltip(item, e))" @onmouseleave="HideTooltip">
+                   @onmouseenter="@(() => ShowTooltip(item))" @onmouseleave="HideTooltip">
                     <img class="h-full w-full" loading="lazy" decoding="async" alt="@item.GameName" src="@SpecPath(item)"/>
                     @if (item.Count > 1) {
                         <span class="ledger-af-count @NumToDigClass(item.Count)">@item.Count</span>
                     }
                 </a>
+                @if (ReferenceEquals(_hovered, item)) {
+                    <div class="tooltip-floating tooltip-anchored text-sm">
+                        @item.GameName (T@(item.Level + SpecPathOffset(item)))
+                        @if (item.SpecType == "Artifact") {
+                            <span class="text-rarity-@item.Rarity">@RarityWord(item.Rarity) </span>
+                        }
+                        × @item.Count
+                        @if (item.SpecType is "Artifact" or "Stone") {
+                            <br/>
+                            var bound = BoundEffectString(item.EffectString);
+                            <span>
+                                @bound.Prefix<span class="text-green-500">@bound.Highlight</span>@bound.Suffix
+                            </span>
+                        }
+                        @if (ShowExpectedDrops) {
+                            <hr class="mt-0_5rem mb-0_5rem w-full"/>
+                            var calc = DropCalcs(item);
+                            @if (calc is null) {
+                                <span class="text-red-700">Not enough data to determine drop rate.</span>
+                            } else {
+                                <span class="text-gray-400">
+                                    <span class="text-green-500">@calc.Value.Seen.ToString("N0", CultureInfo.InvariantCulture)</span>
+                                    <span> seen out of </span>
+                                    <span class="text-green-500">@calc.Value.Total.ToString("N0", CultureInfo.InvariantCulture)</span>
+                                    <span> drops</span><br/>
+                                    <span>(Average of <span class="text-green-500">@ExpectedPerShip(item)</span> expected in this ship)</span>
+                                </span>
+                            }
+                        }
+                    </div>
+                }
             </div>
         }
     </div>
     <br/>
-}
-
-@if (_hovered is not null) {
-    <div class="tooltip-floating text-sm" style="left: @(_x.ToString(CultureInfo.InvariantCulture))px; top: @(_y.ToString(CultureInfo.InvariantCulture))px;">
-        @_hovered.GameName (T@(_hovered.Level + SpecPathOffset(_hovered)))
-        @if (_hovered.SpecType == "Artifact") {
-            <span class="text-rarity-@_hovered.Rarity">@RarityWord(_hovered.Rarity) </span>
-        }
-        × @_hovered.Count
-        @if (_hovered.SpecType is "Artifact" or "Stone") {
-            <br/>
-            var bound = BoundEffectString(_hovered.EffectString);
-            <span>
-                @bound.Prefix<span class="text-green-500">@bound.Highlight</span>@bound.Suffix
-            </span>
-        }
-        @if (ShowExpectedDrops) {
-            <hr class="mt-0_5rem mb-0_5rem w-full"/>
-            var calc = DropCalcs(_hovered);
-            @if (calc is null) {
-                <span class="text-red-700">Not enough data to determine drop rate.</span>
-            } else {
-                <span class="text-gray-400">
-                    <span class="text-green-500">@calc.Value.Seen.ToString("N0", CultureInfo.InvariantCulture)</span>
-                    <span> seen out of </span>
-                    <span class="text-green-500">@calc.Value.Total.ToString("N0", CultureInfo.InvariantCulture)</span>
-                    <span> drops</span><br/>
-                    <span>(Average of <span class="text-green-500">@ExpectedPerShip(_hovered)</span> expected in this ship)</span>
-                </span>
-            }
-        }
-    </div>
 }
 
 @code {
@@ -71,13 +70,9 @@
     public int MissionTotalDrops { get; set; }
 
     private DropLike? _hovered;
-    private double _x;
-    private double _y;
 
-    private void ShowTooltip(DropLike item, MouseEventArgs e) {
+    private void ShowTooltip(DropLike item) {
         _hovered = item;
-        _x = e.ClientX;
-        _y = e.ClientY;
     }
 
     private void HideTooltip() {

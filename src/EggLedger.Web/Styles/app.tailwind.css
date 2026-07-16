@@ -534,6 +534,13 @@ input[type=number] {
   transform: translateX(-50%) translateY(calc(-100% - 10px));
 }
 
+.tooltip-anchored {
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  transform: translateX(-50%) translateY(-10px);
+}
+
 .tooltip-floating::before {
   content: '';
   position: absolute;

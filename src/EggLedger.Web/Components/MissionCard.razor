@@ -7,7 +7,7 @@
         @if (MultiViewMode == MultiViewMode.Free) {
             <input type="checkbox" class="self-start"
                    checked="@IsSelected"
-                   @onchange="@(() => OnToggleSelected.InvokeAsync(Mission.MissiondId))"/>
+                   @onclick="@(e => OnToggleSelected.InvokeAsync((Mission.MissiondId, e.ShiftKey)))"/>
         }
         <button type="button" class="flex flex-col items-center gap-1" @onclick="@(() => OnView.InvokeAsync(Mission.MissiondId))">
             @foreach (var slot in EnabledFieldsInOrder) {
@@ -20,7 +20,7 @@
         @if (MultiViewMode == MultiViewMode.Free) {
             <input type="checkbox" class="mr-0_5rem flex-shrink-0"
                    checked="@IsSelected"
-                   @onchange="@(() => OnToggleSelected.InvokeAsync(Mission.MissiondId))"/>
+                   @onclick="@(e => OnToggleSelected.InvokeAsync((Mission.MissiondId, e.ShiftKey)))"/>
         }
         <button type="button" class="text-sm mr-5 font-bold btn btn-outline-dark bg-transparent" @onclick="@(() => OnView.InvokeAsync(Mission.MissiondId))">
             @foreach (var slot in EnabledFieldsInOrder) {
@@ -43,7 +43,7 @@
     [Parameter] public bool ViewMissionTimes { get; set; }
     [Parameter] public MultiViewMode MultiViewMode { get; set; }
     [Parameter] public EventCallback<string> OnView { get; set; }
-    [Parameter] public EventCallback<string> OnToggleSelected { get; set; }
+    [Parameter] public EventCallback<(string MissionId, bool Shift)> OnToggleSelected { get; set; }
 
     private string CustomClass =>
         string.IsNullOrEmpty(Config.CustomCss) ? "" : "mission-card-custom-" + CustomCssSanitizer.SlugFor(Config.Name);

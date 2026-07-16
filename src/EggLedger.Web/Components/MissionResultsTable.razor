@@ -186,12 +186,48 @@
         await OnViewRow.InvokeAsync(ids);
     }
 
-    private async Task ToggleSelected(string missionId) {
+    private string? _lastToggledId;
+
+    private async Task ToggleSelected((string MissionId, bool Shift) args) {
+        var (missionId, shift) = args;
+        if (shift && _lastToggledId is not null && SelectRange(_lastToggledId, missionId)) {
+            _lastToggledId = missionId;
+            await OnSelectionChanged.InvokeAsync();
+            return;
+        }
+
         if (!SelectedIds.Remove(missionId)) {
             SelectedIds.Add(missionId);
         }
 
+        _lastToggledId = missionId;
         await OnSelectionChanged.InvokeAsync();
+    }
+
+    private bool SelectRange(string fromId, string toId) {
+        var fromIndex = -1;
+        var toIndex = -1;
+        for (var i = 0; i < TabFiltered.Count; i++) {
+            if (TabFiltered[i].MissiondId == fromId) {
+                fromIndex = i;
+            }
+
+            if (TabFiltered[i].MissiondId == toId) {
+                toIndex = i;
+            }
+        }
+
+        if (fromIndex < 0 || toIndex < 0) {
+            return false;
+        }
+
+        var start = Math.Min(fromIndex, toIndex);
+        var end = Math.Max(fromIndex, toIndex);
+        for (var i = start; i <= end; i++) {
+            SelectedIds.Add(TabFiltered[i].MissiondId);
+        }
+
+        return true;
     }
 
     private async Task SelectAll() {
