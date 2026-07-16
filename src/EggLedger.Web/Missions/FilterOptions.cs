@@ -137,6 +137,13 @@ public static class FilterOptions {
         return result;
     }
 
+    private static string? RarityStyleClass(int rarity) => rarity switch {
+        1 => "text-rare",
+        2 => "text-epic",
+        3 => "text-legendary",
+        _ => null
+    };
+
     private static string ArtifactDisplayText(PossibleArtifact artifact) {
         string displayName = artifact.DisplayName;
         int level = artifact.Level;
@@ -196,6 +203,8 @@ public static class FilterOptions {
             var tierMap = byFamily[familyId];
             // Preserve tier first-seen order (JS Map iteration order).
             var tierOrder = TierOrder(artifactList, familyId);
+            var groupKey = familyId.ToString(CultureInfo.InvariantCulture);
+            var familyDisplayName = tierMap[tierOrder[0]][0].DisplayName;
 
             if (advanced) {
                 var firstArtifact = tierMap[tierOrder[0]][0];
@@ -204,6 +213,8 @@ public static class FilterOptions {
                     Value = familyId + "_%_%_%",
                     Rarity = 0,
                     ImagePath = DropPath(firstArtifact),
+                    GroupKey = groupKey,
+                    GroupLabel = familyDisplayName,
                 });
             }
 
@@ -216,6 +227,8 @@ public static class FilterOptions {
                         Value = familyId + "_" + tierLevel + "_%_%",
                         Rarity = 0,
                         ImagePath = DropPath(tierRep),
+                        GroupKey = groupKey,
+                        GroupLabel = familyDisplayName,
                     });
                 }
                 foreach (var a in rarities) {
@@ -223,7 +236,10 @@ public static class FilterOptions {
                         Text = ArtifactDisplayText(a),
                         Value = a.Name + "_" + a.Level + "_" + a.Rarity + "_" + a.BaseQuality.ToString(CultureInfo.InvariantCulture),
                         Rarity = a.Rarity,
+                        StyleClass = RarityStyleClass(a.Rarity),
                         ImagePath = DropPath(a),
+                        GroupKey = groupKey,
+                        GroupLabel = familyDisplayName,
                     });
                 }
             }

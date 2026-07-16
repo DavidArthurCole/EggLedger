@@ -237,7 +237,7 @@ hr {
 }
 
 .filter-container {
-  @apply relative flex flex-row flex-wrap items-center flex-grow;
+  @apply relative flex flex-col items-start flex-grow;
 }
 
 .filter-select-option {
@@ -467,6 +467,23 @@ input[type=number] {
 .selected-popup-opt:focus {
   @apply border border-blue-500 bg-darker;
   outline: none;
+}
+
+.popup-opt-group {
+  @apply mb-2 text-left px-3;
+}
+
+.popup-opt-group-label {
+  @apply block text-xs font-bold text-gray-400 mb-1;
+}
+
+.popup-opt-chip {
+  @apply inline-flex items-center justify-center w-9 h-9 rounded-md cursor-pointer select-none bg-darkest border border-gray-700;
+  outline: none;
+}
+
+.popup-opt-chip:hover {
+  @apply bg-darker border-gray-500;
 }
 
 .filter-incomplete {

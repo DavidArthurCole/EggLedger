@@ -1,3 +1,4 @@
+using System.Linq;
 using EggLedger.Domain.MissionQuery;
 using EggLedger.Web.Missions;
 
@@ -135,5 +136,22 @@ public sealed class FilterOptionsTests {
         Assert.Equal("40_1_%_%", opts[4].Value);
         Assert.Equal("40_1_0_3", opts[5].Value);
         Assert.Equal("40_1_1_3", opts[6].Value);
+    }
+
+    [Fact]
+    public void DropOptions_ConcreteArtifactsGetRarityStyleClass() {
+        var arts = new[]
+        {
+            new PossibleArtifact { Name = 40, ProtoName = "BASAN", DisplayName = "Basan", Level = 1, Rarity = 0, BaseQuality = 3 },
+            new PossibleArtifact { Name = 41, ProtoName = "RARE_ONE", DisplayName = "Rare One", Level = 0, Rarity = 1, BaseQuality = 3 },
+            new PossibleArtifact { Name = 42, ProtoName = "EPIC_ONE", DisplayName = "Epic One", Level = 0, Rarity = 2, BaseQuality = 3 },
+            new PossibleArtifact { Name = 43, ProtoName = "LEGENDARY_ONE", DisplayName = "Legendary One", Level = 0, Rarity = 3, BaseQuality = 3 },
+        };
+        var opts = FilterOptions.GetDropFilterOptions(arts, maxQuality: 100, advanced: false);
+
+        Assert.Null(opts.Single(o => o.Value == "40_1_0_3").StyleClass);
+        Assert.Equal("text-rare", opts.Single(o => o.Value == "41_0_1_3").StyleClass);
+        Assert.Equal("text-epic", opts.Single(o => o.Value == "42_0_2_3").StyleClass);
+        Assert.Equal("text-legendary", opts.Single(o => o.Value == "43_0_3_3").StyleClass);
     }
 }

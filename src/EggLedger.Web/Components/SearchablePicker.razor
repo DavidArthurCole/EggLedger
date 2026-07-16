@@ -21,20 +21,42 @@
             <input @ref="_searchInput" type="text" class="input-search" placeholder="Search..."
                    value="@_query" @oninput="OnQueryInput"/>
             <div class="popup-opt-container">
-                @{ var filtered = Filtered(); }
+                @{
+                    var filtered = Filtered();
+                    var segments = BuildSegments(filtered);
+                }
                 @if (filtered.Count == 0) {
                     <span class="text-gray-400">No results found.</span>
                 } else {
-                    @for (var i = 0; i < filtered.Count; i++) {
-                        var opt = filtered[i];
-                        <div class="popup-opt @(i == _activeIndex ? "selected-popup-opt" : "")"
-                             @onclick="() => Choose(opt)">
-                            @if (!string.IsNullOrEmpty(opt.ImagePath)) {
-                                <img class="max-w-7 mr-1rem @RingClass(opt)" loading="lazy" decoding="async"
-                                     alt="@opt.Text" src="@ImageSrc(opt)"/>
-                            }
-                            <span class="@(opt.StyleClass ?? "text-gray-400")">@opt.Text</span>
-                        </div>
+                    @foreach (var segment in segments) {
+                        @if (segment.GroupLabel is null) {
+                            var opt = segment.Items[0].Option;
+                            var idx = segment.Items[0].Index;
+                            <div class="popup-opt @(idx == _activeIndex ? "selected-popup-opt" : "")"
+                                 @onclick="() => Choose(opt)">
+                                @if (!string.IsNullOrEmpty(opt.ImagePath)) {
+                                    <img class="max-w-7 mr-1rem @RingClass(opt)" loading="lazy" decoding="async"
+                                         alt="@opt.Text" src="@ImageSrc(opt)"/>
+                                }
+                                <span class="@(opt.StyleClass ?? "text-gray-400")">@opt.Text</span>
+                            </div>
+                        } else {
+                            <div class="popup-opt-group">
+                                <span class="popup-opt-group-label">@segment.GroupLabel</span>
+                                <div class="flex flex-wrap gap-1">
+                                    @foreach (var (opt, idx) in segment.Items) {
+                                        <button type="button" title="@opt.Text"
+                                                class="popup-opt-chip @(idx == _activeIndex ? "selected-popup-opt" : "")"
+                                                @onclick="() => Choose(opt)">
+                                            @if (!string.IsNullOrEmpty(opt.ImagePath)) {
+                                                <img class="w-7 h-7 @RingClass(opt)" loading="lazy" decoding="async"
+                                                     alt="@opt.Text" src="@ImageSrc(opt)"/>
+                                            }
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+                        }
                     }
                 }
             </div>
@@ -68,6 +90,24 @@
         return string.IsNullOrWhiteSpace(_query)
             ? [.. Options]
             : [.. Options.Where(o => o.Text.Contains(_query, StringComparison.OrdinalIgnoreCase))];
+    }
+
+    private sealed record PickerSegment(string? GroupLabel, List<(FilterOption Option, int Index)> Items);
+
+    private static List<PickerSegment> BuildSegments(List<FilterOption> filtered) {
+        var segments = new List<PickerSegment>();
+        string? currentKey = null;
+        for (var i = 0; i < filtered.Count; i++) {
+            var opt = filtered[i];
+            if (opt.GroupKey is not null && opt.GroupKey == currentKey) {
+                segments[^1].Items.Add((opt, i));
+            } else {
+                segments.Add(new PickerSegment(opt.GroupKey is null ? null : opt.GroupLabel, [(opt, i)]));
+                currentKey = opt.GroupKey;
+            }
+        }
+
+        return segments;
     }
 
     private string ImageSrc(FilterOption o) {
