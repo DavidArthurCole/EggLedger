@@ -33,9 +33,9 @@
                     &times;
                 </button>
             }
-        </div>
 
-        @RenderWarning(row.Cond)
+            @RenderWarning(row.Cond)
+        </div>
 
         @for (var oi = 0; oi < row.Or.Count; oi++) {
             var orIndex = oi;
@@ -259,7 +259,7 @@
     private RenderFragment RenderWarning(FilterCondition c) => __builder => {
         var def = FieldOf(c);
         @if (def is not null && RowIncomplete(c)) {
-            <span class="filter-incomplete">(!) Incomplete, will not apply</span>
+            <span class="filter-incomplete">(!) Incomplete</span>
         }
     };
 

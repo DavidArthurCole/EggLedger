@@ -492,11 +492,17 @@ input[type=number] {
 }
 
 .filter-incomplete {
-  @apply whitespace-pre max-h-9 items-center justify-center text-red-700 text-xs border border-red-700 rounded-md bg-transparent py-2 px-4 mt-0_5rem;
+  @apply max-w-full items-center justify-center text-red-700 text-xs border border-red-700 rounded-md bg-transparent py-2 px-4 mt-0_5rem;
+  white-space: normal;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .filter-warning {
-  @apply whitespace-pre max-h-9 items-center justify-center text-yellow-700 text-xs border border-yellow-700 rounded-md bg-transparent py-2 px-4 mt-0_5rem;
+  @apply max-w-full items-center justify-center text-yellow-700 text-xs border border-yellow-700 rounded-md bg-transparent py-2 px-4 mt-0_5rem;
+  white-space: normal;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .bg-r-0 {

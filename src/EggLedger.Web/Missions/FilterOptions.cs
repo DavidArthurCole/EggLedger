@@ -137,12 +137,17 @@ public static class FilterOptions {
         return result;
     }
 
-    private static string? RarityStyleClass(int rarity) => rarity switch {
+    public static string? RarityStyleClass(int rarity) => rarity switch {
         1 => "text-rare",
         2 => "text-epic",
         3 => "text-legendary",
         _ => null
     };
+
+    private static readonly string[] RarityWords = ["Common", "Rare", "Epic", "Legendary"];
+
+    public static string RarityWord(int rarity) =>
+        rarity >= 0 && rarity < RarityWords.Length ? RarityWords[rarity] : "";
 
     private static string ArtifactDisplayText(PossibleArtifact artifact) {
         return artifact.DisplayName + " (T" + TierNumber(artifact) + ")";
