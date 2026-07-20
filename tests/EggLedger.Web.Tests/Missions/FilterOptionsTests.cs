@@ -139,6 +139,45 @@ public sealed class FilterOptionsTests {
     }
 
     [Fact]
+    public void DropOptions_MergesStoneFragmentIntoStoneFamily() {
+        var arts = new[]
+        {
+            new PossibleArtifact { Name = 100, ProtoName = "LUNAR_STONE_FRAGMENT", DisplayName = "Lunar stone fragment", Level = 0, Rarity = 0, BaseQuality = 1 },
+            new PossibleArtifact { Name = 200, ProtoName = "LUNAR_STONE", DisplayName = "Lunar stone", Level = 0, Rarity = 0, BaseQuality = 2 },
+            new PossibleArtifact { Name = 200, ProtoName = "LUNAR_STONE", DisplayName = "Lunar stone", Level = 1, Rarity = 0, BaseQuality = 3 },
+        };
+        var opts = FilterOptions.GetDropFilterOptions(arts, maxQuality: 100, advanced: true);
+
+        // trio(3) + family "(Any)"(1) + fragment T1(1) + stone T2(1) + stone T3(1) = 7.
+        Assert.Equal(7, opts.Count);
+
+        var familyAny = opts.Single(o => o.Value == "200_%_%_%");
+        Assert.Equal("Lunar stone (Any)", familyAny.Text);
+        Assert.Equal("Lunar stone", familyAny.GroupLabel);
+
+        var fragment = opts.Single(o => o.Value == "100_0_0_1");
+        Assert.Equal("Lunar stone", fragment.GroupLabel);
+        Assert.Equal("T1", fragment.Badge);
+        Assert.Equal(familyAny.GroupKey, fragment.GroupKey);
+
+        var stoneT2 = opts.Single(o => o.Value == "200_0_0_2");
+        Assert.Equal("T2", stoneT2.Badge);
+    }
+
+    [Fact]
+    public void DropOptions_SingleOptionFamilySkipsAnyRow() {
+        var arts = new[]
+        {
+            new PossibleArtifact { Name = 300, ProtoName = "LONE", DisplayName = "Lone artifact", Level = 0, Rarity = 0, BaseQuality = 1 },
+        };
+        var opts = FilterOptions.GetDropFilterOptions(arts, maxQuality: 100, advanced: true);
+
+        // trio(3) + the single concrete option, no family "(Any)" since there's only one option.
+        Assert.Equal(4, opts.Count);
+        Assert.DoesNotContain(opts, o => o.Value == "300_%_%_%");
+    }
+
+    [Fact]
     public void DropOptions_ConcreteArtifactsGetRarityStyleClass() {
         var arts = new[]
         {

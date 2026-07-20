@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Linq;
 using EggLedger.Domain.MissionQuery;
 
 namespace EggLedger.Web.Missions;
@@ -188,33 +189,61 @@ public static class FilterOptions {
             new() { Text = "Any Legendary", Value = "%_%_3_%", Rarity = 3, StyleClass = "text-legendary", ImagePath = "icon_help.webp" },
         };
 
-        // Insertion-ordered family -> tier -> artifacts grouping (mirrors JS Map order).
+        // Stone fragments are the same family as their stone (e.g. LUNAR_STONE_FRAGMENT
+        // rolls into LUNAR_STONE) despite being a distinct ArtifactSpec.Name enum value;
+        // merge them for grouping/display only, never for the Value string.
+        var stoneProtoNames = new HashSet<string>();
+        foreach (var a in artifactList) {
+            if (!a.ProtoName.Contains("_FRAGMENT", StringComparison.Ordinal)) {
+                stoneProtoNames.Add(a.ProtoName);
+            }
+        }
+        var canonicalFamily = new Dictionary<int, int>();
+        foreach (var a in artifactList) {
+            if (a.ProtoName.Contains("_FRAGMENT", StringComparison.Ordinal)) {
+                var stoneProtoName = a.ProtoName.Replace("_FRAGMENT", "", StringComparison.Ordinal);
+                if (stoneProtoNames.Contains(stoneProtoName)) {
+                    foreach (var candidate in artifactList) {
+                        if (candidate.ProtoName == stoneProtoName) {
+                            canonicalFamily[a.Name] = candidate.Name;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Insertion-ordered family -> tier(TierNumber) -> artifacts grouping.
         var byFamily = new Dictionary<int, Dictionary<int, List<PossibleArtifact>>>();
         var familyOrder = new List<int>();
         foreach (var a in artifactList) {
-            if (!byFamily.TryGetValue(a.Name, out var byTier)) {
+            var familyId = canonicalFamily.GetValueOrDefault(a.Name, a.Name);
+            if (!byFamily.TryGetValue(familyId, out var byTier)) {
                 byTier = [];
-                byFamily[a.Name] = byTier;
-                familyOrder.Add(a.Name);
+                byFamily[familyId] = byTier;
+                familyOrder.Add(familyId);
             }
-            if (!byTier.TryGetValue(a.Level, out var rarities)) {
+            var tier = TierNumber(a);
+            if (!byTier.TryGetValue(tier, out var rarities)) {
                 rarities = [];
-                byTier[a.Level] = rarities;
+                byTier[tier] = rarities;
             }
             rarities.Add(a);
         }
 
         foreach (var familyId in familyOrder) {
             var tierMap = byFamily[familyId];
-            // Preserve tier first-seen order (JS Map iteration order).
-            var tierOrder = TierOrder(artifactList, familyId);
+            var tierOrder = tierMap.Keys.Order().ToList();
             var groupKey = familyId.ToString(CultureInfo.InvariantCulture);
-            var familyDisplayName = tierMap[tierOrder[0]][0].DisplayName;
+            var familyDisplayName = FamilyDisplayName(tierMap, tierOrder);
+            var totalCount = 0;
+            foreach (var rarities in tierMap.Values) {
+                totalCount += rarities.Count;
+            }
 
-            if (advanced) {
-                var firstArtifact = tierMap[tierOrder[0]][0];
+            if (advanced && totalCount > 1) {
                 result.Add(new FilterOption {
-                    Text = firstArtifact.DisplayName + " (Any)",
+                    Text = familyDisplayName + " (Any)",
                     Value = familyId + "_%_%_%",
                     Rarity = null,
                     ImagePath = "icon_help.webp",
@@ -229,10 +258,10 @@ public static class FilterOptions {
                 if (advanced && rarities.Exists(a => a.Rarity > 0)) {
                     result.Add(new FilterOption {
                         Text = ArtifactDisplayText(rarities[0]) + " (Any Rarity)",
-                        Value = familyId + "_" + tierLevel + "_%_%",
+                        Value = rarities[0].Name + "_" + rarities[0].Level + "_%_%",
                         Rarity = null,
                         ImagePath = "icon_help.webp",
-                        Badge = "T" + TierNumber(rarities[0]) + " Any",
+                        Badge = "T" + tierLevel + " Any",
                         GroupKey = groupKey,
                         GroupLabel = familyDisplayName,
                     });
@@ -244,7 +273,7 @@ public static class FilterOptions {
                         Rarity = a.Rarity,
                         StyleClass = RarityStyleClass(a.Rarity),
                         ImagePath = DropPath(a),
-                        Badge = "T" + TierNumber(a),
+                        Badge = "T" + tierLevel,
                         GroupKey = groupKey,
                         GroupLabel = familyDisplayName,
                     });
@@ -255,15 +284,16 @@ public static class FilterOptions {
         return result;
     }
 
-    // First-seen tier order for a family (JS Map insertion order).
-    private static List<int> TierOrder(IReadOnlyList<PossibleArtifact> artifactList, int familyId) {
-        var seen = new HashSet<int>();
-        var order = new List<int>();
-        foreach (var a in artifactList) {
-            if (a.Name == familyId && seen.Add(a.Level)) {
-                order.Add(a.Level);
+    // Prefers the non-fragment (stone/artifact) DisplayName so a merged family reads
+    // as "Lunar stone", not "Lunar stone fragment".
+    private static string FamilyDisplayName(Dictionary<int, List<PossibleArtifact>> tierMap, List<int> tierOrder) {
+        foreach (var tier in tierOrder) {
+            foreach (var a in tierMap[tier]) {
+                if (!a.DisplayName.Contains("fragment", StringComparison.OrdinalIgnoreCase)) {
+                    return a.DisplayName;
+                }
             }
         }
-        return order;
+        return tierMap[tierOrder[0]][0].DisplayName;
     }
 }

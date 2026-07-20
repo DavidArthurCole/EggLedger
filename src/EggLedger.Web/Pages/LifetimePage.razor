@@ -14,7 +14,7 @@
 
 <PageTitle>EggLedger - Lifetime Data</PageTitle>
 
-<section class="view-layout overflow-hidden">
+<section class="flex-1 flex flex-col w-full mx-auto px-4 overflow-hidden bg-darker">
     @if (Active.ActiveAccountId is null) {
         <p class="text-gray-400 italic">Select an account on the Ledger tab to view its lifetime data.</p>
     } else if (_loading) {
@@ -25,35 +25,32 @@
     } else if (_data is null || _data.MissionCount == 0) {
         <NoDataFallback/>
     } else {
-        <div class="filter-panel">
-            <span class="mr-0_5rem h-20 font-bold text-gray-400">Filter</span>
-            <button type="button" class="text-base toggle-link" @onclick="@(() => _hideFilter = !_hideFilter)">
-                @(_hideFilter ? "Show" : "Hide")
-            </button>
-            @if (!_hideFilter) {
-                <MissionFilterBar FieldCtx="Config.FieldCtx"
-                                  Applying="_applying"
-                                  LastResultText="@_resultText"
-                                  OnApply="ApplyFilterAsync"/>
-            }
-        </div>
-
-        <div class="min-h-7 max-h-50 px-2 py-2 text-sm text-gray-400 bg-darkest rounded-md tabular-nums overflow-auto mt-0_75rem">
-            <span class="section-heading">Sort Method</span>
-            <div class="tile-group mt-1">
-                <button type="button" class="tile-group-item @(_sortMethod == LifetimeSortMethod.Default ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover")" @onclick="@(() => SetSortAsync(LifetimeSortMethod.Default))">Default</button>
-                <button type="button" class="tile-group-item @(_sortMethod == LifetimeSortMethod.Iv ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover")" @onclick="@(() => SetSortAsync(LifetimeSortMethod.Iv))">Inventory Visualizer</button>
-                <button type="button" class="tile-group-item @(_sortMethod == LifetimeSortMethod.Count ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover")" @onclick="@(() => SetSortAsync(LifetimeSortMethod.Count))">Total Count</button>
-                <button type="button" class="tile-group-item @(_sortMethod == LifetimeSortMethod.Random ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover")" @onclick="@(() => SetSortAsync(LifetimeSortMethod.Random))">Random</button>
+        <div class="flex flex-col md:flex-row md:items-stretch gap-0_75rem mt-0_75rem flex-1 min-h-0">
+            <div class="filter-panel mt-0 @(_hideFilter ? "md:w-auto md:flex-none" : "md:w-[30%]")">
+                <span class="mr-0_5rem h-20 font-bold text-gray-400">Filter</span>
+                <button type="button" class="text-base toggle-link whitespace-nowrap" @onclick="@(() => _hideFilter = !_hideFilter)">
+                    @(_hideFilter ? "Show" : "Hide")
+                </button>
+                @if (!_hideFilter) {
+                    <MissionFilterBar FieldCtx="Config.FieldCtx"
+                                      Applying="_applying"
+                                      LastResultText="@_resultText"
+                                      OnApply="ApplyFilterAsync"/>
+                }
             </div>
-        </div>
 
-        <div class="flex-1 min-h-0 px-2 py-1 overflow-auto shadow-sm block text-xs font-mono text-gray-300 bg-darkest rounded-md text-center">
-            <span class="ledger-underline text-base text-gray-400">Data compiled from @_data.MissionCount Missions</span>
-            <DropDisplayContainer Artifacts="_data.Artifacts"
-                                  Stones="_data.Stones"
-                                  Ingredients="_data.Ingredients"
-                                  StoneFragments="_data.StoneFragments"/>
+            <div class="flex-1 flex flex-col min-h-0 px-2 overflow-auto shadow-sm bg-darkest rounded-md">
+                <div class="flex items-center justify-between gap-2 pt-1">
+                    <span class="ledger-underline text-base text-gray-400">Data compiled from @_data.MissionCount Missions</span>
+                    @RenderOptionsPopover()
+                </div>
+                <div class="flex-1 min-h-0 py-1 overflow-auto block text-xs font-mono text-gray-300 text-center">
+                    <DropDisplayContainer Artifacts="_data.Artifacts"
+                                          Stones="_data.Stones"
+                                          Ingredients="_data.Ingredients"
+                                          StoneFragments="_data.StoneFragments"/>
+                </div>
+            </div>
         </div>
     }
 </section>
@@ -64,6 +61,7 @@
     private LifetimeData? _data;
     private LifetimeSortMethod _sortMethod = LifetimeSortMethod.Default;
     private bool _hideFilter;
+    private bool _optionsOpen;
     private bool _applying;
     private string _resultText = "";
     private MissionFilterMatcher? _matcher;
@@ -180,6 +178,27 @@
         _applying = false;
         StateHasChanged();
     }
+
+    private RenderFragment RenderOptionsPopover() => __builder => {
+        <div class="relative flex-shrink-0">
+            <button type="button" class="text-base toggle-link whitespace-nowrap" @onclick="@(() => _optionsOpen = !_optionsOpen)">
+                Options
+            </button>
+            @if (_optionsOpen) {
+                <div class="absolute right-0 top-full mt-1 z-40 w-72 max-w-[90vw] px-3 py-2 shadow-sm text-sm text-gray-400 bg-darkest border border-gray-700 rounded-md tabular-nums">
+                    <div>
+                        <span class="font-bold text-gray-400">Sort Method</span>
+                        <div class="tile-group mt-1">
+                            <button type="button" class="tile-group-item @(_sortMethod == LifetimeSortMethod.Default ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover")" @onclick="@(() => SetSortAsync(LifetimeSortMethod.Default))">Default</button>
+                            <button type="button" class="tile-group-item @(_sortMethod == LifetimeSortMethod.Iv ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover")" @onclick="@(() => SetSortAsync(LifetimeSortMethod.Iv))">Inventory Visualizer</button>
+                            <button type="button" class="tile-group-item @(_sortMethod == LifetimeSortMethod.Count ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover")" @onclick="@(() => SetSortAsync(LifetimeSortMethod.Count))">Total Count</button>
+                            <button type="button" class="tile-group-item @(_sortMethod == LifetimeSortMethod.Random ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover")" @onclick="@(() => SetSortAsync(LifetimeSortMethod.Random))">Random</button>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    };
 
     private async Task SetSortAsync(LifetimeSortMethod method) {
         _sortMethod = method;

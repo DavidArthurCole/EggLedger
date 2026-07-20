@@ -128,7 +128,10 @@
     }
 
     private string RingClass(FilterOption o) {
-        return RarityRing && o.Rarity is { } r ? $"rounded-full bg-r-{r}" : "";
+        if (RarityRing && o.Rarity is { } r) {
+            return $"rounded-full bg-r-{r}";
+        }
+        return o.ImagePath == "icon_help.webp" ? "rounded-full bg-gray-500" : "";
     }
 
     private void Open() {

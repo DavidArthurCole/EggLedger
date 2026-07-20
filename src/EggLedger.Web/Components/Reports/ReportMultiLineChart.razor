@@ -10,7 +10,11 @@
 
 <div class="h-full w-full flex flex-col gap-1">
     <div class="flex-1 min-h-0" @ref="_containerRef">
-        @if (SeriesCount >= 1 && BucketCount >= 2) {
+        @if (!_measured) {
+            <div class="h-full flex items-center justify-center">
+                <span class="text-xs text-gray-500 animate-pulse">Loading chart...</span>
+            </div>
+        } else if (SeriesCount >= 1 && BucketCount >= 2) {
             var max = GlobalMax();
             var ticks = BuildTicks(max);
             var seriesPoints = AllSeriesPoints();
@@ -69,6 +73,7 @@
 @code {
     private double _w = 300;
     private double _h = 150;
+    private bool _measured;
     private ElementReference _containerRef;
     private IJSObjectReference? _module;
     private IJSObjectReference? _observerHandle;
@@ -101,6 +106,7 @@
     public void OnChartResized(double width, double height) {
         _w = width > 0 ? width : 300;
         _h = height > 0 ? height : 150;
+        _measured = true;
         StateHasChanged();
     }
 
