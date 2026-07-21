@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using EggLedger.Domain.Crypto;
+using EggLedger.Web.Platform;
 
 namespace EggLedger.Web.Services;
 
@@ -12,11 +13,13 @@ public sealed class CloudSyncService {
     private readonly HttpClient _http;
     private readonly INavigation _nav;
     private readonly IBlobCipher _cipher;
+    private readonly IPlatformCapabilities _platform;
 
-    public CloudSyncService(HttpClient http, INavigation nav, IBlobCipher cipher) {
+    public CloudSyncService(HttpClient http, INavigation nav, IBlobCipher cipher, IPlatformCapabilities platform) {
         _http = http;
         _nav = nav;
         _cipher = cipher;
+        _platform = platform;
     }
 
     public async Task<bool> CheckReachableAsync(CancellationToken cancellationToken = default) {
@@ -32,7 +35,7 @@ public sealed class CloudSyncService {
 
     public async Task<string> BeginAuthAsync(CancellationToken cancellationToken = default) {
         AuthInitResponse? init;
-        using (var resp = await _http.GetAsync($"{ApiPrefix}/auth/discord", cancellationToken).ConfigureAwait(false)) {
+        using (var resp = await _http.GetAsync($"{ApiPrefix}/auth/pair/begin", cancellationToken).ConfigureAwait(false)) {
             if (!resp.IsSuccessStatusCode) {
                 throw new CloudSyncException($"auth init: server returned {(int)resp.StatusCode}");
             }
@@ -42,7 +45,11 @@ public sealed class CloudSyncService {
             throw new CloudSyncException("auth init: malformed response");
         }
 
-        _nav.NavigateTo(init.Url);
+        if (_platform.IsDesktop) {
+            await _platform.OpenUrlAsync(init.Url);
+        } else {
+            _nav.NavigateTo(init.Url);
+        }
         return init.State;
     }
 

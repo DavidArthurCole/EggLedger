@@ -1,0 +1,36 @@
+@page "/pair"
+@using EggLedger.Web.Components.Auth
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.Extensions.DependencyInjection
+@inject IServiceProvider Services
+
+<section class="view-layout">
+    @if (!_done) {
+        <p class="text-gray-400 italic mt-0_5rem">Connecting...</p>
+    } else if (_ok) {
+        <p class="text-green-400 mt-0_5rem">Connected. You can close this window and return to the app.</p>
+    } else {
+        <p class="text-red-500 mt-0_5rem">This sign-in link has expired. Return to the app and try again.</p>
+    }
+</section>
+
+@code {
+    [SupplyParameterFromQuery] public string? State { get; set; }
+    [CascadingParameter] private Task<AuthenticationState>? AuthStateTask { get; set; }
+
+    private bool _done;
+    private bool _ok;
+
+    protected override async Task OnInitializedAsync() {
+        if (AuthStateTask is null || string.IsNullOrEmpty(State)) {
+            _done = true;
+            _ok = false;
+            return;
+        }
+
+        var authState = await AuthStateTask;
+        var completion = Services.GetService<IPairCompletion>();
+        _ok = completion is not null && await completion.CompleteAsync(authState.User, State, CancellationToken.None);
+        _done = true;
+    }
+}

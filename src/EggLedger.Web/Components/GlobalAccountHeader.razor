@@ -10,10 +10,11 @@
 @inject MissionQueryHandlers Queries
 @inject IndexedDbSettings SettingsStore
 @inject IJSRuntime Js
+@inject IPlatformCapabilities Platform
 
 <div class="relative" @ref="_rootRef">
     <div class="flex items-center">
-        @if (IsLoggedIn) {
+        @if (IsLoggedIn && !Platform.IsDesktop) {
             <form method="post" action="/api/v1/auth/logout" style="margin:0;">
                 <button type="submit"
                         class="relative -bottom-px mr-1.5 px-3 pt-2 pb-1.5 text-xs font-medium text-gray-400 border border-darker_tab rounded-t-md bg-darker_tab hover:bg-dark_tab_hover transition-colors whitespace-nowrap">

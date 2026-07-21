@@ -2,6 +2,7 @@
 @using EggLedger.Web.Components.Admin
 @using EggLedger.Web.Services
 @using EggLedger.Web.Settings
+@using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.Extensions.DependencyInjection
 @inject AdminService Admin
 @inject CloudSessionStore SessionStore
@@ -11,11 +12,7 @@
 <PageTitle>EggLedger - Admin</PageTitle>
 
 <section class="view-layout overflow-auto">
-    @if (_loading) {
-        <p class="text-gray-500 italic mt-0_5rem">Loading...</p>
-    } else if (_token is null) {
-        <p class="text-gray-400 italic mt-0_5rem">Connect cloud sync on the Settings tab to access admin.</p>
-    } else if (!_isAdmin) {
+    @if (!_isAdmin) {
         <p class="text-red-700 italic mt-0_5rem">Admin access required.</p>
     } else {
         <div class="admin-grid">
@@ -26,32 +23,35 @@
                 <AdminTrafficPanel Metrics="_metrics"/>
             </div>
             <div>
-                <AdminUsersPanel Users="_users" OnDelete="DeleteUser" Error="_error"/>
+                <AdminUsersPanel Users="_users" OnDelete="DeleteUser" Error="@_error"/>
             </div>
         </div>
     }
 </section>
 
 @code {
-    private bool _loading = true;
-    private string? _token;
+    [CascadingParameter] private Task<AuthenticationState>? AuthStateTask { get; set; }
+
     private bool _isAdmin;
+    private string? _token;
     private IReadOnlyList<AdminUser>? _users;
     private AdminMetrics? _metrics;
     private string _error = "";
 
     protected override async Task OnInitializedAsync() {
+        if (AuthStateTask is not null) {
+            var authState = await AuthStateTask;
+            _isAdmin = Services.GetService<IAdminAccess>()?.IsAdmin(authState.User) ?? false;
+        }
+        AdminState.IsAdmin = _isAdmin;
+        if (_isAdmin) _ = LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync() {
         var session = await SessionStore.GetSessionAsync();
         _token = session?.Token;
-        if (_token is null) {
-            _loading = false;
-            return;
-        }
-
-        _isAdmin = await Admin.IsAdminAsync(_token);
-        AdminState.IsAdmin = _isAdmin;
-        _loading = false;
-        if (_isAdmin) await RefreshAsync();
+        if (_token is null) return;
+        await RefreshAsync();
     }
 
     private async Task RefreshAsync() {
@@ -61,7 +61,7 @@
         await Task.WhenAll(usersTask, metricsTask);
         _users = usersTask.Result;
         _metrics = metricsTask.Result;
-        StateHasChanged();
+        await InvokeAsync(StateHasChanged);
     }
 
     private async Task DeleteUser(Guid userId) {

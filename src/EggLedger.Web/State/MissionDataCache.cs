@@ -1,5 +1,6 @@
 using EggLedger.Domain.MissionPacking;
 using EggLedger.Domain.MissionQuery;
+using EggLedger.Web.Missions;
 
 namespace EggLedger.Web.State;
 
@@ -7,6 +8,7 @@ public sealed class MissionDataCache {
     private readonly TimeSpan _ttl;
     private (string AccountId, IReadOnlyList<DatabaseMission> Missions, DateTime LoadedAt)? _missions;
     private (string AccountId, Dictionary<string, List<MissionDrop>> Drops, DateTime LoadedAt)? _drops;
+    private (string AccountId, LifetimeData Data, DateTime LoadedAt)? _lifetimeAggregate;
 
     public MissionDataCache() : this(TimeSpan.FromMinutes(5)) { }
 
@@ -38,10 +40,20 @@ public sealed class MissionDataCache {
         _drops = (accountId, drops, now);
     }
 
+    public LifetimeData? GetLifetimeAggregate(string accountId, DateTime now) {
+        if (_lifetimeAggregate is { } a && a.AccountId == accountId && now - a.LoadedAt < _ttl) {
+            return a.Data;
+        }
+        return null;
+    }
 
+    public void SetLifetimeAggregate(string accountId, LifetimeData data, DateTime now) {
+        _lifetimeAggregate = (accountId, data, now);
+    }
 
     public void InvalidateAll() {
         _missions = null;
         _drops = null;
+        _lifetimeAggregate = null;
     }
 }

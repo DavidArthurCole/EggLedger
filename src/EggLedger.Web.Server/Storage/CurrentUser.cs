@@ -15,5 +15,5 @@ public sealed class CurrentUser(AuthenticationStateProvider auth) {
     public async Task<Guid> RequireUserIdAsync() =>
         await GetUserIdAsync().ConfigureAwait(false)
         ?? throw new InvalidOperationException(
-            "your session has expired. Please refresh the page and log in with Discord again");
+            "your session has expired. Please refresh the page and log in again");
 }

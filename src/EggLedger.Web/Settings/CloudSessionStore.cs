@@ -7,8 +7,8 @@ namespace EggLedger.Web.Settings;
 public sealed class CloudSessionStore {
     public const string KeyToken = "cloud_session_token";
     public const string KeyEncryptionKey = "cloud_encryption_key";
-    public const string KeyUsername = "cloud_discord_username";
-    public const string KeyAvatarUrl = "cloud_discord_avatar_url";
+    public const string KeyUsername = "cloud_username";
+    public const string KeyAvatarUrl = "cloud_avatar_url";
     public const string KeyLastPushAt = "cloud_last_push_at";
     public const string KeyLastPullAt = "cloud_last_pull_at";
     public const string KeyAutoSync = "cloud_auto_sync";

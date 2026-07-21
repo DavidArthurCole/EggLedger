@@ -4,8 +4,7 @@ public sealed record AppConfig(
     string ListenAddr,
     string DatabaseUrl,
     string DiscordClientId,
-    string DiscordClientSecret,
-    string RedirectUrl,
+    string PublicBaseUrl,
     string BotToken,
     string GuildId,
     string SharedRoleId,
@@ -41,10 +40,7 @@ public sealed record AppConfig(
             ListenAddr: string.IsNullOrEmpty(addr) ? ":8080" : addr,
             DatabaseUrl: V("DATABASE_URL"),
             DiscordClientId: V("DISCORD_CLIENT_ID"),
-            DiscordClientSecret: V("DISCORD_CLIENT_SECRET"),
-            RedirectUrl: get("OAUTH_REDIRECT_URL") is { Length: > 0 } r
-                ? r
-                : "https://eggledger.davidarthurcole.me/api/v1/auth/callback",
+            PublicBaseUrl: get("PUBLIC_BASE_URL") is { Length: > 0 } pub ? pub : "https://eggledger.davidarthurcole.me",
             BotToken: V("DISCORD_BOT_TOKEN"),
             GuildId: V("DISCORD_GUILD_ID"),
             SharedRoleId: V("SHARED_ROLE_ID"),

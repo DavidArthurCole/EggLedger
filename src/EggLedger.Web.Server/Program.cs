@@ -113,6 +113,8 @@ if (hasDb) {
 
 
     builder.Services.AddSingleton<EggLedger.Web.Server.Sync.Auth.AuthEndpoints>();
+    builder.Services.AddScoped<EggLedger.Web.Components.Auth.IPairCompletion, EggLedger.Web.Server.Auth.PairCompletion>();
+    builder.Services.AddScoped<EggLedger.Web.Components.Admin.IAdminAccess, EggLedger.Web.Server.Auth.AdminAccess>();
 
     EggLedger.Web.Server.Auth.AuthentikAuth.AddIfConfigured(authBuilder, cfg, identityClient, dataSource);
 
@@ -215,12 +217,6 @@ app.Map("/egg-api/{**rest}", async (HttpContext ctx, IHttpClientFactory factory,
 
 if (hasDb) {
 
-
-    if (string.IsNullOrEmpty(cfg.DiscordClientId) || string.IsNullOrEmpty(cfg.DiscordClientSecret)) {
-        app.Logger.LogCritical("eggledger: DATABASE_URL is set but DISCORD_CLIENT_ID/DISCORD_CLIENT_SECRET are missing. Auth routes cannot function; refusing to start.");
-        throw new InvalidOperationException("Discord OAuth is not configured but a database is; set DISCORD_CLIENT_ID/DISCORD_CLIENT_SECRET or unset DATABASE_URL.");
-    }
-    DiscordOAuth.Init(cfg.DiscordClientId, cfg.DiscordClientSecret, cfg.RedirectUrl);
 
     app.Logger.LogInformation("eggledger: DB configured, running migrations. selfBase={SelfBase}", selfBase);
     var conn = await Database.InitAsync(cfg.DatabaseUrl);

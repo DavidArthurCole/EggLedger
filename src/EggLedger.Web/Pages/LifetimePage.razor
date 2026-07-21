@@ -130,7 +130,12 @@
         _allDropsCache = dropsByMission;
         _matcher = new MissionFilterMatcher(Config.DurationConfigs, id, DropsFetcher);
 
-        var data = LifetimeAggregator.Aggregate(dropsByMission);
+        var now = DateTime.UtcNow;
+        var data = DataCache.GetLifetimeAggregate(id, now);
+        if (data is null) {
+            data = LifetimeAggregator.Aggregate(dropsByMission);
+            DataCache.SetLifetimeAggregate(id, data, now);
+        }
         LifetimeSorter.Sort(data, _sortMethod);
         _data = data;
         StateHasChanged();

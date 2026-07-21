@@ -2,6 +2,7 @@ using System.Net;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
+using EggLedger.Web.Server.Sync;
 using EggLedger.Web.Server.Sync.Auth;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
@@ -20,45 +21,6 @@ public sealed class AuthEndpointsTests {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     [SkippableFact]
-    public async Task StorePending_creates_user_and_discord_identity_row() {
-        Skip.If(string.IsNullOrEmpty(TestDbUrl), "EGGLEDGER_TEST_DB_URL not set; live Postgres auth test skipped.");
-
-        await using var setupSrc = NpgsqlDataSource.Create(TestDbUrl!);
-        await CreateSchemaAsync(setupSrc);
-
-
-
-        var scopedBuilder = new NpgsqlConnectionStringBuilder(TestDbUrl!) { SearchPath = Schema };
-        await using var src = NpgsqlDataSource.Create(scopedBuilder.ConnectionString);
-        try {
-
-
-
-            var stubUserId = Guid.NewGuid();
-            var handler = new StubHttpMessageHandler(_ => StubHttpMessageHandler.Json(HttpStatusCode.OK,
-                $$"""{"userId":"{{stubUserId}}","role":"viewer","discordId":"12345","isNew":true}"""));
-            var identity = new IdentityApiClient(new HttpClient(handler) { BaseAddress = new Uri("http://localhost:8090") });
-
-            var endpoints = new AuthEndpoints(src, new EphemeralDataProtectionProvider(), identity, NullLogger<AuthEndpoints>.Instance);
-            var discordUser = new DiscordUser("12345", "tester", "");
-
-            var (userId, role) = await endpoints.StorePending("state-1", "token-1", discordUser);
-
-            Assert.Equal(stubUserId, userId);
-            Assert.Equal("viewer", role);
-
-            await using var cmd = src.CreateCommand($"SET search_path TO {Schema}; SELECT user_id FROM users WHERE discord_id = '12345';");
-            var result = await cmd.ExecuteScalarAsync();
-            Assert.Equal(stubUserId, Assert.IsType<Guid>(result));
-        } finally {
-            await DropSchemaAsync(setupSrc);
-        }
-    }
-
-
-
-
-    [SkippableFact]
     public async Task EnsureEncryptionKeyAsync_returns_existing_key_for_discord_linked_user() {
         Skip.If(string.IsNullOrEmpty(TestDbUrl), "EGGLEDGER_TEST_DB_URL not set; live Postgres auth test skipped.");
 
@@ -71,7 +33,7 @@ public sealed class AuthEndpointsTests {
             var protector = new EphemeralDataProtectionProvider();
             var identity = new IdentityApiClient(new HttpClient(new StubHttpMessageHandler(_ =>
                 StubHttpMessageHandler.Json(HttpStatusCode.OK, "{}"))) { BaseAddress = new Uri("http://localhost:8090") });
-            var endpoints = new AuthEndpoints(src, protector, identity, NullLogger<AuthEndpoints>.Instance);
+            var endpoints = new AuthEndpoints(src, protector, identity, NullLogger<AuthEndpoints>.Instance, AppConfig.FromEnv(_ => null));
 
             var userId = Guid.NewGuid();
             var protectedKey = protector.CreateProtector("EggLedger.EncryptionKey").Protect("existing-key-value");
@@ -97,61 +59,6 @@ public sealed class AuthEndpointsTests {
 
 
     [SkippableFact]
-    public async Task StorePending_repoints_stale_local_user_id_to_identitys_resolved_id() {
-        Skip.If(string.IsNullOrEmpty(TestDbUrl), "EGGLEDGER_TEST_DB_URL not set; live Postgres auth test skipped.");
-
-        await using var setupSrc = NpgsqlDataSource.Create(TestDbUrl!);
-        await CreateSchemaAsync(setupSrc);
-
-        var scopedBuilder = new NpgsqlConnectionStringBuilder(TestDbUrl!) { SearchPath = Schema };
-        await using var src = NpgsqlDataSource.Create(scopedBuilder.ConnectionString);
-        try {
-            var staleUserId = Guid.NewGuid();
-            await using (var seed = src.CreateCommand(
-                "INSERT INTO users (user_id, discord_id, created_at, username) VALUES ($1, '12345', $2, 'old-name')")) {
-                seed.Parameters.AddWithValue(staleUserId);
-                seed.Parameters.AddWithValue(1000L);
-                await seed.ExecuteNonQueryAsync();
-            }
-            await using (var seedMission = src.CreateCommand(
-                "INSERT INTO el_mission (user_id, discord_id, player_id, mission_id, start_timestamp, complete_payload) " +
-                "VALUES ($1, '12345', 'player-1', 'mission-1', 1000, $2)")) {
-                seedMission.Parameters.AddWithValue(staleUserId);
-                seedMission.Parameters.AddWithValue(Array.Empty<byte>());
-                await seedMission.ExecuteNonQueryAsync();
-            }
-
-            var resolvedUserId = Guid.NewGuid();
-            var handler = new StubHttpMessageHandler(_ => StubHttpMessageHandler.Json(HttpStatusCode.OK,
-                $$"""{"userId":"{{resolvedUserId}}","role":"viewer","discordId":"12345","isNew":false}"""));
-            var identity = new IdentityApiClient(new HttpClient(handler) { BaseAddress = new Uri("http://localhost:8090") });
-            var endpoints = new AuthEndpoints(src, new EphemeralDataProtectionProvider(), identity, NullLogger<AuthEndpoints>.Instance);
-            var discordUser = new DiscordUser("12345", "new-name", "");
-
-            var (userId, _) = await endpoints.StorePending("state-1", "token-1", discordUser);
-
-            Assert.Equal(resolvedUserId, userId);
-
-            await using var usersCmd = src.CreateCommand("SELECT user_id, username FROM users WHERE discord_id = '12345'");
-            await using var usersReader = await usersCmd.ExecuteReaderAsync();
-            Assert.True(await usersReader.ReadAsync());
-            Assert.Equal(resolvedUserId, usersReader.GetGuid(0));
-            Assert.Equal("new-name", usersReader.GetString(1));
-            Assert.False(await usersReader.ReadAsync(), "stale user_id row must not survive alongside the repointed one");
-            await usersReader.CloseAsync();
-
-            await using var missionCmd = src.CreateCommand("SELECT user_id FROM el_mission WHERE discord_id = '12345'");
-            var missionUserId = Assert.IsType<Guid>(await missionCmd.ExecuteScalarAsync());
-            Assert.Equal(resolvedUserId, missionUserId);
-        } finally {
-            await DropSchemaAsync(setupSrc);
-        }
-    }
-
-
-
-
-    [SkippableFact]
     public async Task EnsureEncryptionKeyAsync_generates_and_persists_key_for_non_discord_user() {
         Skip.If(string.IsNullOrEmpty(TestDbUrl), "EGGLEDGER_TEST_DB_URL not set; live Postgres auth test skipped.");
 
@@ -163,7 +70,7 @@ public sealed class AuthEndpointsTests {
         try {
             var identity = new IdentityApiClient(new HttpClient(new StubHttpMessageHandler(_ =>
                 StubHttpMessageHandler.Json(HttpStatusCode.OK, "{}"))) { BaseAddress = new Uri("http://localhost:8090") });
-            var endpoints = new AuthEndpoints(src, new EphemeralDataProtectionProvider(), identity, NullLogger<AuthEndpoints>.Instance);
+            var endpoints = new AuthEndpoints(src, new EphemeralDataProtectionProvider(), identity, NullLogger<AuthEndpoints>.Instance, AppConfig.FromEnv(_ => null));
 
             var userId = Guid.NewGuid();
             await using (var seed = src.CreateCommand(
@@ -198,7 +105,7 @@ public sealed class AuthEndpointsTests {
         try {
             var identity = new IdentityApiClient(new HttpClient(new StubHttpMessageHandler(_ =>
                 StubHttpMessageHandler.Json(HttpStatusCode.OK, "{}"))) { BaseAddress = new Uri("http://localhost:8090") });
-            var endpoints = new AuthEndpoints(src, new EphemeralDataProtectionProvider(), identity, NullLogger<AuthEndpoints>.Instance);
+            var endpoints = new AuthEndpoints(src, new EphemeralDataProtectionProvider(), identity, NullLogger<AuthEndpoints>.Instance, AppConfig.FromEnv(_ => null));
 
             var ctx = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity()) };
             ctx.Response.Body = new MemoryStream();
@@ -225,7 +132,7 @@ public sealed class AuthEndpointsTests {
         try {
             var identity = new IdentityApiClient(new HttpClient(new StubHttpMessageHandler(_ =>
                 StubHttpMessageHandler.Json(HttpStatusCode.OK, "{}"))) { BaseAddress = new Uri("http://localhost:8090") });
-            var endpoints = new AuthEndpoints(src, new EphemeralDataProtectionProvider(), identity, NullLogger<AuthEndpoints>.Instance);
+            var endpoints = new AuthEndpoints(src, new EphemeralDataProtectionProvider(), identity, NullLogger<AuthEndpoints>.Instance, AppConfig.FromEnv(_ => null));
 
             var userId = Guid.NewGuid();
             await using (var seed = src.CreateCommand(
@@ -278,7 +185,7 @@ public sealed class AuthEndpointsTests {
         try {
             var identity = new IdentityApiClient(new HttpClient(new StubHttpMessageHandler(_ =>
                 StubHttpMessageHandler.Json(HttpStatusCode.OK, "{}"))) { BaseAddress = new Uri("http://localhost:8090") });
-            var endpoints = new AuthEndpoints(src, new EphemeralDataProtectionProvider(), identity, NullLogger<AuthEndpoints>.Instance);
+            var endpoints = new AuthEndpoints(src, new EphemeralDataProtectionProvider(), identity, NullLogger<AuthEndpoints>.Instance, AppConfig.FromEnv(_ => null));
 
             var userId = Guid.NewGuid();
             await using (var seed = src.CreateCommand(
@@ -337,7 +244,7 @@ public sealed class AuthEndpointsTests {
                 return StubHttpMessageHandler.Json(HttpStatusCode.OK, "{}");
             });
             var identity = new IdentityApiClient(new HttpClient(handler) { BaseAddress = new Uri("http://localhost:8090") });
-            var endpoints = new AuthEndpoints(src, new EphemeralDataProtectionProvider(), identity, NullLogger<AuthEndpoints>.Instance);
+            var endpoints = new AuthEndpoints(src, new EphemeralDataProtectionProvider(), identity, NullLogger<AuthEndpoints>.Instance, AppConfig.FromEnv(_ => null));
 
             var userId = Guid.NewGuid();
             await using (var seed = src.CreateCommand(

@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using EggLedger.Domain.Crypto;
+using EggLedger.Web.Platform;
 using EggLedger.Web.Services;
 
 namespace EggLedger.Web.Tests.Services;
@@ -21,6 +22,23 @@ public sealed class CloudSyncServiceTests {
     private sealed class FakeNavigation : INavigation {
         public string? LastUrl { get; private set; }
         public void NavigateTo(string url) => LastUrl = url;
+    }
+
+    private sealed class FakePlatformCapabilities : IPlatformCapabilities {
+        public bool IsDesktop { get; init; }
+        public string? LastOpenedUrl { get; private set; }
+        public Task OpenFileAsync(string path) => Task.CompletedTask;
+        public Task OpenUrlAsync(string url) {
+            LastOpenedUrl = url;
+            return Task.CompletedTask;
+        }
+        public Task OpenFileInFolderAsync(string path) => Task.CompletedTask;
+        public Task<string?> ChooseSaveFilePathAsync(string defaultName) => Task.FromResult<string?>(null);
+        public Task RestartAppAsync() => Task.CompletedTask;
+        public Task<(int w, int h)> GetWindowSizeAsync() => Task.FromResult((0, 0));
+        public Task<string?> ChooseFolderAsync() => Task.FromResult<string?>(null);
+        public Task SetFolderHiddenAsync(string path, bool hidden) => Task.CompletedTask;
+        public string DataRootDir => "";
     }
 
 
@@ -46,7 +64,7 @@ public sealed class CloudSyncServiceTests {
             var method = request.Method;
 
 
-            if (method == HttpMethod.Get && path == "/api/v1/auth/discord") {
+            if (method == HttpMethod.Get && path == "/api/v1/auth/pair/begin") {
                 PendingState = "state-xyz";
                 return Json200(new AuthInitResponse("https://discord/oauth?state=state-xyz", PendingState));
             }
@@ -117,9 +135,9 @@ public sealed class CloudSyncServiceTests {
         };
     }
 
-    private static CloudSyncService Make(HttpMessageHandler server, INavigation? nav = null) {
+    private static CloudSyncService Make(HttpMessageHandler server, INavigation? nav = null, IPlatformCapabilities? platform = null) {
         var http = new HttpClient(server) { BaseAddress = Origin };
-        return new CloudSyncService(http, nav ?? new FakeNavigation(), new LocalBlobCipher());
+        return new CloudSyncService(http, nav ?? new FakeNavigation(), new LocalBlobCipher(), platform ?? new FakePlatformCapabilities());
     }
 
     [Fact]
@@ -215,6 +233,20 @@ public sealed class CloudSyncServiceTests {
 
         Assert.Equal("state-xyz", state);
         Assert.Equal("https://discord/oauth?state=state-xyz", nav.LastUrl);
+    }
+
+    [Fact]
+    public async Task BeginAuth_OnDesktop_OpensSystemBrowserInsteadOfNavigating() {
+        var server = new FakeServer();
+        var nav = new FakeNavigation();
+        var platform = new FakePlatformCapabilities { IsDesktop = true };
+        var svc = Make(server, nav, platform);
+
+        var state = await svc.BeginAuthAsync();
+
+        Assert.Equal("state-xyz", state);
+        Assert.Equal("https://discord/oauth?state=state-xyz", platform.LastOpenedUrl);
+        Assert.Null(nav.LastUrl);
     }
 
     [Fact]

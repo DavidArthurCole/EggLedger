@@ -57,15 +57,13 @@ public static class Api {
         });
 
 
-        app.MapGet("/api/v1/auth/discord", (HttpContext c) => auth.Discord(c));
-        app.MapGet("/api/v1/auth/login", (HttpContext c) => auth.Login(c));
+        app.MapGet("/api/v1/auth/pair/begin", (HttpContext c) => auth.PairBegin(c));
         if (!string.IsNullOrEmpty(cfg.AuthentikAuthority)) {
             app.MapGet("/api/v1/auth/authentik-login", (HttpContext c) =>
                 Results.Challenge(
                     new AuthenticationProperties { RedirectUri = "/" },
                     [OpenIdConnectDefaults.AuthenticationScheme]));
         }
-        app.MapGet("/api/v1/auth/callback", (HttpContext c) => auth.Callback(c));
         app.MapGet("/api/v1/auth/poll", (HttpContext c) => auth.Poll(c, c.Request.Query["state"].ToString()));
         app.MapDelete("/api/v1/auth/session", (HttpContext c) => auth.DeleteSession(c));
         app.MapPost("/api/v1/auth/logout", (HttpContext c) => auth.Logout(c));

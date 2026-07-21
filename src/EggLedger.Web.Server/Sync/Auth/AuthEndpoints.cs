@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using EggLedger.Web.Server.Sync;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
@@ -18,7 +19,7 @@ namespace EggLedger.Web.Server.Sync.Auth;
 
 
 
-public sealed record DiscordInitResponse(
+public sealed record PairInitResponse(
     [property: JsonPropertyName("url")] string Url,
     [property: JsonPropertyName("state")] string State);
 
@@ -28,7 +29,7 @@ public sealed record PollResponse(
     [property: JsonPropertyName("avatarUrl")] string AvatarUrl,
     [property: JsonPropertyName("encryptionKey")] string EncryptionKey);
 
-public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvider dataProtection, IdentityApiClient identity, ILogger<AuthEndpoints> logger) {
+public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvider dataProtection, IdentityApiClient identity, ILogger<AuthEndpoints> logger, AppConfig cfg) {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
     private static readonly string[] ElUserTables = [
@@ -58,79 +59,6 @@ public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvid
         ctx.Response.ContentType = "application/json; charset=utf-8";
         await JsonSerializer.SerializeAsync(ctx.Response.Body, value, Json, ctx.RequestAborted);
     }
-
-    public async Task Discord(HttpContext ctx) {
-        var (url, state) = await BeginAuthAsync(ctx).ConfigureAwait(false);
-        await WriteJsonAsync(ctx, new DiscordInitResponse(url, state));
-    }
-
-
-
-
-    public async Task Login(HttpContext ctx) {
-        var (url, _) = await BeginAuthAsync(ctx).ConfigureAwait(false);
-        ctx.Response.Redirect(url);
-    }
-
-    private async Task<(string Url, string State)> BeginAuthAsync(HttpContext ctx) {
-        var (url, state) = DiscordOAuth.AuthUrl();
-        await using var cmd = source.CreateCommand(
-            "INSERT INTO pending_auth (state, expires_at) VALUES ($1, $2) ON CONFLICT (state) DO UPDATE SET expires_at = EXCLUDED.expires_at");
-        cmd.Parameters.AddWithValue(state);
-        cmd.Parameters.AddWithValue(Now() + 600);
-        try { await cmd.ExecuteNonQueryAsync(ctx.RequestAborted); } catch (Exception ex) { logger.LogWarning(ex, "auth: failed to seed pending_auth row"); }
-        return (url, state);
-    }
-
-    public async Task Callback(HttpContext ctx) {
-        var code = ctx.Request.Query["code"].ToString();
-        var state = ctx.Request.Query["state"].ToString();
-
-
-
-        if (string.IsNullOrEmpty(state) || !await StateIsPending(state, ctx.RequestAborted)) {
-            await WriteTextAsync(ctx, StatusCodes.Status400BadRequest, "invalid or expired state\n");
-            return;
-        }
-
-        DiscordUser? authedUser = null;
-        (Guid UserId, string Role)? resolved = null;
-        try {
-            await DiscordOAuth.HandleCallbackAsync(
-                code, state,
-                async (s, token, user) => { authedUser = user; resolved = await StorePending(s, token, user); },
-                ctx.RequestAborted);
-        } catch (Exception ex) {
-            logger.LogWarning(ex, "auth: Discord callback failed");
-            await WriteTextAsync(ctx, StatusCodes.Status500InternalServerError, "auth failed\n");
-            return;
-        }
-
-
-
-
-        if (authedUser is { } u) {
-            var claims = new List<Claim> {
-                new(EggLedger.Web.Server.Auth.AuthScheme.DiscordIdClaim, u.Id),
-                new(ClaimTypes.Name, u.Username),
-            };
-            if (resolved is { } r) {
-                claims.Add(new Claim(EggLedger.Web.Server.Auth.AuthScheme.UserIdClaim, r.UserId.ToString()));
-                claims.Add(new Claim(EggLedger.Web.Server.Auth.AuthScheme.RoleClaim, r.Role));
-            }
-            var identity = new ClaimsIdentity(claims, EggLedger.Web.Server.Auth.AuthScheme.Cookie);
-            await ctx.SignInAsync(
-                EggLedger.Web.Server.Auth.AuthScheme.Cookie,
-                new ClaimsPrincipal(identity),
-                new AuthenticationProperties { IsPersistent = true });
-        }
-
-        ctx.Response.StatusCode = StatusCodes.Status200OK;
-        ctx.Response.ContentType = "text/html; charset=utf-8";
-        await ctx.Response.Body.WriteAsync(Encoding.UTF8.GetBytes(SuccessPage.Html), ctx.RequestAborted);
-    }
-
-
 
     public async Task<RedeemLoginCodeResponse> RedeemAndSignInAsync(HttpContext ctx, string code, CancellationToken ct) {
         var result = await identity.RedeemAsync(code, ct);
@@ -162,22 +90,6 @@ public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvid
 
 
     private async Task UpsertLocalUserAsync(Guid userId, string? discordId, string? username, string? avatar, CancellationToken ct) {
-        if (!string.IsNullOrEmpty(discordId)) {
-            await using var repoint = source.CreateCommand(
-                "UPDATE users SET user_id = $1 WHERE discord_id = $2 AND user_id <> $1");
-            repoint.Parameters.AddWithValue(userId);
-            repoint.Parameters.AddWithValue(discordId);
-            if (await repoint.ExecuteNonQueryAsync(ct) > 0) {
-                foreach (var table in ElUserTables) {
-                    await using var move = source.CreateCommand(
-                        $"UPDATE {table} SET user_id = $1 WHERE discord_id = $2 AND user_id <> $1");
-                    move.Parameters.AddWithValue(userId);
-                    move.Parameters.AddWithValue(discordId);
-                    await move.ExecuteNonQueryAsync(ct);
-                }
-            }
-        }
-
         await using (var u = source.CreateCommand(
             "INSERT INTO users (user_id, discord_id, created_at, username, avatar_url) VALUES ($1,$2,$3,$4,$5) " +
             "ON CONFLICT (user_id) DO UPDATE SET username = EXCLUDED.username, avatar_url = EXCLUDED.avatar_url")) {
@@ -225,74 +137,13 @@ public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvid
             }
         }
         if (string.IsNullOrEmpty(encKey)) {
-            encKey = DiscordOAuth.GenerateEncryptionKey();
+            encKey = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
             await using var upd = source.CreateCommand("UPDATE users SET encryption_key = $1 WHERE user_id = $2");
             upd.Parameters.AddWithValue(_keyProtector.Protect(encKey));
             upd.Parameters.AddWithValue(userId);
             try { await upd.ExecuteNonQueryAsync(); } catch (Exception ex) { logger.LogWarning(ex, "auth: failed to store encryption_key for {UserId}", userId); }
         }
         return encKey;
-    }
-
-    public async Task<(Guid UserId, string Role)> StorePending(string state, string token, DiscordUser user) {
-        var resolved = await identity.ResolveAsync("discord", user.Id, user.Id, user.Username, user.AvatarUrl, CancellationToken.None);
-        var userId = resolved.UserId;
-
-
-
-
-
-
-        await using (var repoint = source.CreateCommand(
-            "UPDATE users SET user_id = $1 WHERE discord_id = $2 AND user_id <> $1")) {
-            repoint.Parameters.AddWithValue(userId);
-            repoint.Parameters.AddWithValue(user.Id);
-            if (await repoint.ExecuteNonQueryAsync() > 0) {
-                foreach (var table in ElUserTables) {
-                    await using var move = source.CreateCommand(
-                        $"UPDATE {table} SET user_id = $1 WHERE discord_id = $2 AND user_id <> $1");
-                    move.Parameters.AddWithValue(userId);
-                    move.Parameters.AddWithValue(user.Id);
-                    await move.ExecuteNonQueryAsync();
-                }
-            }
-        }
-
-
-
-
-        await using (var u = source.CreateCommand(
-            "INSERT INTO users (user_id, discord_id, created_at, username, avatar_url) VALUES ($1,$2,$3,$4,$5) " +
-            "ON CONFLICT (user_id) DO UPDATE SET username = EXCLUDED.username, avatar_url = EXCLUDED.avatar_url")) {
-            u.Parameters.AddWithValue(userId);
-            u.Parameters.AddWithValue(user.Id);
-            u.Parameters.AddWithValue(Now());
-            u.Parameters.AddWithValue(user.Username);
-            u.Parameters.AddWithValue(user.AvatarUrl);
-            await u.ExecuteNonQueryAsync();
-        }
-
-        var encKey = await EnsureEncryptionKeyAsync(userId);
-
-        await using (var ins = source.CreateCommand(
-            "INSERT INTO sessions (token, discord_id, user_id, expires_at) VALUES ($1,$2,$3,$4)")) {
-            ins.Parameters.AddWithValue(token);
-            ins.Parameters.AddWithValue(user.Id);
-            ins.Parameters.AddWithValue(userId);
-            ins.Parameters.AddWithValue(Now() + 30L * 24 * 3600);
-            await ins.ExecuteNonQueryAsync();
-        }
-
-        await using var pend = source.CreateCommand(
-            "UPDATE pending_auth SET session_token = $1, username = $2, avatar_url = $3, encryption_key = $4 WHERE state = $5");
-        pend.Parameters.AddWithValue(token);
-        pend.Parameters.AddWithValue(user.Username);
-        pend.Parameters.AddWithValue(user.AvatarUrl);
-        pend.Parameters.AddWithValue(_keyProtector.Protect(encKey));
-        pend.Parameters.AddWithValue(state);
-        await pend.ExecuteNonQueryAsync();
-
-        return (userId, resolved.Role);
     }
 
     public async Task Poll(HttpContext ctx, string state) {
@@ -352,33 +203,67 @@ public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvid
         var username = ctx.User.Identity?.Name ?? "";
         var discordIdClaim = ctx.User.FindFirst(EggLedger.Web.Server.Auth.AuthScheme.DiscordIdClaim)?.Value;
 
+        var poll = await MintSessionAsync(userId, username, discordIdClaim, ctx.RequestAborted);
+        await WriteJsonAsync(ctx, poll);
+    }
+
+    public async Task<PollResponse> MintSessionAsync(Guid userId, string username, string? discordId, CancellationToken ct) {
         var encKey = await EnsureEncryptionKeyAsync(userId);
         var token = Guid.NewGuid().ToString("N");
 
         await using (var ins = source.CreateCommand(
             "INSERT INTO sessions (token, discord_id, user_id, expires_at) VALUES ($1, $2, $3, $4)")) {
             ins.Parameters.AddWithValue(token);
-            if (string.IsNullOrEmpty(discordIdClaim)) {
+            if (string.IsNullOrEmpty(discordId)) {
                 ins.Parameters.AddWithValue(DBNull.Value);
             } else {
-                ins.Parameters.AddWithValue(discordIdClaim);
+                ins.Parameters.AddWithValue(discordId);
             }
             ins.Parameters.AddWithValue(userId);
             ins.Parameters.AddWithValue(Now() + 30L * 24 * 3600);
-            try {
-                await ins.ExecuteNonQueryAsync(ctx.RequestAborted);
-            } catch (Exception ex) {
-                logger.LogWarning(ex, "auth: failed to create session-from-login for {UserId}", userId);
-                await WriteTextAsync(ctx, StatusCodes.Status500InternalServerError, "internal error\n");
-                return;
-            }
+            await ins.ExecuteNonQueryAsync(ct);
         }
 
-        var avatarUrl = await UserAvatarUrlAsync(userId, ctx.RequestAborted);
-        await WriteJsonAsync(ctx, new PollResponse(token, username, avatarUrl, encKey));
+        var avatarUrl = await UserAvatarUrlAsync(userId, ct);
+        return new PollResponse(token, username, avatarUrl, encKey);
     }
 
+    public async Task PairBegin(HttpContext ctx) {
+        var state = Guid.NewGuid().ToString("N");
+        await using var cmd = source.CreateCommand(
+            "INSERT INTO pending_auth (state, expires_at) VALUES ($1, $2) ON CONFLICT (state) DO UPDATE SET expires_at = EXCLUDED.expires_at");
+        cmd.Parameters.AddWithValue(state);
+        cmd.Parameters.AddWithValue(Now() + 600);
+        try { await cmd.ExecuteNonQueryAsync(ctx.RequestAborted); } catch (Exception ex) { logger.LogWarning(ex, "auth: failed to seed pending_auth row"); }
 
+        var url = new Uri(new Uri(cfg.PublicBaseUrl), $"/pair?state={state}").ToString();
+        await WriteJsonAsync(ctx, new PairInitResponse(url, state));
+    }
+
+    public async Task<bool> CompletePairingAsync(ClaimsPrincipal user, string state, CancellationToken ct) {
+        if (!await StateIsPending(state, ct)) {
+            return false;
+        }
+
+        var userIdClaim = user.FindFirst(EggLedger.Web.Server.Auth.AuthScheme.UserIdClaim)?.Value;
+        if (!Guid.TryParse(userIdClaim, out var userId)) {
+            return false;
+        }
+
+        var username = user.Identity?.Name ?? "";
+        var discordIdClaim = user.FindFirst(EggLedger.Web.Server.Auth.AuthScheme.DiscordIdClaim)?.Value;
+        var poll = await MintSessionAsync(userId, username, discordIdClaim, ct);
+
+        await using var pend = source.CreateCommand(
+            "UPDATE pending_auth SET session_token = $1, username = $2, avatar_url = $3, encryption_key = $4 WHERE state = $5");
+        pend.Parameters.AddWithValue(poll.Token);
+        pend.Parameters.AddWithValue(poll.Username);
+        pend.Parameters.AddWithValue(poll.AvatarUrl);
+        pend.Parameters.AddWithValue(_keyProtector.Protect(poll.EncryptionKey));
+        pend.Parameters.AddWithValue(state);
+        await pend.ExecuteNonQueryAsync(ct);
+        return true;
+    }
 
     private async Task<string> UserAvatarUrlAsync(Guid userId, CancellationToken ct) {
         await using var cmd = source.CreateCommand("SELECT avatar_url FROM users WHERE user_id = $1");

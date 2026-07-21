@@ -1,16 +1,18 @@
 @inherits LayoutComponentBase
+@using EggLedger.Web.Components.Admin
 @using EggLedger.Web.Data
 @using EggLedger.Web.Services
 @using EggLedger.Web.Settings
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.Extensions.DependencyInjection
 @implements IDisposable
 @inject AppStateService AppStateSvc
 @inject ScreenshotSafetyState ScreenshotSafety
 @inject IndexedDbSettings Settings
 @inject AdminState AdminState
-@inject AdminService Admin
-@inject CloudSessionStore SessionStore
 @inject AccountLoader Loader
+@inject IPlatformCapabilities Platform
+@inject IServiceProvider Services
 
 @* No cascading AuthenticationState means no auth gate exists at all (the desktop host's App.razor
    never wraps in CascadingAuthenticationState), so tabs stay enabled there unconditionally. *@
@@ -63,7 +65,7 @@
     ];
 
     private IReadOnlyList<TabBar.TabItem> Tabs =>
-        AdminState.IsAdmin ? [.. _baseTabs, new TabBar.TabItem("Admin", "/admin")] : _baseTabs;
+        AdminState.IsAdmin && !Platform.IsDesktop ? [.. _baseTabs, new TabBar.TabItem("Admin", "/admin")] : _baseTabs;
 
     [CascadingParameter] private Task<AuthenticationState>? AuthStateTask { get; set; }
 
@@ -78,21 +80,14 @@
         if (AuthStateTask is not null) {
             var authState = await AuthStateTask;
             IsLoggedIn = authState.User.Identity?.IsAuthenticated ?? false;
+            AdminState.IsAdmin = Services.GetService<IAdminAccess>()?.IsAdmin(authState.User) ?? false;
         }
 
-        
-        
         await Loader.EnsureLoadedAsync();
 
-        
         var settings = await Settings.GetAllSettingsAsync();
         if (settings.TryGetValue(SettingsModel.KeyScreenshotSafety, out var v))
             ScreenshotSafety.Enabled = v == "true";
-
-        
-        var session = await SessionStore.GetSessionAsync();
-        if (session?.Token is { } token)
-            AdminState.IsAdmin = await Admin.IsAdminAsync(token);
     }
 
     private void OnAdminChanged() {

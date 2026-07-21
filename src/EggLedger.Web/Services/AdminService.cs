@@ -8,15 +8,6 @@ namespace EggLedger.Web.Services;
 public sealed class AdminService(HttpClient http) {
     private const string Prefix = "api/v1/admin";
 
-    public async Task<bool> IsAdminAsync(string token, CancellationToken ct = default) {
-        try {
-            var me = await GetAsync<AdminMe>(token, "me", ct).ConfigureAwait(false);
-            return me?.IsAdmin ?? false;
-        } catch {
-            return false;
-        }
-    }
-
     public Task<IReadOnlyList<AdminUser>?> GetUsersAsync(string token, CancellationToken ct = default) =>
         GetAsync<IReadOnlyList<AdminUser>>(token, "users", ct);
 
@@ -39,8 +30,6 @@ public sealed class AdminService(HttpClient http) {
             : default;
     }
 }
-
-public sealed record AdminMe(bool IsAdmin);
 
 public sealed record AdminUser(Guid UserId, string? DiscordId, string Username, string AvatarUrl, long MissionCount, long BackupCount, long ReportCount, long StorageBytes, long? LastSession, bool IsAdmin);
 
