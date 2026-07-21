@@ -7,7 +7,7 @@ using EggLedger.Web.Services;
 namespace EggLedger.Web.Tests.Services;
 
 public sealed class CloudSyncServiceTests {
-    
+
     private const string HexKey = "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
     private const string Token = "session-token-abc";
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
@@ -17,23 +17,23 @@ public sealed class CloudSyncServiceTests {
 
     private static CloudSession Session() => new(Token, "user#1", "https://cdn/avatar.png", HexKey);
 
-    
+
     private sealed class FakeNavigation : INavigation {
         public string? LastUrl { get; private set; }
         public void NavigateTo(string url) => LastUrl = url;
     }
 
-    
-    
+
+
     private sealed class FakeServer : HttpMessageHandler {
         private readonly Dictionary<string, string> _blobs = [];
         public string? PendingState;
-        
+
         public PollResponse? PollPayload;
         public string ExpectedBearer = Token;
-        
+
         public bool RejectAuth;
-        
+
         public bool RejectLogin;
         public PollResponse? LoginPayload;
         public int PutHits;
@@ -45,13 +45,13 @@ public sealed class CloudSyncServiceTests {
             var path = request.RequestUri!.AbsolutePath;
             var method = request.Method;
 
-            
+
             if (method == HttpMethod.Get && path == "/api/v1/auth/discord") {
                 PendingState = "state-xyz";
                 return Json200(new AuthInitResponse("https://discord/oauth?state=state-xyz", PendingState));
             }
 
-            
+
             if (method == HttpMethod.Get && path == "/api/v1/auth/poll") {
                 if (PollPayload is null) {
                     return new HttpResponseMessage(HttpStatusCode.Accepted);
@@ -59,12 +59,12 @@ public sealed class CloudSyncServiceTests {
                 return Json200(PollPayload);
             }
 
-            
+
             if (method == HttpMethod.Delete && path == "/api/v1/auth/session") {
                 return new HttpResponseMessage(HttpStatusCode.NoContent);
             }
 
-            
+
             if (method == HttpMethod.Post && path == "/api/v1/auth/session-from-login") {
                 if (RejectLogin) {
                     return new HttpResponseMessage(HttpStatusCode.Unauthorized);
@@ -72,7 +72,7 @@ public sealed class CloudSyncServiceTests {
                 return Json200(LoginPayload ?? new PollResponse(Token, "user#1", "https://cdn/a.png", HexKey));
             }
 
-            
+
             var auth = request.Headers.Authorization;
             if (RejectAuth || auth is null || auth.Scheme != "Bearer" || auth.Parameter != ExpectedBearer) {
                 return new HttpResponseMessage(HttpStatusCode.Unauthorized);
@@ -131,8 +131,8 @@ public sealed class CloudSyncServiceTests {
 
         await svc.PutBlobAsync(session, "accounts", accounts);
 
-        
-        
+
+
         var stored = server.Blobs["accounts"];
         Assert.DoesNotContain("Alice", stored, StringComparison.Ordinal);
         var decrypted = System.Text.Encoding.UTF8.GetString(BlobCrypto.Decrypt(HexKey, stored));
@@ -230,7 +230,7 @@ public sealed class CloudSyncServiceTests {
 
     [Fact]
     public async Task PollOnce_NotFound_TreatedAsPending() {
-        
+
         var server = new NotFoundPollServer();
         var svc = Make(server);
 
@@ -257,8 +257,8 @@ public sealed class CloudSyncServiceTests {
 
     [Fact]
     public async Task FullFlow_PendingThenDone_ThenBlobUsesPolledKey() {
-        
-        
+
+
         var server = new FakeServer();
         var nav = new FakeNavigation();
         var svc = Make(server, nav);

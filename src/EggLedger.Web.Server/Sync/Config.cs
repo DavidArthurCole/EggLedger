@@ -27,8 +27,8 @@ public sealed record AppConfig(
     string DataProtectionCertPassword) {
     public const string MennoUpstreamUrl = "https://eggincdatacollection.azurewebsites.net/api/SubmitEid";
 
-    
-    
+
+
     private static readonly string[] DefaultProxyNetworks =
         ["127.0.0.0/8", "::1/128", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "fc00::/7", "fe80::/10"];
 
@@ -58,10 +58,10 @@ public sealed record AppConfig(
             AuthentikClientSecret: V("AUTHENTIK_CLIENT_SECRET"),
             IdentityApiUrl: V("IDENTITY_API_URL"),
             IdentityApiSecret: V("IDENTITY_API_SECRET"),
-            
-            
-            
-            
+
+
+
+
             IdentityWidgetUrl: get("IDENTITY_WIDGET_URL") is { Length: > 0 } widgetUrl ? widgetUrl : V("IDENTITY_API_URL"),
             TrustedProxyNetworks: proxyNets.Length > 0 ? proxyNets : DefaultProxyNetworks,
             BuildSha: get("BUILD_SHA") is { Length: > 0 } sha ? sha : "dev",

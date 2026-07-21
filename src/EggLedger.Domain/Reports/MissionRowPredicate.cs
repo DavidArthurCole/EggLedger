@@ -14,7 +14,7 @@ internal sealed class MissionRowPredicate {
         _dropsByMission = dropsByMission;
     }
 
-    
+
     public bool PassesFilters(MissionRowData m) {
         foreach (var c in _def.Filters.And) {
             if (!EvalMission(c, m)) {
@@ -40,7 +40,7 @@ internal sealed class MissionRowPredicate {
         return true;
     }
 
-    
+
     public bool PassesArtifactFilters(ArtifactDropRowData d) {
         foreach (var c in _def.Filters.And) {
             if (IsArtifactScope(c) && !EvalArtifact(c, d)) {
@@ -75,8 +75,8 @@ internal sealed class MissionRowPredicate {
 
     private static bool IsMissionScope(FilterCondition c) => !IsArtifactScope(c);
 
-    
-    
+
+
     private bool EvalMission(FilterCondition c, MissionRowData m) {
         return c.TopLevel switch {
             "dubcap" => m.IsDubCap == (c.Op == "true"),
@@ -94,7 +94,7 @@ internal sealed class MissionRowPredicate {
     }
 
     private static bool EvalArtifact(FilterCondition c, ArtifactDropRowData d) {
-        
+
         if (c.Op is not ("=" or "!=" or ">" or "<" or ">=" or "<=")) {
             return true;
         }
@@ -116,7 +116,7 @@ internal sealed class MissionRowPredicate {
             return true;
         }
         var parts = c.Val.Split('_');
-        
+
         bool Matches(ArtifactDropRowData d) {
             if (parts.Length > 0 && parts[0] != "%" && parts[0] != "" && d.ArtifactId.ToString(CultureInfo.InvariantCulture) != parts[0]) {
                 return false;
@@ -138,7 +138,7 @@ internal sealed class MissionRowPredicate {
             return true;
         }
         if (!IsInt(c.Val)) {
-            
+
             return true;
         }
         return CompareLong(c.Op, actual, long.Parse(c.Val, CultureInfo.InvariantCulture));

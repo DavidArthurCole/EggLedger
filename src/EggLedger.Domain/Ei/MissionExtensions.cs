@@ -66,7 +66,7 @@ public static class MissionExtensions {
         }
 
         var completed = new List<MissionInfo>();
-        
+
         var seen = new HashSet<string>(StringComparer.Ordinal);
         foreach (var mission in allMissions) {
             var status = mission.status;

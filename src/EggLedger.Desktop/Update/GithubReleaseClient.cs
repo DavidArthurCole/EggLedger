@@ -168,8 +168,8 @@ public sealed class GithubReleaseClient(HttpClient httpClient) {
         }
     }
 
-    
-    
+
+
     private static T? TryParseJson<T>(string json, Func<JsonElement, T?> extract) {
         try {
             using var doc = JsonDocument.Parse(json);
@@ -182,7 +182,7 @@ public sealed class GithubReleaseClient(HttpClient httpClient) {
     private async Task<string?> GetStringAsync(string url, CancellationToken cancel) {
         try {
             using var req = new HttpRequestMessage(HttpMethod.Get, url);
-            
+
             if (_httpClient.DefaultRequestHeaders.UserAgent.Count == 0) {
                 req.Headers.UserAgent.ParseAdd("EggLedger");
             }

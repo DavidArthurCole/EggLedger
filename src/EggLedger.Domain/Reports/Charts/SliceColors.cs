@@ -104,7 +104,7 @@ public static class SliceColors {
     private static int ParseByte(string hex, int start) =>
         int.Parse(hex.AsSpan(start, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture);
 
-    
+
     private static double Mod(double a, double n) {
         double r = a % n;
         return r < 0 ? r + n : r;

@@ -14,7 +14,7 @@ public enum MissionSortMethod {
 }
 
 public sealed class MissionViewOptions {
-    
+
     public const string KeyViewByDate = "mission_view_by_date";
     public const string KeyViewTimes = "mission_view_times";
     public const string KeyMultiViewMode = "mission_multi_view_mode";
@@ -22,7 +22,7 @@ public sealed class MissionViewOptions {
 
     public const string KeyCardPresets = "mission_card_presets";
 
-    
+
     public bool ViewByDate { get; set; }
     public bool ViewMissionTimes { get; set; } = true;
     public MultiViewMode MultiViewMode { get; set; } = MultiViewMode.Off;

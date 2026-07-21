@@ -13,8 +13,8 @@ public sealed class SqliteReportRunner : IReportRunner {
     }
 
     public Task<ReportResult> RunReportAsync(ReportDefinition def, string accountId) {
-        
-        
+
+
         if (def.AccountId != accountId) {
             def.AccountId = accountId;
         }

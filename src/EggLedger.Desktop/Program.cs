@@ -19,65 +19,65 @@ using Photino.Blazor;
 internal static class Program {
     [STAThread]
     private static void Main(string[] args) {
-        
-        
+
+
         var debugMode = args.Contains("--debug")
             || string.Equals(Environment.GetEnvironmentVariable("EGGLEDGER_DEBUG"), "1", StringComparison.Ordinal);
 
-        
-        
+
+
         var updateBootstrap = new UpdateBootstrap(new ProcessProbe(), new BinaryReplacement(new ProcessProbe()));
         updateBootstrap.RunStartup(args, Environment.ProcessPath);
 
-        
-        
+
+
         EnsureWwwrootExtracted();
 
         var appBuilder = PhotinoBlazorAppBuilder.CreateDefault(args);
 
-        
-        
+
+
         appBuilder.Services.AddEggLedgerWeb(CloudSyncBaseAddress());
 
-        
-        
+
+
         var dataRootDir = StoragePaths.ResolveDataRootDir(StoragePaths.DefaultRootDir());
         appBuilder.Services.AddDesktopSqliteStorage(dataRootDir);
 
-        
-        
+
+
         var desktopWindow = new PhotinoDesktopWindow();
         appBuilder.Services.AddDesktopPlatformCapabilities(new ProcessRunner(), desktopWindow);
 
-        
-        
+
+
         var runningVersion = AppVersionInfo.Current;
         appBuilder.Services.AddDesktopUpdater(() => runningVersion);
 
-        
-        
+
+
         appBuilder.Services.AddDesktopExportSink();
 
-        
+
         appBuilder.Services.Configure<PhotinoBlazorAppConfiguration>(opts => opts.HostPage = "desktop.html");
 
         appBuilder.RootComponents.Add<App>("#app");
 
         var app = appBuilder.Build();
 
-        
-        
+
+
         desktopWindow.Attach(app.MainWindow);
 
-        
-        
+
+
         var settings = LoadDesktopSettings(app.Services);
         var width = settings.WindowWidth > 0 ? settings.WindowWidth : SettingsModel.DefaultWindowWidth;
         var height = settings.WindowHeight > 0 ? settings.WindowHeight : SettingsModel.DefaultWindowHeight;
 
-        
-        
-        
+
+
+
         var iconFile = Path.Combine(AppContext.BaseDirectory, "icon-64.png");
         app.MainWindow.SetTitle("EggLedger");
         if (File.Exists(iconFile)) app.MainWindow.SetIconFile(iconFile);
@@ -88,8 +88,8 @@ internal static class Program {
             .Center();
         if (settings.StartInFullscreen) app.MainWindow.SetFullScreen(true);
 
-        
-        
+
+
         var platform = app.Services.GetRequiredService<IPlatformCapabilities>();
         app.MainWindow.RegisterWebMessageReceivedHandler((_, msg) => {
             if (msg.StartsWith("openurl:", StringComparison.Ordinal)) {
@@ -102,23 +102,23 @@ internal static class Program {
         if (debugMode) {
             app.MainWindow.SetDevToolsEnabled(true);
             app.MainWindow.SetLogVerbosity(2);
-            
-            
+
+
             AppDomain.CurrentDomain.FirstChanceException += (_, e) =>
                 Log("FIRSTCHANCE: " + e.Exception.GetType().Name + ": " + e.Exception.Message);
             Log("debug mode on: devtools enabled (F12), WebView + managed errors logged");
         }
 
-        
-        
+
+
         AppDomain.CurrentDomain.UnhandledException += (_, error) =>
             Log("FATAL: " + (error.ExceptionObject.ToString() ?? "Unknown error"));
 
         app.Run();
     }
 
-    
-    
+
+
     private static void Log(string text) {
         Console.Error.WriteLine(text);
         try {
@@ -126,16 +126,16 @@ internal static class Program {
             File.AppendAllText(Path.Combine(logDir, "EggLedger.fatal.log"), text + Environment.NewLine);
         } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) {
         } catch (Exception ex) {
-            
+
             Console.Error.WriteLine("failed to write fatal log: " + ex);
         }
     }
 
-    
+
     private static Uri CloudSyncBaseAddress() => new("https://eggledger.davidarthurcole.me/");
 
-    
-    
+
+
     private static SettingsModel LoadDesktopSettings(IServiceProvider services) {
         var model = new SettingsModel();
         try {
@@ -147,8 +147,8 @@ internal static class Program {
         return model;
     }
 
-    
-    
+
+
     private static void EnsureWwwrootExtracted() {
         var assembly = System.Reflection.Assembly.GetExecutingAssembly();
         using var zipStream = assembly.GetManifestResourceStream("EggLedger.Desktop.wwwroot.zip");

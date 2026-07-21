@@ -32,8 +32,8 @@ public static class Api {
         var spam = new Admin.SpamLog(source);
         var admin = new Admin.AdminEndpoints(source, metrics, spam, currentUser, identity);
 
-        
-        
+
+
         app.Use(async (ctx, next) => {
             if (ctx.Request.Path.StartsWithSegments("/api/v1")) {
                 if (ctx.GetEndpoint() is not null) {
@@ -42,7 +42,7 @@ public static class Api {
                     var ip = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
                     var ua = ctx.Request.Headers.UserAgent.ToString();
                     var now = TimeProvider.System.GetUtcNow().ToUnixTimeSeconds();
-                    
+
                     var apiLogger = loggerFactory.CreateLogger("EggLedger.Web.Server.Sync.Api");
                     _ = Task.Run(async () => {
                         try {
@@ -56,7 +56,7 @@ public static class Api {
             await next();
         });
 
-        
+
         app.MapGet("/api/v1/auth/discord", (HttpContext c) => auth.Discord(c));
         app.MapGet("/api/v1/auth/login", (HttpContext c) => auth.Login(c));
         if (!string.IsNullOrEmpty(cfg.AuthentikAuthority)) {
@@ -70,16 +70,16 @@ public static class Api {
         app.MapDelete("/api/v1/auth/session", (HttpContext c) => auth.DeleteSession(c));
         app.MapPost("/api/v1/auth/logout", (HttpContext c) => auth.Logout(c));
 
-        
-        
-        
+
+
+
         app.MapPost("/api/v1/auth/session-from-login", (HttpContext c) => auth.SessionFromLogin(c))
             .RequireAuthorization();
 
         VerifyEndpoint.Map(app, build);
         app.MapPost("/api/v1/menno/submit", (HttpContext c) => menno.Submit(c));
 
-        
+
         MapAuthed(app, ["PUT"], "/api/v1/blobs/{name}", store,
             c => blobs.Put(c, (string)c.Request.RouteValues["name"]!));
         MapAuthed(app, ["GET"], "/api/v1/blobs/{name}", store,
@@ -91,15 +91,15 @@ public static class Api {
         MapAuthed(app, ["DELETE"], "/api/v1/user", store,
             c => blobs.DeleteUser(c));
 
-        
+
         MapAuthed(app, ["GET"], "/api/v1/admin/me", store, admin.Me);
         MapAuthed(app, ["GET"], "/api/v1/admin/users", store, admin.Users);
         MapAuthed(app, ["GET"], "/api/v1/admin/metrics", store, admin.Metrics);
         MapAuthed(app, ["DELETE"], "/api/v1/admin/users/{userId}", store,
             c => admin.DeleteUser(c, (string)c.Request.RouteValues["userId"]!));
 
-        
-        
+
+
         var ships = app.Services.GetRequiredService<Ships.ShipAssetService>();
         MapAuthed(app, ["GET"], "/api/ships/manifest", store, async ctx => {
             if (!await currentUser.IsAtLeastAsync(ctx, EggLedger.Web.Server.Sync.Auth.UserRole.Admin, ctx.RequestAborted)) {

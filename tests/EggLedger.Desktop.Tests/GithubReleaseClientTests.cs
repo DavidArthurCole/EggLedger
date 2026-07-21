@@ -39,7 +39,7 @@ public sealed class GithubReleaseClientTests {
         var rel = await client.GetLatestTagIncludingPreReleasesAsync();
 
         Assert.NotNull(rel);
-        
+
         Assert.Equal("2.2.0", rel.Value.Tag);
         Assert.Contains("releases?per_page=10", stub.RequestedUrls[0]);
     }
@@ -97,7 +97,7 @@ public sealed class GithubReleaseClientTests {
 
     [Fact]
     public async Task Download_ThrowsOnTruncatedContent() {
-        
+
         var stub = new StubHttpMessageHandler(_ => {
             var content = new ByteArrayContent([1, 2, 3]);
             content.Headers.ContentLength = 999;

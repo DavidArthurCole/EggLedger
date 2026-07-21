@@ -11,7 +11,7 @@ public sealed class MissionFilterMatcher {
     private readonly string _accountId;
     private readonly ShipDropsFetcher _fetchDrops;
 
-    
+
     private readonly Dictionary<int, PossibleMission> _shipConfigs;
     private readonly Dictionary<int, Dictionary<int, DurationConfig>> _durByShip;
 
@@ -38,7 +38,7 @@ public sealed class MissionFilterMatcher {
     public static DateTime LedgerDate(long timestampSeconds) =>
         DateTimeOffset.FromUnixTimeSeconds(timestampSeconds).LocalDateTime;
 
-    
+
     public async Task<bool> MatchesAsync(DatabaseMission mission, MissionFilter filter) {
         if (filter.IsEmpty) {
             return true;
@@ -55,7 +55,7 @@ public sealed class MissionFilterMatcher {
         if (group.Conditions.Count == 0) {
             return true;
         }
-        
+
         foreach (var c in group.Conditions) {
             if (c.Field != FilterField.Drops && !MatchesScalar(mission, c)) {
                 return false;
@@ -98,7 +98,7 @@ public sealed class MissionFilterMatcher {
     private static int? EnumCode<T>(T? e) where T : struct, Enum =>
         e is null ? null : Convert.ToInt32(e.Value, CultureInfo.InvariantCulture);
 
-    
+
     private static bool EnumMatch(int? missionValue, Condition c) {
         if (c.Value is not FilterValue.EnumValue e) {
             return false;
@@ -164,7 +164,7 @@ public sealed class MissionFilterMatcher {
             return false;
         }
 
-        
+
         if (m.Quality is { } q) {
             double maxQual = durConfig.MaxQuality + durConfig.LevelQualityBump * mission.Level;
             if (q > maxQual || durConfig.MinQuality > q) {
@@ -203,21 +203,21 @@ public sealed class MissionFilterMatcher {
         return _durByShip.TryGetValue(shipKey, out var durs) && durs.TryGetValue(duration, out var d) ? d : null;
     }
 
-    
+
     public async Task<bool> TestMissionAgainstFilterAsync(DatabaseMission mission, FilterCondition filter) {
-        
+
         if (string.IsNullOrEmpty(filter.TopLevel) || string.IsNullOrEmpty(filter.Op)) {
             return false;
         }
         var typed = FilterCodec.FromLegacyCondition(filter);
         if (typed is null) {
-            
+
             return true;
         }
         return await MatchesAsync(mission, typed).ConfigureAwait(false);
     }
 
-    
+
     public async Task<bool> MissionMatchesFilterAsync(
         DatabaseMission mission,
         IReadOnlyList<FilterCondition> filters,

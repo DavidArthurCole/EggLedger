@@ -44,7 +44,7 @@ public sealed class IndexedDbMissionStore : IMissionStore {
         var rows = await PlayerRowsAsync(playerId);
         foreach (var row in rows.OrderBy(r => r.StartTimestamp)) {
             CompleteMissionResponse cm;
-            
+
             try {
                 cm = await DecodeAsync(row).ConfigureAwait(false);
             } catch {
@@ -56,8 +56,8 @@ public sealed class IndexedDbMissionStore : IMissionStore {
     }
 
     public async Task<CompleteMissionResponse?> GetCompleteMissionAsync(string playerId, string missionId) {
-        
-        
+
+
         var key = DecodeKey(playerId, missionId);
         if (DecodeCacheGet(key) is { } hit) {
             return hit;
@@ -92,7 +92,7 @@ public sealed class IndexedDbMissionStore : IMissionStore {
     public async Task<IReadOnlyList<CompleteMissionResponse>?> GetPlayerCompleteMissionsAsync(string eid) {
         var rows = (await PlayerRowsAsync(eid)).OrderBy(r => r.StartTimestamp).ToList();
         try {
-            
+
             var result = new CompleteMissionResponse[rows.Count];
             const int batch = 16;
             for (int start = 0; start < rows.Count; start += batch) {
@@ -112,8 +112,8 @@ public sealed class IndexedDbMissionStore : IMissionStore {
         }
     }
 
-    
-    
+
+
     private const int DecodeCacheCap = 256;
     private readonly Lock _decodeGate = new();
     private readonly LinkedList<(string Key, CompleteMissionResponse Value)> _decodeLru = new();
@@ -159,9 +159,9 @@ public sealed class IndexedDbMissionStore : IMissionStore {
 
     private readonly HashSet<string> _backfilling = [];
 
-    
-    
-    
+
+
+
     public void QueueFilterColBackfill(string eid) {
         if (_backfilling.Add(eid))
             _ = BackfillFilterColsAsync(eid);
@@ -200,12 +200,12 @@ public sealed class IndexedDbMissionStore : IMissionStore {
 
     private readonly HashSet<string> _dropsBackfilling = [];
 
-    
-    
-    
-    
-    
-    
+
+
+
+
+
+
     public void QueueArtifactDropsBackfill(string playerId) {
         if (_dropsBackfilling.Add(playerId))
             _ = BackfillArtifactDropsAsync(playerId);
@@ -330,7 +330,7 @@ public sealed class IndexedDbMissionStore : IMissionStore {
         return [.. rows];
     }
 
-    
+
     private async Task<List<MissionMetaRow>> PlayerMetaRowsAsync(string playerId) {
         var rows = await _db.GetAllByIndexProjectedAsync<MissionMetaRow>(IndexedDbStores.Mission, IndexedDbStores.PlayerIdIndex, playerId);
         return [.. rows];

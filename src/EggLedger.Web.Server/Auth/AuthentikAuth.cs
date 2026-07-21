@@ -11,8 +11,8 @@ namespace EggLedger.Web.Server.Auth;
 
 
 public static class AuthentikAuth {
-    
-    
+
+
     public static bool AddIfConfigured(AuthenticationBuilder builder, AppConfig cfg, IdentityApiClient _, NpgsqlDataSource source) {
         if (string.IsNullOrEmpty(cfg.AuthentikAuthority)) {
             return false;
@@ -28,9 +28,9 @@ public static class AuthentikAuth {
             RoleClaim = AuthScheme.RoleClaim,
             DiscordIdClaim = AuthScheme.DiscordIdClaim,
             OnResolved = async (result, _, ctx) => {
-                
-                
-                
+
+
+
                 await using var cmd = source.CreateCommand(
                     "INSERT INTO users (user_id, created_at) VALUES ($1, $2) ON CONFLICT (user_id) DO NOTHING");
                 cmd.Parameters.AddWithValue(result.UserId);

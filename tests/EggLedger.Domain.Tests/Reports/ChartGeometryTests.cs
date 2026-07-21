@@ -33,7 +33,7 @@ public class ChartGeometryTests {
         var path = ChartGeometry.AreaPath(pts, 130);
         Assert.StartsWith("M36,70", path);
         Assert.EndsWith("Z", path);
-        
+
         Assert.Contains(",70", path);
     }
 
@@ -78,7 +78,7 @@ public class ChartGeometryTests {
 
     [Fact]
     public void SeriesValues_ReadsColumnFromRowMajorMatrix() {
-        
+
         var matrix = new double[] { 1, 2, 3, 4, 5, 6 };
         Assert.Equal(new[] { 2.0, 5.0 }, ChartGeometry.SeriesValues(matrix, 2, 3, 1));
     }
@@ -97,7 +97,7 @@ public class ChartGeometryTests {
 
     [Fact]
     public void SeriesColors_GroupedBarOverload_MatchesInlineGeometry() {
-        
+
         var cols = new[] { "A", "B", "Other" };
         var colors = ChartGeometry.SeriesColors(
             cols,

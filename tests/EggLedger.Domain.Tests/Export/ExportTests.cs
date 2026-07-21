@@ -43,8 +43,8 @@ public class ExportTests {
     ];
 
     private static List<string[]> ParseCsv(byte[] bytes) {
-        
-        
+
+
         var text = Encoding.UTF8.GetString(bytes);
         var records = new List<string[]>();
         foreach (var line in text.Split("\r\n")) {

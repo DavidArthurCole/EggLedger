@@ -169,7 +169,7 @@ public static class MissionExport {
         if (field.IndexOfAny(['"', ',', '\r', '\n']) >= 0) {
             return true;
         }
-        
+
         return false;
     }
 }

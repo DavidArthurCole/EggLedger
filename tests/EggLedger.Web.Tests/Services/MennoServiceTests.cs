@@ -21,7 +21,7 @@ public sealed class MennoServiceTests {
         return ms.ToArray();
     }
 
-    
+
     private sealed class GzipHandler : HttpMessageHandler {
         private readonly byte[] _gzipped;
         public int Hits;
@@ -68,8 +68,8 @@ public sealed class MennoServiceTests {
 
     [Fact]
     public void Decode_MissingRequiredNestedField_ThrowsLoudly() {
-        
-        
+
+
         const string drifted = """
         [
           {
@@ -102,7 +102,7 @@ public sealed class MennoServiceTests {
 
     [Fact]
     public void Decode_NotAnArray_ThrowsLoudly() {
-        
+
         Assert.Throws<MennoSchemaException>(
             () => MennoDecode.Decode(Encoding.UTF8.GetBytes("{\"configurationItems\":[]}")));
     }
@@ -145,14 +145,14 @@ public sealed class MennoServiceTests {
         Assert.Equal(new[] { "9", "10" }, result.RawRowLabels);
         Assert.Equal(new[] { "0", "1" }, result.RawColLabels);
 
-        
+
         var expected = new[] { 70.0, 62.0, 60.0, 78.0 };
         Assert.Equal(expected.Length, result.MatrixValues.Count);
         for (int i = 0; i < expected.Length; i++) {
             Assert.Equal(expected[i], result.MatrixValues[i], 9);
         }
 
-        
+
         Assert.NotNull(result.AirtimeMatrixValues);
         var expectedAir = new[] { 70.0 / 24, 62.0 / 48, 60.0 / 48, 78.0 / 72 };
         for (int i = 0; i < expectedAir.Length; i++) {
@@ -170,8 +170,8 @@ public sealed class MennoServiceTests {
             def, items, new[] { "9", "10" }, new[] { "0", "1" });
 
         Assert.NotNull(result);
-        
-        
+
+
         var expected = new[]
         {
             2800.0 / 3420 * 100, 620.0 / 3420 * 100,
@@ -180,7 +180,7 @@ public sealed class MennoServiceTests {
         for (int i = 0; i < expected.Length; i++) {
             Assert.Equal(expected[i], result!.MatrixValues[i], 9);
         }
-        
+
         Assert.Null(result!.AirtimeMatrixValues);
     }
 
@@ -193,7 +193,7 @@ public sealed class MennoServiceTests {
             ShipDurationDef(), items, new[] { "9", "10" }, new[] { "0", "1" });
 
         Assert.NotNull(result);
-        
+
         Assert.Equal(2, result!.RowLabels.Count);
         Assert.Equal(2, result.ColLabels.Count);
         Assert.DoesNotContain("9", result.RowLabels[0], StringComparison.Ordinal);
@@ -201,8 +201,8 @@ public sealed class MennoServiceTests {
 
     [Fact]
     public async Task ExecuteComparison_IgnoresNonMatchingItems() {
-        
-        
+
+
         var service = Make(FixtureBytes("menno-sample.json"), out _);
         var items = await service.RefreshAsync();
 
@@ -210,16 +210,16 @@ public sealed class MennoServiceTests {
             ShipDurationDef(), items, new[] { "9", "10" }, new[] { "0", "1" });
 
         Assert.NotNull(result);
-        
+
         Assert.Equal(70.0, result!.MatrixValues[0], 9);
         Assert.Equal(78.0, result.MatrixValues[3], 9);
     }
 
     [Theory]
-    [InlineData(false, "artifacts", "ship_type", "duration_type")] 
-    [InlineData(true, "ships", "ship_type", "duration_type")] 
-    [InlineData(true, "artifacts", "spec_type", "duration_type")] 
-    [InlineData(true, "artifacts", "ship_type", "")] 
+    [InlineData(false, "artifacts", "ship_type", "duration_type")]
+    [InlineData(true, "ships", "ship_type", "duration_type")]
+    [InlineData(true, "artifacts", "spec_type", "duration_type")]
+    [InlineData(true, "artifacts", "ship_type", "")]
     public async Task ExecuteComparison_IneligibleReport_ReturnsNull(
         bool enabled, string subject, string groupBy, string secondary) {
         var service = Make(FixtureBytes("menno-sample.json"), out _);

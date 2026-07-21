@@ -158,7 +158,7 @@ public sealed class MissionPacker : IMissionCompiler {
         }
 
         long launch = (long)info.StartTimeDerived;
-        
+
         long returnDt = launch + (long)Math.Floor(info.DurationSeconds);
 
         float nominalCap = 0;

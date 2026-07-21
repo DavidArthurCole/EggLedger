@@ -89,10 +89,10 @@ public sealed class FilterOptionsTests {
         };
         var opts = FilterOptions.GetArtifactNameFilterOptions(arts);
         Assert.Equal(2, opts.Count);
-        
+
         Assert.Equal("Alpha", opts[0].Text);
         Assert.Equal("5", opts[0].Value);
-        
+
         Assert.Equal("Zeta Low", opts[1].Text);
         Assert.Equal("10", opts[1].Value);
     }
@@ -114,7 +114,7 @@ public sealed class FilterOptionsTests {
             new PossibleArtifact { Name = 41, ProtoName = "TOO_RARE", DisplayName = "Too Rare", Level = 0, Rarity = 0, BaseQuality = 999 },
         };
         var opts = FilterOptions.GetDropFilterOptions(arts, maxQuality: 100, advanced: false);
-        
+
         Assert.Equal(4, opts.Count);
         var basan = opts[3];
         Assert.Equal("40_1_0_3", basan.Value);
@@ -129,7 +129,7 @@ public sealed class FilterOptionsTests {
             new PossibleArtifact { Name = 40, ProtoName = "BASAN", DisplayName = "Basan", Level = 1, Rarity = 1, BaseQuality = 3 },
         };
         var opts = FilterOptions.GetDropFilterOptions(arts, maxQuality: 100, advanced: true);
-        
+
         Assert.Equal(7, opts.Count);
         Assert.Equal("40_%_%_%", opts[3].Value);
         Assert.Equal("40_1_%_%", opts[4].Value);
@@ -147,7 +147,7 @@ public sealed class FilterOptionsTests {
         };
         var opts = FilterOptions.GetDropFilterOptions(arts, maxQuality: 100, advanced: true);
 
-        
+
         Assert.Equal(7, opts.Count);
 
         var familyAny = opts.Single(o => o.Value == "200_%_%_%");
@@ -171,7 +171,7 @@ public sealed class FilterOptionsTests {
         };
         var opts = FilterOptions.GetDropFilterOptions(arts, maxQuality: 100, advanced: true);
 
-        
+
         Assert.Equal(4, opts.Count);
         Assert.DoesNotContain(opts, o => o.Value == "300_%_%_%");
     }

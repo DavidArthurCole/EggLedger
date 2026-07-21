@@ -13,13 +13,13 @@ public sealed class DesktopPlatformCapabilities(IProcessRunner processRunner, ID
     public bool IsDesktop => true;
 
     public Task OpenFileAsync(string path) {
-        
+
         var (exe, args) = DesktopCommandBuilder.BuildOpenCommand(CurrentPlatform(), Path.GetFullPath(path));
         return _processRunner.RunAsync(exe, args);
     }
 
     public Task OpenUrlAsync(string url) {
-        
+
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)
             || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)) {
             return Task.CompletedTask;

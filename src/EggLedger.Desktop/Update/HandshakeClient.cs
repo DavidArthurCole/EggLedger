@@ -17,7 +17,7 @@ public sealed class HandshakeClient(HttpClient httpClient) {
                     return true;
                 }
             } catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException) {
-                
+
             }
 
             if (cancel.IsCancellationRequested) {

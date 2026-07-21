@@ -83,8 +83,8 @@ public sealed class UpdateService : IUpdateStatusProvider {
 
         var snapshot = await ReadSnapshotAsync().ConfigureAwait(false);
 
-        
-        
+
+
         if (!force && !string.IsNullOrEmpty(snapshot.KnownTag)
             && SemVersion.TryParse(snapshot.KnownTag, out var knownVersion) && knownVersion is not null
             && knownVersion.GreaterThan(running)) {
@@ -95,8 +95,8 @@ public sealed class UpdateService : IUpdateStatusProvider {
             return;
         }
 
-        
-        
+
+
         if (!force && snapshot.LastCheckedAt is { } last && _now() - last < UpdateCheckInterval) {
             AvailableVersion = null;
             ReleaseNotes = null;
@@ -118,8 +118,8 @@ public sealed class UpdateService : IUpdateStatusProvider {
             return;
         }
 
-        
-        
+
+
         if (running.GreaterThan(latestVersion)) {
             var pre = await _github.GetLatestTagIncludingPreReleasesAsync().ConfigureAwait(false);
             if (pre is not null && SemVersion.TryParse(pre.Value.Tag, out var preVersion) && preVersion is not null) {
@@ -129,7 +129,7 @@ public sealed class UpdateService : IUpdateStatusProvider {
             }
         }
 
-        
+
         await WriteSnapshotAsync(latestTag, latestNotes).ConfigureAwait(false);
 
         if (running.LessThan(latestVersion)) {
@@ -199,12 +199,12 @@ public sealed class UpdateService : IUpdateStatusProvider {
         var tempPath = NewBinaryTempPath(exePath);
         BinaryReplacement.TryDelete(tempPath);
 
-        
-        
+
+
         var expectedSha = await _github.GetExpectedSha256Async(tag).ConfigureAwait(false);
 
-        
-        
+
+
         var assetName = GithubReleaseClient.ExpectedAssetName();
         if (ArchiveExtraction.IsArchive(assetName)) {
             var archivePath = Path.Combine(Path.GetTempPath(), assetName);
@@ -242,8 +242,8 @@ public sealed class UpdateService : IUpdateStatusProvider {
         AvailableVersion = tag;
         SetPhase(UpdatePhase.Ready);
 
-        
-        
+
+
         await RunSelfReplaceHandoffAsync(_exitAction, _handshakeTimeout, _exitDelay).ConfigureAwait(false);
     }
 
@@ -267,7 +267,7 @@ public sealed class UpdateService : IUpdateStatusProvider {
         try {
             listener = HandshakeListener.Start(token);
         } catch (Exception ex) when (ex is System.Net.HttpListenerException or System.Net.Sockets.SocketException) {
-            
+
         }
 
         var args = BuildReplaceArgs(Environment.ProcessId, exePath, listener?.Address, token);
@@ -275,7 +275,7 @@ public sealed class UpdateService : IUpdateStatusProvider {
             await _processRunner.RunAsync(tempPath, args).ConfigureAwait(false);
         } catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or IOException) {
             listener?.Dispose();
-            
+
             Message = $"could not launch the updated instance: {ex.Message}";
             return false;
         }
@@ -285,7 +285,7 @@ public sealed class UpdateService : IUpdateStatusProvider {
             listener.Dispose();
         }
 
-        
+
         await Task.Delay(oldExitDelay).ConfigureAwait(false);
         await exitAction().ConfigureAwait(false);
         return true;
@@ -321,7 +321,7 @@ public sealed class UpdateService : IUpdateStatusProvider {
         SetPhase(UpdatePhase.Failed);
     }
 
-    
+
     private static bool VerifySha256(string path, string? expected) {
         if (string.IsNullOrEmpty(expected)) {
             return true;

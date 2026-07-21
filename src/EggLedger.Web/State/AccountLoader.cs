@@ -47,7 +47,7 @@ public sealed class AccountLoader : IDisposable {
         if (_persisting) {
             return;
         }
-        
+
         _ = _store.SetActiveAccountIdAsync(_active.ActiveAccountId ?? "");
     }
 

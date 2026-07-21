@@ -10,8 +10,8 @@ public sealed class MissionDataCache {
 
     public MissionDataCache() : this(TimeSpan.FromMinutes(5)) { }
 
-    
-    
+
+
     public MissionDataCache(TimeSpan ttl) {
         _ttl = ttl;
     }
@@ -38,8 +38,8 @@ public sealed class MissionDataCache {
         _drops = (accountId, drops, now);
     }
 
-    
-    
+
+
     public void InvalidateAll() {
         _missions = null;
         _drops = null;

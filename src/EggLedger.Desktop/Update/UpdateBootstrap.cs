@@ -49,7 +49,7 @@ public sealed class UpdateBootstrap(IProcessProbe probe, BinaryReplacement repla
         if (eq >= 0) {
             return (arg[..eq], arg[(eq + 1)..]);
         }
-        
+
         if (arg.StartsWith("--", StringComparison.Ordinal) && i + 1 < args.Length && !args[i + 1].StartsWith("--", StringComparison.Ordinal)) {
             i++;
             return (arg, args[i]);
@@ -61,7 +61,7 @@ public sealed class UpdateBootstrap(IProcessProbe probe, BinaryReplacement repla
         var self = selfPath ?? Environment.ProcessPath ?? "";
         var exeDir = string.IsNullOrEmpty(self) ? "" : (Path.GetDirectoryName(self) ?? "");
 
-        
+
         if (!string.IsNullOrEmpty(exeDir)) {
             _replacement.CleanStaleBinaries(exeDir, self);
         }
@@ -98,11 +98,11 @@ public sealed class UpdateBootstrap(IProcessProbe probe, BinaryReplacement repla
         }
         try {
             if (BinaryReplacement.SameFile(self, oldPath)) {
-                
+
                 return;
             }
 
-            
+
             var attempts = oldPid == 0 ? RenameRetryAttemptsUnknownPid : RenameRetryAttemptsKnownPid;
             var delay = oldPid == 0 ? RenameRetryDelayUnknownPid : RenameRetryDelayKnownPid;
             BinaryReplacement.RenameWithRetry(self, oldPath, attempts, delay);

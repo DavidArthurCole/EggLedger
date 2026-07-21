@@ -4,7 +4,7 @@ using EggLedger.Web.Missions;
 namespace EggLedger.Web.Tests.Missions;
 
 public sealed class MissionGrouperTests {
-    
+
     private static DateTime FakeLedgerDate(long encoded) {
         int y = (int)(encoded / 10000);
         int mo = (int)(encoded / 100 % 100);

@@ -28,9 +28,9 @@ public sealed class ColorPickerMathTests {
 
     [Fact]
     public void NormalizeToHex_ParsesHslString() {
-        
+
         Assert.Equal("#ff0000", ColorPickerMath.NormalizeToHex("hsl(0, 100%, 50%)"));
-        
+
         Assert.Equal("#00ff00", ColorPickerMath.NormalizeToHex("hsl(120, 100%, 50%)"));
     }
 
@@ -44,7 +44,7 @@ public sealed class ColorPickerMathTests {
 
     [Fact]
     public void HslToHex_RoundTripsThroughHexToHslInt() {
-        
+
         var hsl = ColorPickerMath.HexToHslInt("#ff0000");
         Assert.Equal(0, hsl.H);
         Assert.Equal(100, hsl.S);
@@ -67,7 +67,7 @@ public sealed class ColorPickerMathTests {
 
     [Fact]
     public void WheelHueSaturation_EdgeIsFullSaturationAndWrapsHue() {
-        
+
         var (h, s) = ColorPickerMath.WheelHueSaturation(0, -70, 70);
         Assert.Equal(100, s);
         Assert.Equal(0, h);
@@ -82,7 +82,7 @@ public sealed class ColorPickerMathTests {
 
     [Fact]
     public void DotPosition_OffsetForSaturation() {
-        
+
         var (left, top) = ColorPickerMath.DotPosition(90, 100);
         Assert.Equal(95, left, 3);
         Assert.Equal(50, top, 3);

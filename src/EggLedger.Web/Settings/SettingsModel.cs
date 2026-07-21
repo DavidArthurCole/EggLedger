@@ -3,7 +3,7 @@ using System.Globalization;
 namespace EggLedger.Web.Settings;
 
 public sealed class SettingsModel {
-    
+
 
     public const string KeyAutoRefreshMenno = "auto_refresh_menno_pref";
     public const string KeyRetryFailedMissions = "retry_failed_missions";
@@ -24,7 +24,7 @@ public sealed class SettingsModel {
     public const string KeyBackupDestPath = "backup_dest_path";
     public const string KeyMoveDestPath = "move_dest_path";
 
-    
+
 
     public const int MinWorkerCount = 1;
     public const int MaxWorkerCount = 10;

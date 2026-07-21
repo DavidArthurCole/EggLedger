@@ -12,7 +12,7 @@ internal sealed class InMemoryExportFileSystem : IExportFileSystem {
     public bool Exists(string path) => _files.ContainsKey(path);
 
     public IReadOnlyList<ExportFileEntry>? ListFiles(string dir) {
-        
+
         var prefix = dir.TrimEnd(System.IO.Path.DirectorySeparatorChar) + System.IO.Path.DirectorySeparatorChar;
         var entries = new List<ExportFileEntry>();
         bool dirSeen = false;

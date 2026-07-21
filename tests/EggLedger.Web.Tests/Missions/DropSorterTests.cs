@@ -33,7 +33,7 @@ public sealed class DropSorterTests {
 
     [Fact]
     public void SortGroupAlreadyCombed_OrdersLevelAscRarityAsc() {
-        
+
         var input = new[]
         {
             D(1, "A", 2, 0),
@@ -71,7 +71,7 @@ public sealed class DropSorterTests {
         };
         var sorted = DropSorter.InventoryVisualizerSort(input);
         Assert.Equal(3, sorted[0].Rarity);
-        
+
         Assert.Equal(9, sorted[1].IvOrder);
         Assert.Equal(1, sorted[2].IvOrder);
     }

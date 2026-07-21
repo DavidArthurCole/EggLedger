@@ -41,7 +41,7 @@ public class SliceColorsTests {
     public void GetLabelColor_UsesAutoSlotForUnmappedLabel() {
         var labels = new[] { "A", "B", "C", "D" };
         var map = new Dictionary<string, string>();
-        
+
         Assert.Equal("#f163ad", SliceColors.GetLabelColor("B", "#6366f1", labels, map));
     }
 

@@ -126,7 +126,7 @@ public static partial class ChartGeometry {
         }
         string baseHex = baseColor.StartsWith('#') && baseColor.Length == 7 ? baseColor : "#6366f1";
         var (h, s, _) = SliceColors.HexToHsl(baseHex);
-        
+
         double sPct = s * 100;
         double denom = hueDenominator <= 0 ? n : hueDenominator;
         var result = new List<string>(n);

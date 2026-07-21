@@ -19,7 +19,7 @@ public class ReportGridLayoutTests {
 
     [Fact]
     public void BuildOccupancy_PacksRowMajorWrappingAtEightCols() {
-        
+
         var defs = new[] { Def(4, 2), Def(4, 2), Def(4, 2) };
         var (positions, _) = ReportGridLayout.BuildOccupancyFromLayout(defs);
 
@@ -30,7 +30,7 @@ public class ReportGridLayoutTests {
 
     [Fact]
     public void BuildOccupancy_FillsGapLeftByTallNeighbor() {
-        
+
         var defs = new[] { Def(2, 2), Def(2, 1) };
         var (positions, occupied) = ReportGridLayout.BuildOccupancyFromLayout(defs);
 
@@ -53,14 +53,14 @@ public class ReportGridLayoutTests {
     [Fact]
     public void FindPlacement_WrapsToNextRowWhenOverflowing() {
         var occupied = new HashSet<(int, int)>();
-        
+
         var pos = ReportGridLayout.FindPlacement(occupied, 6, 1, 5, 1);
         Assert.Equal((1, 2), pos);
     }
 
     [Fact]
     public void ComputeEmptyZones_FindsTrailingGapOnLastRow() {
-        
+
         var defs = new[] { Def(4, 1) };
         var zones = ReportGridLayout.ComputeEmptyZones(defs);
 
@@ -78,7 +78,7 @@ public class ReportGridLayoutTests {
 
     [Fact]
     public void FindInsertIndexForZone_PlacesDraggedCardIntoTrailingGap() {
-        
+
         var defs = new[] { Def(3, 1), Def(3, 1), Def(2, 1) };
         var zones = ReportGridLayout.ComputeEmptyZones(defs.Where((_, i) => i != 2).ToList());
         Assert.NotEmpty(zones);

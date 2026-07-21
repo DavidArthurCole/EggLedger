@@ -6,7 +6,7 @@ namespace EggLedger.Domain.Tests.Reports;
 public class PieGeometryTests {
     [Fact]
     public void SlicePath_HalfCircle_MatchesVue() {
-        
+
         var path = PieGeometry.SlicePath(100, 100, 50, -Math.PI / 2, Math.PI / 2);
         Assert.Equal("M 100 100 L 100 50 A 50 50 0 0 1 100 150 Z", path);
     }

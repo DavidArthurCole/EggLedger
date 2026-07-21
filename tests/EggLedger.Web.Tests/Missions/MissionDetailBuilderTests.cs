@@ -109,7 +109,7 @@ public sealed class MissionDetailBuilderTests {
         };
         var data = MissionDetailBuilder.BuildBase(M("m1"), drops, Array.Empty<DatabaseMission>(), false);
         MissionDetailBuilder.ApplySortMethod(data, MissionSortMethod.Default);
-        
+
         Assert.Equal(0, data.Artifacts[0].Level);
         Assert.Equal(1, data.Artifacts[1].Level);
     }

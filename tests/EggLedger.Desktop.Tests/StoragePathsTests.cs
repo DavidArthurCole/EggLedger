@@ -5,8 +5,8 @@ namespace EggLedger.Desktop.Tests;
 public sealed class StoragePathsTests {
     [Fact]
     public void Resolvers_FallBackToRootDir_WhenNoBootstrap() {
-        
-        
+
+
         var root = Path.Combine(Path.GetTempPath(), "egl_paths_" + Guid.NewGuid().ToString("N"));
 
         var dataRoot = StoragePaths.ResolveDataRootDir(root);

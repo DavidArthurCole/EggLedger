@@ -5,10 +5,10 @@ using SyncKit.Identity.Client;
 namespace EggLedger.Web.Server.Sync.Db;
 
 public sealed class SessionStore(NpgsqlDataSource source, IdentityApiClient identity) : ISessionStore {
-    
-    
-    
-    
+
+
+
+
     public async Task<(bool Found, string DiscordId, long ExpiresAt)> LookupAsync(string token, CancellationToken ct) {
         await using var cmd = source.CreateCommand(
             "SELECT user_id, expires_at FROM sessions WHERE token = $1");

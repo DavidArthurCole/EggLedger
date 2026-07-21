@@ -249,7 +249,7 @@ public class MissionPackerTests {
                 StartTimeDerived = 1000000,
                 DurationSeconds = 300,
                 Identifier = "test-no-type",
-                
+
             },
         };
 

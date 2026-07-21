@@ -76,7 +76,7 @@ internal sealed class PivotAccum {
         return new Finalized(rowLabels, colLabels, rawRowLabels, rawColLabels, matrix);
     }
 
-    
+
     private static void StableSort(List<LabelEntry> entries, string groupBy) {
         var ordered = entries
             .Select((e, i) => (e, i))

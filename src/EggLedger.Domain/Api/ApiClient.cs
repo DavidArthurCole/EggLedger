@@ -6,7 +6,7 @@ using ProtoBuf;
 namespace EggLedger.Domain.Api;
 
 public sealed partial class ApiClient {
-       public const string DefaultAppVersion = "1.35.7";
+    public const string DefaultAppVersion = "1.35.7";
     public const string DefaultAppBuild = "111343";
     public const uint DefaultClientVersion = 72;
     public const Platform DefaultPlatform = Platform.Ios;

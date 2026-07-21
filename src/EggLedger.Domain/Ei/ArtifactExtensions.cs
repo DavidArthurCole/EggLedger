@@ -127,7 +127,7 @@ public static class ArtifactExtensions {
     public static string GameName(this ArtifactSpec a) {
         string baseName = "";
         switch (a.name) {
-            
+
             case ArtifactSpec.Name.LunarTotem:
                 baseName = "LUNAR TOTEM";
                 break;
@@ -191,7 +191,7 @@ public static class ArtifactExtensions {
             case ArtifactSpec.Name.MercurysLens:
                 baseName = "MERCURY'S LENS";
                 break;
-            
+
             case ArtifactSpec.Name.TachyonStone:
                 baseName = "TACHYON STONE";
                 break;
@@ -222,7 +222,7 @@ public static class ArtifactExtensions {
             case ArtifactSpec.Name.ClarityStone:
                 baseName = "CLARITY STONE";
                 break;
-            
+
             case ArtifactSpec.Name.TachyonStoneFragment:
             case ArtifactSpec.Name.DilithiumStoneFragment:
             case ArtifactSpec.Name.ShellStoneFragment:
@@ -234,7 +234,7 @@ public static class ArtifactExtensions {
             case ArtifactSpec.Name.LifeStoneFragment:
             case ArtifactSpec.Name.ClarityStoneFragment:
                 return EnumNames.ProtoName(a.name).Replace("_", " ");
-            
+
             case ArtifactSpec.Name.GoldMeteorite:
                 switch (a.level) {
                     case ArtifactSpec.Level.Inferior:
@@ -265,7 +265,7 @@ public static class ArtifactExtensions {
                         return "SOLAR TITANIUM GEOGON";
                 }
                 break;
-            
+
             case ArtifactSpec.Name.ExtraterrestrialAluminum:
             case ArtifactSpec.Name.AncientTungsten:
             case ArtifactSpec.Name.SpaceRocks:
@@ -340,7 +340,7 @@ public static class ArtifactExtensions {
 
     private static string CapitalizeArtifactName(string n) {
         n = char.ToUpperInvariant(n[0]) + n[1..];
-        
+
         var replacements = new (string from, string to)[]
         {
             ("demeters", "Demeters"),

@@ -7,8 +7,8 @@ public sealed class SettingsModelTests {
     public void Defaults_MatchGo() {
         var m = new SettingsModel();
         Assert.False(m.AutoRefreshMenno);
-        
-        
+
+
         Assert.True(m.AutoRetry);
         Assert.False(m.HideTimeoutErrors);
         Assert.Equal(1, m.WorkerCount);

@@ -15,7 +15,7 @@ public sealed class ProcessProbe : IProcessProbe {
             using var proc = Process.GetProcessById(pid);
             return !proc.HasExited;
         } catch (ArgumentException) {
-            
+
             return false;
         } catch (InvalidOperationException) {
             return false;

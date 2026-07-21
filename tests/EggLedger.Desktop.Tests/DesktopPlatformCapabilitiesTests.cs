@@ -94,7 +94,7 @@ public sealed class DesktopPlatformCapabilitiesTests {
 
         await caps.RestartAppAsync();
 
-        
+
         var call = Assert.Single(runner.Calls);
         Assert.Equal(Environment.ProcessPath, call.Exe);
         Assert.Empty(call.Args);

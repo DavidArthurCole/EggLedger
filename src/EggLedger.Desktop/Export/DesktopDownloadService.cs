@@ -30,7 +30,7 @@ public sealed class DesktopDownloadService(IPlatformCapabilities platform, IJSRu
     private async ValueTask SaveAsync(byte[] bytes, string filename) {
         var path = await _platform.ChooseSaveFilePathAsync(filename).ConfigureAwait(false);
         if (string.IsNullOrEmpty(path)) {
-            
+
             return;
         }
         await File.WriteAllBytesAsync(path, bytes).ConfigureAwait(false);

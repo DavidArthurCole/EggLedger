@@ -60,7 +60,7 @@ public sealed class IndexedDbAccountStore {
                 ? []
                 : rows.ConvertAll(AccountInfoRow.ToAccount);
         } catch (JsonException) {
-            
+
             return [];
         }
     }

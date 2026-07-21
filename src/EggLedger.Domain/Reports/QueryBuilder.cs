@@ -86,7 +86,7 @@ public static class QueryBuilder {
                     return ("", new List<object?>());
                 }
                 var parts = c.Val.Split('_');
-                
+
                 var cols = new[] { "artifact_id", "level", "rarity" };
                 var preds = new List<string>();
                 var qargs = new List<object?>();
@@ -125,8 +125,8 @@ public static class QueryBuilder {
                 case "<":
                 case ">=":
                 case "<=":
-                    
-                    
+
+
                     if (!IsInt(c.Val)) {
                         return ("", new List<object?>());
                     }
@@ -136,8 +136,8 @@ public static class QueryBuilder {
         }
 
         if (ArtifactFieldToColumn.TryGetValue(c.TopLevel, out var acol)) {
-            
-            
+
+
             switch (c.Op) {
                 case "=":
                 case "!=":
@@ -147,7 +147,7 @@ public static class QueryBuilder {
                 case "<=":
                     switch (c.TopLevel) {
                         case "artifact_spec_type":
-                            
+
                             break;
                         case "artifact_quality":
                             if (!IsFloat(c.Val)) {
@@ -252,7 +252,7 @@ public static class QueryBuilder {
         }
     }
 
-    
+
     private const string WeightedCapWeightSelect = "SUM(CASE WHEN m.nominal_capacity > 0 AND m.capacity > 0\n" +
         "                        THEN CAST(m.nominal_capacity AS REAL) / CAST(m.capacity AS REAL)\n" +
         "                        ELSE 1.0 END) AS cap_weight";

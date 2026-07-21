@@ -68,7 +68,7 @@ public sealed class AddAccountServiceTests {
     [Fact]
     public async Task InvalidBackupThrowsDoubleCheckMessage() {
         var db = new FakeIndexedDb();
-        
+
         var sut = Make(db, new FirstContactHandler(ToApiBody(new EggIncFirstContactResponse())), out var accounts);
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => sut.AddAccountAsync(Eid));

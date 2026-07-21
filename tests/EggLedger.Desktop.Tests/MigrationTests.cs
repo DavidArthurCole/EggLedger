@@ -6,8 +6,8 @@ namespace EggLedger.Desktop.Tests;
 
 public sealed class MigrationTests {
     private static SqliteConnection FreshConnection() {
-        
-        
+
+
         var name = "migtest_" + Guid.NewGuid().ToString("N");
         var conn = new SqliteConnection($"Data Source={name};Mode=Memory;Cache=Shared");
         conn.Open();
@@ -88,8 +88,8 @@ public sealed class MigrationTests {
         SqliteMigrationRunner.MigrateMissionDb(conn);
         Assert.Equal(9, UserVersion(conn));
 
-        
-        
+
+
         SqliteMigrationRunner.MigrateMissionDb(conn);
         SqliteMigrationRunner.MigrateMissionDb(conn);
         Assert.Equal(9, UserVersion(conn));
@@ -117,8 +117,8 @@ public sealed class MigrationTests {
             cmd.CommandText = "PRAGMA foreign_keys;";
             Assert.Equal(1L, (long)cmd.ExecuteScalar()!);
         } finally {
-            
-            
+
+
             SqliteConnection.ClearAllPools();
             if (Directory.Exists(dir)) {
                 Directory.Delete(dir, recursive: true);

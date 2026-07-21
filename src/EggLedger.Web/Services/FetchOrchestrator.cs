@@ -47,8 +47,8 @@ public sealed class FetchOrchestrator : IDisposable {
         _cts?.Dispose();
         var cts = _cts = new CancellationTokenSource();
 
-        
-        
+
+
         await _settings.SetSettingAsync(InProgressKeyPrefix + accountId, "1").ConfigureAwait(false);
 
         var progress = new Progress<FetchProgress>(p => {
@@ -56,7 +56,7 @@ public sealed class FetchOrchestrator : IDisposable {
                 return;
             }
 
-            
+
             var segmentOnly = p.Segment is not null;
             if (segmentOnly && Progress is not null) {
                 Progress = p with {
@@ -81,13 +81,13 @@ public sealed class FetchOrchestrator : IDisposable {
             result = AppState.Failed;
         }
 
-        
-        
-        
+
+
+
         await _settings.RemoveSettingAsync(InProgressKeyPrefix + accountId).ConfigureAwait(false);
 
-        
-        
+
+
         if (_cts != cts) {
             return;
         }

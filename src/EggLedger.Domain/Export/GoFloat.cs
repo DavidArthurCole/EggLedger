@@ -14,8 +14,8 @@ public static class GoFloat {
             return "-Inf";
         }
 
-        
-        
+
+
         string s = v.ToString("R", CultureInfo.InvariantCulture);
         if (s.IndexOf('E') < 0 && s.IndexOf('e') < 0) {
             return s;
@@ -34,10 +34,10 @@ public static class GoFloat {
             return "-Inf";
         }
 
-        
+
         string shortest = v.ToString("R", CultureInfo.InvariantCulture);
-        
-        
+
+
         return NormalizeG(v, shortest);
     }
 
@@ -98,13 +98,13 @@ public static class GoFloat {
             return shortest;
         }
 
-        
+
         string plain = shortest.IndexOfAny(['E', 'e']) >= 0 ? ExpandExponential(shortest) : shortest;
         string abs = plain.StartsWith('-') ? plain[1..] : plain;
         bool neg = plain.StartsWith('-');
 
-        
-        
+
+
         int dot = abs.IndexOf('.');
         string intPart = dot < 0 ? abs : abs[..dot];
         string fracPart = dot < 0 ? "" : abs[(dot + 1)..];
@@ -113,7 +113,7 @@ public static class GoFloat {
         if (intPart != "0" && intPart.Length > 0) {
             exp = intPart.Length - 1;
         } else {
-            
+
             int lead = 0;
             while (lead < fracPart.Length && fracPart[lead] == '0') {
                 lead++;
@@ -121,7 +121,7 @@ public static class GoFloat {
             exp = -(lead + 1);
         }
 
-        
+
         if (exp is < -4 or >= 21) {
             return ToGoExponential(neg, intPart, fracPart, exp);
         }

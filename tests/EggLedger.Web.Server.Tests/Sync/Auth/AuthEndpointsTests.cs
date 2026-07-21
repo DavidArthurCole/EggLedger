@@ -26,14 +26,14 @@ public sealed class AuthEndpointsTests {
         await using var setupSrc = NpgsqlDataSource.Create(TestDbUrl!);
         await CreateSchemaAsync(setupSrc);
 
-        
-        
+
+
         var scopedBuilder = new NpgsqlConnectionStringBuilder(TestDbUrl!) { SearchPath = Schema };
         await using var src = NpgsqlDataSource.Create(scopedBuilder.ConnectionString);
         try {
-            
-            
-            
+
+
+
             var stubUserId = Guid.NewGuid();
             var handler = new StubHttpMessageHandler(_ => StubHttpMessageHandler.Json(HttpStatusCode.OK,
                 $$"""{"userId":"{{stubUserId}}","role":"viewer","discordId":"12345","isNew":true}"""));
@@ -55,9 +55,9 @@ public sealed class AuthEndpointsTests {
         }
     }
 
-    
-    
-    
+
+
+
     [SkippableFact]
     public async Task EnsureEncryptionKeyAsync_returns_existing_key_for_discord_linked_user() {
         Skip.If(string.IsNullOrEmpty(TestDbUrl), "EGGLEDGER_TEST_DB_URL not set; live Postgres auth test skipped.");
@@ -92,10 +92,10 @@ public sealed class AuthEndpointsTests {
         }
     }
 
-    
-    
-    
-    
+
+
+
+
     [SkippableFact]
     public async Task StorePending_repoints_stale_local_user_id_to_identitys_resolved_id() {
         Skip.If(string.IsNullOrEmpty(TestDbUrl), "EGGLEDGER_TEST_DB_URL not set; live Postgres auth test skipped.");
@@ -148,9 +148,9 @@ public sealed class AuthEndpointsTests {
         }
     }
 
-    
-    
-    
+
+
+
     [SkippableFact]
     public async Task EnsureEncryptionKeyAsync_generates_and_persists_key_for_non_discord_user() {
         Skip.If(string.IsNullOrEmpty(TestDbUrl), "EGGLEDGER_TEST_DB_URL not set; live Postgres auth test skipped.");
@@ -211,8 +211,8 @@ public sealed class AuthEndpointsTests {
         }
     }
 
-    
-    
+
+
     [SkippableFact]
     public async Task SessionFromLogin_AuthenticatedNoDiscordId_CreatesSessionWithNullDiscordId() {
         Skip.If(string.IsNullOrEmpty(TestDbUrl), "EGGLEDGER_TEST_DB_URL not set; live Postgres auth test skipped.");
@@ -264,8 +264,8 @@ public sealed class AuthEndpointsTests {
         }
     }
 
-    
-    
+
+
     [SkippableFact]
     public async Task SessionFromLogin_AuthenticatedWithDiscordId_CreatesSessionWithDiscordId() {
         Skip.If(string.IsNullOrEmpty(TestDbUrl), "EGGLEDGER_TEST_DB_URL not set; live Postgres auth test skipped.");
@@ -370,10 +370,10 @@ public sealed class AuthEndpointsTests {
         }
     }
 
-    
-    
-    
-    
+
+
+
+
     private static async Task CreateSchemaAsync(NpgsqlDataSource src) {
         await Exec(src, $"DROP SCHEMA IF EXISTS {Schema} CASCADE; CREATE SCHEMA {Schema}; SET search_path TO {Schema};");
         await ApplyMigrationAsync(src, "1_initial_schema.up.sql");

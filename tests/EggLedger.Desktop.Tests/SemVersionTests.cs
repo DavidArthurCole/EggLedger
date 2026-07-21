@@ -4,7 +4,7 @@ namespace EggLedger.Desktop.Tests;
 
 public sealed class SemVersionTests {
     [Theory]
-    
+
     [InlineData("1.0.0", "2.0.0", -1)]
     [InlineData("2.0.0", "1.0.0", 1)]
     [InlineData("1.2.3", "1.2.3", 0)]
@@ -12,29 +12,29 @@ public sealed class SemVersionTests {
     [InlineData("1.3.0", "1.2.9", 1)]
     [InlineData("2.1.4", "2.1.3", 1)]
     [InlineData("2.1.4", "2.1.5", -1)]
-    
+
     [InlineData("v1.2.3", "1.2.3", 0)]
     [InlineData("v2.0.0", "v1.0.0", 1)]
-    
+
     [InlineData("1.2", "1.2.0", 0)]
     [InlineData("1", "1.0.0", 0)]
     [InlineData("1.2", "1.2.1", -1)]
-    
+
     [InlineData("1.2.3+build1", "1.2.3+build2", 0)]
     [InlineData("1.2.3+meta", "1.2.3", 0)]
     [InlineData("1.2.3+a", "1.2.4", -1)]
-    
+
     [InlineData("1.0.0-alpha", "1.0.0", -1)]
     [InlineData("1.0.0", "1.0.0-alpha", 1)]
     [InlineData("1.0.0-alpha", "1.0.0-alpha", 0)]
-    
+
     [InlineData("1.0.0-alpha", "1.0.0-beta", -1)]
     [InlineData("1.0.0-beta", "1.0.0-alpha", 1)]
     [InlineData("1.0.0-alpha", "1.0.0-alpha.1", -1)]
     [InlineData("1.0.0-alpha.1", "1.0.0-alpha.beta", -1)]
     [InlineData("1.0.0-1", "1.0.0-2", -1)]
     [InlineData("1.0.0-2", "1.0.0-10", -1)]
-    
+
     [InlineData("1.0.0-rc.1+x", "1.0.0-rc.1+y", 0)]
     [InlineData("1.0.0-rc.1", "1.0.0", -1)]
     public void CompareTo_MatchesGoVersionSemantics(string a, string b, int expectedSign) {
@@ -42,7 +42,7 @@ public sealed class SemVersionTests {
         var vb = SemVersion.Parse(b);
 
         Assert.Equal(expectedSign, Math.Sign(va.CompareTo(vb)));
-        
+
         Assert.Equal(-expectedSign, Math.Sign(vb.CompareTo(va)));
 
         Assert.Equal(expectedSign > 0, va.GreaterThan(vb));
@@ -86,8 +86,8 @@ public sealed class SemVersionTests {
         Assert.Equal("1.2.3+meta", SemVersion.Parse("1.2.3+meta").Canonical());
     }
 
-    
-    
+
+
     [Theory]
     [InlineData("2.1.4", "2.1.5", true)]
     [InlineData("2.1.4", "2.1.4", false)]

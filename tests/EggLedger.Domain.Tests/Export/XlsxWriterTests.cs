@@ -116,7 +116,7 @@ public class XlsxWriterTests {
         }
         var bytes = ms.ToArray();
         using var read = new MemoryStream(bytes);
-        
+
         using var zip = new ZipArchive(read, ZipArchiveMode.Read);
         Assert.NotEmpty(zip.Entries);
     }

@@ -12,8 +12,8 @@ public sealed class BlobEndpoints(NpgsqlDataSource source, ILogger<BlobEndpoints
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
     private static long Now() => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
-    
-    
+
+
     private static Guid UserId(HttpContext ctx) => Guid.Parse(ctx.Request.Headers["X-Discord-ID"].ToString());
 
     private static async Task WriteTextAsync(HttpContext ctx, int statusCode, string text) {
@@ -39,9 +39,9 @@ public sealed class BlobEndpoints(NpgsqlDataSource source, ILogger<BlobEndpoints
             await WriteTextAsync(ctx, StatusCodes.Status400BadRequest, "bad request\n");
             return;
         }
-        
-        
-        
+
+
+
         try {
             await using var cmd = source.CreateCommand(
                 "INSERT INTO blobs (user_id, name, ciphertext, updated_at) VALUES ($1, $2, $3, $4) " +

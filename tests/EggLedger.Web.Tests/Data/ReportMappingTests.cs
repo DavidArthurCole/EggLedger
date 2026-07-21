@@ -55,7 +55,7 @@ public sealed class ReportMappingTests {
         Assert.Equal(row.NormalizeBy, back.NormalizeBy);
         Assert.Equal(row.Color, back.Color);
         Assert.Equal(row.MinSampleSize, back.MinSampleSize);
-        
+
         var reparsed = ReportMapping.ParseFilters(back.Filters);
         Assert.Equal("level", reparsed.And[0].TopLevel);
     }
@@ -73,7 +73,7 @@ public sealed class ReportMappingTests {
 
     [Fact]
     public void GroupId_SurvivesEditShapedRoundTrip() {
-        
+
         var row = new ReportRow { Id = "r1", Name = "Report", GroupId = "g42" };
         var def = ReportMapping.ToDefinition(row);
         Assert.Equal("g42", def.GroupId);

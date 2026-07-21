@@ -6,7 +6,7 @@ using EggLedger.Domain.MissionQuery;
 namespace EggLedger.Desktop.Tests;
 
 public sealed class DesktopExportServiceTests {
-    
+
     private sealed class FakeExportFileSystem : IExportFileSystem {
         private readonly Dictionary<string, long> _files = new(StringComparer.Ordinal);
 
@@ -95,7 +95,7 @@ public sealed class DesktopExportServiceTests {
         var svc = new DesktopExportService(root, fs);
         var (deleted, freed) = await svc.PruneAsync(1);
 
-        
+
         Assert.Equal(5, deleted);
         Assert.Equal(20, freed);
         Assert.False(fs.Exists(Path.Combine(md, "EI123.20240310_000000.csv")));

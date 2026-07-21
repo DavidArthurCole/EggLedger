@@ -47,7 +47,7 @@ public static class DropSorter {
         return StableSort(collection, IvComparer);
     }
 
-    
+
     private static List<DropLike> StableSort(IEnumerable<DropLike> collection, Comparison<DropLike> cmp) {
         var indexed = new List<(DropLike Item, int Index)>();
         int i = 0;

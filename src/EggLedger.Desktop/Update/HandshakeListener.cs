@@ -21,7 +21,7 @@ public sealed class HandshakeListener : IDisposable {
     public Task Served => _served.Task;
 
     public static HandshakeListener Start(string token) {
-               var port = FindFreeLoopbackPort();
+        var port = FindFreeLoopbackPort();
         var listener = new HttpListener();
         var address = $"127.0.0.1:{port}";
         listener.Prefixes.Add($"http://{address}/");
@@ -71,7 +71,7 @@ public sealed class HandshakeListener : IDisposable {
             }
 
             response.StatusCode = (int)HttpStatusCode.OK;
-                       if (Interlocked.CompareExchange(ref _handoffDone, 1, 0) == 0) {
+            if (Interlocked.CompareExchange(ref _handoffDone, 1, 0) == 0) {
                 _served.TrySetResult();
             }
         } finally {
@@ -85,7 +85,7 @@ public sealed class HandshakeListener : IDisposable {
     public void Dispose() {
         _cts?.Cancel();
         _cts?.Dispose();
-                             try {
+        try {
             _listener.Close();
         } catch (HttpListenerException) {
         }

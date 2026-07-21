@@ -10,7 +10,7 @@ namespace EggLedger.Web.Server.Tests;
 public sealed class PostgresIsolationTests {
     private static string? TestDbUrl => Environment.GetEnvironmentVariable("EGGLEDGER_TEST_DB_URL");
 
-    
+
     private sealed class FakeAuth(Guid? userId) : AuthenticationStateProvider {
         public override Task<AuthenticationState> GetAuthenticationStateAsync() {
             var identity = userId is null
@@ -53,15 +53,15 @@ public sealed class PostgresIsolationTests {
             Assert.Single(bAll);
             Assert.Equal("EI_B", bAll[0].PlayerId);
 
-            
+
             var leaked = await b.GetAsync<MissionRow>("mission", new object[] { "EI_A", "m1" });
             Assert.Null(leaked);
 
-            
+
             Assert.Equal(2, await a.CountAsync("mission"));
             Assert.Equal(1, await b.CountAsync("mission"));
 
-            
+
             await b.ClearAsync("mission");
             Assert.Equal(2, (await a.GetAllAsync<MissionRow>("mission")).Length);
             Assert.Empty(await b.GetAllAsync<MissionRow>("mission"));
@@ -78,7 +78,7 @@ public sealed class PostgresIsolationTests {
         await CreateSchemaAsync(src);
         try {
             var anon = StoreFor(src, null);
-            
+
             Assert.Empty(await anon.GetAllAsync<MissionRow>("mission"));
             await Assert.ThrowsAsync<InvalidOperationException>(
                 async () => await anon.PutAsync("mission", Mission("EI_X", "x1")));
@@ -87,13 +87,13 @@ public sealed class PostgresIsolationTests {
         }
     }
 
-    
-    
+
+
     private const string Schema = "eltest_iso";
 
     private static async Task CreateSchemaAsync(NpgsqlDataSource src) {
         await Exec(src, $"DROP SCHEMA IF EXISTS {Schema} CASCADE; CREATE SCHEMA {Schema}; SET search_path TO {Schema};");
-        
+
         await ApplyMigrationAsync(src, "1_initial_schema.up.sql");
         await ApplyMigrationAsync(src, "4_eggledger_storage.up.sql");
         await ApplyMigrationAsync(src, "8_identities.up.sql");

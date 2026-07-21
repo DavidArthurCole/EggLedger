@@ -39,7 +39,7 @@ public sealed class MissionFilterMatcherTests {
     private static IReadOnlyList<IReadOnlyList<FilterCondition>?> NoOr() =>
         Array.Empty<IReadOnlyList<FilterCondition>?>();
 
-    
+
     [Theory]
     [InlineData(MissionInfo.Spaceship.ChickenOne, "=", "0", true)]
     [InlineData(MissionInfo.Spaceship.ChickenNine, "=", "0", false)]
@@ -82,7 +82,7 @@ public sealed class MissionFilterMatcherTests {
         Assert.Equal(expected, await Matcher().TestMissionAgainstFilterAsync(m, C("target", op, val)));
     }
 
-    
+
     [Theory]
     [InlineData(true, "true", true)]
     [InlineData(false, "true", false)]
@@ -90,7 +90,7 @@ public sealed class MissionFilterMatcherTests {
     [InlineData(false, "false", true)]
     public async Task DubCapField(bool dub, string val, bool expected) {
         var m = Mission(dubCap: dub);
-        
+
         Assert.Equal(expected, await Matcher().TestMissionAgainstFilterAsync(m, C("dubcap", "=", val)));
     }
 
@@ -103,8 +103,8 @@ public sealed class MissionFilterMatcherTests {
         Assert.Equal(expected, await Matcher().TestMissionAgainstFilterAsync(m, C("buggedcap", "=", val)));
     }
 
-    
-    
+
+
     private static long Unix(int y, int mo, int d) {
         var dt = new DateTime(y, mo, d, 12, 0, 0, DateTimeKind.Local);
         return ((DateTimeOffset)dt).ToUnixTimeSeconds();
@@ -112,7 +112,7 @@ public sealed class MissionFilterMatcherTests {
 
     [Fact]
     public async Task LaunchDate_EqualsMatchesSameDay() {
-        
+
         var m = Mission(launchDT: Unix(2024, 6, 1));
         Assert.True(await Matcher().TestMissionAgainstFilterAsync(m, C("launchDT", "d=", "2024-06-01")));
         var other = Mission(launchDT: Unix(2024, 6, 2));
@@ -156,7 +156,7 @@ public sealed class MissionFilterMatcherTests {
         Assert.False(await Matcher().TestMissionAgainstFilterAsync(m, C("ship", "", "1")));
     }
 
-    
+
     private static IReadOnlyList<PossibleMission> DropConfigs() => new[]
     {
         new PossibleMission
@@ -179,7 +179,7 @@ public sealed class MissionFilterMatcherTests {
             (_, _) => Task.FromResult<IReadOnlyList<MissionDrop>?>(drops),
             DropConfigs());
         var m = Mission();
-        
+
         Assert.True(await matcher.TestMissionAgainstFilterAsync(m, C("drops", "c", "40_2_1_3")));
         Assert.False(await matcher.TestMissionAgainstFilterAsync(m, C("drops", "c", "41_2_1_3")));
     }
@@ -218,7 +218,7 @@ public sealed class MissionFilterMatcherTests {
     [Fact]
     public async Task Drops_QualityOutOfRange_Fails() {
         var drops = new List<MissionDrop> { Drop(40, 2, 1) };
-        
+
         var matcher = Matcher((_, _) => Task.FromResult<IReadOnlyList<MissionDrop>?>(drops), DropConfigs());
         Assert.False(await matcher.TestMissionAgainstFilterAsync(Mission(), C("drops", "c", "40_2_1_9")));
     }

@@ -5,8 +5,8 @@ namespace EggLedger.Domain.Tests.Reports;
 
 
 public class ExecuteTests {
-    
-    
+
+
     [Fact]
     public void GapFill_SparseSeries() {
         var buckets = new[] { "2025-01", "2025-02", "2025-03" };
@@ -28,16 +28,16 @@ public class ExecuteTests {
             }
         }
 
-        Assert.Equal(0, matrix[(1 * nC) + 1]); 
-        Assert.Equal(5, matrix[(0 * nC) + 0]); 
-        Assert.Equal(8, matrix[(2 * nC) + 1]); 
+        Assert.Equal(0, matrix[(1 * nC) + 1]);
+        Assert.Equal(5, matrix[(0 * nC) + 0]);
+        Assert.Equal(8, matrix[(2 * nC) + 1]);
     }
 
     private sealed class FakeDb : IMissionDb {
         private readonly Dictionary<string, IReadOnlyList<object?[]>> _byPrefix = new(StringComparer.Ordinal);
         public List<(string sql, IReadOnlyList<object?> args)> Calls { get; } = [];
 
-        
+
         public FakeDb On(string contains, IReadOnlyList<object?[]> rows) {
             _byPrefix[contains] = rows;
             return this;
@@ -66,7 +66,7 @@ public class ExecuteTests {
 
     [Fact]
     public void ExecuteReport_Aggregate_FormatsShipLabels() {
-        
+
         var db = new FakeDb().On("GROUP BY m.ship", new object?[][]
         {
             ["9", 10L],
@@ -80,7 +80,7 @@ public class ExecuteTests {
         Assert.False(result.Is2D);
         Assert.False(result.IsFloat);
         Assert.Equal([10, 4], result.Values);
-        
+
         Assert.Equal("Henerprise", result.Labels[0]);
         Assert.Equal("BCR", result.Labels[1]);
         Assert.Equal("EI1", db.Calls[0].args[0]);
@@ -105,18 +105,18 @@ public class ExecuteTests {
         var result = ex.ExecuteReport(def);
 
         Assert.True(result.Is2D);
-        
+
         Assert.Equal(["BCR", "Henerprise"], result.RowLabels);
-        
+
         Assert.Equal(["Short", "Standard"], result.ColLabels);
-        
+
         Assert.Equal([0, 2, 5, 7], result.MatrixValues);
     }
 
     [Fact]
     public void ExecuteReport_FamilyWeighted_UsesWeightedPath() {
-        
-        
+
+
         var db = new FakeDb().On("cap_weight", new object?[][]
         {
             ["9", 1L, 0L, 2.0],
@@ -134,7 +134,7 @@ public class ExecuteTests {
         var result = ex.ExecuteReport(def);
 
         Assert.True(result.IsFloat);
-        
+
         Assert.Equal([2.0, 1.0], result.FloatValues);
     }
 

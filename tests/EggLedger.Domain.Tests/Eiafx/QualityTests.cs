@@ -11,8 +11,8 @@ public class QualityTests {
         Assert.NotEmpty(parameters);
     }
 
-    
-    
+
+
     [Fact]
     public void BaseQualityFor_FreshSpecMatchesByValue() {
         var parameters = EiafxConfig.Config.artifact_parameters;
@@ -33,8 +33,8 @@ public class QualityTests {
         Assert.Equal(0d, Quality.BaseQualityFor(bad));
     }
 
-    
-    
+
+
     [Fact]
     public void BaseQualityFor_MatchesGoldenFields() {
         var path = Path.Combine(AppContext.BaseDirectory, "Fixtures", "eiafx-config-fixture.fields");

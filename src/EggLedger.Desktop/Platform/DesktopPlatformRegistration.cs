@@ -15,11 +15,11 @@ public static class DesktopPlatformRegistration {
         this IServiceCollection services, IProcessRunner processRunner, IDesktopWindow window) {
         services.AddSingleton(processRunner);
         services.AddSingleton(window);
-        
+
         services.RemoveAll<IPlatformCapabilities>();
         services.AddSingleton<IPlatformCapabilities>(
             new DesktopPlatformCapabilities(processRunner, window));
-        
+
         services.RemoveAll<ApiClient>();
         services.AddScoped(sp => new ApiClient(sp.GetRequiredService<HttpClient>()));
 

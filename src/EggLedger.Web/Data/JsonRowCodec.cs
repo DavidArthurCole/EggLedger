@@ -78,8 +78,8 @@ public static class JsonRowCodec {
         _ => el.GetRawText(),
     };
 
-    
-    
+
+
     public static object DecodeString(JsonElement el, bool isBlob) {
         var s = el.GetString() ?? "";
         return isBlob ? Convert.FromBase64String(s) : s;

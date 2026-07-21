@@ -42,8 +42,8 @@ public class ApiPayloadJsonTests {
         Assert.Equal(MissionInfo.Spaceship.Henerprise, back.Info.Ship);
     }
 
-    
-    
+
+
     [Fact]
     public void GetOnlyCollections_SurviveRoundTrip() {
         var resp = new CompleteMissionResponse { Success = true };

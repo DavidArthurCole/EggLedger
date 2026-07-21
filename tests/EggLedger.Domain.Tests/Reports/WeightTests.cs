@@ -105,7 +105,7 @@ public class WeightTests {
         Assert.Equal("MEDIUM", Weight.ClassifyWeight(def));
     }
 
-    
+
     [Fact]
     public void DateWindow_NoFilter_TreatedAsLarge_TimeSeriesHeavy() {
         var def = new ReportDefinition { Mode = "time_series", GroupBy = "time_bucket", TimeBucket = "month" };
@@ -127,7 +127,7 @@ public class WeightTests {
 
     [Fact]
     public void DateWindow_PicksMostRestrictive_TimeSeriesMedium() {
-        
+
         var def = new ReportDefinition {
             Mode = "time_series",
             GroupBy = "time_bucket",

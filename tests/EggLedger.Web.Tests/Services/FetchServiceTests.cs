@@ -29,8 +29,8 @@ public sealed class FetchServiceTests {
         return new FetchService(api, store, settings, new LocalApiPayloadDecoder(api));
     }
 
-    
-    
+
+
     private static string ToApiBody<T>(T msg) {
         using var ms = new MemoryStream();
         Serializer.Serialize(ms, msg);
@@ -56,7 +56,7 @@ public sealed class FetchServiceTests {
         return ToApiBody(fc);
     }
 
-    
+
     private static string InvalidFirstContactBody() {
         var fc = new EggIncFirstContactResponse();
         return ToApiBody(fc);
@@ -86,7 +86,7 @@ public sealed class FetchServiceTests {
         return Convert.ToBase64String(authBytes.ToArray());
     }
 
-    
+
     private sealed class RoutingHandler : HttpMessageHandler {
         private readonly Func<string, string?>? _firstContact;
         private readonly Func<string, string?> _completeMission;
@@ -126,7 +126,7 @@ public sealed class FetchServiceTests {
         private static HttpResponseMessage Ok(string? body) =>
             new(System.Net.HttpStatusCode.OK) { Content = new StringContent(body ?? "") };
 
-        
+
         private static string ExtractMissionId(string form) {
             const string prefix = "data=";
             int i = form.IndexOf(prefix, StringComparison.Ordinal);
@@ -189,7 +189,7 @@ public sealed class FetchServiceTests {
     [Fact]
     public async Task FetchPlayerData_CachedMission_NotRefetched() {
         var db = new FakeIndexedDb();
-        
+
         db.Seed("mission", SeededMission("m1"));
         var handler = new RoutingHandler(FirstContactBody(new[] { "m1" }), CompleteMissionBody);
         var service = Make(db, handler);
@@ -248,8 +248,8 @@ public sealed class FetchServiceTests {
         Assert.Contains(AppState.ExportingData, states);
         Assert.Contains(AppState.Success, states);
 
-        
-        
+
+
         var segs = events
             .Where(e => e.MissionId == "m1" && e.Segment is not null)
             .Select(e => (e.Segment, e.SegmentStatus))
@@ -263,8 +263,8 @@ public sealed class FetchServiceTests {
     [Fact]
     public async Task FetchPlayerData_MissionFails_ReportsFailedMissionWithReason() {
         var db = new FakeIndexedDb();
-        
-        
+
+
         var handler = new RoutingHandler(
             FirstContactBody(new[] { "bad" }),
             id => id == "bad" ? null : CompleteMissionBody(id));
@@ -308,7 +308,7 @@ public sealed class FetchServiceTests {
         var db = new FakeIndexedDb();
         using var cts = new CancellationTokenSource();
         var ids = Enumerable.Range(0, 20).Select(i => $"m{i}").ToArray();
-        
+
         var handler = new RoutingHandler(FirstContactBody(ids), id => {
             cts.Cancel();
             return CompleteMissionBody(id);
@@ -340,7 +340,7 @@ public sealed class FetchServiceTests {
         };
     }
 
-    
+
     private sealed class SynchronousProgress<T> : IProgress<T> {
         private readonly Action<T> _handler;
         public SynchronousProgress(Action<T> handler) => _handler = handler;

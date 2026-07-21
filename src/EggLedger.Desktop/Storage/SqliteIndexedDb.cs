@@ -111,8 +111,8 @@ public sealed class SqliteIndexedDb : IIndexedDb {
     }
 
     private void Upsert(StoreMeta meta, object value, SqliteTransaction? tx = null) {
-        
-        
+
+
         using var doc = JsonSerializer.SerializeToDocument(value, value.GetType(), JsonOpts);
         var props = new List<(string Col, JsonElement Val)>();
         foreach (var prop in doc.RootElement.EnumerateObject()) {
@@ -132,15 +132,15 @@ public sealed class SqliteIndexedDb : IIndexedDb {
         var placeholders = props.Select((_, i) => "@p" + i.ToString(CultureInfo.InvariantCulture)).ToList();
 
         if (meta.UpsertByDelete) {
-            
-            
+
+
             DeleteByKey(meta, props, connection, tx);
         }
 
         string conflict;
         if (meta.AutoIncrementColumn is not null || meta.UpsertByDelete) {
-            
-            
+
+
             conflict = "";
         } else {
             var updates = cols
@@ -157,8 +157,8 @@ public sealed class SqliteIndexedDb : IIndexedDb {
         cmd.ExecuteNonQuery();
     }
 
-    
-    
+
+
     private static void DeleteByKey(
         StoreMeta meta, List<(string Col, JsonElement Val)> props, SqliteConnection connection, SqliteTransaction? tx) {
         using var del = connection.CreateCommand();
@@ -202,7 +202,7 @@ public sealed class SqliteIndexedDb : IIndexedDb {
             ? meta
             : throw new ArgumentException($"unknown store {store}", nameof(store));
 
-    
+
     private static (string where, object[] args) KeyPredicate(StoreMeta meta, object key) =>
         JsonRowCodec.KeyPredicate(meta.Table, meta.KeyColumns, key, c => c, JsonRowCodec.Sqlite);
 
@@ -220,7 +220,7 @@ public sealed class SqliteIndexedDb : IIndexedDb {
             keyColumns: ["player_id"],
             autoIncrementColumn: null,
             boolColumns: [],
-            
+
             upsertByDelete: true),
         [IndexedDbStores.ArtifactDrops] = new StoreMeta(
             "artifact_drops", useReportDb: false,
@@ -244,8 +244,8 @@ public sealed class SqliteIndexedDb : IIndexedDb {
             boolColumns: []),
     };
 
-    
-    
+
+
     private void BindBlobColumns() {
         foreach (var meta in _stores.Values) {
             var connection = Conn(meta);
@@ -253,7 +253,7 @@ public sealed class SqliteIndexedDb : IIndexedDb {
             cmd.CommandText = $"PRAGMA table_info({meta.Table});";
             using var reader = cmd.ExecuteReader();
             while (reader.Read()) {
-                
+
                 var name = reader.GetString(1);
                 var declaredType = reader.IsDBNull(2) ? "" : reader.GetString(2);
                 if (declaredType.Equals("BLOB", StringComparison.OrdinalIgnoreCase)) {

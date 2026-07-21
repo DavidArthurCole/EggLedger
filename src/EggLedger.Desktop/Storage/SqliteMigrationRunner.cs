@@ -39,8 +39,8 @@ public static class SqliteMigrationRunner {
             cmd.CommandText = sql;
             cmd.ExecuteNonQuery();
         }
-        
-        
+
+
         using (var setVersion = connection.CreateCommand()) {
             setVersion.Transaction = tx;
             setVersion.CommandText = string.Format(

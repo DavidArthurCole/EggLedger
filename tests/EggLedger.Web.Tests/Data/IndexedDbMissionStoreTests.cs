@@ -116,7 +116,7 @@ public sealed class IndexedDbMissionStoreTests {
         Assert.Equal(MissionInfo.Spaceship.Henerprise, got.Info.Ship);
         Assert.Single(got.Artifacts);
         Assert.Equal(ArtifactSpec.Name.TachyonDeflector, got.Artifacts[0].Spec!.name);
-        
+
         Assert.Equal(12345, got.Info.StartTimeDerived);
     }
 

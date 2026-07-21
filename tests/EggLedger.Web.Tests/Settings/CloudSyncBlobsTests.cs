@@ -59,7 +59,7 @@ public sealed class CloudSyncBlobsTests {
         };
         var json = JsonSerializer.Serialize(s, Json);
 
-        
+
         foreach (var key in new[]
         {
             "auto_refresh_menno_pref", "retry_failed_missions", "hide_timeout_errors",
@@ -99,7 +99,7 @@ public sealed class CloudSyncBlobsTests {
     [Fact]
     public void UnpackSettings_OmitsMachineLocalKeys() {
         var unpacked = CloudSyncBlobs.UnpackSettings(new CloudSyncableSettings());
-        
+
         Assert.False(unpacked.ContainsKey("default_resolution_x"));
         Assert.False(unpacked.ContainsKey("preferred_chromium_path"));
         Assert.False(unpacked.ContainsKey("auto_export_csv"));
@@ -113,17 +113,17 @@ public sealed class CloudSyncBlobsTests {
             [
                 new CloudReportGroup { Id = "g1" },
                 new CloudReportGroup { Id = "g2" },
-                
+
                 new CloudReportGroup { Id = "g2" },
-                
+
                 new CloudReportGroup { Id = "" },
             ],
             Reports =
             [
                 new ReportDefinition { Id = "r1" },
-                
+
                 new ReportDefinition { Id = "r2" },
-                
+
                 new ReportDefinition { Id = "" },
             ],
         };
@@ -159,11 +159,11 @@ public sealed class CloudSyncBlobsTests {
         var blob = CloudReportsBlob.Pack([row], [group]);
         var json = JsonSerializer.Serialize(blob, Json);
 
-        
+
         Assert.Contains("\"reports\"", json, StringComparison.Ordinal);
         Assert.Contains("\"groups\"", json, StringComparison.Ordinal);
 
-        
+
         Assert.Contains("\"accountId\"", json, StringComparison.Ordinal);
         Assert.Contains("\"displayMode\"", json, StringComparison.Ordinal);
         Assert.Contains("\"groupBy\"", json, StringComparison.Ordinal);
@@ -171,15 +171,15 @@ public sealed class CloudSyncBlobsTests {
         Assert.DoesNotContain("\"account_id\"", json, StringComparison.Ordinal);
         Assert.DoesNotContain("\"display_mode\"", json, StringComparison.Ordinal);
 
-        
+
         Assert.Contains("\"filters\":{", json, StringComparison.Ordinal);
         Assert.Contains("\"and\":[", json, StringComparison.Ordinal);
         Assert.Contains("\"or\":[", json, StringComparison.Ordinal);
         Assert.Contains("\"topLevel\":\"ship\"", json, StringComparison.Ordinal);
-        
+
         Assert.DoesNotContain("\"filters\":\"{", json, StringComparison.Ordinal);
 
-        
+
         Assert.Contains("\"Id\":\"grp1\"", json, StringComparison.Ordinal);
         Assert.Contains("\"AccountId\":\"EI42\"", json, StringComparison.Ordinal);
         Assert.Contains("\"SortOrder\":3", json, StringComparison.Ordinal);
@@ -188,8 +188,8 @@ public sealed class CloudSyncBlobsTests {
 
     [Fact]
     public void ReportsBlob_DeserializesGoWireShape_RoundTrips() {
-        
-        
+
+
         const string goJson = """
         {
           "reports": [
@@ -221,7 +221,7 @@ public sealed class CloudSyncBlobsTests {
         Assert.Equal("rep1", r.Id);
         Assert.Equal("EI42", r.AccountId);
         Assert.Equal("ship_type", r.GroupBy);
-        
+
         Assert.Contains("\"topLevel\":\"ship\"", r.Filters, StringComparison.Ordinal);
         Assert.Contains("\"op\":\"eq\"", r.Filters, StringComparison.Ordinal);
         Assert.Contains("\"val\":\"henerprise\"", r.Filters, StringComparison.Ordinal);

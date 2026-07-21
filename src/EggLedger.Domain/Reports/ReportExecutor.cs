@@ -235,8 +235,8 @@ public sealed class ReportExecutor {
             }
         }
 
-        
-        
+
+
         StableSortFloatDescending(floatValues);
         for (var i = 0; i < rawOrder.Count; i++) {
             labels[i] = Labels.FormatLabel(def.GroupBy, rawOrder[i]);
@@ -273,7 +273,7 @@ public sealed class ReportExecutor {
         var rowLabels = f.RowLabels;
         var colLabels = f.ColLabels;
 
-        
+
         var mcMap = BuildMissionCountMap(def, baseWhere, baseArgs);
 
         var missionCountMatrix = BuildMissionCountMatrix(mcMap, rowLabels, colLabels);
@@ -330,7 +330,7 @@ public sealed class ReportExecutor {
         return missionCountMatrix;
     }
 
-    
+
     private List<double>? ApplyWeightedPivotNormalization(ReportDefinition def, double[] matrixValues, List<string> rowLabels, List<string> colLabels, Dictionary<string, Dictionary<string, double>> mcMap, string baseWhere, List<object?> baseArgs) {
         var pctMode = def.NormalizeBy;
         List<double>? rawPerMissionValues = null;
@@ -503,8 +503,8 @@ public sealed class ReportExecutor {
     private static double Denom(Dictionary<string, Dictionary<string, double>> m, string k1, string k2) =>
         m.TryGetValue(k1, out var inner) && inner.TryGetValue(k2, out var v) ? v : 0;
 
-    
-    
+
+
     private static void StableSortFloatDescending(List<double> values) {
         var ordered = values
             .Select((v, i) => (v, i))

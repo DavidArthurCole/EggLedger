@@ -3,13 +3,13 @@ using System.Globalization;
 namespace EggLedger.Domain.Reports;
 
 internal sealed class InMemoryMissionDb : IMissionDb {
-    
+
     private const string CapWeightMarker = "cap_weight";
     private const string BucketMarker = "AS bucket";
     private const string GrpMarker = "AS grp";
     private const string AirtimeSumMarker = "SUM(CAST(m.return_timestamp - m.start_timestamp AS REAL) / 3600.0)";
 
-    
+
     private const string ArtifactJoinMarker = "JOIN mission m ON d.mission_id = m.mission_id";
     private const string CountMarker = "COUNT(*)";
     private const string GroupByMarker = "GROUP BY ";
@@ -19,7 +19,7 @@ internal sealed class InMemoryMissionDb : IMissionDb {
     private readonly List<ArtifactDropRowData> _drops;
     private readonly IWeightData _weights;
 
-    
+
     private readonly ILookup<(string Player, string Mission), ArtifactDropRowData> _dropsByMission;
 
     private readonly MissionRowPredicate _predicate;
@@ -43,8 +43,8 @@ internal sealed class InMemoryMissionDb : IMissionDb {
         var hasGrp = sql.Contains(GrpMarker, StringComparison.Ordinal);
         var airtimeDenom = sql.Contains(AirtimeSumMarker, StringComparison.Ordinal);
 
-        
-        
+
+
         var joinDrops = sql.Contains(ArtifactJoinMarker, StringComparison.Ordinal);
 
         if (weighted) {
@@ -67,15 +67,15 @@ internal sealed class InMemoryMissionDb : IMissionDb {
             return TimeSeriesCount(joinDrops);
         }
 
-        
-        
+
+
         if (airtimeDenom) {
             return _def.SecondaryGroupBy != "" && Is2DAirtimeQuery(sql)
                 ? Airtime2D(joinDrops)
                 : Airtime1D(joinDrops);
         }
 
-        
+
         if (!sql.Contains(CountMarker, StringComparison.Ordinal)
             || !sql.Contains(GroupByMarker, StringComparison.Ordinal)) {
             throw new InvalidOperationException($"unrecognized query shape: {sql}");
@@ -83,7 +83,7 @@ internal sealed class InMemoryMissionDb : IMissionDb {
         return Is2DCountQuery(sql) ? Count2D(joinDrops) : Count1D(joinDrops);
     }
 
-    
+
     private bool Is2DCountQuery(string sql) {
         if (_def.SecondaryGroupBy == "") {
             return false;
@@ -102,11 +102,11 @@ internal sealed class InMemoryMissionDb : IMissionDb {
         return col2 != "" && sql.Contains("CAST(" + col2 + " AS TEXT), SUM", StringComparison.Ordinal);
     }
 
-    
+
     private IEnumerable<MissionRowData> FilteredMissions() =>
         _missions.Where(m => m.PlayerId == _def.AccountId && _predicate.PassesFilters(m));
 
-    
+
     private IEnumerable<(MissionRowData M, ArtifactDropRowData D)> FilteredJoin() {
         foreach (var m in FilteredMissions()) {
             foreach (var d in _dropsByMission[(m.PlayerId, m.MissionId)]) {
@@ -128,8 +128,8 @@ internal sealed class InMemoryMissionDb : IMissionDb {
             counts.TryGetValue(key, out var cur);
             counts[key] = cur + 1;
         }
-        
-        
+
+
         var rows = order
             .Select((k, i) => (k, i, c: counts[k]))
             .OrderByDescending(x => x.c)
@@ -152,7 +152,7 @@ internal sealed class InMemoryMissionDb : IMissionDb {
             counts.TryGetValue(key, out var cur);
             counts[key] = cur + 1;
         }
-        
+
         var rows = order
             .OrderBy(k => k, KeyPairComparer(col1, col2))
             .Select(k => new object?[] { k.Item1, k.Item2, counts[k] })
@@ -160,8 +160,8 @@ internal sealed class InMemoryMissionDb : IMissionDb {
         return rows;
     }
 
-    
-    
+
+
     private List<object?[]> Airtime1D(bool joinDrops) {
         var col = QueryBuilder.GroupByColumn(_def.GroupBy);
         var sums = new Dictionary<string, double>(StringComparer.Ordinal);
@@ -193,8 +193,8 @@ internal sealed class InMemoryMissionDb : IMissionDb {
         return [.. order.Select(k => new object?[] { k.Item1, k.Item2, sums[k] })];
     }
 
-    
-    
+
+
     private IEnumerable<MissionRowData> AirtimeRows(bool joinDrops, string col1, string? col2) {
         if (joinDrops
             || col1.StartsWith("d.", StringComparison.Ordinal)
@@ -267,7 +267,7 @@ internal sealed class InMemoryMissionDb : IMissionDb {
             groups.TryGetValue(key, out var cur);
             groups[key] = cur + CapWeight(m);
         }
-        
+
         var rows = order
             .Select(k => new object?[] { k.Item1, k.Item2, k.Item3, k.Item4, groups[k] })
             .ToList();
@@ -285,7 +285,7 @@ internal sealed class InMemoryMissionDb : IMissionDb {
             groups.TryGetValue(key, out var cur);
             groups[key] = cur + CapWeight(m);
         }
-        
+
         var rows = order
             .OrderBy(k => k.Item1, StringComparer.Ordinal)
             .Select(k => new object?[] { k.Item1, k.Item2, k.Item3, groups[k] })
@@ -314,7 +314,7 @@ internal sealed class InMemoryMissionDb : IMissionDb {
         return rows;
     }
 
-    
+
     private IEnumerable<string> GroupKeys1D(string col, bool joinDrops) {
         if (joinDrops || col.StartsWith("d.", StringComparison.Ordinal)) {
             foreach (var (m, d) in FilteredJoin()) {
@@ -344,7 +344,7 @@ internal sealed class InMemoryMissionDb : IMissionDb {
         }
     }
 
-    
+
     private IEnumerable<MissionRowData> FilteredBucketRows(bool joinDrops) {
         if (joinDrops) {
             return FilteredJoin().Where(p => InCustomWindow(p.M)).Select(p => p.M);
@@ -367,7 +367,7 @@ internal sealed class InMemoryMissionDb : IMissionDb {
         }
     }
 
-    
+
     private IEnumerable<(MissionRowData M, ArtifactDropRowData D)> WeightedJoin() {
         var family = new HashSet<long>(_weights.FamilyAfxIds(_def.FamilyWeight).Select(i => (long)i));
         foreach (var (m, d) in FilteredJoin()) {
@@ -391,7 +391,7 @@ internal sealed class InMemoryMissionDb : IMissionDb {
             return c != 0 ? c : CompareCol(col2, x.B, y.B);
         });
 
-    
+
     private static int CompareCol(string col, string a, string b) {
         if (!col.EndsWith("spec_type", StringComparison.Ordinal)
             && long.TryParse(a, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var ia)
@@ -404,8 +404,8 @@ internal sealed class InMemoryMissionDb : IMissionDb {
     private string BucketLabel(long unixSeconds) =>
         TimeBucket.Format(_def.TimeBucket, _def.CustomBucketUnit, unixSeconds);
 
-    
-    
+
+
     private bool InCustomWindow(MissionRowData m) {
         if (_def.TimeBucket != "custom") {
             return true;

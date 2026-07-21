@@ -52,7 +52,7 @@ public sealed class FetchService {
             return AppState.Interrupted;
         }
 
-        
+
         var completed = fc.GetCompletedMissions();
         var existing = await _store.GetCompleteMissionIdsAsync(playerId).ConfigureAwait(false) ?? [];
         var seen = new HashSet<string>(existing, StringComparer.Ordinal);
@@ -97,7 +97,7 @@ public sealed class FetchService {
                 return AppState.Interrupted;
             }
 
-            
+
             if (Volatile.Read(ref failed) > 0 && retryFailed && failures.Count > 0) {
                 Volatile.Write(ref retried, failures.Count);
                 Interlocked.Add(ref total, failures.Count);
@@ -138,7 +138,7 @@ public sealed class FetchService {
             }
         }
 
-        
+
         Report(AppState.ExportingData);
 
         Report(AppState.Success);
@@ -156,7 +156,7 @@ public sealed class FetchService {
 
         double lastBackupTime = fc.Backup?.settings?.LastBackupTime ?? 0;
         if (lastBackupTime != 0) {
-            
+
             try {
                 await _store.InsertBackupAsync(playerId, lastBackupTime, payload, BackupMinGap).ConfigureAwait(false);
             } catch {
@@ -189,7 +189,7 @@ public sealed class FetchService {
                 try {
                     await FetchOneMissionAsync(playerId, id, start, progress, cancellationToken).ConfigureAwait(false);
                 } catch (OperationCanceledException) {
-                    
+
                     onError(new FailedMission(id, start, "cancelled"));
                 } catch (Exception ex) {
                     onError(new FailedMission(id, start, ex.Message));
@@ -203,7 +203,7 @@ public sealed class FetchService {
         try {
             await Task.WhenAll(tasks).ConfigureAwait(false);
         } catch (OperationCanceledException) {
-            
+
         }
 
         return cancellationToken.IsCancellationRequested;

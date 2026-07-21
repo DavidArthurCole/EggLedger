@@ -3,8 +3,8 @@ using EggLedger.Web.Data;
 namespace EggLedger.Web.Tests.Data;
 
 public sealed class FakeIndexedDb : IIndexedDb {
-    
-    
+
+
     private readonly Lock _gate = new();
     private readonly Dictionary<string, List<object>> _stores = [];
 
@@ -97,7 +97,7 @@ public sealed class FakeIndexedDb : IIndexedDb {
         int n = 0;
         lock (_gate) {
             foreach (var v in values) {
-                
+
                 PutLocked(store, v);
                 n++;
             }
@@ -111,7 +111,7 @@ public sealed class FakeIndexedDb : IIndexedDb {
             _stores[store] = list;
         }
 
-        
+
         var key = KeyOf(value);
         if (key is not null) {
             int i = list.FindIndex(r => KeyOf(r) == key);
@@ -133,8 +133,8 @@ public sealed class FakeIndexedDb : IIndexedDb {
         }
     }
 
-    
-    
+
+
     private static bool KeyMatches(object row, object key) =>
         row is MissionRow m && key is object[] { Length: 2 } k
             ? m.PlayerId.Equals(k[0]) && m.MissionId.Equals(k[1])

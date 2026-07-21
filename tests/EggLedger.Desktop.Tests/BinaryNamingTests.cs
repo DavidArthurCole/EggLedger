@@ -64,7 +64,7 @@ public sealed class BinaryNamingTests {
     [InlineData("/opt/egg/EggLedger", "/opt/egg/EggLedger_new")]
     public void NewBinaryTempPath_AppendsSuffix(string exePath, string expectedWindows) {
         var actual = UpdateService.NewBinaryTempPath(exePath);
-        
+
         var actualBase = Path.GetFileName(actual);
         if (OperatingSystem.IsWindows()) {
             Assert.Equal(Path.GetFileName(expectedWindows.EndsWith(".exe") ? expectedWindows : expectedWindows + ".exe"), actualBase);

@@ -11,49 +11,49 @@ public class EiafxDataTests {
         Assert.NotEmpty(EiafxData.CraftingWeights);
     }
 
-    
-    
+
+
     [Fact]
     public void CraftingWeights_BaseItem_IsOne() {
         Assert.Equal(1.0, EiafxData.CraftingWeights[(2, 0)]);
     }
 
-    
-    
+
+
     [Fact]
     public void CraftingWeights_SelfContained_Is20() {
         Assert.Equal(20.0, EiafxData.CraftingWeights[(1, 0)]);
     }
 
-    
-    
+
+
     [Fact]
     public void CraftingWeights_CrossFamily_Is23() {
         Assert.Equal(23.0, EiafxData.CraftingWeights[(23, 2)]);
     }
 
-    
-    
+
+
     [Fact]
     public void CraftingWeights_PuzzleCubeT2_Is3() {
         Assert.Equal(3.0, EiafxData.CraftingWeights[(23, 1)]);
     }
 
-    
+
     [Fact]
     public void CraftingWeights_SolarTitaniumChain() {
         Assert.Equal(10.0, EiafxData.CraftingWeights[(43, 1)]);
         Assert.Equal(120.0, EiafxData.CraftingWeights[(43, 2)]);
     }
 
-    
-    
+
+
     [Fact]
     public void CraftingWeights_LunarTotemT3_Is118() {
         Assert.Equal(118.0, EiafxData.CraftingWeights[(0, 3)]);
     }
 
-    
+
     [Fact]
     public void FamilyAfxIds_TachyonStone() {
         Assert.True(EiafxData.FamilyAfxIds.TryGetValue("tachyon-stone", out var ids));
@@ -66,13 +66,13 @@ public class EiafxDataTests {
         Assert.Equal("Puzzle cube", EiafxData.Families[0].Name);
     }
 
-    
+
     [Fact]
     public void EiafxWeightData_CraftingWeight_FallsBackToOne() {
         var wd = EiafxWeightData.Instance;
         Assert.Equal(20.0, wd.CraftingWeight(1, 0));
         Assert.Equal(1.0, wd.CraftingWeight(2, 0));
-        
+
         Assert.Equal(1.0, wd.CraftingWeight(9999, 9));
     }
 

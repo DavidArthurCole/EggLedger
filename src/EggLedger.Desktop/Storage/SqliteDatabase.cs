@@ -35,8 +35,8 @@ public sealed class SqliteDatabase : IDisposable {
         } else {
             var builder = new SqliteConnectionStringBuilder {
                 DataSource = path,
-                
-                
+
+
                 Cache = path == ":memory:" ? SqliteCacheMode.Shared : SqliteCacheMode.Default,
             };
             connectionString = builder.ConnectionString;
@@ -50,8 +50,8 @@ public sealed class SqliteDatabase : IDisposable {
 
     private static void ApplyPragmas(SqliteConnection connection, string path, bool isConnectionString) {
         using var cmd = connection.CreateCommand();
-        
-        
+
+
         var isMemory = isConnectionString
             ? path.Contains("Mode=Memory", StringComparison.OrdinalIgnoreCase)
             : path == ":memory:";

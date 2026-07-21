@@ -4,7 +4,7 @@ namespace EggLedger.Domain.Reports;
 
 public static class Weight {
     public static string ClassifyWeight(ReportDefinition def) {
-        
+
         if (def.SecondaryGroupBy != "" && def.Mode == "time_series") {
             var eitherIsArtifact = IsArtifactDimension(def.GroupBy) || IsArtifactDimension(def.SecondaryGroupBy);
             if (eitherIsArtifact) {
@@ -22,7 +22,7 @@ public static class Weight {
             return "MEDIUM";
         }
 
-        
+
         if (def.SecondaryGroupBy != "") {
             var eitherIsArtifact = IsArtifactDimension(def.GroupBy) || IsArtifactDimension(def.SecondaryGroupBy);
             if (eitherIsArtifact) {
@@ -34,7 +34,7 @@ public static class Weight {
             return "LOW";
         }
 
-        
+
         if (def.Mode == "time_series") {
             if (def.TimeBucket == "custom") {
                 var days = CustomBucketDays(def.CustomBucketN, def.CustomBucketUnit);

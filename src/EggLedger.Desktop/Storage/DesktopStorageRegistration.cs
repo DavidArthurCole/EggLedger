@@ -20,8 +20,8 @@ public static class DesktopStorageRegistration {
 
         AddDesktopSqliteStorage(services, missionDb, reportDb);
 
-        
-        
+
+
         services.AddScoped(sp => new DesktopStorageService(
             dataRootDir, sp.GetRequiredService<IPlatformCapabilities>()));
         services.RemoveAll<IStorageManagement>();
@@ -44,16 +44,16 @@ public static class DesktopStorageRegistration {
         services.AddSingleton(reportDb);
 
         var indexedDb = new SqliteIndexedDb(missionDb, reportDb);
-        
-        
+
+
         services.RemoveAll<IIndexedDb>();
         services.AddSingleton<IIndexedDb>(indexedDb);
 
         services.AddSingleton(new SqliteMissionDb(missionDb));
 
-        
-        
-        
+
+
+
         services.RemoveAll<IndexedDbReportRunner>();
         services.RemoveAll<IReportRunner>();
         services.AddScoped<IReportRunner>(sp => new SqliteReportRunner(

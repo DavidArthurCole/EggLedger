@@ -19,14 +19,14 @@ public class AuthentikAuthTests {
         TrustedProxyNetworks: [],
         BuildSha: "dev", BuildDate: "dev", DataProtectionCertPath: "", DataProtectionCertPassword: "");
 
-    
-    
-    
+
+
+
     private static IdentityApiClient UnusedIdentityClient() =>
         new(new HttpClient { BaseAddress = new Uri("http://localhost:8090") });
 
-    
-    
+
+
     private static NpgsqlDataSource UnusedDataSource() =>
         NpgsqlDataSource.Create("Host=localhost;Username=unused;Password=unused;Database=unused");
 

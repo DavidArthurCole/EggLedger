@@ -35,7 +35,7 @@ public sealed class LifetimeAggregatorTests {
 
     [Fact]
     public void Aggregate_RepresentativeInput_ProducesNonEmptyGroups() {
-        
+
         var input = Missions(
             ("m1", new[]
             {
@@ -60,7 +60,7 @@ public sealed class LifetimeAggregatorTests {
 
     [Fact]
     public void Aggregate_CombinesIdenticalDropsAndSumsCount() {
-        
+
         var input = Missions(
             ("m1", new[] { Drop(1, "Artifact", level: 5, rarity: 2) }),
             ("m2", new[] { Drop(1, "Artifact", level: 5, rarity: 2) }));
@@ -73,7 +73,7 @@ public sealed class LifetimeAggregatorTests {
 
     [Fact]
     public void Aggregate_MergeKeyIsIdLevelRarity_NotName() {
-        
+
         var input = Missions(
             ("m1", new[]
             {
@@ -123,7 +123,7 @@ public sealed class LifetimeAggregatorTests {
 
     [Fact]
     public void Aggregate_UnknownSpecType_IsDropped() {
-        
+
         var input = Missions(("m1", new[] { Drop(1, "Mystery") }));
 
         var result = LifetimeAggregator.Aggregate(input);
@@ -164,7 +164,7 @@ public sealed class LifetimeAggregatorTests {
         Assert.Equal(4.5, d.Quality);
         Assert.Equal(7, d.IvOrder);
         Assert.Equal("Artifact", d.SpecType);
-        
+
         Assert.Equal("QUANTUM", d.GameName);
         Assert.Equal("+75% egg value", d.EffectString);
     }

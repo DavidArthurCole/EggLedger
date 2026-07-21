@@ -28,7 +28,7 @@ public sealed class AccountFactoryTests {
 
         var acct = AccountFactory.FromBackup(Eid, backup);
 
-        
+
         Assert.Equal("1.50B", acct.SeString);
         Assert.Equal(42, acct.PeCount);
     }
@@ -60,8 +60,8 @@ public sealed class AccountFactoryTests {
 
     [Fact]
     public void EbStringMatchesRoleFromEbShaping() {
-        
-        
+
+
         var backup = new Backup {
             UserName = "Eve",
             game = new Backup.Game { SoulEggsD = 250, EggsOfProphecy = 1 },

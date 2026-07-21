@@ -108,7 +108,7 @@ public static class ReportGridLayout {
             }
         }
 
-        
+
         int insertAt = zone.InsertAfter;
         if (fromIdx <= insertAt) {
             insertAt--;

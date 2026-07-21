@@ -39,18 +39,18 @@ public sealed class MissionQueryHandlers {
     }
 
     public async Task<IReadOnlyList<IMissionRow>?> ViewMissionsOfEidAsync(string eid) {
-        
-        
+
+
         _store.QueueArtifactDropsBackfill(eid);
 
         int? pending = await _store.CountPendingFilterColsAsync(eid);
 
-        
+
         if (pending is 0) {
             return await _store.GetPlayerMissionMetaAsync(eid);
         }
 
-        
+
         var complete = await _store.GetPlayerCompleteMissionsAsync(eid);
         if (complete is null) {
             return null;
@@ -60,7 +60,7 @@ public sealed class MissionQueryHandlers {
             missions.Add(_compiler.CompileMissionInformation(cm));
         }
 
-        
+
         if (pending is > 0) {
             _store.QueueFilterColBackfill(eid);
         }
@@ -89,9 +89,9 @@ public sealed class MissionQueryHandlers {
     }
 
     public async Task<Dictionary<string, List<MissionDrop>>?> GetAllPlayerDropsAsync(string playerId) {
-        
-        
-        
+
+
+
         var stored = await _store.GetStoredPlayerDropsAsync(playerId);
         if (stored is null) {
             return null;

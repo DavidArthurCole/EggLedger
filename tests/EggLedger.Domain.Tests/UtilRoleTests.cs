@@ -5,7 +5,7 @@ namespace EggLedger.Domain.Tests;
 public class UtilRoleTests {
     [Fact]
     public void RoleFromEB_Farmer() {
-        
+
         var (color, name, addendum, _, _) = Role.RoleFromEB(100.0);
         Assert.Equal("Farmer", name);
         Assert.Equal("d43500", color);
@@ -14,7 +14,7 @@ public class UtilRoleTests {
 
     [Fact]
     public void RoleFromEB_FarmerII() {
-        
+
         var (_, name, addendum, val, _) = Role.RoleFromEB(1000.0);
         Assert.Equal("Farmer II", name);
         Assert.Equal("K", addendum);
@@ -23,7 +23,7 @@ public class UtilRoleTests {
 
     [Fact]
     public void RoleFromEB_Kilofarmer() {
-        
+
         var (_, name, _, _, _) = Role.RoleFromEB(100000.0);
         Assert.Equal("Kilofarmer", name);
     }

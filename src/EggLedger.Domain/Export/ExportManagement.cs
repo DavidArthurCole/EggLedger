@@ -104,7 +104,7 @@ public static class ExportManagement {
         var groups = new List<ExportGroup>(eidOrder.Count);
         foreach (var eid in eidOrder) {
             var pairs = pairsByEid[eid].Values.ToList();
-            
+
             pairs.Sort((a, b) => string.CompareOrdinal(b.Timestamp, a.Timestamp));
             groups.Add(new ExportGroup { Eid = eid, Pairs = pairs });
         }

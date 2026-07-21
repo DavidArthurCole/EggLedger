@@ -73,7 +73,7 @@ public class MissionQueryHandlersTests {
         var rows = new IMissionRow[] { new FakeMissionRow("m1") };
         store.PendingFilterCols["eid"] = 0;
         store.MissionMeta["eid"] = rows;
-        
+
         store.PlayerCompleteMissions["eid"] = new[] { Mission("ignored") };
 
         var got = await h.ViewMissionsOfEidAsync("eid");
@@ -99,7 +99,7 @@ public class MissionQueryHandlersTests {
     [Fact]
     public async Task ViewMissionsOfEid_SlowPath_NullCountSuppressesBackfill() {
         var (h, store, _) = NewSut();
-        
+
         store.PendingFilterCols["eid"] = null;
         store.PlayerCompleteMissions["eid"] = new[] { Mission("m1") };
 
@@ -196,7 +196,7 @@ public class MissionQueryHandlersTests {
         Assert.Equal(artifact.CombinedEffectString(), drops[0].EffectString);
         Assert.NotEqual("", drops[0].EffectString);
 
-        
+
         Assert.Equal("Stone", drops[1].SpecType);
         Assert.Equal("TACHYON_STONE", drops[1].Name);
         Assert.Equal(stone.CombinedEffectString(), drops[1].EffectString);
@@ -228,7 +228,7 @@ public class MissionQueryHandlersTests {
     [Fact]
     public async Task GetAllPlayerDrops_MapsMissionIdsToDrops() {
         var (h, store, _) = NewSut();
-        
+
         int frag = (int)ArtifactSpec.Name.TachyonStoneFragment;
         int gold = (int)ArtifactSpec.Name.GoldMeteorite;
         store.CompleteMissionIds = ["m1", "m2"];
@@ -265,8 +265,8 @@ public class MissionQueryHandlersTests {
     [Fact]
     public async Task GetAllPlayerDrops_ZeroDropMissionsAreSeededWithEmptyList() {
         var (h, store, _) = NewSut();
-        
-        
+
+
         int frag = (int)ArtifactSpec.Name.TachyonStoneFragment;
         store.CompleteMissionIds = ["m1", "m2"];
         store.StoredDrops["p"] = [new StoredDrop("m1", frag, 0, 0)];
@@ -282,8 +282,8 @@ public class MissionQueryHandlersTests {
     [Fact]
     public async Task GetAllPlayerDrops_SentinelRowExcludedFromDropsButMissionCounted() {
         var (h, store, _) = NewSut();
-        
-        
+
+
         int frag = (int)ArtifactSpec.Name.TachyonStoneFragment;
         store.CompleteMissionIds = ["m1", "m2"];
         store.StoredDrops["p"] =
@@ -303,7 +303,7 @@ public class MissionQueryHandlersTests {
     [Fact]
     public async Task GetAllPlayerDrops_NullOnStoreError() {
         var (h, _, _) = NewSut();
-        
+
         Assert.Null(await h.GetAllPlayerDropsAsync("p"));
     }
 

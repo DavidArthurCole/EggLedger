@@ -142,7 +142,7 @@ public sealed class ReportResult : IEquatable<ReportResult> {
 
     public override bool Equals(object? obj) => Equals(obj as ReportResult);
 
-    
+
     public override int GetHashCode() {
         var h = new HashCode();
         h.Add(IsFloat);

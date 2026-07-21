@@ -11,7 +11,7 @@ namespace EggLedger.Web.Services;
 public static class MennoDecode {
     private static readonly JsonSerializerOptions Options = new() {
         PropertyNameCaseInsensitive = false,
-        
+
         NumberHandling = JsonNumberHandling.Strict,
     };
 
@@ -59,8 +59,8 @@ public sealed class MennoService {
     public const string DataUrl =
         "https://eggincdatacollectionsa.blob.core.windows.net/mission-data/all-data.json.gz";
 
-    
-    
+
+
     private readonly HttpClient _http;
     private readonly Lock _gate = new();
     private List<ConfigurationItem>? _cache;
@@ -329,7 +329,7 @@ public sealed class MennoService {
 
     private delegate bool MennoMatcher(ConfigurationItem item, string rawVal);
 
-    
+
     private static MennoMatcher? MatcherFor(string groupBy) => groupBy switch {
         "ship_type" => (item, raw) => TryInt(raw, out var v) && item.ShipConfiguration!.ShipType!.Id == v,
         "duration_type" => (item, raw) => TryInt(raw, out var v) && item.ShipConfiguration!.ShipDurationType!.Id == v,

@@ -46,7 +46,7 @@ public static class UpdateStatusFile {
         try {
             File.Delete(path);
         } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) {
-            
+
         }
 
         try {

@@ -25,7 +25,7 @@ public class ApiClientTests {
 
     [Fact]
     public void DecodeApiResponse_FirstContact_RoundTrips() {
-        
+
         var backup = new Backup {
             EiUserId = "EI1234567890123456",
             artifacts = new Backup.Artifacts { LastFueledShip = MissionInfo.Spaceship.Henerprise },

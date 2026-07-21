@@ -38,11 +38,11 @@ public static class EiafxData {
         return Parse(cfg);
     }
 
-    
+
     private static ParsedData Parse(ArtifactDataConfig cfg) {
         var families = cfg.Families ?? [];
 
-        
+
         var tierMap = new Dictionary<(int, int), TierData>();
         foreach (var fam in families) {
             foreach (var t in fam.Tiers ?? []) {
@@ -50,7 +50,7 @@ public static class EiafxData {
             }
         }
 
-        
+
         var memo = new Dictionary<(int, int), double>();
         double ComputeWeight(int afxId, int afxLevel) {
             var key = (afxId, afxLevel);
@@ -61,7 +61,7 @@ public static class EiafxData {
                 memo[key] = 1.0;
                 return 1.0;
             }
-            
+
             memo[key] = 0;
             var w = 0.0;
             foreach (var ing in t.Recipe) {

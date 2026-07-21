@@ -82,7 +82,7 @@ public sealed class CloudSyncService {
     public async Task DisconnectAsync(string token, CancellationToken cancellationToken = default) {
         using var req = new HttpRequestMessage(HttpMethod.Delete, $"{ApiPrefix}/auth/session");
         req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        
+
         using var resp = await _http.SendAsync(req, cancellationToken).ConfigureAwait(false);
     }
 

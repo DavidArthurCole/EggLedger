@@ -26,7 +26,7 @@ public sealed class HandshakeTests {
         var ok = await client.PingOldReadyAsync(listener.Address, "wrong");
 
         Assert.False(ok);
-        
+
         var won = await Task.WhenAny(listener.Served, Task.Delay(200));
         Assert.NotEqual(listener.Served, won);
         Assert.False(listener.Served.IsCompleted);
@@ -40,7 +40,7 @@ public sealed class HandshakeTests {
         var client = new HandshakeClient(http);
 
         Assert.True(await client.PingOldReadyAsync(listener.Address, token));
-        
+
         Assert.True(await client.PingOldReadyAsync(listener.Address, token));
         Assert.True(listener.Served.IsCompletedSuccessfully);
     }

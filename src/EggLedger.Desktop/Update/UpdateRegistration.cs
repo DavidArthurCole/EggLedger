@@ -21,7 +21,7 @@ public static class UpdateRegistration {
             sp.GetRequiredService<GithubReleaseClient>(),
             runningVersion,
             exitAction: exit,
-            
+
             settings: new IndexedDbSettings(sp.GetRequiredService<IIndexedDb>())));
 
         return services;

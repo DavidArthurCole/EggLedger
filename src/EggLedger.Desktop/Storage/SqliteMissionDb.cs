@@ -32,8 +32,8 @@ public sealed class SqliteMissionDb : IMissionDb {
         return rows;
     }
 
-    
-    
+
+
     private static object? ReadValue(SqliteDataReader reader, int i) {
         if (reader.IsDBNull(i)) {
             return null;
@@ -48,7 +48,7 @@ public sealed class SqliteMissionDb : IMissionDb {
         if (type == typeof(byte[])) {
             return reader.GetValue(i);
         }
-        
+
         return reader.GetString(i);
     }
 }

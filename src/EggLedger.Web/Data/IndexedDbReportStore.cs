@@ -90,7 +90,7 @@ public sealed class IndexedDbReportStore {
 
     public async Task UpdateReportGroupAsync(ReportGroupRow r) {
         var existing = await _db.GetAsync<ReportGroupRow>(IndexedDbStores.ReportGroups, r.Id);
-        
+
         if (existing is null) {
             return;
         }

@@ -54,10 +54,10 @@ var authBuilder = builder.Services.AddAuthentication(EggLedger.Web.Server.Auth.A
         o.Cookie.SecurePolicy = CookieSecurePolicy.Always;
         o.ExpireTimeSpan = TimeSpan.FromDays(30);
         o.SlidingExpiration = true;
-        
-        
-        
-        
+
+
+
+
         o.Events.OnValidatePrincipal = async ctx => {
             var claim = ctx.Principal?.FindFirst(EggLedger.Web.Server.Auth.AuthScheme.UserIdClaim)?.Value;
             if (!Guid.TryParse(claim, out _)) {
@@ -79,16 +79,16 @@ if (hasDb) {
     var dataSource = NpgsqlDataSource.Create(cfg.DatabaseUrl);
     builder.Services.AddSingleton(dataSource);
 
-    
-    
+
+
     var dp = builder.Services.AddDataProtection()
         .SetApplicationName("EggLedger")
         .AddKeyManagementOptions(o =>
             o.XmlRepository = new EggLedger.Web.Server.Auth.PostgresXmlRepository(dataSource));
 
-    
-    
-    
+
+
+
     if (!string.IsNullOrEmpty(cfg.DataProtectionCertPath)) {
         try {
             var cert = System.Security.Cryptography.X509Certificates.X509CertificateLoader.LoadPkcs12FromFile(
@@ -101,17 +101,17 @@ if (hasDb) {
         Console.Error.WriteLine("eggledger: WARNING - DATA_PROTECTION_CERT_PATH not set. DataProtection keyring is stored unencrypted in Postgres.");
     }
 
-    
-    
-    
-    
+
+
+
+
     var identityHttp = new HttpClient { BaseAddress = new Uri(cfg.IdentityApiUrl) };
     identityHttp.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", cfg.IdentityApiSecret);
     var identityClient = new SyncKit.Identity.Client.IdentityApiClient(identityHttp);
     builder.Services.AddSingleton(identityClient);
     builder.Services.AddSingleton<EggLedger.Web.Server.Sync.Auth.ICurrentUser, EggLedger.Web.Server.Sync.Auth.CurrentUser>();
-    
-    
+
+
     builder.Services.AddSingleton<EggLedger.Web.Server.Sync.Auth.AuthEndpoints>();
 
     EggLedger.Web.Server.Auth.AuthentikAuth.AddIfConfigured(authBuilder, cfg, identityClient, dataSource);
@@ -184,8 +184,8 @@ app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
 if (hasDb) {
-    
-    
+
+
     app.UseMiddleware<EggLedger.Web.Server.Sync.Auth.LoginCallbackMiddleware>();
 }
 
@@ -214,8 +214,8 @@ app.Map("/egg-api/{**rest}", async (HttpContext ctx, IHttpClientFactory factory,
 
 
 if (hasDb) {
-    
-    
+
+
     if (string.IsNullOrEmpty(cfg.DiscordClientId) || string.IsNullOrEmpty(cfg.DiscordClientSecret)) {
         app.Logger.LogCritical("eggledger: DATABASE_URL is set but DISCORD_CLIENT_ID/DISCORD_CLIENT_SECRET are missing. Auth routes cannot function; refusing to start.");
         throw new InvalidOperationException("Discord OAuth is not configured but a database is; set DISCORD_CLIENT_ID/DISCORD_CLIENT_SECRET or unset DATABASE_URL.");

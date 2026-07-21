@@ -79,8 +79,8 @@ public sealed class FirstLoginBackfill(
         }
     }
 
-    
-    
+
+
     private async Task<string?> DiscordIdForCurrentUserAsync(CancellationToken ct) {
         var userId = await user.GetUserIdAsync().ConfigureAwait(false);
         if (userId is null) {
@@ -99,7 +99,7 @@ public sealed class FirstLoginBackfill(
         if (result is not string { Length: > 0 } stored) {
             return null;
         }
-        
+
         try {
             return _keyProtector.Unprotect(stored);
         } catch (CryptographicException) {
@@ -122,8 +122,8 @@ public sealed class FirstLoginBackfill(
             var plaintext = await cipher.DecryptAsync(encKey, ciphertext, ct).ConfigureAwait(false);
             return JsonSerializer.Deserialize<T>(plaintext, Json);
         } catch (Exception ex) {
-            
-            
+
+
             logger.LogWarning(ex, "backfill: failed to decrypt blob {Name}", name);
             return default;
         }

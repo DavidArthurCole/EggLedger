@@ -5,7 +5,7 @@ using System.Text.RegularExpressions;
 namespace EggLedger.Domain.Util;
 
 public sealed partial class SemVersion : IComparable<SemVersion>, IEquatable<SemVersion> {
-    
+
     [GeneratedRegex(
         @"^v?([0-9]+(\.[0-9]+)*?)" +
         @"(-([0-9]+[0-9A-Za-z\-~]*(\.[0-9A-Za-z\-~]+)*)|(-?([A-Za-z\-~]+[0-9A-Za-z\-~]*(\.[0-9A-Za-z\-~]+)*)))?" +
@@ -41,7 +41,7 @@ public sealed partial class SemVersion : IComparable<SemVersion>, IEquatable<Sem
             return false;
         }
 
-        
+
         var segmentsStr = match.Groups[1].Value.Split('.');
         var segments = new long[segmentsStr.Length];
         for (var i = 0; i < segmentsStr.Length; i++) {
@@ -51,20 +51,20 @@ public sealed partial class SemVersion : IComparable<SemVersion>, IEquatable<Sem
             segments[i] = val;
         }
 
-        
+
         if (segments.Length < 3) {
             var padded = new long[3];
             Array.Copy(segments, padded, segments.Length);
             segments = padded;
         }
 
-        
+
         var pre = match.Groups[7].Value;
         if (pre.Length == 0) {
             pre = match.Groups[4].Value;
         }
 
-        
+
         var metadata = match.Groups[10].Value;
 
         version = new SemVersion(segments, pre, metadata, input);
@@ -96,7 +96,7 @@ public sealed partial class SemVersion : IComparable<SemVersion>, IEquatable<Sem
     public int CompareTo(SemVersion? other) {
         ArgumentNullException.ThrowIfNull(other);
 
-        
+
         if (Canonical() == other.Canonical()) {
             return 0;
         }
@@ -155,7 +155,7 @@ public sealed partial class SemVersion : IComparable<SemVersion>, IEquatable<Sem
     public override bool Equals(object? obj) => obj is SemVersion v && Equals(v);
 
     public override int GetHashCode() {
-        
+
         var hash = new HashCode();
         foreach (var s in _segments) {
             hash.Add(s);
@@ -187,7 +187,7 @@ public sealed partial class SemVersion : IComparable<SemVersion>, IEquatable<Sem
         return true;
     }
 
-    
+
     private static int ComparePrereleases(string v, string other) {
         if (v == other) {
             return 0;
@@ -208,7 +208,7 @@ public sealed partial class SemVersion : IComparable<SemVersion>, IEquatable<Sem
         return 0;
     }
 
-    
+
     private static int ComparePart(string preSelf, string preOther) {
         if (preSelf == preOther) {
             return 0;

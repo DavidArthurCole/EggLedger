@@ -37,8 +37,8 @@ public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvid
     private readonly IDataProtector _keyProtector = dataProtection.CreateProtector("EggLedger.EncryptionKey");
     private static long Now() => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
-    
-    
+
+
     private string UnprotectKey(string stored) {
         try {
             return _keyProtector.Unprotect(stored);
@@ -64,9 +64,9 @@ public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvid
         await WriteJsonAsync(ctx, new DiscordInitResponse(url, state));
     }
 
-    
-    
-    
+
+
+
     public async Task Login(HttpContext ctx) {
         var (url, _) = await BeginAuthAsync(ctx).ConfigureAwait(false);
         ctx.Response.Redirect(url);
@@ -86,8 +86,8 @@ public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvid
         var code = ctx.Request.Query["code"].ToString();
         var state = ctx.Request.Query["state"].ToString();
 
-        
-        
+
+
         if (string.IsNullOrEmpty(state) || !await StateIsPending(state, ctx.RequestAborted)) {
             await WriteTextAsync(ctx, StatusCodes.Status400BadRequest, "invalid or expired state\n");
             return;
@@ -106,9 +106,9 @@ public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvid
             return;
         }
 
-        
-        
-        
+
+
+
         if (authedUser is { } u) {
             var claims = new List<Claim> {
                 new(EggLedger.Web.Server.Auth.AuthScheme.DiscordIdClaim, u.Id),
@@ -130,8 +130,8 @@ public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvid
         await ctx.Response.Body.WriteAsync(Encoding.UTF8.GetBytes(SuccessPage.Html), ctx.RequestAborted);
     }
 
-    
-    
+
+
     public async Task<RedeemLoginCodeResponse> RedeemAndSignInAsync(HttpContext ctx, string code, CancellationToken ct) {
         var result = await identity.RedeemAsync(code, ct);
 
@@ -159,8 +159,8 @@ public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvid
         ctx.Response.Redirect("/");
     }
 
-    
-    
+
+
     private async Task UpsertLocalUserAsync(Guid userId, string? discordId, string? username, string? avatar, CancellationToken ct) {
         if (!string.IsNullOrEmpty(discordId)) {
             await using var repoint = source.CreateCommand(
@@ -209,13 +209,13 @@ public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvid
         }
     }
 
-    
-    
+
+
     internal async Task<string> EnsureEncryptionKeyAsync(Guid userId) {
         var encKey = "";
         await using (var sel = source.CreateCommand("SELECT encryption_key FROM users WHERE user_id = $1")) {
             sel.Parameters.AddWithValue(userId);
-            
+
             try {
                 var result = await sel.ExecuteScalarAsync();
                 if (result is string { Length: > 0 } stored)
@@ -238,11 +238,11 @@ public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvid
         var resolved = await identity.ResolveAsync("discord", user.Id, user.Id, user.Username, user.AvatarUrl, CancellationToken.None);
         var userId = resolved.UserId;
 
-        
-        
-        
-        
-        
+
+
+
+
+
         await using (var repoint = source.CreateCommand(
             "UPDATE users SET user_id = $1 WHERE discord_id = $2 AND user_id <> $1")) {
             repoint.Parameters.AddWithValue(userId);
@@ -258,9 +258,9 @@ public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvid
             }
         }
 
-        
-        
-        
+
+
+
         await using (var u = source.CreateCommand(
             "INSERT INTO users (user_id, discord_id, created_at, username, avatar_url) VALUES ($1,$2,$3,$4,$5) " +
             "ON CONFLICT (user_id) DO UPDATE SET username = EXCLUDED.username, avatar_url = EXCLUDED.avatar_url")) {
@@ -300,7 +300,7 @@ public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvid
         long expiresAt = 0;
         string username = "", avatarUrl = "", encryptionKey = "";
         var found = false;
-        
+
         try {
             await using var cmd = source.CreateCommand(
                 "SELECT session_token, expires_at, username, avatar_url, encryption_key FROM pending_auth WHERE state = $1");
@@ -334,9 +334,9 @@ public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvid
         await WriteJsonAsync(ctx, new PollResponse(token, username, avatarUrl, plainKey));
     }
 
-    
-    
-    
+
+
+
     public async Task SessionFromLogin(HttpContext ctx) {
         if (ctx.User.Identity?.IsAuthenticated != true) {
             ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
@@ -378,8 +378,8 @@ public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvid
         await WriteJsonAsync(ctx, new PollResponse(token, username, avatarUrl, encKey));
     }
 
-    
-    
+
+
     private async Task<string> UserAvatarUrlAsync(Guid userId, CancellationToken ct) {
         await using var cmd = source.CreateCommand("SELECT avatar_url FROM users WHERE user_id = $1");
         cmd.Parameters.AddWithValue(userId);

@@ -19,7 +19,7 @@ public sealed class ReportParityTests {
         public IReadOnlyList<int> FamilyAfxIds(string familyId) => _ids;
     }
 
-    
+
     private static MissionRowData M(
         string id, int ship, int duration, long start, long ret,
         int cap = 1, int nominal = 1, int target = 0, int type = 0,
@@ -52,12 +52,12 @@ public sealed class ReportParityTests {
             SpecType = spec,
         };
 
-    
-    
+
+
     private static List<MissionRowData> Missions() =>
     [
-        
-        
+
+
         M("m1", ship: 1, duration: 0, start: 1758100000, ret: 1758100000 + 3600, cap: 10, nominal: 5, type: 0, level: 1),
         M("m2", ship: 1, duration: 0, start: 1758200000, ret: 1758200000 + 7200, cap: 10, nominal: 5, type: 0, level: 1),
         M("m3", ship: 1, duration: 1, start: 1761000000, ret: 1761000000 + 3600, cap: 8, nominal: 4, type: 1, level: 2),
@@ -68,18 +68,18 @@ public sealed class ReportParityTests {
 
     private static List<ArtifactDropRowData> Drops() =>
     [
-        
+
         D("m1", artifactId: 12, rarity: 0, tier: 1, dropIndex: 0, spec: "Artifact"),
         D("m1", artifactId: 13, rarity: 1, tier: 2, dropIndex: 1, spec: "Stone"),
-        
+
         D("m2", artifactId: 12, rarity: 1, tier: 1, dropIndex: 0, spec: "Artifact"),
-        
+
         D("m3", artifactId: 14, rarity: 3, tier: 2, dropIndex: 0, spec: "Artifact"),
-        
+
         D("m4", artifactId: 13, rarity: 0, tier: 1, dropIndex: 0, spec: "Stone"),
-        
+
         D("m5", artifactId: 0, rarity: 0, tier: 0, dropIndex: -1, spec: ""),
-        
+
         D("m6", artifactId: 12, rarity: 2, tier: 3, dropIndex: 0, spec: "Artifact"),
         D("m6", artifactId: 14, rarity: 2, tier: 1, dropIndex: 1, spec: "Artifact"),
     ];

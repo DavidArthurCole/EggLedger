@@ -73,7 +73,7 @@ public sealed class IndexedDbReportRunnerTests {
             Rarity = 1,
             Level = 0,
         });
-        
+
         db.Seed("artifact_drops", new ArtifactDropRow {
             PlayerId = "EI2",
             MissionId = "z",
@@ -93,7 +93,7 @@ public sealed class IndexedDbReportRunnerTests {
 
         var result = await sut.RunReportAsync(def, Eid);
 
-        
+
         Assert.Equal([2, 1], result.Values);
         Assert.Equal("Legendary", result.Labels[0]);
         Assert.Equal("Rare", result.Labels[1]);

@@ -46,7 +46,7 @@ public sealed class BinaryReplacementTests : IDisposable {
 
     [Fact]
     public void AcquireLock_SecondAcquireFailsWhileHeldThenSucceedsAfterRelease() {
-        
+
         var repl = new BinaryReplacement(new ProcessProbe());
         var lockPath = Path.Combine(_dir, BinaryReplacement.LockFileName);
 
@@ -68,7 +68,7 @@ public sealed class BinaryReplacementTests : IDisposable {
     [Fact]
     public void AcquireLock_ReclaimsStaleLockFromDeadOwner() {
         var lockPath = Path.Combine(_dir, BinaryReplacement.LockFileName);
-        
+
         File.WriteAllText(lockPath, "424242");
         var repl = new BinaryReplacement(new FakeProbe([]));
 
@@ -124,7 +124,7 @@ public sealed class BinaryReplacementTests : IDisposable {
     public void ProcessProbe_CurrentProcessExists_BogusDoesNot() {
         var probe = new ProcessProbe();
         Assert.True(probe.Exists(Environment.ProcessId));
-        
+
         Assert.False(probe.Exists(int.MaxValue - 1));
         Assert.False(probe.Exists(0));
         Assert.False(probe.Exists(-5));

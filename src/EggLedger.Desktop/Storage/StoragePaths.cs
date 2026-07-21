@@ -89,9 +89,9 @@ public static class StoragePaths {
     }
 
     private static string UserConfigDir() {
-        
-        
-        
+
+
+
         var dir = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
         return string.IsNullOrEmpty(dir) ? "" : dir;
     }

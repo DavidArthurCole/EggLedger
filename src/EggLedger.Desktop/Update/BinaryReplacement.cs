@@ -10,7 +10,7 @@ public sealed class BinaryReplacement(IProcessProbe probe) {
     public static bool RenameWithRetry(string src, string dst, int attempts, TimeSpan delay) {
         for (var i = 0; i < attempts; i++) {
             try {
-                
+
                 File.Move(src, dst, overwrite: true);
                 return true;
             } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) {
@@ -33,11 +33,11 @@ public sealed class BinaryReplacement(IProcessProbe probe) {
 
         var f = TryCreate();
         if (f is null) {
-            
+
             if (TryReadPid(lockPath, out var pid) && _probe.Exists(pid)) {
                 return (null, false);
             }
-            
+
             TryDelete(lockPath);
             f = TryCreate();
             if (f is null) {
@@ -85,7 +85,7 @@ public sealed class BinaryReplacement(IProcessProbe probe) {
                 TryDelete(lockPath);
             }
         } else if (File.Exists(lockPath)) {
-            
+
             TryDelete(lockPath);
         }
     }
@@ -101,7 +101,7 @@ public sealed class BinaryReplacement(IProcessProbe probe) {
                 return string.Equals(fa.FullName, fb.FullName, comparison);
             }
         } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException) {
-            
+
         }
 
         try {

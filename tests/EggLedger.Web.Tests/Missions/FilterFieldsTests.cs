@@ -25,7 +25,7 @@ public sealed class FilterFieldsTests {
         Assert.Equal("true", FilterFields.DefaultOpForField(FilterFields.GetReportField("dubcap")!));
         Assert.Equal("c", FilterFields.DefaultOpForField(FilterFields.GetReportField("drops")!));
         Assert.Equal("=", FilterFields.DefaultOpForField(FilterFields.GetReportField("ship")!));
-        
+
         Assert.Equal("d=", FilterFields.DefaultOpForField(FilterFields.GetReportField("launchDT")!));
         Assert.Equal("d=", FilterFields.DefaultOpForField(FilterFields.GetReportField("returnDT")!));
     }
@@ -36,7 +36,7 @@ public sealed class FilterFieldsTests {
         Assert.Equal(new[] { "d=", "<", ">" }, ops.Select(o => o.Value).ToArray());
         Assert.Equal("d=", ops.First(o => o.Label == "on").Value);
 
-        
+
         var shipOps = FilterFields.MissionBarOpsFor(FilterFields.GetReportField("ship")!);
         Assert.Same(FilterFields.GetReportField("ship")!.Ops, shipOps);
     }
