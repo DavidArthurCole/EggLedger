@@ -3,7 +3,7 @@ using EggLedger.Domain.Reports;
 
 namespace EggLedger.Domain.Tests.Reports;
 
-// Port of Go reports/weight_test.go. ClassifyWeight + date-window classification.
+
 public class WeightTests {
     private static string Ago(int days) =>
         DateTime.Now.AddDays(-days).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
@@ -105,7 +105,7 @@ public class WeightTests {
         Assert.Equal("MEDIUM", Weight.ClassifyWeight(def));
     }
 
-    // dateFilterWindowDays is private; exercised via ClassifyWeight outcomes (mirrors Go).
+    
     [Fact]
     public void DateWindow_NoFilter_TreatedAsLarge_TimeSeriesHeavy() {
         var def = new ReportDefinition { Mode = "time_series", GroupBy = "time_bucket", TimeBucket = "month" };
@@ -127,7 +127,7 @@ public class WeightTests {
 
     [Fact]
     public void DateWindow_PicksMostRestrictive_TimeSeriesMedium() {
-        // Window picks the smallest (10 days) -> MEDIUM, not HEAVY.
+        
         var def = new ReportDefinition {
             Mode = "time_series",
             GroupBy = "time_bucket",

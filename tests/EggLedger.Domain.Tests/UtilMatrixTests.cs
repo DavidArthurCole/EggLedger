@@ -5,7 +5,7 @@ namespace EggLedger.Domain.Tests;
 public class UtilMatrixTests {
     [Fact]
     public void Apply2DPctNormalization_RowPct() {
-        // 2x2 matrix: [[10,30],[20,20]]
+        
         var vals = new double[] { 10, 30, 20, 20 };
         Matrix.Apply2DPctNormalization(vals, 2, 2, "row_pct");
         var rowSums = new[] { vals[0] + vals[1], vals[2] + vals[3] };
@@ -17,7 +17,7 @@ public class UtilMatrixTests {
 
     [Fact]
     public void Apply2DPctNormalization_ColPct() {
-        // 2x2: [[10,30],[10,70]]
+        
         var vals = new double[] { 10, 30, 10, 70 };
         Matrix.Apply2DPctNormalization(vals, 2, 2, "col_pct");
         var col0Sum = vals[0] + vals[2];
@@ -39,7 +39,7 @@ public class UtilMatrixTests {
 
     [Fact]
     public void Apply2DPctNormalization_ZeroRow_NoDivisionByZero() {
-        // row 0 is all zeros - should stay 0, no exception
+        
         var vals = new double[] { 0, 0, 10, 10 };
         Matrix.Apply2DPctNormalization(vals, 2, 2, "row_pct");
         Assert.True(vals[0] == 0 && vals[1] == 0, $"zero row should remain zero, got [{vals[0]} {vals[1]}]");

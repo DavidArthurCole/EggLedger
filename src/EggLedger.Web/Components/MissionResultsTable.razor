@@ -127,35 +127,28 @@
     [Parameter] public MultiViewMode MultiViewMode { get; set; } = MultiViewMode.Off;
     [Parameter] public MissionCardConfig Config { get; set; } = MissionCardConfig.Classic;
 
-    /// <summary>Mission-type tile pill widget, rendered next to the "Missions" header when present.</summary>
     [Parameter]
     public RenderFragment? TileSelector { get; set; }
 
     [Parameter] public RenderFragment? HeaderExtra { get; set; }
 
-    /// <summary>Free-select mission ids; owned by the page, mutated here.</summary>
     [Parameter]
     public HashSet<string> SelectedIds { get; set; } = new();
 
-    /// <summary>Tab-filtered missions in display order; the Select All universe.</summary>
     [Parameter]
     public IReadOnlyList<DatabaseMission> TabFiltered { get; set; } = Array.Empty<DatabaseMission>();
 
-    /// <summary>Mission id shown in the overlay, highlighted in the list.</summary>
     [Parameter]
     public string? MissionBeingViewed { get; set; }
 
     [Parameter] public EventCallback<string> OnViewMission { get; set; }
 
-    /// <summary>Raised with a set of mission ids to view together (Row/Date or Free Select).</summary>
     [Parameter]
     public EventCallback<IReadOnlyList<string>> OnViewRow { get; set; }
 
-    /// <summary>Raised when the free-select set changes.</summary>
     [Parameter]
     public EventCallback OnSelectionChanged { get; set; }
 
-    /// <summary>Raised when collapse state mutates so the page can re-render.</summary>
     [Parameter]
     public EventCallback OnGroupingChanged { get; set; }
 
@@ -175,7 +168,7 @@
     }
 
     private async Task ViewSelected() {
-        // Preserve display order from TabFiltered rather than HashSet order.
+        
         var ids = new List<string>();
         foreach (var m in TabFiltered) {
             if (SelectedIds.Contains(m.MissiondId)) {
@@ -247,7 +240,7 @@
         return ViewByDate ? Grouping!.Arrays.Day[yi][mi][di].Enabled : Grouping!.Arrays.Month[yi][mi].Enabled;
     }
 
-    // True when every year section is expanded (drives the Collapse/Expand All label).
+    
     private bool AllExpanded {
         get {
             if (Grouping is null) {
@@ -312,7 +305,7 @@
     }
 
     private async Task NotifyAsync() {
-        // The page handler re-renders this child; no separate local StateHasChanged needed.
+        
         await OnGroupingChanged.InvokeAsync();
     }
 

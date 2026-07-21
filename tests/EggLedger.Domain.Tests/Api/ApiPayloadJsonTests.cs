@@ -42,8 +42,8 @@ public class ApiPayloadJsonTests {
         Assert.Equal(MissionInfo.Spaceship.Henerprise, back.Info.Ship);
     }
 
-    // Regression guard: get-only collection properties must survive the round-trip.
-    // Without PreferredObjectCreationHandling.Populate, STJ leaves them empty.
+    
+    
     [Fact]
     public void GetOnlyCollections_SurviveRoundTrip() {
         var resp = new CompleteMissionResponse { Success = true };

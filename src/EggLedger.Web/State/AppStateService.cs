@@ -3,7 +3,6 @@ using EggLedger.Web.Services;
 
 namespace EggLedger.Web.State;
 
-/// <summary>Broad app/UI state. Named to avoid the clash with the fetch pipeline enum <see cref="EggLedger.Web.Services.AppState"/>.</summary>
 public sealed class AppStateService {
     public string AppVersion {
         get;
@@ -15,13 +14,11 @@ public sealed class AppStateService {
         set => Set(ref field, value);
     } = [];
 
-    /// <summary>Active tab label, matching the tab bar labels.</summary>
     public string ActiveTab {
         get;
         set => Set(ref field, value);
     } = "Mission Data";
 
-    /// <summary>Current fetch pipeline state, or null before the first fetch.</summary>
     public AppState? PipelineState {
         get;
         set => Set(ref field, value);

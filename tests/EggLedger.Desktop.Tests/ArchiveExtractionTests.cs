@@ -5,11 +5,6 @@ using EggLedger.Desktop.Update;
 
 namespace EggLedger.Desktop.Tests;
 
-/// <summary>
-/// Archive extraction ported from Go extractFromTarGz / extractFromZip. Builds real
-/// .tar.gz / .zip fixtures and asserts the exact bytes come out. The user-execute bit
-/// is asserted on unix only (SetUnixFileMode is a no-op on Windows).
-/// </summary>
 public sealed class ArchiveExtractionTests {
     private static readonly byte[] Payload = Encoding.ASCII.GetBytes("#!/bin/sh\nfake-egg-binary\n");
 

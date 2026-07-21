@@ -5,29 +5,16 @@ using ProtoBuf;
 
 namespace EggLedger.Domain.Ei;
 
-/// <summary>
-/// Mirrors Go's protobuf enum String() / *_value maps for protobuf-net enums. Go String() yields the
-/// proto name (e.g. "TACHYON_DEFLECTOR"), which protobuf-net stores on [ProtoEnum(Name=...)].
-/// </summary>
 internal static class EnumNames {
     private static readonly ConcurrentDictionary<Type, Dictionary<long, string>> _valueToName = new();
     private static readonly ConcurrentDictionary<Type, Dictionary<string, long>> _nameToValue = new();
 
-    /// <summary>
-    /// Proto name for an enum value. Matches Go enum.String(): defined values
-    /// map to their proto name; undefined values fall back to a non-empty
-    /// numeric string so callers relying on String() != "" still hold.
-    /// </summary>
     public static string ProtoName<TEnum>(TEnum value) where TEnum : struct, Enum {
         var map = ValueMap(typeof(TEnum));
         long key = Convert.ToInt64(value);
         return map.TryGetValue(key, out var name) ? name : key.ToString();
     }
 
-    /// <summary>
-    /// Reverse lookup proto name -> enum value, mirroring Go's *_value map. Returns false for
-    /// names that are not defined enum members.
-    /// </summary>
     public static bool TryValue<TEnum>(string protoName, out TEnum value) where TEnum : struct, Enum {
         var map = NameMap(typeof(TEnum));
         if (map.TryGetValue(protoName, out var raw)) {

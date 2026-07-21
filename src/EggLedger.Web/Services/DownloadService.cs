@@ -3,7 +3,6 @@ using Microsoft.JSInterop;
 
 namespace EggLedger.Web.Services;
 
-/// <summary>Serves export bytes as a browser download via the download.js ES module, imported lazily and cached.</summary>
 public sealed class DownloadService(IJSRuntime js) : IDownloadService, IAsyncDisposable {
     private const string ModulePath = "./_content/EggLedger.Web/js/download.js";
     private const string CsvMime = "text/csv";

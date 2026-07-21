@@ -2,10 +2,6 @@ using Microsoft.JSInterop;
 
 namespace EggLedger.Web.Tests.Data;
 
-/// <summary>
-/// Records every module invocation forwarded by <c>IndexedDb</c>.
-/// Returns a queued canned value when one is enqueued for the identifier, else default.
-/// </summary>
 public sealed class FakeJsObjectReference : IJSObjectReference {
     public List<(string Identifier, object?[] Args)> Calls { get; } = [];
     private readonly Dictionary<string, Queue<object?>> _canned = [];

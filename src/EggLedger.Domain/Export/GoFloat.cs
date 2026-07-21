@@ -2,15 +2,7 @@ using System.Globalization;
 
 namespace EggLedger.Domain.Export;
 
-/// <summary>
-/// Reproduces Go's strconv float formatting so exported numbers match the Go
-/// reference byte-for-byte. Pure.
-/// </summary>
 public static class GoFloat {
-    /// <summary>
-    /// Mirror of Go strconv.FormatFloat(v, 'f', -1, 64): shortest decimal that
-    /// round-trips, never exponential. Used for XLSX numeric cell values.
-    /// </summary>
     public static string FormatF(double v) {
         if (double.IsNaN(v)) {
             return "NaN";
@@ -22,8 +14,8 @@ public static class GoFloat {
             return "-Inf";
         }
 
-        // "R" / shortest round-trip can yield exponential form (e.g. 1E-05).
-        // Convert any exponential representation to plain decimal.
+        
+        
         string s = v.ToString("R", CultureInfo.InvariantCulture);
         if (s.IndexOf('E') < 0 && s.IndexOf('e') < 0) {
             return s;
@@ -31,11 +23,6 @@ public static class GoFloat {
         return ExpandExponential(s);
     }
 
-    /// <summary>
-    /// Mirror of Go fmt.Sprint(float64) which uses strconv.FormatFloat(v, 'g',
-    /// -1, 64): shortest decimal, exponential only for very large/small
-    /// magnitudes. Used for CSV numeric fields.
-    /// </summary>
     public static string FormatG(double v) {
         if (double.IsNaN(v)) {
             return "NaN";
@@ -47,10 +34,10 @@ public static class GoFloat {
             return "-Inf";
         }
 
-        // Go 'g' switches to exponent when exp < -4 or exp >= 21 (shortest).
+        
         string shortest = v.ToString("R", CultureInfo.InvariantCulture);
-        // .NET "R" already produces shortest round-trip; its exponent threshold
-        // differs from Go, so normalize to Go's rule.
+        
+        
         return NormalizeG(v, shortest);
     }
 
@@ -111,13 +98,13 @@ public static class GoFloat {
             return shortest;
         }
 
-        // Determine decimal exponent of the shortest representation.
+        
         string plain = shortest.IndexOfAny(['E', 'e']) >= 0 ? ExpandExponential(shortest) : shortest;
         string abs = plain.StartsWith('-') ? plain[1..] : plain;
         bool neg = plain.StartsWith('-');
 
-        // Compute exponent: position of first significant digit relative to the
-        // decimal point.
+        
+        
         int dot = abs.IndexOf('.');
         string intPart = dot < 0 ? abs : abs[..dot];
         string fracPart = dot < 0 ? "" : abs[(dot + 1)..];
@@ -126,7 +113,7 @@ public static class GoFloat {
         if (intPart != "0" && intPart.Length > 0) {
             exp = intPart.Length - 1;
         } else {
-            // Leading zeros in fractional part.
+            
             int lead = 0;
             while (lead < fracPart.Length && fracPart[lead] == '0') {
                 lead++;
@@ -134,7 +121,7 @@ public static class GoFloat {
             exp = -(lead + 1);
         }
 
-        // Go 'g': use exponential when exp < -4 or exp >= 21.
+        
         if (exp is < -4 or >= 21) {
             return ToGoExponential(neg, intPart, fracPart, exp);
         }

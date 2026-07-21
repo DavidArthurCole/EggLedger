@@ -2,10 +2,6 @@ using EggLedger.Desktop.Update;
 
 namespace EggLedger.Desktop.Tests;
 
-/// <summary>
-/// Pure binary-name tests mirroring the Go TestIsNewBinaryName,
-/// TestCanonicalPathFromNew, and TestDecideReplace cases (EggLedger/update/update_test.go).
-/// </summary>
 public sealed class BinaryNamingTests {
     [Theory]
     [InlineData("EggLedger_new.exe", true)]
@@ -68,7 +64,7 @@ public sealed class BinaryNamingTests {
     [InlineData("/opt/egg/EggLedger", "/opt/egg/EggLedger_new")]
     public void NewBinaryTempPath_AppendsSuffix(string exePath, string expectedWindows) {
         var actual = UpdateService.NewBinaryTempPath(exePath);
-        // expectedWindows is the .exe form; non-Windows has no extension.
+        
         var actualBase = Path.GetFileName(actual);
         if (OperatingSystem.IsWindows()) {
             Assert.Equal(Path.GetFileName(expectedWindows.EndsWith(".exe") ? expectedWindows : expectedWindows + ".exe"), actualBase);

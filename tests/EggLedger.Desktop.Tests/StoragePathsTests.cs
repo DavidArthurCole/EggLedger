@@ -2,16 +2,11 @@ using EggLedger.Desktop.Storage;
 
 namespace EggLedger.Desktop.Tests;
 
-/// <summary>
-/// Port-level checks of Go storage_move.go: legacy layout resolves relative to the exe
-/// root and CopyDir/CopyFile replicate a tree. Bootstrap-redirect is covered via the
-/// resolvers' fallback branch (no bootstrap.json in the test env).
-/// </summary>
 public sealed class StoragePathsTests {
     [Fact]
     public void Resolvers_FallBackToRootDir_WhenNoBootstrap() {
-        // No bootstrap.json -> resolvers fall back to rootDir-relative; internal/exports/logs
-        // all share the resolved data root.
+        
+        
         var root = Path.Combine(Path.GetTempPath(), "egl_paths_" + Guid.NewGuid().ToString("N"));
 
         var dataRoot = StoragePaths.ResolveDataRootDir(root);

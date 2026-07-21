@@ -3,11 +3,6 @@ using EggLedger.Web.Data;
 
 namespace EggLedger.Desktop.Storage;
 
-/// <summary>Desktop <see cref="IReportRunner"/>: ReportExecutor over SqliteMissionDb (the live SQL path).</summary>
-/// <remarks>
-/// The browser uses the in-memory IndexedDbReportRunner runner; both produce identical
-/// ReportResult output (parity-tested).
-/// </remarks>
 public sealed class SqliteReportRunner : IReportRunner {
     private readonly SqliteMissionDb _db;
     private readonly IWeightData _weights;
@@ -18,8 +13,8 @@ public sealed class SqliteReportRunner : IReportRunner {
     }
 
     public Task<ReportResult> RunReportAsync(ReportDefinition def, string accountId) {
-        // ExecuteReport binds m.player_id = ? from def.AccountId. Force it to the
-        // caller's accountId so the SQL path matches the browser runner's contract.
+        
+        
         if (def.AccountId != accountId) {
             def.AccountId = accountId;
         }

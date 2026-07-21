@@ -11,8 +11,8 @@ public class QualityTests {
         Assert.NotEmpty(parameters);
     }
 
-    // Port of Go TestBaseQualityFor: a freshly-built spec with the same
-    // (name, level, rarity) must match by value, not pointer identity.
+    
+    
     [Fact]
     public void BaseQualityFor_FreshSpecMatchesByValue() {
         var parameters = EiafxConfig.Config.artifact_parameters;
@@ -33,8 +33,8 @@ public class QualityTests {
         Assert.Equal(0d, Quality.BaseQualityFor(bad));
     }
 
-    // Golden: every row in the Go-emitted .fields fixture must reproduce from the
-    // embedded .bin decode, proving byte-identical config across languages.
+    
+    
     [Fact]
     public void BaseQualityFor_MatchesGoldenFields() {
         var path = Path.Combine(AppContext.BaseDirectory, "Fixtures", "eiafx-config-fixture.fields");

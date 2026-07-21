@@ -2,16 +2,7 @@ using System.Globalization;
 
 namespace EggLedger.Domain.Reports;
 
-/// <summary>
-/// Time-bucket gap filling for sparse report series. Port of Go reports/timefill.go.
-/// Week math reproduces SQLite strftime('%Y-%W') semantics exactly.
-/// </summary>
 public static class TimeFill {
-    /// <summary>
-    /// Inserts zero-value entries for missing time buckets between first and last.
-    /// Inputs returned unchanged when the bucket type is unknown or labels unparseable.
-    /// Port of Go fillTimeSeriesGaps.
-    /// </summary>
     public static (List<string> labels, List<long> values) FillTimeSeriesGaps(
         string timeBucket, string customBucketUnit, List<string> rawLabels, List<long> values) {
         if (rawLabels.Count <= 1) {
@@ -34,7 +25,6 @@ public static class TimeFill {
         return (outLabels, outV);
     }
 
-    /// <summary>Float variant used by weighted time series. Port of Go fillTimeSeriesGapsFloat.</summary>
     public static (List<string> labels, List<double> values) FillTimeSeriesGapsFloat(
         string timeBucket, string customBucketUnit, List<string> rawLabels, List<double> values) {
         if (rawLabels.Count <= 1) {
@@ -57,10 +47,6 @@ public static class TimeFill {
         return (outLabels, outV);
     }
 
-    /// <summary>
-    /// Inserts all-zero rows for missing time buckets in a (buckets x groups) matrix;
-    /// nCols is the group-column count. Port of Go fillTimePivotGaps.
-    /// </summary>
     public static (List<string> labels, double[] matrix) FillTimePivotGaps(
         string timeBucket, string customBucketUnit, List<string> bucketLabels, int nCols, double[] matrixValues) {
         if (bucketLabels.Count <= 1 || nCols == 0) {
@@ -86,10 +72,6 @@ public static class TimeFill {
     private static string EffectiveBucketUnit(string timeBucket, string customBucketUnit) =>
         timeBucket == "custom" ? customBucketUnit : timeBucket;
 
-    /// <summary>
-    /// Every time bucket label from first to last inclusive; null when the unit is
-    /// unrecognised or labels unparseable. Port of Go expandBucketRange.
-    /// </summary>
     private static List<string>? ExpandBucketRange(string unit, string first, string last) => unit switch {
         "day" => ExpandDayBuckets(first, last),
         "week" => ExpandWeekBuckets(first, last),
@@ -145,7 +127,6 @@ public static class TimeFill {
         return outList;
     }
 
-    /// <summary>Parses "YYYY-WW" (SQLite %Y-%W) into the Monday that begins that week. Port of Go parseSQLiteWeekLabel.</summary>
     private static bool TryParseSQLiteWeekLabel(string label, out DateTime result) {
         result = default;
         var parts = label.Split('-', 2);
@@ -160,13 +141,9 @@ public static class TimeFill {
         return true;
     }
 
-    /// <summary>
-    /// First day of the given SQLite %W week: week 0 is days before the year's first
-    /// Monday, week 1 starts on the first Monday. Port of Go sqliteWeekStart.
-    /// </summary>
     private static DateTime SQLiteWeekStart(int year, int week) {
         var jan1 = new DateTime(year, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-        // Monday=0 ... Sunday=6
+        
         var jan1MondayOffset = ((int)jan1.DayOfWeek + 6) % 7;
         var dayOfYear = (week * 7) - jan1MondayOffset + 1;
         if (dayOfYear < 1) {
@@ -175,7 +152,6 @@ public static class TimeFill {
         return jan1.AddDays(dayOfYear - 1);
     }
 
-    /// <summary>Formats t as "YYYY-WW" matching SQLite strftime('%Y-%W'). Port of Go formatSQLiteWeekLabel.</summary>
     private static string FormatSQLiteWeekLabel(DateTime t) {
         var jan1 = new DateTime(t.Year, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         var jan1MondayOffset = ((int)jan1.DayOfWeek + 6) % 7;

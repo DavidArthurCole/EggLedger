@@ -3,11 +3,6 @@ using ProtoBuf;
 
 namespace EggLedger.Domain.MissionPacking;
 
-/// <summary>
-/// Standalone <see cref="IMissionConfigSource"/> that deserializes the embedded
-/// eiafx-config.bin. Self-contained fallback; prefer <see cref="EiafxMissionConfigSource"/>
-/// when the canonical eiafx config is wired up.
-/// </summary>
 public sealed class EmbeddedMissionConfigSource : IMissionConfigSource {
     private const string ResourceName = "EggLedger.Domain.Resources.eiafx-config.bin";
 

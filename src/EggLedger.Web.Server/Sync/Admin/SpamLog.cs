@@ -2,9 +2,9 @@ using Npgsql;
 
 namespace EggLedger.Web.Server.Sync.Admin;
 
-// Postgres-backed log of invalid /api/v1 requests (404, no route matched). Upserts on
-// (ip, method, path) so repeat probes increment hits instead of growing rows. Records are
-// best-effort: a logging failure must never break the request that triggered it.
+
+
+
 public sealed class SpamLog(NpgsqlDataSource source) {
     public async Task RecordAsync(string ip, string method, string path, string userAgent, long nowEpoch) {
         await using var cmd = source.CreateCommand(

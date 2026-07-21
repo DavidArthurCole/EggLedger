@@ -5,11 +5,6 @@ using EggLedger.Domain.Crypto;
 
 namespace EggLedger.Domain.Tests.Crypto;
 
-/// <summary>
-/// Cross-decrypt acceptance for the AES-256-GCM blob contract (Go
-/// cloudsync.encryptBlob/decryptBlob). Golden blob in Fixtures/crypto/go-blob-fixture.json
-/// was produced by Go with a pinned 12-byte nonce.
-/// </summary>
 public class BlobCryptoTests {
     private sealed record Fixture(
         string Key,
@@ -26,7 +21,7 @@ public class BlobCryptoTests {
             ?? throw new InvalidOperationException("fixture deserialized to null");
     }
 
-    // Mandatory: C# decrypts a Go-produced blob to the original plaintext.
+    
     [Fact]
     public void Decrypt_GoProducedBlob_RecoversPlaintext() {
         var fx = LoadFixture();
@@ -44,7 +39,7 @@ public class BlobCryptoTests {
         Assert.Equal(pt, back);
     }
 
-    // Empty plaintext round-trips (12-byte nonce + 16-byte tag only).
+    
     [Fact]
     public void EncryptDecrypt_EmptyPlaintext_RoundTrips() {
         var fx = LoadFixture();
@@ -52,7 +47,7 @@ public class BlobCryptoTests {
         Assert.Empty(BlobCrypto.Decrypt(fx.Key, blob));
     }
 
-    // Each encrypt uses a fresh random nonce, so ciphertext differs run to run.
+    
     [Fact]
     public void Encrypt_UsesRandomNonce() {
         var fx = LoadFixture();
@@ -60,7 +55,7 @@ public class BlobCryptoTests {
         Assert.NotEqual(BlobCrypto.Encrypt(fx.Key, pt), BlobCrypto.Encrypt(fx.Key, pt));
     }
 
-    // Tampered ciphertext fails the GCM auth tag.
+    
     [Fact]
     public void Decrypt_TamperedBlob_Throws() {
         var fx = LoadFixture();

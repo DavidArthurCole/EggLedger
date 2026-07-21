@@ -17,7 +17,6 @@ public sealed class GroupedDay {
     public bool Enabled { get; set; }
 }
 
-/// <summary>Collapse-state arrays paralleling the mission matrix: year[], month[year][], day[year][month][].</summary>
 public sealed class GroupedArrays {
     public List<GroupedYear> Year { get; set; } = [];
     public List<List<GroupedMonth>> Month { get; set; } = [];
@@ -25,13 +24,11 @@ public sealed class GroupedArrays {
 }
 
 public sealed class MissionGrouping {
-    /// <summary>year -> month -> day -> missions, all date axes descending.</summary>
     public List<List<List<List<DatabaseMission>>>> Missions { get; init; } = [];
     public GroupedArrays Arrays { get; init; } = new();
     public bool AllVisible { get; init; }
 }
 
-/// <summary>Groups missions by launch date into year/month/day sections: single O(N) pass, axes descending, per-day lists reversed (Vue .reverse()). When collapseOlderSections is set only the newest year (index 0) is enabled.</summary>
 public static class MissionGrouper {
     public static MissionGrouping Group(
         IReadOnlyList<DatabaseMission>? missions,

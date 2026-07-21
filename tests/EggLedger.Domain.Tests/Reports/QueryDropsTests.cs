@@ -2,7 +2,7 @@ using EggLedger.Domain.Reports;
 
 namespace EggLedger.Domain.Tests.Reports;
 
-// Port of Go reports/query_drops_test.go: the drops EXISTS subquery builder.
+
 public class QueryDropsTests {
     public static IEnumerable<object?[]> Cases() => new[]
     {

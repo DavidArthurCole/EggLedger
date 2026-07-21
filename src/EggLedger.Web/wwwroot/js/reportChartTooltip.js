@@ -1,7 +1,7 @@
-// Cursor-following tooltip for report charts. Fully client-side: one delegated set of
-// document listeners reads data-tt / data-tt-dim off hovered elements, so no SignalR round
-// trip fires per mousemove. Elements opt in with a `data-tt` attribute (newline-separated
-// lines); the first line renders emphasized. Loaded once from AppHost/desktop.html.
+
+
+
+
 (function () {
   if (window.__reportChartTooltipInit) return;
   window.__reportChartTooltipInit = true;

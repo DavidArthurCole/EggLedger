@@ -44,7 +44,6 @@
     private bool _loading;
     private string _error = "";
 
-    /// <summary>Raised with the freshly added account on success.</summary>
     [Parameter]
     public EventCallback<AccountInfo> Added { get; set; }
 
@@ -73,8 +72,8 @@
         _error = "";
         try {
             var account = await AddAccount.AddAccountAsync(Normalized);
-            // Close before the callback: the parent's Added handler kicks off the full
-            // mission fetch, and awaiting it here would keep the dialog open until it finished.
+            
+            
             _loading = false;
             Close();
             await Added.InvokeAsync(account);

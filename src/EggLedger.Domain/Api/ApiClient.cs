@@ -5,13 +5,8 @@ using ProtoBuf;
 
 namespace EggLedger.Domain.Api;
 
-/// <summary>
-/// Port of Go api/request.go. POSTs base64(protobuf) as form field <c>data</c>, reads a
-/// base64 body, decodes to protobuf. Contract frozen; defaults match the Go source.
-/// </summary>
 public sealed partial class ApiClient {
-    // The four Default* client identifiers below must track the live game.
-    public const string DefaultAppVersion = "1.35.7";
+       public const string DefaultAppVersion = "1.35.7";
     public const string DefaultAppBuild = "111343";
     public const uint DefaultClientVersion = 72;
     public const Platform DefaultPlatform = Platform.Ios;
@@ -24,10 +19,6 @@ public sealed partial class ApiClient {
     public uint ClientVersion { get; }
     public Platform Platform { get; }
 
-    /// <summary>
-    /// Pass an <see cref="HttpClient"/> to stub the transport in tests; null uses a shared
-    /// 5s-timeout client. Constants default to the live-game values.
-    /// </summary>
     public ApiClient(
         HttpClient? httpClient = null,
         string apiPrefix = DefaultApiPrefix,
@@ -43,7 +34,6 @@ public sealed partial class ApiClient {
         Platform = platform;
     }
 
-    /// <summary>Platform is sent as its proto enum name (e.g. "IOS"), matching Go's Platform.String().</summary>
     public BasicRequestInfo NewBasicRequestInfo(string userId) => new() {
         EiUserId = userId,
         ClientVersion = ClientVersion,
@@ -52,10 +42,6 @@ public sealed partial class ApiClient {
         Platform = EnumNames.ProtoName(Platform),
     };
 
-    /// <summary>
-    /// POSTs base64(protobuf) as form key <c>data</c> and returns the base64-decoded response
-    /// body (the "raw payload"). Throws on non-2xx or transport errors.
-    /// </summary>
     public async Task<byte[]> RequestRawPayloadAsync<TReq>(
         string endpoint,
         TReq reqMsg,
@@ -101,10 +87,6 @@ public sealed partial class ApiClient {
         }
     }
 
-    /// <summary>
-    /// Decodes a raw payload into <typeparamref name="TMsg"/>. When authenticated, the payload
-    /// is an AuthenticatedMessage whose Message may be zlib-compressed. Mirrors Go DecodeAPIResponse.
-    /// </summary>
     public TMsg DecodeApiResponse<TMsg>(string apiUrl, byte[] payload, bool authenticated) {
         if (!authenticated) {
             try {
@@ -154,10 +136,6 @@ public sealed partial class ApiClient {
         return output.ToArray();
     }
 
-    /// <summary>
-    /// Flattens an exception chain into "Outer -> Inner -> ..." text, since the real cause often
-    /// sits one or more InnerExceptions down and would otherwise be lost from diagnostics.
-    /// </summary>
     private static string ChainText(Exception ex) {
         var parts = new List<string>();
         for (Exception? e = ex; e is not null; e = e.InnerException) {
@@ -178,7 +156,6 @@ public sealed partial class ApiClient {
     }
 }
 
-/// <summary>Error raised by <see cref="ApiClient"/> on transport or decode failure.</summary>
 public sealed class ApiRequestException : Exception {
     public ApiRequestException(string message) : base(message) { }
 

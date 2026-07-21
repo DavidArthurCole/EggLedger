@@ -3,10 +3,6 @@ using Ei;
 
 namespace EggLedger.Domain.Tests;
 
-/// <summary>
-/// Port of Go missionpacking/missionpacking_test.go; golden values identical. Uses
-/// the embedded eiafx-config.bin (same data Go loads via eiafx.LoadConfig).
-/// </summary>
 public class MissionPackerTests {
     private static readonly MissionPacker Packer = new(new EmbeddedMissionConfigSource());
 
@@ -253,7 +249,7 @@ public class MissionPackerTests {
                 StartTimeDerived = 1000000,
                 DurationSeconds = 300,
                 Identifier = "test-no-type",
-                // MissionType omitted: proto default 0 is Standard.
+                
             },
         };
 

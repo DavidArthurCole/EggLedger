@@ -3,11 +3,6 @@ using EggLedger.Desktop.Platform;
 
 namespace EggLedger.Desktop.Tests;
 
-/// <summary>
-/// Pure per-OS command-construction tests for the shell-out platform operations.
-/// These assert the (exe, args) built for each platform matches the Go reference
-/// (EggLedger/platform/platform*.go) without launching any process or dialog.
-/// </summary>
 public sealed class DesktopCommandBuilderTests {
     [Fact]
     public void BuildOpenCommand_Windows_UsesExplorerWithPath() {
@@ -48,8 +43,8 @@ public sealed class DesktopCommandBuilderTests {
     public void BuildOpenInFolderCommand_Linux_OpensContainingDirectory() {
         var (exe, args) = DesktopCommandBuilder.BuildOpenInFolderCommand(OSPlatform.Linux, "/home/me/sub/file.json");
         Assert.Equal("xdg-open", exe);
-        // Linux cannot select a file generically, so it opens the containing dir.
-        // Path.GetDirectoryName uses the host separator; assert what was passed.
+        
+        
         Assert.Single(args);
         Assert.EndsWith("file.json", "/home/me/sub/file.json");
         Assert.DoesNotContain("file.json", args[0]);

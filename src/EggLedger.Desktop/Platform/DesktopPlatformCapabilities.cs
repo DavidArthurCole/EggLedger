@@ -4,7 +4,6 @@ using EggLedger.Web.Platform;
 
 namespace EggLedger.Desktop.Platform;
 
-/// <summary>Native <see cref="IPlatformCapabilities"/> for the Photino host.</summary>
 /// <remarks>Open + reveal shell out via <see cref="IProcessRunner"/> with per-OS commands from
 /// <see cref="DesktopCommandBuilder"/>; save dialog and window size come from the Photino window.</remarks>
 public sealed class DesktopPlatformCapabilities(IProcessRunner processRunner, IDesktopWindow window) : IPlatformCapabilities {
@@ -14,13 +13,13 @@ public sealed class DesktopPlatformCapabilities(IProcessRunner processRunner, ID
     public bool IsDesktop => true;
 
     public Task OpenFileAsync(string path) {
-        // Absolutize here (the command builder stays pure), matching Go filepath.Abs.
+        
         var (exe, args) = DesktopCommandBuilder.BuildOpenCommand(CurrentPlatform(), Path.GetFullPath(path));
         return _processRunner.RunAsync(exe, args);
     }
 
     public Task OpenUrlAsync(string url) {
-        // Only shell out for http(s); reject anything else so a link can't launch an arbitrary handler.
+        
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)
             || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)) {
             return Task.CompletedTask;
@@ -34,13 +33,9 @@ public sealed class DesktopPlatformCapabilities(IProcessRunner processRunner, ID
         return _processRunner.RunAsync(exe, args);
     }
 
-    /// <summary>MANUAL-VERIFY: native Photino save dialog. Returns the chosen path or null on cancel.</summary>
     public Task<string?> ChooseSaveFilePathAsync(string defaultName)
         => Task.FromResult(_window.ShowSaveFileDialog(defaultName));
 
-    /// <summary>
-    /// Relaunch the current exe then exit. MANUAL-VERIFY: the exit is not unit-tested.
-    /// </summary>
     public async Task RestartAppAsync() {
         var exePath = Environment.ProcessPath;
         if (!string.IsNullOrEmpty(exePath)) {
@@ -55,10 +50,8 @@ public sealed class DesktopPlatformCapabilities(IProcessRunner processRunner, ID
         return Task.FromResult((width, height));
     }
 
-    /// <summary>MANUAL-VERIFY: native open-folder dialog. Returns the chosen path or null on cancel.</summary>
     public Task<string?> ChooseFolderAsync() => Task.FromResult(_window.ShowOpenFolderDialog());
 
-    /// <summary>Windows toggles the hidden file attribute natively; macOS shells chflags; Linux no-ops.</summary>
     public Task SetFolderHiddenAsync(string path, bool hidden) {
         var full = Path.GetFullPath(path);
         if (CurrentPlatform() == OSPlatform.Windows) {

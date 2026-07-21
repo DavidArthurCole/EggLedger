@@ -4,7 +4,6 @@ using EggLedger.Domain.Export.Xlsx;
 
 namespace EggLedger.Domain.Tests.Export;
 
-/// <summary>Port of Go xlsxwriter/xlsxwriter_test.go.</summary>
 public class XlsxWriterTests {
     private static byte[] BuildXlsx() {
         using var ms = new MemoryStream();
@@ -117,7 +116,7 @@ public class XlsxWriterTests {
         }
         var bytes = ms.ToArray();
         using var read = new MemoryStream(bytes);
-        // Must be a valid ZIP.
+        
         using var zip = new ZipArchive(read, ZipArchiveMode.Read);
         Assert.NotEmpty(zip.Entries);
     }

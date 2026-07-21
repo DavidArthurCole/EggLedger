@@ -2,9 +2,8 @@ using System.Globalization;
 
 namespace EggLedger.Web.Settings;
 
-/// <summary>Settings-tab model. Persists as string key/value via <c>IndexedDbSettings</c> using the Go keys so behavior matches across builds.</summary>
 public sealed class SettingsModel {
-    // Keys match the Go storage.go dbSet calls.
+    
 
     public const string KeyAutoRefreshMenno = "auto_refresh_menno_pref";
     public const string KeyRetryFailedMissions = "retry_failed_missions";
@@ -25,74 +24,54 @@ public sealed class SettingsModel {
     public const string KeyBackupDestPath = "backup_dest_path";
     public const string KeyMoveDestPath = "move_dest_path";
 
-    // Clamped on read.
+    
 
     public const int MinWorkerCount = 1;
     public const int MaxWorkerCount = 10;
 
-    /// <summary>Fallback window size when no stored resolution exists (Go lorca default).</summary>
     public const int DefaultWindowWidth = 1280;
     public const int DefaultWindowHeight = 800;
 
-    /// <summary>Refresh Menno community data once weekly.</summary>
     public bool AutoRefreshMenno { get; set; }
 
-    /// <summary>Auto-retry missions that fail during a fetch.</summary>
     public bool AutoRetry { get; set; } = true;
 
-    /// <summary>Hide per-mission timeout errors in the fetch log.</summary>
     public bool HideTimeoutErrors { get; set; }
 
-    /// <summary>Parallel download workers, 1..10. Go default 1.</summary>
     public int WorkerCount { get; set; } = MinWorkerCount;
 
-    /// <summary>Mask player EIDs on screen.</summary>
     public bool ScreenshotSafety { get; set; }
 
-    /// <summary>Show individual mission progress while fetching. Go default true.</summary>
     public bool ShowMissionProgress { get; set; } = true;
 
-    /// <summary>Collapse all but the most recent year section. Go default true.</summary>
     public bool CollapseOlderSections { get; set; } = true;
 
-    /// <summary>Machine-local preference.</summary>
     public bool AdvancedDropFilter { get; set; }
 
-    /// <summary>Auto-export CSV on fetch. Go default true (on for existing installs).</summary>
     public bool AutoExportCsv { get; set; } = true;
 
-    /// <summary>Auto-export XLSX on fetch. Go default true (on for existing installs).</summary>
     public bool AutoExportXlsx { get; set; } = true;
 
-    /// <summary>Whether the worker-count warning has been dismissed.</summary>
     public bool WorkerCountWarningRead { get; set; }
 
-    /// <summary>Persisted window width; 0 means unset (use <see cref="DefaultWindowWidth"/>).</summary>
     public int WindowWidth { get; set; }
 
-    /// <summary>Persisted window height; 0 means unset (use <see cref="DefaultWindowHeight"/>).</summary>
     public int WindowHeight { get; set; }
 
-    /// <summary>Launch the desktop window in fullscreen. Applied at startup only.</summary>
     public bool StartInFullscreen { get; set; }
 
-    /// <summary>Export files to keep per account when pruning; 0 means unlimited.</summary>
     public int ExportKeepCount { get; set; }
 
-    /// <summary>Whether the desktop internal storage folder is OS-hidden.</summary>
     public bool StorageFolderHidden { get; set; }
 
-    /// <summary>Last-used backup destination path.</summary>
     public string BackupDestPath { get; set; } = "";
 
-    /// <summary>Last-used move-storage destination path.</summary>
     public string MoveDestPath { get; set; } = "";
 
     public static int ClampWorkerCount(int n) => n < MinWorkerCount ? MinWorkerCount
         : n > MaxWorkerCount ? MaxWorkerCount
         : n;
 
-    /// <summary>Missing keys keep the Go defaults; worker count is clamped to [1, 10].</summary>
     public void LoadFrom(IReadOnlyDictionary<string, string> settings) {
         AutoRefreshMenno = Bool(settings, KeyAutoRefreshMenno, AutoRefreshMenno);
         AutoRetry = Bool(settings, KeyRetryFailedMissions, AutoRetry);
@@ -114,10 +93,8 @@ public sealed class SettingsModel {
         MoveDestPath = Str(settings, KeyMoveDestPath, MoveDestPath);
     }
 
-    /// <summary>Serializes a bool the way Go strconv.FormatBool does ("true"/"false").</summary>
     public static string FormatBool(bool v) => v ? "true" : "false";
 
-    /// <summary>Serializes an int the way Go strconv.Itoa does (invariant base-10).</summary>
     public static string FormatInt(int v) => v.ToString(CultureInfo.InvariantCulture);
 
     private static bool Bool(IReadOnlyDictionary<string, string> s, string key, bool fallback) =>

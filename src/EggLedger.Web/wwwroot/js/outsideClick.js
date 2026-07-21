@@ -1,5 +1,5 @@
-// Global click-outside registry: components register their root element + a DotNetObjectReference
-// while open; a capture-phase document listener closes any whose element didn't contain the click.
+
+
 (function () {
   if (window.__outsideClickInit) return;
   window.__outsideClickInit = true;

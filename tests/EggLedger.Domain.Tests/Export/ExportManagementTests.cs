@@ -2,7 +2,6 @@ using EggLedger.Domain.Export;
 
 namespace EggLedger.Domain.Tests.Export;
 
-/// <summary>Port of Go export/export_management_test.go.</summary>
 public class ExportManagementTests {
     private static string MissionsDir(string root) => System.IO.Path.Combine(root, "missions");
 

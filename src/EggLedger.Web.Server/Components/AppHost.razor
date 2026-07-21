@@ -88,8 +88,8 @@
 <script src="_content/EggLedger.Web/js/beforeUnloadWarning.js"></script>
 <script src="_framework/blazor.web.js"></script>
 <script>
-    // A rejected reconnect means the server-side circuit is gone (redeploy/restart); it can't
-    // be resumed, so reload instead of asking the user to. Short delay so the message is seen.
+    
+    
     (function () {
         var modal = document.getElementById("components-reconnect-modal");
         if (!modal) return;
@@ -108,8 +108,8 @@
 
 @code {
 
-    // Prerender ON: storage is Postgres (no IndexedDB JS interop on init), so the old
-    // prerender:false dodge is unneeded. Prerender gives interactive roots an SSR anchor;
-    // without it the second root hit insertBefore parentNode null on batch 2.
+    
+    
+    
     private static readonly InteractiveServerRenderMode RenderMode = new();
 }

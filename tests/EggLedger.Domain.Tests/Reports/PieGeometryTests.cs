@@ -2,11 +2,11 @@ using EggLedger.Domain.Reports.Charts;
 
 namespace EggLedger.Domain.Tests.Reports;
 
-// Golden for the pie geometry; mirrors ReportPieChart.vue (top-N rollup, sweep angles, arc paths). Reference values from Node.
+
 public class PieGeometryTests {
     [Fact]
     public void SlicePath_HalfCircle_MatchesVue() {
-        // -90deg to +90deg, center (100,100), r=50.
+        
         var path = PieGeometry.SlicePath(100, 100, 50, -Math.PI / 2, Math.PI / 2);
         Assert.Equal("M 100 100 L 100 50 A 50 50 0 0 1 100 150 Z", path);
     }

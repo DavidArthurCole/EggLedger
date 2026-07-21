@@ -74,15 +74,12 @@
     private bool _busy;
     private string _error = "";
 
-    /// <summary>Accounts with stored data (joined with mission stats).</summary>
     [Parameter]
     public IReadOnlyList<DatabaseAccount> Accounts { get; set; } = [];
 
-    /// <summary>Raised after a delete so the parent can reload the lists.</summary>
     [Parameter]
     public EventCallback Changed { get; set; }
 
-    /// <summary>An account currently being fetched, shown as an ephemeral loading card until its data lands.</summary>
     [Parameter]
     public FetchingCard? Fetching { get; set; }
 

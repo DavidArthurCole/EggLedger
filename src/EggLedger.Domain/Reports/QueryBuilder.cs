@@ -1,11 +1,10 @@
 using System.Globalization;
 
-// Contract: never emit a literal `?` in SQL text. `?` is the positional bind placeholder;
-// its count must equal the args-list length or the SQLite adapter's binding corrupts.
+
+
 
 namespace EggLedger.Domain.Reports;
 
-/// <summary>SQL/predicate builder for report queries. Port of Go reports/query.go; output is byte-identical to the Go reference.</summary>
 public static class QueryBuilder {
     private static bool IsInt(string s) =>
         long.TryParse(s, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out _);
@@ -13,10 +12,6 @@ public static class QueryBuilder {
     private static bool IsFloat(string s) =>
         double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out _);
 
-    /// <summary>
-    /// Parameterized SQL fragment (no leading WHERE); mission conditions reference m.*,
-    /// artifact conditions d.*. Port of Go BuildWhereClause.
-    /// </summary>
     public static (string clause, List<object?> args) BuildWhereClause(ReportFilters filters) {
         var clauses = new List<string>();
         var args = new List<object?>();
@@ -73,7 +68,6 @@ public static class QueryBuilder {
         ["artifact_quality"] = "d.quality",
     };
 
-    /// <summary>Port of Go conditionToSQL. Returns ("", empty) for no-op conditions.</summary>
     public static (string clause, List<object?> args) ConditionToSql(FilterCondition c) {
         switch (c.TopLevel) {
             case "dubcap":
@@ -92,7 +86,7 @@ public static class QueryBuilder {
                     return ("", new List<object?>());
                 }
                 var parts = c.Val.Split('_');
-                // composite is name_level_rarity_quality; quality (index 3) is ignored.
+                
                 var cols = new[] { "artifact_id", "level", "rarity" };
                 var preds = new List<string>();
                 var qargs = new List<object?>();
@@ -131,8 +125,8 @@ public static class QueryBuilder {
                 case "<":
                 case ">=":
                 case "<=":
-                    // Remaining mission fields are integer columns. Reject non-numeric
-                    // values so a malformed value is a no-op, not a silent zero-match.
+                    
+                    
                     if (!IsInt(c.Val)) {
                         return ("", new List<object?>());
                     }
@@ -142,8 +136,8 @@ public static class QueryBuilder {
         }
 
         if (ArtifactFieldToColumn.TryGetValue(c.TopLevel, out var acol)) {
-            // artifact_spec_type is TEXT (enum String() form), so not numerically
-            // validated; artifact_quality is REAL, the rest integers.
+            
+            
             switch (c.Op) {
                 case "=":
                 case "!=":
@@ -153,7 +147,7 @@ public static class QueryBuilder {
                 case "<=":
                     switch (c.TopLevel) {
                         case "artifact_spec_type":
-                            // text column, no numeric validation
+                            
                             break;
                         case "artifact_quality":
                             if (!IsFloat(c.Val)) {
@@ -174,7 +168,6 @@ public static class QueryBuilder {
         return ("", new List<object?>());
     }
 
-    /// <summary>Maps a groupBy dimension to its SQL column expression. Port of Go GroupByColumn.</summary>
     public static string GroupByColumn(string groupBy) => groupBy switch {
         "ship_type" => "m.ship",
         "duration_type" => "m.duration_type",
@@ -188,7 +181,6 @@ public static class QueryBuilder {
         _ => "",
     };
 
-    /// <summary>Returns the strftime format string for a time bucket type. Port of Go TimeBucketFormat.</summary>
     public static string TimeBucketFormat(string timeBucket, string customUnit) {
         return timeBucket switch {
             "day" => "%Y-%m-%d",
@@ -204,10 +196,6 @@ public static class QueryBuilder {
         };
     }
 
-    /// <summary>
-    /// SQL condition for the "last N units" window of custom time buckets; ("", null)
-    /// if not applicable. Port of Go CustomWindowCondition.
-    /// </summary>
     public static (string cond, object? modifier) CustomWindowCondition(int n, string unit) {
         if (n <= 0) {
             return ("", null);
@@ -229,10 +217,6 @@ public static class QueryBuilder {
         return ("m.start_timestamp >= strftime('%s', 'now', ?)", modifier);
     }
 
-    /// <summary>
-    /// Assembles the SELECT/FROM/WHERE/GROUP BY/ORDER BY skeleton shared by every query.
-    /// Port of Go queryBuilder; Build only concatenates pre-formatted fragments, preserving exact whitespace.
-    /// </summary>
     internal struct QueryBuilderSpec {
         public string Indent;
         public string SelectCols;
@@ -268,12 +252,11 @@ public static class QueryBuilder {
         }
     }
 
-    // The multi-line cap_weight SUM expression shared by all four weighted builders.
+    
     private const string WeightedCapWeightSelect = "SUM(CASE WHEN m.nominal_capacity > 0 AND m.capacity > 0\n" +
         "                        THEN CAST(m.nominal_capacity AS REAL) / CAST(m.capacity AS REAL)\n" +
         "                        ELSE 1.0 END) AS cap_weight";
 
-    /// <summary>Port of Go buildAggregateQuery.</summary>
     public static (string query, List<object?> args) BuildAggregateQuery(
         ReportDefinition def, string baseWhere, IReadOnlyList<object?> baseArgs) {
         var args = new List<object?>(baseArgs);
@@ -289,7 +272,6 @@ public static class QueryBuilder {
         return (query, args);
     }
 
-    /// <summary>Port of Go buildTimeSeriesQuery.</summary>
     public static (string query, List<object?> args) BuildTimeSeriesQuery(
         ReportDefinition def, string baseWhere, IReadOnlyList<object?> baseArgs) {
         var args = new List<object?>(baseArgs);
@@ -317,7 +299,6 @@ public static class QueryBuilder {
         return (query, args);
     }
 
-    /// <summary>Port of Go buildPivotQuery. Throws InvalidOperationException on invalid dimensions.</summary>
     public static (string query, List<object?> args) BuildPivotQuery(
         ReportDefinition def, string baseWhere, IReadOnlyList<object?> args) {
         if (def.TimeBucket != "" && def.Mode == "time_series") {
@@ -345,10 +326,6 @@ public static class QueryBuilder {
         return (query, outArgs);
     }
 
-    /// <summary>
-    /// Generates a time-bucket x secondary-dimension query (bucket, grp, count).
-    /// Port of Go BuildTimePivotQuery. Throws on invalid secondary dimension.
-    /// </summary>
     public static (string query, List<object?> args) BuildTimePivotQuery(
         ReportDefinition def, string baseWhere, IReadOnlyList<object?> args) {
         var col2 = GroupByColumn(def.SecondaryGroupBy);
@@ -383,10 +360,6 @@ public static class QueryBuilder {
         return (query, outArgs);
     }
 
-    /// <summary>
-    /// Builds a SQL fragment filtering artifact_drops to a set of afx_ids. Returns
-    /// ("", empty) if ids is empty. Port of Go FamilyWeightClause.
-    /// </summary>
     public static (string clause, List<object?> args) FamilyWeightClause(IReadOnlyList<int> ids) {
         if (ids.Count == 0) {
             return ("", new List<object?>());
@@ -400,7 +373,6 @@ public static class QueryBuilder {
         return ("d.artifact_id IN (" + string.Join(", ", placeholders) + ")", args);
     }
 
-    /// <summary>Port of Go BuildWeightedAggregateQuery.</summary>
     public static (string query, List<object?> args) BuildWeightedAggregateQuery(
         ReportDefinition def, string baseWhere, IReadOnlyList<object?> baseArgs,
         string fwClause, IReadOnlyList<object?> fwArgs) {
@@ -422,7 +394,6 @@ public static class QueryBuilder {
         return (query, args);
     }
 
-    /// <summary>Port of Go BuildWeightedPivotQuery. Throws on invalid dimensions.</summary>
     public static (string query, List<object?> args) BuildWeightedPivotQuery(
         ReportDefinition def, string baseWhere, IReadOnlyList<object?> baseArgs,
         string fwClause, IReadOnlyList<object?> fwArgs) {
@@ -451,7 +422,6 @@ public static class QueryBuilder {
         return (query, args);
     }
 
-    /// <summary>Port of Go BuildWeightedTimeSeriesQuery.</summary>
     public static (string query, List<object?> args) BuildWeightedTimeSeriesQuery(
         ReportDefinition def, string baseWhere, IReadOnlyList<object?> baseArgs,
         string fwClause, IReadOnlyList<object?> fwArgs) {
@@ -484,7 +454,6 @@ public static class QueryBuilder {
         return (query, args);
     }
 
-    /// <summary>Port of Go BuildWeightedTimePivotQuery. Throws on invalid secondary dimension.</summary>
     public static (string query, List<object?> args) BuildWeightedTimePivotQuery(
         ReportDefinition def, string baseWhere, IReadOnlyList<object?> baseArgs,
         string fwClause, IReadOnlyList<object?> fwArgs) {

@@ -3,11 +3,11 @@ using EggLedger.Domain.Reports;
 
 namespace EggLedger.Domain.Tests.Reports;
 
-// Parity oracle for the SQL-free browser path. Each test runs both paths over one set of
-// typed rows and asserts equal ReportResults:
-//   - SQL: ReportExecutor over a FakeDb seeded with the grouped rows SQLite would return,
-//     derived here by an explicit oracle (independent of InMemoryMissionDb grouping).
-//   - In-memory: InMemoryReportRunner over the same typed rows.
+
+
+
+
+
 public class InMemoryReportRunnerTests {
     private const string Eid = "EI1";
 
@@ -23,7 +23,7 @@ public class InMemoryReportRunnerTests {
         public IReadOnlyList<int> FamilyAfxIds(string familyId) => _ids;
     }
 
-    // Matches a query by unique substring and serves canned rows, mirroring the ExecuteTests double.
+    
     private sealed class FakeDb : IMissionDb {
         private readonly List<(string Key, IReadOnlyList<object?[]> Rows)> _byKey = [];
 
@@ -74,7 +74,7 @@ public class InMemoryReportRunnerTests {
             SpecType = spec,
         };
 
-    // 1D count over a mission column, descending by count, first-seen tiebreak.
+    
     private static object?[][] Group1D(IEnumerable<MissionRowData> rows, Func<MissionRowData, string> key) {
         var counts = new Dictionary<string, long>(StringComparer.Ordinal);
         var order = new List<string>();
@@ -93,7 +93,7 @@ public class InMemoryReportRunnerTests {
             .Select(x => new object?[] { x.k, x.c })];
     }
 
-    // 2D count over two mission columns, ascending by raw1 then raw2 (numeric).
+    
     private static object?[][] Group2D(
         IEnumerable<MissionRowData> rows, Func<MissionRowData, string> k1, Func<MissionRowData, string> k2) {
         var counts = new Dictionary<(string, string), long>();
@@ -132,7 +132,7 @@ public class InMemoryReportRunnerTests {
 
     [Fact]
     public void Parity_AggregateByShip_WithFilter() {
-        // Mission-scope filter: duration_type = 0 keeps a and c.
+        
         var missions = new List<MissionRowData>
         {
             M("a", ship: 9, duration: 0, start: 1_700_000_000, ret: 1_700_003_600),
@@ -155,7 +155,7 @@ public class InMemoryReportRunnerTests {
         var memResult = new InMemoryReportRunner(new NoWeights()).Run(def, missions, Array.Empty<ArtifactDropRowData>());
 
         Assert.Equal(sqlResult, memResult);
-        // Both ships have one duration-0 mission; equal counts keep first-seen order.
+        
         Assert.Equal([1, 1], memResult.Values);
     }
 
@@ -184,13 +184,13 @@ public class InMemoryReportRunnerTests {
         Assert.True(memResult.Is2D);
         Assert.Equal(["BCR", "Henerprise"], memResult.RowLabels);
         Assert.Equal(["Short", "Standard"], memResult.ColLabels);
-        // BCR/Short=0, BCR/Standard=1, Hen/Short=1, Hen/Standard=2.
+        
         Assert.Equal([0, 1, 1, 2], memResult.MatrixValues);
     }
 
     [Fact]
     public void Parity_DropBasedAggregateByRarity() {
-        // artifacts subject: count drops grouped by rarity (drop_index >= 0).
+        
         var missions = new List<MissionRowData>
         {
             M("a", ship: 9, duration: 0, start: 1, ret: 2),
@@ -206,7 +206,7 @@ public class InMemoryReportRunnerTests {
         };
         var def = new ReportDefinition { Mode = "aggregate", GroupBy = "rarity", Subject = "artifacts", AccountId = Eid };
 
-        // Oracle: count drops with drop_index >= 0 by rarity, desc by count.
+        
         var keptDrops = drops.Where(d => d.DropIndex >= 0);
         var rarityRows = Group1DRaw(keptDrops.Select(d => d.Rarity.ToString(CultureInfo.InvariantCulture)));
         var sqlDb = new FakeDb().On("GROUP BY d.rarity", rarityRows);
@@ -214,13 +214,13 @@ public class InMemoryReportRunnerTests {
         var memResult = new InMemoryReportRunner(new NoWeights()).Run(def, missions, drops);
 
         Assert.Equal(sqlResult, memResult);
-        // rarity 1 -> 2 drops, rarity 3 -> 2 drops; equal, first-seen order is 3 then 1.
+        
         Assert.Equal([2, 2], memResult.Values);
     }
 
     [Fact]
     public void Parity_DropFilterContains() {
-        // Mission aggregate with a drops "contains" filter (rarity 3 exists).
+        
         var missions = new List<MissionRowData>
         {
             M("a", ship: 9, duration: 0, start: 1, ret: 2),
@@ -241,7 +241,7 @@ public class InMemoryReportRunnerTests {
             },
         };
 
-        // Oracle: only mission a has a rarity-3 drop.
+        
         var sqlDb = new FakeDb().On("GROUP BY m.ship", Group1D(missions.Where(m => m.MissionId == "a"), Ship));
         var sqlResult = new ReportExecutor(sqlDb, new NoWeights()).ExecuteReport(def);
         var memResult = new InMemoryReportRunner(new NoWeights()).Run(def, missions, drops);
@@ -253,8 +253,8 @@ public class InMemoryReportRunnerTests {
 
     [Fact]
     public void Parity_TimeSeriesByMonth() {
-        // Two months, one with two missions. UTC epochs:
-        // 1700000000 -> 2023-11, 1704067200 -> 2024-01.
+        
+        
         var missions = new List<MissionRowData>
         {
             M("a", ship: 9, duration: 0, start: 1_700_000_000, ret: 1_700_003_600),
@@ -272,22 +272,22 @@ public class InMemoryReportRunnerTests {
         var bucketRows = Group1DRaw(missions
             .Select(m => TimeBucketLabel(m.StartTimestamp))
             .OrderBy(b => b, StringComparer.Ordinal));
-        // Time series query is ordered ASC by bucket.
+        
         var ordered = bucketRows.OrderBy(r => (string)r[0]!, StringComparer.Ordinal).ToArray();
         var sqlDb = new FakeDb().On("GROUP BY bucket", ordered);
         var sqlResult = new ReportExecutor(sqlDb, new NoWeights()).ExecuteReport(def);
         var memResult = new InMemoryReportRunner(new NoWeights()).Run(def, missions, Array.Empty<ArtifactDropRowData>());
 
         Assert.Equal(sqlResult, memResult);
-        // 2023-11 (2 missions), then gap-filled 2023-12 (0), then 2024-01 (1).
+        
         Assert.Equal(["2023-11", "2023-12", "2024-01"], memResult.Labels);
         Assert.Equal([2, 0, 1], memResult.Values);
     }
 
     [Fact]
     public void Parity_NormalizedAggregate_Launches() {
-        // launches normalization divides each group's count by the per-group
-        // mission count -> all ones here (denominator == numerator).
+        
+        
         var missions = new List<MissionRowData>
         {
             M("a", ship: 9, duration: 0, start: 1, ret: 2),
@@ -302,7 +302,7 @@ public class InMemoryReportRunnerTests {
             NormalizeBy = "launches",
         };
 
-        // Trailing newline distinguishes the main aggregate (has ORDER BY) from the denom1D count.
+        
         var grouped = Group1D(missions, Ship);
         var sqlDb = new FakeDb()
             .On("GROUP BY m.ship\n", grouped)
@@ -317,7 +317,7 @@ public class InMemoryReportRunnerTests {
 
     [Fact]
     public void Parity_FamilyWeightedAggregate() {
-        // Family weight restricts to artifact ids {12, 13}; cap_weight = nominal/cap.
+        
         var missions = new List<MissionRowData>
         {
             M("a", ship: 9, duration: 0, start: 1, ret: 2, cap: 4, nominal: 8),
@@ -327,7 +327,7 @@ public class InMemoryReportRunnerTests {
         {
             D("a", artifactId: 12, rarity: 3, tier: 0),
             D("b", artifactId: 13, rarity: 1, tier: 0),
-            // artifact 99 is outside the family, excluded.
+            
             D("b", artifactId: 99, rarity: 0, tier: 0),
         };
         var weights = new FixedFamily(12, 13);
@@ -339,7 +339,7 @@ public class InMemoryReportRunnerTests {
             AccountId = Eid,
         };
 
-        // Oracle rows: rawLabel, artifactId, level, cap_weight (grouped by ship/afx/level).
+        
         var sqlDb = new FakeDb().On("cap_weight", new object?[][]
         {
             ["9", 12L, 0L, 2.0],
@@ -355,8 +355,8 @@ public class InMemoryReportRunnerTests {
 
     [Fact]
     public void Parity_FamilyWeightedPivot_MissionCountCountsMissionsNotDrops() {
-        // Regression: family-weighted pivot mission-count is FROM mission m (no drops join),
-        // so mission "a" with two in-family drops must count once, not twice via the per-drop join.
+        
+        
         var missions = new List<MissionRowData>
         {
             M("a", ship: 9, duration: 0, start: 1, ret: 3, cap: 4, nominal: 8),
@@ -378,15 +378,15 @@ public class InMemoryReportRunnerTests {
             AccountId = Eid,
         };
 
-        // Hand-rolled cap_weight oracle (artifact join, grouped by ship/dur/afx/level): mission a
-        // contributes two rows at 2.0 (drops 12, 13), mission b one row at 1.0 (drop 12).
+        
+        
         var capRows = new object?[][]
         {
             ["9", "0", 12L, 0L, 2.0],
             ["9", "0", 13L, 0L, 2.0],
             ["3", "1", 12L, 0L, 1.0],
         };
-        // mission-count query (FROM mission m, no join): one row per mission.
+        
         var missionCountRows = new object?[][]
         {
             ["3", "1", 1L],
@@ -400,12 +400,12 @@ public class InMemoryReportRunnerTests {
 
         Assert.Equal(sqlResult, memResult);
         Assert.True(memResult.Is2D);
-        // Mission count matrix must total 2 (two missions), not 3 (three drops).
+        
         Assert.NotNull(memResult.MissionCountMatrix);
         Assert.Equal(2L, memResult.MissionCountMatrix!.Sum());
     }
 
-    // 1D count over arbitrary raw key strings, desc by count, first-seen tiebreak.
+    
     private static object?[][] Group1DRaw(IEnumerable<string> keys) {
         var counts = new Dictionary<string, long>(StringComparer.Ordinal);
         var order = new List<string>();

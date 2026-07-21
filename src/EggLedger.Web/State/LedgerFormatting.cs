@@ -4,7 +4,6 @@ using EggLedger.Domain.MissionQuery;
 namespace EggLedger.Web.State;
 
 public static class LedgerFormatting {
-    /// <summary>Human byte size (B/KB/MB/GB), one decimal above 1 KB.</summary>
     public static string FormatBytes(long bytes) {
         if (bytes < 1024) {
             return $"{bytes} B";
@@ -18,7 +17,6 @@ public static class LedgerFormatting {
         return $"{bytes / (1024.0 * 1024 * 1024):0.0} GB";
     }
 
-    /// <summary>By mission count descending, stable for equal counts (preserves input order).</summary>
     public static IReadOnlyList<DatabaseAccount> SortByMissionCountDescending(IEnumerable<DatabaseAccount> accounts) =>
         accounts
             .Select((acct, index) => (acct, index))
@@ -27,7 +25,6 @@ public static class LedgerFormatting {
             .Select(x => x.acct)
             .ToList();
 
-    /// <summary>Relative "X ago" label; empty for missing/future, else the two coarsest non-zero units.</summary>
     public static string FormatTimeSince(double returnUnixSeconds, double nowUnixSeconds) {
         if (returnUnixSeconds == 0) {
             return "";
@@ -49,7 +46,6 @@ public static class LedgerFormatting {
         return $"{minutes}m ago";
     }
 
-    /// <summary>Case-insensitive substring match on id or nickname; blank query returns input unchanged.</summary>
     public static IReadOnlyList<DatabaseAccount> FilterAccounts(IReadOnlyList<DatabaseAccount> accounts, string? query) {
         if (string.IsNullOrEmpty(query)) {
             return accounts;
@@ -65,7 +61,6 @@ public static class LedgerFormatting {
     public static string NormalizeEid(string? eid) =>
         (eid ?? "").Trim().ToUpper(CultureInfo.InvariantCulture);
 
-    /// <summary>Validation message for a normalized EID, or empty when valid (empty input is valid, no error).</summary>
     public static string EidProblem(string normalizedEid) {
         string v = normalizedEid;
         if (v == "") {

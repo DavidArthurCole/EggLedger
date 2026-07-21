@@ -4,10 +4,6 @@ using EggLedger.Domain.Export.Xlsx;
 
 namespace EggLedger.Domain.Export;
 
-/// <summary>
-/// CSV and XLSX exporters. Pure: produce bytes; callers handle filesystem IO.
-/// Port of Go export.MissionsToCsv / MissionsToXlsx.
-/// </summary>
 public static class MissionExport {
     private static readonly (string Header, double Width)[] ColumnDefs =
     [
@@ -33,7 +29,6 @@ public static class MissionExport {
         return max;
     }
 
-    /// <summary>Header row: 10 fixed columns plus "Artifact N" columns.</summary>
     public static List<string> BuildHeader(int maxArtifactCount) {
         var header = new List<string>(ColumnDefs.Length + maxArtifactCount);
         foreach (var c in ColumnDefs) {
@@ -65,7 +60,6 @@ public static class MissionExport {
         return row;
     }
 
-    /// <summary>Serializes missions to CSV bytes matching Go encoding/csv output.</summary>
     public static byte[] MissionsToCsvBytes(IReadOnlyList<Mission> missions) {
         int mac = MaxArtifactCount(missions);
         var sb = new StringBuilder();
@@ -76,12 +70,10 @@ public static class MissionExport {
         return Encoding.UTF8.GetBytes(sb.ToString());
     }
 
-    /// <summary>Writes CSV bytes to <paramref name="path"/>.</summary>
     public static void MissionsToCsv(IReadOnlyList<Mission> missions, string path) {
         File.WriteAllBytes(path, MissionsToCsvBytes(missions));
     }
 
-    /// <summary>Serializes missions to XLSX bytes (single sheet).</summary>
     public static byte[] MissionsToXlsxBytes(IReadOnlyList<Mission> missions) {
         int mac = MaxArtifactCount(missions);
 
@@ -137,18 +129,12 @@ public static class MissionExport {
         return ms.ToArray();
     }
 
-    /// <summary>Writes XLSX bytes to <paramref name="path"/>.</summary>
     public static void MissionsToXlsx(IReadOnlyList<Mission> missions, string path) {
         File.WriteAllBytes(path, MissionsToXlsxBytes(missions));
     }
 
-    /// <summary>Filename without directory and extension. Port of FilenameWithoutExt.</summary>
     public static string FilenameWithoutExt(string f) => Path.GetFileNameWithoutExtension(f);
 
-    /// <summary>
-    /// Writes one CSV record. Matches Go encoding/csv: comma separator, CRLF
-    /// line terminator (including after the final record), minimal quoting.
-    /// </summary>
     private static void WriteCsvRecord(StringBuilder sb, List<string> fields) {
         for (int i = 0; i < fields.Count; i++) {
             if (i > 0) {
@@ -183,7 +169,7 @@ public static class MissionExport {
         if (field.IndexOfAny(['"', ',', '\r', '\n']) >= 0) {
             return true;
         }
-        // Match Go encoding/csv: only the special chars trigger quoting (leading space does not).
+        
         return false;
     }
 }

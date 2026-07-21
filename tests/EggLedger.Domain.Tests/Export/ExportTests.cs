@@ -5,7 +5,6 @@ using Ei;
 
 namespace EggLedger.Domain.Tests.Export;
 
-/// <summary>Port of Go export/export_test.go.</summary>
 public class ExportTests {
     private static List<Mission> TestMissions() =>
     [
@@ -44,8 +43,8 @@ public class ExportTests {
     ];
 
     private static List<string[]> ParseCsv(byte[] bytes) {
-        // Minimal CSV reader for the fields these tests produce (no embedded
-        // newlines). Matches Go encoding/csv for this data.
+        
+        
         var text = Encoding.UTF8.GetString(bytes);
         var records = new List<string[]>();
         foreach (var line in text.Split("\r\n")) {

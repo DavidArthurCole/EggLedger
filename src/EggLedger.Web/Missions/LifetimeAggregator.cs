@@ -10,9 +10,7 @@ public sealed class LifetimeData {
     public List<DropLike> Ingredients { get; set; } = [];
 }
 
-/// <summary>Folds every mission's drops into four spec-type buckets, combining identical drops. CAUTION: SpecType must be exactly "Artifact"/"Stone"/"StoneFragment"/"Ingredient" (verbatim from MissionQueryHandlers.ShapeDrop) or drops are silently filtered out.</summary>
 public static class LifetimeAggregator {
-    /// <summary>Merge key is id_level_rarity per bucket; first occurrence is the representative, later identical drops bump Count. MissionCount is the dictionary entry count, so pass only the missions you intend to include.</summary>
     public static LifetimeData Aggregate(IReadOnlyDictionary<string, List<MissionDrop>> dropsByMission) {
         var artifacts = new Bucket();
         var stones = new Bucket();
@@ -41,7 +39,7 @@ public static class LifetimeAggregator {
         };
     }
 
-    // Port of MissionOverlay.vue mergeDropArrays: merge by id_level_rarity, summing counts; first occurrence is the representative (full copy).
+    
     public static List<DropLike> MergeDropArrays(IEnumerable<IReadOnlyList<DropLike>> arrays) {
         var map = new Dictionary<string, DropLike>();
         var order = new List<string>();
@@ -74,7 +72,7 @@ public static class LifetimeAggregator {
         return result;
     }
 
-    // Dedupe-on-insert bucket: ordered list plus a key index (mirrors Vue LifetimeBucket: arr + index Map).
+    
     private sealed class Bucket {
         public List<DropLike> Items { get; } = [];
         private readonly Dictionary<string, DropLike> _index = [];

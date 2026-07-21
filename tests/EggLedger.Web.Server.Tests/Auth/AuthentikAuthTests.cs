@@ -19,14 +19,14 @@ public class AuthentikAuthTests {
         TrustedProxyNetworks: [],
         BuildSha: "dev", BuildDate: "dev", DataProtectionCertPath: "", DataProtectionCertPassword: "");
 
-    // HttpClient with a base address never actually dials it until a request is sent. Safe here
-    // because these tests only check scheme registration, never a real OIDC round-trip that
-    // would invoke the identity client.
+    
+    
+    
     private static IdentityApiClient UnusedIdentityClient() =>
         new(new HttpClient { BaseAddress = new Uri("http://localhost:8090") });
 
-    // Lazy: NpgsqlDataSource.Create never dials out until a command actually runs, and these
-    // tests only check scheme registration, never invoke OnTicketReceived's users upsert.
+    
+    
     private static NpgsqlDataSource UnusedDataSource() =>
         NpgsqlDataSource.Create("Host=localhost;Username=unused;Password=unused;Database=unused");
 

@@ -153,7 +153,6 @@
 @code {
     [Parameter] public string? AccountId { get; set; }
 
-    /// <summary>Filtered missions in display order; drives prev/next navigation.</summary>
     [Parameter]
     public IReadOnlyList<DatabaseMission> FilteredMissions { get; set; } = Array.Empty<DatabaseMission>();
 
@@ -189,8 +188,8 @@
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        // Focus the overlay so its keydown handler receives arrow/Escape keys instead of the
-        // mission list scrolling behind it.
+        
+        
         if (_focusPending && _open) {
             _focusPending = false;
             await _rootRef.FocusAsync();
@@ -237,8 +236,8 @@
         _isLoading = false;
         StateHasChanged();
 
-        // Expected-drops need the community download; populate after the grid renders so the
-        // ship cards are not gated on it, then rebuild the combined view once.
+        
+        
         foreach (var data in _multi) {
             var mission = FindMission(data.MissionInfo.MissiondId);
             if (mission is not null) {
@@ -250,7 +249,7 @@
         StateHasChanged();
     }
 
-    // Port of MissionOverlay.vue combinedDropData: merge each spec bucket across missions, then sort.
+    
     private void RebuildCombined() {
         RebuildCombined(SortMethod);
     }
@@ -269,7 +268,6 @@
         _combinedStoneFragments = sortFn(LifetimeAggregator.MergeDropArrays(_multi.Select(m => (IReadOnlyList<DropLike>)m.StoneFragments)));
     }
 
-    /// <summary>Re-sort the open overlay's drop lists when the sort method changes.</summary>
     public async Task ReSortAsync(MissionSortMethod method) {
         if (!_open) {
             return;
@@ -296,8 +294,8 @@
         _isLoading = false;
         StateHasChanged();
 
-        // Expected-drops come from the multi-MB community download; fill it in after the
-        // ship is already on screen so first paint is not gated on the fetch.
+        
+        
         if (_data is not null) {
             var mission = FindMission(missionId);
             if (mission is not null) {
@@ -335,7 +333,7 @@
             await Menno.EnsureLoadedAsync();
         }
         catch {
-            // Community data is best-effort; tooltip falls back to "not enough data".
+            
             return;
         }
 

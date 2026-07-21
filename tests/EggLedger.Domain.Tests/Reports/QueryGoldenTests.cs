@@ -2,8 +2,8 @@ using EggLedger.Domain.Reports;
 
 namespace EggLedger.Domain.Tests.Reports;
 
-// Port of Go reports/query_golden_test.go. Locks the EXACT generated SQL string
-// and args for all eight query builders. Byte-identical to the Go golden output.
+
+
 public class QueryGoldenTests {
     private static void AssertQuery(string gotQ, string wantQ, IReadOnlyList<object?> gotArgs, object?[] wantArgs) {
         Assert.Equal(wantQ, gotQ);

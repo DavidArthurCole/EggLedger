@@ -147,9 +147,9 @@
         await ResumeIncompleteFetchAsync();
     }
 
-    // A prior circuit's fetch can be abandoned mid-run by a page refresh/close, which never
-    // reaches StartFetchAsync's terminal-state cleanup. The mission diff against IndexedDB is
-    // already idempotent, so silently restarting it here just picks up the missing missions.
+    
+    
+    
     private async Task ResumeIncompleteFetchAsync() {
         if (!Fetch.IsIdle) {
             return;
@@ -179,7 +179,7 @@
             await Js.InvokeVoidAsync("setFetchInProgressWarning", active);
         }
         catch (JSDisconnectedException) {
-            // Circuit already tearing down; nothing to warn about.
+            
         }
     }
 

@@ -3,10 +3,6 @@ using EggLedger.Domain.Util;
 
 namespace EggLedger.Domain.Reports;
 
-/// <summary>
-/// Runs report queries and assembles labeled results. Port of Go reports
-/// execute.go / execute_weighted.go / normalize.go, with DB and weighting data injected.
-/// </summary>
 public sealed class ReportExecutor {
     private readonly IMissionDb _db;
     private readonly IWeightData _weights;
@@ -16,7 +12,6 @@ public sealed class ReportExecutor {
         _weights = weights ?? throw new ArgumentNullException(nameof(weights));
     }
 
-    /// <summary>Runs the report query and returns labeled results. Port of Go ExecuteReport.</summary>
     public ReportResult ExecuteReport(ReportDefinition def) {
         var (whereClause, filterArgs) = QueryBuilder.BuildWhereClause(def.Filters);
         var baseWhere = "m.player_id = ?";
@@ -240,8 +235,8 @@ public sealed class ReportExecutor {
             }
         }
 
-        // Mirrors Go sort.SliceStable on floatValues only: values reorder, labels are
-        // rebuilt from rawOrder (which is NOT reordered).
+        
+        
         StableSortFloatDescending(floatValues);
         for (var i = 0; i < rawOrder.Count; i++) {
             labels[i] = Labels.FormatLabel(def.GroupBy, rawOrder[i]);
@@ -278,7 +273,7 @@ public sealed class ReportExecutor {
         var rowLabels = f.RowLabels;
         var colLabels = f.ColLabels;
 
-        // Always compute mission counts so the frontend can apply min-sample-size.
+        
         var mcMap = BuildMissionCountMap(def, baseWhere, baseArgs);
 
         var missionCountMatrix = BuildMissionCountMatrix(mcMap, rowLabels, colLabels);
@@ -335,7 +330,7 @@ public sealed class ReportExecutor {
         return missionCountMatrix;
     }
 
-    // Mutates matrixValues in place. Returns per-mission values only for airtime mode.
+    
     private List<double>? ApplyWeightedPivotNormalization(ReportDefinition def, double[] matrixValues, List<string> rowLabels, List<string> colLabels, Dictionary<string, Dictionary<string, double>> mcMap, string baseWhere, List<object?> baseArgs) {
         var pctMode = def.NormalizeBy;
         List<double>? rawPerMissionValues = null;
@@ -454,7 +449,6 @@ public sealed class ReportExecutor {
         };
     }
 
-    /// <summary>Port of Go denom1D. Keyed by raw group value.</summary>
     private Dictionary<string, double> Denom1D(string groupCol, string mode, string baseWhere, IReadOnlyList<object?> baseArgs) {
         string denomQuery;
         if (mode == "airtime") {
@@ -476,7 +470,6 @@ public sealed class ReportExecutor {
         return denomMap;
     }
 
-    /// <summary>Port of Go denom2D. Keyed by FormatLabel-resolved [row][col].</summary>
     private Dictionary<string, Dictionary<string, double>> Denom2D(ReportDefinition def, string col1, string col2, string mode, string baseWhere, IReadOnlyList<object?> baseArgs) {
         string denomQuery;
         if (mode == "airtime") {
@@ -510,8 +503,8 @@ public sealed class ReportExecutor {
     private static double Denom(Dictionary<string, Dictionary<string, double>> m, string k1, string k2) =>
         m.TryGetValue(k1, out var inner) && inner.TryGetValue(k2, out var v) ? v : 0;
 
-    // Stable descending sort of values in-place, mirroring Go sort.SliceStable on
-    // a float slice. Equal values keep insertion order.
+    
+    
     private static void StableSortFloatDescending(List<double> values) {
         var ordered = values
             .Select((v, i) => (v, i))

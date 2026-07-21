@@ -199,7 +199,7 @@
         _reachable = await CheckReachableAsync();
         _reachableChecking = false;
 
-        // Resume a redirect-interrupted auth: a pending state saved before the Discord redirect means we restart the poll loop so the session lands.
+        
         if (_reachable && !_connected) {
             var pending = await SessionStore.GetPendingAuthStateAsync();
             if (!string.IsNullOrEmpty(pending)) {
@@ -214,9 +214,9 @@
                 await OnAuthCompleteAsync(session);
             }
             catch (CloudSyncException) {
-                // Not logged in, or session-from-login unavailable - Web user stays "Not connected"
-                // and no button is shown to retry (see markup change in Step 4); this should not
-                // normally happen since reaching this page already requires being logged in.
+                
+                
+                
             }
         }
     }
@@ -243,7 +243,7 @@
         _restoreError = "";
         try {
             var state = await Cloud.BeginAuthAsync();
-            // BeginAuthAsync force-navigates to Discord, so persist poll state first so the reloaded SPA resumes polling on return.
+            
             await SessionStore.SetPendingAuthStateAsync(state);
             await PollUntilDoneAsync(state);
         }
@@ -275,7 +275,7 @@
             }
         }
         catch (OperationCanceledException) {
-            // Clear pending state only on a real timeout, not a dispose-driven cancel where we may resume after a reload.
+            
             if (_pollCts is not null && _pollCts.IsCancellationRequested && !_disposed) {
                 await SessionStore.ClearPendingAuthStateAsync();
             }
@@ -378,7 +378,7 @@
         _restoreSuccess = false;
         StateHasChanged();
         try {
-            // Accounts first (reports reference account ids).
+            
             try {
                 var remoteAccounts = await Cloud.GetBlobAsync<List<AccountInfo>>(_session, CloudSyncBlobs.AccountsBlob);
                 foreach (var acct in remoteAccounts ?? []) {
@@ -457,8 +457,8 @@
         }
     }
 
-    // Deletes every remote blob for the current session's account. Does not touch the
-    // users/identities row - re-syncing later reuses the same account, no duplicate identity.
+    
+    
     private async Task DeleteAllRemoteBlobsAsync() {
         if (_session is null) {
             return;
@@ -495,10 +495,6 @@
         await SessionStore.SetAutoSyncAsync(_autoSync);
     }
 
-    /// <summary>
-    ///     Pushes to the cloud when auto-sync is on and connected; no-op otherwise. Called by the Settings page after a
-    ///     cloud-syncable setting changes.
-    /// </summary>
     public async Task AutoSyncIfEnabledAsync() {
         if (!_autoSync || !_connected || _session is null || _syncInProgress) {
             return;

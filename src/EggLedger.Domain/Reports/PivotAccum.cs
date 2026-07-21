@@ -1,9 +1,5 @@
 namespace EggLedger.Domain.Reports;
 
-/// <summary>
-/// Shared 2D pivot collection. Port of Go reports/pivot.go. Cells accumulate with +=;
-/// a GROUP BY guaranteeing one row per (row, col) makes that equal plain assignment.
-/// </summary>
 internal sealed class PivotAccum {
     private readonly PivotAxis _rows = new();
     private readonly PivotAxis _cols = new();
@@ -41,10 +37,6 @@ internal sealed class PivotAccum {
         List<string> RawColLabels,
         double[] Matrix);
 
-    /// <summary>
-    /// Sorts requested axes (LabelSortLess on raw values) and flattens cells into a
-    /// row-major matrix (r*nC+c); unsorted axes stay in insertion order. Port of Go pivotAccum.finalize.
-    /// </summary>
     public Finalized Finalize(bool sortRows, bool sortCols, string rowGroupBy, string colGroupBy) {
         var rowEntries = _rows.Entries;
         var colEntries = _cols.Entries;
@@ -84,7 +76,7 @@ internal sealed class PivotAccum {
         return new Finalized(rowLabels, colLabels, rawRowLabels, rawColLabels, matrix);
     }
 
-    // Stable sort matching Go's sort.SliceStable with the LabelSortLess comparator.
+    
     private static void StableSort(List<LabelEntry> entries, string groupBy) {
         var ordered = entries
             .Select((e, i) => (e, i))

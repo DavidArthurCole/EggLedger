@@ -1,8 +1,8 @@
 namespace EggLedger.Web.Data;
 
-// Key-value object-store seam shared by both persistence backends (Postgres, SQLite).
-// store/index names come from IndexedDbStores; values + keys are the typed Row records the
-// stores own. The JSON<->column round-trip is fixed by JsonRowCodec.
+
+
+
 public interface IIndexedDb {
     ValueTask PutAsync(string store, object value);
     ValueTask<int> PutManyAsync(string store, IEnumerable<object> values);
@@ -10,7 +10,7 @@ public interface IIndexedDb {
     ValueTask<T[]> GetAllAsync<T>(string store);
     ValueTask<T[]> GetAllByIndexAsync<T>(string store, string index, object value);
 
-    // Like GetAllByIndexAsync but SELECTs only T's columns.
+    
     ValueTask<T[]> GetAllByIndexProjectedAsync<T>(string store, string index, object value);
     ValueTask DeleteAsync(string store, object key);
     ValueTask ClearAsync(string store);

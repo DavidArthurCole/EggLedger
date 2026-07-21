@@ -2,8 +2,8 @@ using System.Collections.Concurrent;
 
 namespace EggLedger.Web.Server.Sync.Admin;
 
-// In-process API-rate metrics: a 60-slot ring of per-minute request buckets (last hour)
-// plus a lifetime per-path tally. Singleton, thread-safe via Interlocked; resets on restart.
+
+
 public sealed class ApiMetrics(TimeProvider time) {
     public const int Minutes = 60;
 
@@ -28,7 +28,7 @@ public sealed class ApiMetrics(TimeProvider time) {
         _byPath.AddOrUpdate(Normalize(path), 1, (_, v) => v + 1);
     }
 
-    // Collapse the id-bearing blob path so the tally does not explode per blob name.
+
     private static string Normalize(string path) =>
         path.StartsWith("/api/v1/blobs/", StringComparison.Ordinal) ? "/api/v1/blobs/{name}" : path;
 

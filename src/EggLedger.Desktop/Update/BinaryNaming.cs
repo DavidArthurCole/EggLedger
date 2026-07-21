@@ -1,20 +1,10 @@
 namespace EggLedger.Desktop.Update;
 
-/// <summary>
-/// Pure binary-name helpers. A downloaded update binary is "EggLedger_new[.exe]";
-/// after the old instance exits the new one renames itself to canonical
-/// "EggLedger[.exe]" so the directory keeps a single binary.
-/// </summary>
 public static class BinaryNaming {
-    /// <summary>Suffix marking a freshly downloaded binary awaiting self-replacement.</summary>
     public const string NewBinarySuffix = "_new";
 
     private const string ExeExt = ".exe";
 
-    /// <summary>
-    /// True when path's base name (minus .exe) ends in "_new", i.e. it is a
-    /// downloaded update binary. Ports isNewBinaryName.
-    /// </summary>
     public static bool IsNewBinaryName(string path) {
         var baseName = Path.GetFileName(path);
         if (baseName.EndsWith(ExeExt, StringComparison.Ordinal)) {
@@ -23,10 +13,6 @@ public static class BinaryNaming {
         return baseName.EndsWith(NewBinarySuffix, StringComparison.Ordinal);
     }
 
-    /// <summary>
-    /// Map &lt;dir&gt;/EggLedger_new[.exe] -&gt; &lt;dir&gt;/EggLedger[.exe]. Ports
-    /// canonicalPathFromNew.
-    /// </summary>
     public static string CanonicalPathFromNew(string path) {
         var dir = Path.GetDirectoryName(path) ?? "";
         var baseName = Path.GetFileName(path);
@@ -41,11 +27,6 @@ public static class BinaryNaming {
         return Path.Combine(dir, baseName + ext);
     }
 
-    /// <summary>
-    /// Decide whether to run as the updater replacing EggLedger[.exe]: triggered by a
-    /// *_new binary name or the --replace-* flags.
-    /// </summary>
-    /// <remarks>oldPath comes from replacePath else the _new name; oldPid is 0 when unknown.</remarks>
     public static (bool Run, int OldPid, string OldPath) DecideReplace(
         string self, int replacePid, string replacePath) {
         var hasFlags = replacePid != 0 && !string.IsNullOrEmpty(replacePath);

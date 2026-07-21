@@ -8,24 +8,28 @@
             <span class="text-xs text-gray-500 tabular-nums">@Users.Sum(u => u.MissionCount) missions - @LedgerFormatting.FormatBytes(Users.Sum(u => u.StorageBytes)) total</span>
         }
     </div>
-    <div class="admin-table-wrap">
-        <table class="admin-table">
+    <div class="admin-table-wrap-scroll">
+        <table class="admin-table w-auto">
             <thead>
             <tr>
-                <th>User</th>
-                <th>Discord ID</th>
-                <th class="text-right">Missions</th>
-                <th class="text-right">Storage</th>
-                <th class="text-right">Last Login</th>
+                <th>@SortHeader("User", "username")</th>
+                <th>@SortHeader("Discord ID", "discord")</th>
+                <th class="text-right">@SortHeader("Missions", "missions")</th>
+                <th class="text-right">@SortHeader("Reports", "reports")</th>
+                <th class="text-right">@SortHeader("Backups", "backups")</th>
+                <th class="text-right">@SortHeader("Storage", "storage")</th>
+                <th class="text-right">@SortHeader("Last Login", "lastLogin")</th>
                 <th></th>
             </tr>
             </thead>
             <tbody>
-            @foreach (var u in Users ?? []) {
+            @foreach (var u in SortedUsers()) {
                 <tr>
                     <td class="font-medium text-gray-300">@u.Username @(u.IsAdmin ? "(admin)" : "")</td>
                     <td class="font-mono text-gray-600" title="@u.DiscordId">@(u.DiscordId ?? "—")</td>
                     <td class="text-right">@u.MissionCount</td>
+                    <td class="text-right">@u.ReportCount</td>
+                    <td class="text-right">@u.BackupCount</td>
                     <td class="text-right">@LedgerFormatting.FormatBytes(u.StorageBytes)</td>
                     <td class="text-right text-gray-600" title="@LastLoginTitle(u.LastSession)">@LastLoginLabel(u.LastSession)</td>
                     <td class="text-right">
@@ -49,6 +53,44 @@
     [Parameter] public IReadOnlyList<AdminUser>? Users { get; set; }
     [Parameter] public EventCallback<Guid> OnDelete { get; set; }
     [Parameter] public string? Error { get; set; }
+
+    private string _sortKey = "username";
+    private bool _sortAsc = true;
+
+    private void SetSort(string key) {
+        if (_sortKey == key) {
+            _sortAsc = !_sortAsc;
+        } else {
+            _sortKey = key;
+            _sortAsc = true;
+        }
+    }
+
+    private RenderFragment SortHeader(string label, string key) => __builder => {
+        <button type="button" class="hover:text-gray-200 whitespace-nowrap" @onclick="() => SetSort(key)">
+            @label
+            @if (_sortKey == key) {
+                @(_sortAsc ? " ^" : " v")
+            }
+        </button>
+    };
+
+    private List<AdminUser> SortedUsers() {
+        if (Users is null) return [];
+        IOrderedEnumerable<AdminUser> ordered = _sortKey switch {
+            "discord" => Order(u => u.DiscordId ?? ""),
+            "missions" => Order(u => u.MissionCount),
+            "reports" => Order(u => u.ReportCount),
+            "backups" => Order(u => u.BackupCount),
+            "storage" => Order(u => u.StorageBytes),
+            "lastLogin" => Order(u => u.LastSession ?? 0),
+            _ => Order(u => u.Username),
+        };
+        return ordered.ToList();
+    }
+
+    private IOrderedEnumerable<AdminUser> Order<TKey>(Func<AdminUser, TKey> selector) =>
+        _sortAsc ? Users!.OrderBy(selector) : Users!.OrderByDescending(selector);
 
     private static string LastLoginLabel(long? lastSession) =>
         lastSession is { } s ? LedgerFormatting.FormatTimeSince(s, DateTimeOffset.UtcNow.ToUnixTimeSeconds()) : "—";

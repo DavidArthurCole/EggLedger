@@ -3,8 +3,8 @@ using System.Net.Http.Json;
 
 namespace EggLedger.Web.Services;
 
-// Client for the sync-server admin API (/api/v1/admin/*). All calls are bearer-authed
-// with the cloud session token; the server gates on the admin allowlist.
+
+
 public sealed class AdminService(HttpClient http) {
     private const string Prefix = "api/v1/admin";
 
@@ -42,7 +42,7 @@ public sealed class AdminService(HttpClient http) {
 
 public sealed record AdminMe(bool IsAdmin);
 
-public sealed record AdminUser(Guid UserId, string? DiscordId, string Username, string AvatarUrl, long MissionCount, long StorageBytes, long? LastSession, bool IsAdmin);
+public sealed record AdminUser(Guid UserId, string? DiscordId, string Username, string AvatarUrl, long MissionCount, long BackupCount, long ReportCount, long StorageBytes, long? LastSession, bool IsAdmin);
 
 public sealed record AdminMetrics(IReadOnlyList<AdminMinute> Minutes, IReadOnlyList<AdminPath> Paths, IReadOnlyList<AdminSpam> Spam);
 

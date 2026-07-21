@@ -159,7 +159,7 @@ public sealed class IndexedDbReportStoreTests {
         var rows = await store.RetrieveAccountReportsAsync("EI1");
         var ids = rows.Select(r => r.Id).ToArray();
 
-        // sort_order asc then created_at asc: g(0,t5), a(0,t20), b(1,t10).
+        
         Assert.Equal(new[] { "g", "a", "b" }, ids);
     }
 

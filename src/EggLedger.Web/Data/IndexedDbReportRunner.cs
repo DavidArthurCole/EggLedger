@@ -2,10 +2,6 @@ using EggLedger.Domain.Reports;
 
 namespace EggLedger.Web.Data;
 
-/// <summary>
-/// Browser report execution over IndexedDB. No SQL engine, so it materializes the
-/// player's mission and drop rows and runs them through <see cref="InMemoryReportRunner"/>.
-/// </summary>
 public sealed class IndexedDbReportRunner : IReportRunner {
     private readonly IIndexedDb _db;
     private readonly IWeightData _weights;
@@ -15,10 +11,6 @@ public sealed class IndexedDbReportRunner : IReportRunner {
         _weights = weights ?? throw new ArgumentNullException(nameof(weights));
     }
 
-    /// <summary>
-    /// Mission and drop rows both come from the <c>player_id</c> index; the SQL impls additionally
-    /// scope by current user, the browser impl is single-account, so the result is the player's rows.
-    /// </summary>
     public async Task<ReportResult> RunReportAsync(ReportDefinition def, string accountId) {
         var missionRows = await _db.GetAllByIndexAsync<MissionRow>(IndexedDbStores.Mission, IndexedDbStores.PlayerIdIndex, accountId);
         var dropRows = await _db.GetAllByIndexAsync<ArtifactDropRow>(IndexedDbStores.ArtifactDrops, IndexedDbStores.PlayerIdIndex, accountId);

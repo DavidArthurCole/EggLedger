@@ -5,7 +5,6 @@ using EggLedger.Web.Data;
 
 namespace EggLedger.Web.Services;
 
-/// <summary>Adds an account from an EID: validate the first-contact backup, then persist. Mission fetch is a separate step driven by <see cref="FetchService"/>.</summary>
 public sealed class AddAccountService {
     private static readonly TimeSpan FirstContactTimeout = TimeSpan.FromSeconds(20);
     private readonly ApiClient _api;
@@ -18,7 +17,6 @@ public sealed class AddAccountService {
         _decoder = decoder;
     }
 
-    /// <summary>Fetches the backup, builds and stores the account. Throws on an invalid id or a network/decode failure.</summary>
     public async Task<AccountInfo> AddAccountAsync(string eid, CancellationToken cancellationToken = default) {
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         cts.CancelAfter(FirstContactTimeout);

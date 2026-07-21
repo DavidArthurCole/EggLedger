@@ -4,7 +4,6 @@ using Microsoft.Extensions.Logging;
 
 namespace EggLedger.Web.Services;
 
-/// <summary>Owns fetch execution and live progress at circuit scope, so a fetch survives navigating away from whatever page started it. Single fetch at a time per circuit.</summary>
 public sealed class FetchOrchestrator : IDisposable {
     private const string InProgressKeyPrefix = "fetch_in_progress:";
 
@@ -21,7 +20,6 @@ public sealed class FetchOrchestrator : IDisposable {
         _logger = logger;
     }
 
-    /// <summary>Account ids whose last fetch never reached a terminal state (interrupted by a circuit teardown, e.g. a page refresh mid-fetch). Callers resume these on next load.</summary>
     public static async Task<List<string>> GetIncompleteAccountsAsync(IndexedDbSettings settings) {
         var all = await settings.GetAllSettingsAsync().ConfigureAwait(false);
         return [.. all.Keys.Where(k => k.StartsWith(InProgressKeyPrefix, StringComparison.Ordinal))
@@ -49,8 +47,8 @@ public sealed class FetchOrchestrator : IDisposable {
         _cts?.Dispose();
         var cts = _cts = new CancellationTokenSource();
 
-        // Cleared only on a clean terminal state below; a circuit teardown mid-fetch (e.g. a
-        // page refresh) leaves this set, so GetIncompleteAccountsAsync picks it up next load.
+        
+        
         await _settings.SetSettingAsync(InProgressKeyPrefix + accountId, "1").ConfigureAwait(false);
 
         var progress = new Progress<FetchProgress>(p => {
@@ -58,7 +56,7 @@ public sealed class FetchOrchestrator : IDisposable {
                 return;
             }
 
-            // Segment events carry no counts, so carry last-known counts forward to avoid clobbering the counter.
+            
             var segmentOnly = p.Segment is not null;
             if (segmentOnly && Progress is not null) {
                 Progress = p with {
@@ -83,13 +81,13 @@ public sealed class FetchOrchestrator : IDisposable {
             result = AppState.Failed;
         }
 
-        // Reaching here at all (success, failure, or user-cancelled) means the pipeline ran to
-        // completion in this circuit; only a circuit teardown mid-fetch skips this line, which is
-        // the exact "never resumed" case GetIncompleteAccountsAsync exists to catch.
+        
+        
+        
         await _settings.RemoveSettingAsync(InProgressKeyPrefix + accountId).ConfigureAwait(false);
 
-        // A superseded call (its _cts already replaced by a newer StartFetchAsync) must not
-        // clobber the current fetch's TerminalState with its own stale result.
+        
+        
         if (_cts != cts) {
             return;
         }

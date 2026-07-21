@@ -15,8 +15,8 @@ using SyncKit.Identity.Client;
 
 namespace EggLedger.Web.Server.Sync.Auth;
 
-// The original Go server swallowed DB errors on these auth writes (fire-and-forget); the catch
-// blocks keep that. The callback adds a state check the Go version lacked, to block login CSRF.
+
+
 
 public sealed record DiscordInitResponse(
     [property: JsonPropertyName("url")] string Url,
@@ -37,8 +37,8 @@ public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvid
     private readonly IDataProtector _keyProtector = dataProtection.CreateProtector("EggLedger.EncryptionKey");
     private static long Now() => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
-    // Tolerates rows written before this protector existed (plain 64-char hex): unprotect
-    // fails on those, so fall back to the raw stored value instead of losing the key.
+    
+    
     private string UnprotectKey(string stored) {
         try {
             return _keyProtector.Unprotect(stored);
@@ -64,9 +64,9 @@ public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvid
         await WriteJsonAsync(ctx, new DiscordInitResponse(url, state));
     }
 
-    // Browser-friendly entry: 302 straight to Discord. The ConnectGate links here with a
-    // plain anchor, so no Blazor-circuit JS-interop navigation (which spammed render/cancel
-    // errors when the circuit tore down mid-redirect).
+    
+    
+    
     public async Task Login(HttpContext ctx) {
         var (url, _) = await BeginAuthAsync(ctx).ConfigureAwait(false);
         ctx.Response.Redirect(url);
@@ -86,8 +86,8 @@ public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvid
         var code = ctx.Request.Query["code"].ToString();
         var state = ctx.Request.Query["state"].ToString();
 
-        // Reject a state the server never issued, so a forged callback cannot sign a session
-        // cookie into an attacker-chosen account (login CSRF). BeginAuthAsync seeds the row.
+        
+        
         if (string.IsNullOrEmpty(state) || !await StateIsPending(state, ctx.RequestAborted)) {
             await WriteTextAsync(ctx, StatusCodes.Status400BadRequest, "invalid or expired state\n");
             return;
@@ -106,9 +106,9 @@ public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvid
             return;
         }
 
-        // Sign the cookie-auth principal carrying both the legacy Discord id and the
-        // provider-neutral user id/role; the framework AuthenticationStateProvider flows it
-        // into the Blazor circuit (server cookie session).
+        
+        
+        
         if (authedUser is { } u) {
             var claims = new List<Claim> {
                 new(EggLedger.Web.Server.Auth.AuthScheme.DiscordIdClaim, u.Id),
@@ -130,8 +130,8 @@ public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvid
         await ctx.Response.Body.WriteAsync(Encoding.UTF8.GetBytes(SuccessPage.Html), ctx.RequestAborted);
     }
 
-    // Exchanges a SyncKit login code for this app's cookie. Throws HttpRequestException on
-    // redeem failure - callers decide how to respond (JSON error vs redirect).
+    
+    
     public async Task<RedeemLoginCodeResponse> RedeemAndSignInAsync(HttpContext ctx, string code, CancellationToken ct) {
         var result = await identity.RedeemAsync(code, ct);
 
@@ -159,8 +159,8 @@ public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvid
         ctx.Response.Redirect("/");
     }
 
-    // Mirrors StorePending's repoint-then-upsert for the local users row, minus the
-    // sessions/pending_auth bookkeeping that only the bearer-token Discord OAuth path needs.
+    
+    
     private async Task UpsertLocalUserAsync(Guid userId, string? discordId, string? username, string? avatar, CancellationToken ct) {
         if (!string.IsNullOrEmpty(discordId)) {
             await using var repoint = source.CreateCommand(
@@ -209,13 +209,13 @@ public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvid
         }
     }
 
-    // Keyed by user_id (the table's real PK since migration 8), not discord_id, so it also
-    // works for non-Discord identities whose row has no discord_id at all.
+    
+    
     internal async Task<string> EnsureEncryptionKeyAsync(Guid userId) {
         var encKey = "";
         await using (var sel = source.CreateCommand("SELECT encryption_key FROM users WHERE user_id = $1")) {
             sel.Parameters.AddWithValue(userId);
-            // On error encKey stays empty and is regenerated below (Go parity).
+            
             try {
                 var result = await sel.ExecuteScalarAsync();
                 if (result is string { Length: > 0 } stored)
@@ -238,11 +238,11 @@ public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvid
         var resolved = await identity.ResolveAsync("discord", user.Id, user.Id, user.Username, user.AvatarUrl, CancellationToken.None);
         var userId = resolved.UserId;
 
-        // Identity's user_id space is independent of EggLedger's own (seeded separately at
-        // cutover), so a returning user's local row can still carry a stale user_id under this
-        // discord_id. Repoint it to identity's authoritative value first (cascades to
-        // sessions/blobs via migration 9's FK, el_* tables have no FK so get updated explicitly)
-        // so the upsert below never collides on idx_users_discord_id.
+        
+        
+        
+        
+        
         await using (var repoint = source.CreateCommand(
             "UPDATE users SET user_id = $1 WHERE discord_id = $2 AND user_id <> $1")) {
             repoint.Parameters.AddWithValue(userId);
@@ -258,9 +258,9 @@ public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvid
             }
         }
 
-        // The local users row (username/avatar_url/encryption_key) is still EggLedger app data
-        // until the post-verification migration drops the identity columns here; user_id now
-        // comes from SyncKit.Identity above rather than a local INSERT ... RETURNING.
+        
+        
+        
         await using (var u = source.CreateCommand(
             "INSERT INTO users (user_id, discord_id, created_at, username, avatar_url) VALUES ($1,$2,$3,$4,$5) " +
             "ON CONFLICT (user_id) DO UPDATE SET username = EXCLUDED.username, avatar_url = EXCLUDED.avatar_url")) {
@@ -300,7 +300,7 @@ public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvid
         long expiresAt = 0;
         string username = "", avatarUrl = "", encryptionKey = "";
         var found = false;
-        // On error, found stays false and the caller returns 404 (Go parity).
+        
         try {
             await using var cmd = source.CreateCommand(
                 "SELECT session_token, expires_at, username, avatar_url, encryption_key FROM pending_auth WHERE state = $1");
@@ -334,9 +334,9 @@ public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvid
         await WriteJsonAsync(ctx, new PollResponse(token, username, avatarUrl, plainKey));
     }
 
-    // Mints a sync session directly from the caller's authenticated cookie identity (Blazor
-    // Server login), skipping the Discord OAuth handshake entirely - for Web, where the user
-    // is already logged in via whatever provider (Discord or Authentik) gated the app itself.
+    
+    
+    
     public async Task SessionFromLogin(HttpContext ctx) {
         if (ctx.User.Identity?.IsAuthenticated != true) {
             ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
@@ -378,8 +378,8 @@ public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvid
         await WriteJsonAsync(ctx, new PollResponse(token, username, avatarUrl, encKey));
     }
 
-    // Discord-linked identity carries an avatar synced from the last Discord OAuth login;
-    // non-Discord users have none, and CloudSyncPanel already renders an empty avatar gracefully.
+    
+    
     private async Task<string> UserAvatarUrlAsync(Guid userId, CancellationToken ct) {
         await using var cmd = source.CreateCommand("SELECT avatar_url FROM users WHERE user_id = $1");
         cmd.Parameters.AddWithValue(userId);

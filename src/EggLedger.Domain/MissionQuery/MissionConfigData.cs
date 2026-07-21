@@ -5,16 +5,13 @@ using Ei;
 
 namespace EggLedger.Domain.MissionQuery;
 
-/// <summary>A selectable mission target. C# port of the Go main.go PossibleTarget.</summary>
 public sealed class PossibleTarget {
     public string DisplayName { get; set; } = "";
 
-    /// <summary>ei.ArtifactSpec_Name enum value, or -1 for "None (Pre 1.27)".</summary>
     public int Id { get; set; }
     public string ImageString { get; set; } = "";
 }
 
-/// <summary>A draftable artifact for the drop / name pickers. Port of Go main.go PossibleArtifact.</summary>
 public sealed class PossibleArtifact {
     public int Name { get; set; }
     public string ProtoName { get; set; } = "";
@@ -24,12 +21,7 @@ public sealed class PossibleArtifact {
     public double BaseQuality { get; set; }
 }
 
-/// <summary>
-/// Builds the shared mission filter configuration from the eiafx config and ledger
-/// display data. Go port of main.go init helpers (getMaxQuality / initPossibleTargets / initPossibleArtifacts).
-/// </summary>
 public static class MissionConfigData {
-    /// <summary>Port of getMaxQuality: max over (maxQuality + levelQualityBump * maxLevels).</summary>
     public static double MaxQuality() {
         double maxQuality = 0;
         foreach (var mission in EiafxConfig.Config.mission_parameters) {
@@ -44,10 +36,6 @@ public static class MissionConfigData {
         return maxQuality;
     }
 
-    /// <summary>
-    /// Port of initPossibleTargets: a "None (Pre 1.27)" sentinel then one entry per
-    /// ledger artifact target, id from the proto enum value.
-    /// </summary>
     public static List<PossibleTarget> Targets() {
         var result = new List<PossibleTarget>
         {
@@ -64,7 +52,6 @@ public static class MissionConfigData {
         return result;
     }
 
-    /// <summary>Port of initPossibleArtifacts: every artifact param within max quality, names resolved.</summary>
     public static List<PossibleArtifact> Artifacts() {
         double maxQuality = MaxQuality();
         var result = new List<PossibleArtifact>();

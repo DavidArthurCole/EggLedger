@@ -55,7 +55,7 @@
     private CloudSyncPanel? _cloudPanel;
     private IReadOnlyList<DatabaseAccount> _existing = [];
 
-    // Ephemeral loading card for the account being fetched, until its stored data lands.
+    
     private AccountDataPanel.FetchingCard? FetchingCardInfo =>
         !Fetch.IsIdle && Fetch.FetchingAccountId is { } id && Loader.Accounts.FirstOrDefault(a => a.Id == id) is { } info
             ? new AccountDataPanel.FetchingCard(id, info.Nickname, info.AccountColor, Fetch.Progress?.Finished ?? 0, Fetch.Progress?.Total ?? 0)
@@ -86,12 +86,12 @@
 
     private async Task OnSettingAsync((string Key, string Value) change) {
         await Settings.SetSettingAsync(change.Key, change.Value);
-        // Mask-EID toggle is shared app-wide; push to live state so every EID re-masks immediately.
+        
         if (change.Key == SettingsModel.KeyScreenshotSafety) {
             ScreenshotSafety.Enabled = change.Value == "true";
         }
 
-        // A cloud-syncable setting change triggers a push when auto-sync is on and connected. Machine-local keys do not.
+        
         if (_cloudPanel is not null && IsCloudSyncableKey(change.Key)) {
             await _cloudPanel.AutoSyncIfEnabledAsync();
         }

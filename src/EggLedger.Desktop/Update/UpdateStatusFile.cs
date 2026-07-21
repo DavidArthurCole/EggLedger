@@ -3,7 +3,6 @@ using System.Text.Json.Serialization;
 
 namespace EggLedger.Desktop.Update;
 
-/// <summary>Outcome payload the replace-mode process writes next to the exe and the relaunched process reads once on startup. Lives in the exe dir (not the data root) so both processes agree on the path with no init dependency.</summary>
 public sealed class UpdateStatus {
     [JsonPropertyName("success")]
     public bool Success { get; init; }
@@ -21,9 +20,7 @@ public sealed class UpdateStatus {
     public string? NewBinary { get; init; }
 }
 
-/// <summary>Reads/writes the on-disk update-status handoff file. Pure file IO over an injected directory, so it is unit-testable with a temp dir.</summary>
 public static class UpdateStatusFile {
-    /// <summary>File name written next to the exe. Matches Go.</summary>
     public const string FileName = ".egg-update-status.json";
 
     private static readonly JsonSerializerOptions JsonOptions = new() {
@@ -37,8 +34,6 @@ public static class UpdateStatusFile {
         File.WriteAllText(PathFor(dir), data);
     }
 
-    /// <summary>Read and delete the status file. Returns null when absent or unreadable (matching the Go (nil, false) contract).</summary>
-    /// <remarks>The file is removed before parse so a malformed file is not re-read.</remarks>
     public static UpdateStatus? ReadAndClear(string dir) {
         var path = PathFor(dir);
         string data;
@@ -51,7 +46,7 @@ public static class UpdateStatusFile {
         try {
             File.Delete(path);
         } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) {
-            // Best-effort delete, matching Go's ignored os.Remove error.
+            
         }
 
         try {

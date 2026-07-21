@@ -3,10 +3,6 @@ using System.Text.Json;
 
 namespace EggLedger.Domain.LedgerData;
 
-/// <summary>
-/// Loads and holds the active ledger display data. Go port of ledgerdata, embedded
-/// path only (no file caching, no download); embedded JSON is the source of truth.
-/// </summary>
 public static class LedgerData {
     private const string ResourceName = "EggLedger.Domain.Resources.ledger-display-data-min.json";
     private static readonly Lazy<LedgerDisplayData> _config = new(LoadEmbedded);

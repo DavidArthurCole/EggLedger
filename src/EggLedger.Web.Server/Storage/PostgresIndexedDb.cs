@@ -6,15 +6,6 @@ using NpgsqlTypes;
 
 namespace EggLedger.Web.Server.Storage;
 
-/// <summary>
-/// Postgres <see cref="IIndexedDb"/> for the Blazor Server host. Each store maps to an
-/// <c>el_*</c> table; rows round-trip through JSON, same contract as desktop SqliteIndexedDb.
-/// </summary>
-/// <remarks>
-/// Multi-tenant invariant: EVERY query is scoped by <c>user_id = @user</c> and every
-/// insert carries it, injected centrally here so a row can never cross users. User id is
-/// read per op from <see cref="CurrentUser"/>.
-/// </remarks>
 public sealed class PostgresIndexedDb : IIndexedDb {
     private readonly NpgsqlDataSource _source;
     private readonly CurrentUser _user;
@@ -26,9 +17,9 @@ public sealed class PostgresIndexedDb : IIndexedDb {
         _stores = BuildStoreMeta();
     }
 
-    // Writes require an authenticated user (throw otherwise). Reads tolerate the
-    // unauthenticated/gated state by returning empty, so shared RCL components that read
-    // settings on init (before the auth gate decides) don't crash the circuit.
+    
+    
+    
     private Task<Guid> UserAsync() => _user.RequireUserIdAsync();
     private Task<Guid?> TryUserAsync() => _user.GetUserIdAsync();
     private static readonly JsonSerializerOptions JsonOpts = Rows.JsonOptions;
@@ -147,8 +138,8 @@ public sealed class PostgresIndexedDb : IIndexedDb {
         using var doc = JsonSerializer.SerializeToDocument(value, value.GetType(), JsonOpts);
         var user = await UserAsync().ConfigureAwait(false);
 
-        // user_id is always the first column; the row's own JSON columns follow.
-        // The autoincrement column is skipped when null so Postgres assigns it.
+        
+        
         var cols = new List<string> { "user_id" };
         var values = new List<(string Param, object Value)> { ("p_user", user) };
         int p = 0;
@@ -166,8 +157,8 @@ public sealed class PostgresIndexedDb : IIndexedDb {
         if (meta.AutoIncrementColumn is not null) {
             conflict = "";
         } else {
-            // Conflict target is (user_id, <key columns>) since every table is
-            // scoped by user_id.
+            
+            
             var keyCols = new List<string> { "user_id" };
             keyCols.AddRange(meta.KeyColumns);
             var updates = cols
@@ -216,12 +207,12 @@ public sealed class PostgresIndexedDb : IIndexedDb {
         }
     }
 
-    // Emits "col = @k0 AND col2 = @k1" (no user_id; the caller prepends it).
+    
     private static (string where, object[] args) KeyPredicate(StoreMeta meta, object key) =>
         JsonRowCodec.KeyPredicate(meta.Table, meta.KeyColumns, key, Ident, JsonRowCodec.Postgres);
 
-    // Quote identifiers defensively; all our names are already safe snake_case but the
-    // index parameter to GetAllByIndexAsync is caller-supplied, so quote it.
+    
+    
     private static string Ident(string name) {
         if (name.Contains('"', StringComparison.Ordinal)) {
             throw new ArgumentException($"illegal identifier {name}", nameof(name));

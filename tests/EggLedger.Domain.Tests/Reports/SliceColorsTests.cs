@@ -2,7 +2,7 @@ using EggLedger.Domain.Reports.Charts;
 
 namespace EggLedger.Domain.Tests.Reports;
 
-// Golden for the slice-color math; reference values from running Vue useSliceColors.ts in Node.
+
 public class SliceColorsTests {
     [Fact]
     public void HexToHsl_MatchesVue() {
@@ -41,7 +41,7 @@ public class SliceColorsTests {
     public void GetLabelColor_UsesAutoSlotForUnmappedLabel() {
         var labels = new[] { "A", "B", "C", "D" };
         var map = new Dictionary<string, string>();
-        // Index 1 of the 4-color spread of #6366f1.
+        
         Assert.Equal("#f163ad", SliceColors.GetLabelColor("B", "#6366f1", labels, map));
     }
 

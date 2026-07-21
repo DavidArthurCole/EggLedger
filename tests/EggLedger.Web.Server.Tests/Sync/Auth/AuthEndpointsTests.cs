@@ -12,12 +12,6 @@ using SyncKit.Identity.Client;
 
 namespace EggLedger.Web.Server.Tests.Sync.Auth;
 
-/// <summary>
-/// StorePending must create both the provider-neutral `users` row and a linked
-/// `identities` row (provider='discord'), since login is no longer solely Discord-keyed.
-/// Runs only against a disposable Postgres at EGGLEDGER_TEST_DB_URL (unique schema created
-/// and dropped, never prod); skipped when the env var is unset.
-/// </summary>
 public sealed class AuthEndpointsTests {
     private static string? TestDbUrl => Environment.GetEnvironmentVariable("EGGLEDGER_TEST_DB_URL");
 
@@ -32,14 +26,14 @@ public sealed class AuthEndpointsTests {
         await using var setupSrc = NpgsqlDataSource.Create(TestDbUrl!);
         await CreateSchemaAsync(setupSrc);
 
-        // AuthEndpoints issues plain commands with no SET search_path, so point this data
-        // source's connections at the throwaway schema directly via the connection string.
+        
+        
         var scopedBuilder = new NpgsqlConnectionStringBuilder(TestDbUrl!) { SearchPath = Schema };
         await using var src = NpgsqlDataSource.Create(scopedBuilder.ConnectionString);
         try {
-            // Identity resolution (user_id minting + the identities link) now happens via
-            // SyncKit.Identity, not local INSERTs - stub its response so this test stays a pure
-            // StorePending unit test (users/encryption_key/sessions writes) without a live API.
+            
+            
+            
             var stubUserId = Guid.NewGuid();
             var handler = new StubHttpMessageHandler(_ => StubHttpMessageHandler.Json(HttpStatusCode.OK,
                 $$"""{"userId":"{{stubUserId}}","role":"viewer","discordId":"12345","isNew":true}"""));
@@ -61,9 +55,9 @@ public sealed class AuthEndpointsTests {
         }
     }
 
-    // Regression guard for the user_id-keyed lookup fix: an existing Discord-linked user
-    // (row already has both discord_id and user_id) must get back the SAME key it already had,
-    // not a freshly generated one, since the lookup now goes through user_id instead of discord_id.
+    
+    
+    
     [SkippableFact]
     public async Task EnsureEncryptionKeyAsync_returns_existing_key_for_discord_linked_user() {
         Skip.If(string.IsNullOrEmpty(TestDbUrl), "EGGLEDGER_TEST_DB_URL not set; live Postgres auth test skipped.");
@@ -98,10 +92,10 @@ public sealed class AuthEndpointsTests {
         }
     }
 
-    // Regression: SyncKit.Identity mints user_id independently of EggLedger's local table, so a
-    // returning user's local row can carry a stale user_id under the same discord_id once
-    // identity resolves a different one. StorePending must repoint the existing row (and any
-    // el_* rows under the old id) instead of colliding on idx_users_discord_id.
+    
+    
+    
+    
     [SkippableFact]
     public async Task StorePending_repoints_stale_local_user_id_to_identitys_resolved_id() {
         Skip.If(string.IsNullOrEmpty(TestDbUrl), "EGGLEDGER_TEST_DB_URL not set; live Postgres auth test skipped.");
@@ -154,9 +148,9 @@ public sealed class AuthEndpointsTests {
         }
     }
 
-    // The new-user (non-Discord) case: a row with a user_id but no discord_id must still get
-    // a key generated and persisted, queryable back out by user_id - this is the actual bug fix,
-    // since the old discord_id-keyed lookup could never match such a row.
+    
+    
+    
     [SkippableFact]
     public async Task EnsureEncryptionKeyAsync_generates_and_persists_key_for_non_discord_user() {
         Skip.If(string.IsNullOrEmpty(TestDbUrl), "EGGLEDGER_TEST_DB_URL not set; live Postgres auth test skipped.");
@@ -217,8 +211,8 @@ public sealed class AuthEndpointsTests {
         }
     }
 
-    // Covers a pure-Authentik user: no discord_id claim, so sessions.discord_id must be
-    // written as NULL and the response must still carry a usable token/encryption key.
+    
+    
     [SkippableFact]
     public async Task SessionFromLogin_AuthenticatedNoDiscordId_CreatesSessionWithNullDiscordId() {
         Skip.If(string.IsNullOrEmpty(TestDbUrl), "EGGLEDGER_TEST_DB_URL not set; live Postgres auth test skipped.");
@@ -270,8 +264,8 @@ public sealed class AuthEndpointsTests {
         }
     }
 
-    // Covers a Discord-linked user hitting the endpoint from a cookie session: the
-    // discord_id claim must flow through into sessions.discord_id, not be dropped.
+    
+    
     [SkippableFact]
     public async Task SessionFromLogin_AuthenticatedWithDiscordId_CreatesSessionWithDiscordId() {
         Skip.If(string.IsNullOrEmpty(TestDbUrl), "EGGLEDGER_TEST_DB_URL not set; live Postgres auth test skipped.");
@@ -376,10 +370,10 @@ public sealed class AuthEndpointsTests {
         }
     }
 
-    // StorePending touches users.username/avatar_url/encryption_key (migrations 2, 3) and
-    // sessions (migration 1) alongside user_id/identities (migration 7), so the full linear
-    // chain must apply here, unlike PostgresIsolationTests/IdentitiesMigrationTests which only
-    // need a subset of tables.
+    
+    
+    
+    
     private static async Task CreateSchemaAsync(NpgsqlDataSource src) {
         await Exec(src, $"DROP SCHEMA IF EXISTS {Schema} CASCADE; CREATE SCHEMA {Schema}; SET search_path TO {Schema};");
         await ApplyMigrationAsync(src, "1_initial_schema.up.sql");

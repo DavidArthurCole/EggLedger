@@ -6,17 +6,9 @@ public readonly record struct PieItem(string Label, double Value);
 
 public readonly record struct PieSlice(string Label, double Value, double Pct, string Path, string Color);
 
-/// <summary>
-/// Pie chart geometry. Port of ReportPieChart.vue: top-N rollup, slice sweep angles,
-/// and the SVG arc path. Label callout placement stays in the Razor component.
-/// </summary>
 public static class PieGeometry {
     public const int MaxSegments = 10;
 
-    /// <summary>
-    /// Pie items, rolling everything past <see cref="MaxSegments"/> - 1 into one "Other"
-    /// slice (sorted by value desc before the cut); empty when total is zero. Port of ReportPieChart items.
-    /// </summary>
     public static List<PieItem> BuildItems(IReadOnlyList<string> labels, IReadOnlyList<double> values) {
         double total = values.Sum();
         if (total == 0) {
@@ -38,7 +30,6 @@ public static class PieGeometry {
         return items;
     }
 
-    /// <summary>SVG path for a pie slice from center, radius, and start/end angles (radians). Port of ReportPieChart slicePath.</summary>
     public static string SlicePath(double cx, double cy, double r, double startAngle, double endAngle) {
         double sx = cx + Math.Cos(startAngle) * r;
         double sy = cy + Math.Sin(startAngle) * r;
@@ -51,10 +42,6 @@ public static class PieGeometry {
             cx, cy, sx, sy, r, r, large, ex, ey);
     }
 
-    /// <summary>
-    /// Colored slices for a result; colors from <see cref="SliceColors"/> with per-label
-    /// overrides. Slices start at -90deg (12 o'clock) and sweep clockwise by value. Port of ReportPieChart segments.
-    /// </summary>
     public static List<PieSlice> BuildSlices(
         IReadOnlyList<string> labels,
         IReadOnlyList<double> values,

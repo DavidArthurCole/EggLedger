@@ -4,10 +4,6 @@ using System.Text;
 
 namespace EggLedger.Domain.Export.Xlsx;
 
-/// <summary>
-/// Writes minimal single-sheet XLSX files. Port of Go package xlsxwriter: streaming row writes,
-/// optional column widths, one built-in datetime style.
-/// </summary>
 public sealed class XlsxWriter : IDisposable {
     private readonly ZipArchive _zip;
     private double[] _colWidths = [];
@@ -20,25 +16,16 @@ public sealed class XlsxWriter : IDisposable {
         _zip = new ZipArchive(output, ZipArchiveMode.Create, leaveOpen: true);
     }
 
-    /// <summary>
-    /// Creates a writer over <paramref name="output"/>. Static ZIP entries
-    /// (content types, relationships, workbook, styles) are written immediately.
-    /// </summary>
     public static XlsxWriter New(Stream output) {
         var w = new XlsxWriter(output);
         w.WriteStaticEntries();
         return w;
     }
 
-    /// <summary>
-    /// Sets column widths in Excel character units (index 0 = column A). Must be
-    /// called before the first <see cref="WriteRow"/>.
-    /// </summary>
     public void SetColWidths(IReadOnlyList<double> widths) {
         _colWidths = [.. widths];
     }
 
-    /// <summary>Appends a row of cells to the sheet.</summary>
     public void WriteRow(IReadOnlyList<XlsxCell> cells) {
         if (!_sheetStarted) {
             StartSheet();
@@ -65,7 +52,6 @@ public sealed class XlsxWriter : IDisposable {
         buf.Append("</row>");
     }
 
-    /// <summary>Finalises the sheet XML and closes the ZIP archive.</summary>
     public void Close() {
         if (_closed) {
             return;
@@ -118,10 +104,6 @@ public sealed class XlsxWriter : IDisposable {
         s.Write(bytes, 0, bytes.Length);
     }
 
-    /// <summary>
-    /// Mirror of Go encoding/xml.EscapeText: escapes &lt; &gt; &amp; ' " and the
-    /// control chars \t \n \r as numeric entities.
-    /// </summary>
     private static string EscapeText(string s) {
         var sb = new StringBuilder(s.Length);
         foreach (char c in s) {

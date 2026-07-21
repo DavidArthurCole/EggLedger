@@ -7,29 +7,17 @@ using EggLedger.Web.Platform;
 
 namespace EggLedger.Desktop.Update;
 
-/// <summary>Desktop self-update orchestrator and the live <see cref="IUpdateStatusProvider"/> the About overlay binds to.</summary>
-/// <remarks>
-/// Ties together version compare, GitHub fetch + download, the token handshake, and the self-rename/cleanup.
-/// MANUAL-VERIFY: the full cross-process self-replace cannot be unit-tested; the individual pieces (download, token check, version decision, file moves) are.
-/// </remarks>
 public sealed class UpdateService : IUpdateStatusProvider {
-    /// <summary>How long the old instance waits before exiting after handoff. Matches Go (5s).</summary>
     public static readonly TimeSpan OldExitDelay = TimeSpan.FromSeconds(5);
 
-    /// <summary>Update-check cooldown. Matches Go <c>_updateCheckInterval</c> (12h).</summary>
-    /// <remarks>Within this window an unforced check skips the GitHub poll and decides from the stored snapshot.</remarks>
     public static readonly TimeSpan UpdateCheckInterval = TimeSpan.FromHours(12);
 
-    /// <summary>Default wait for the new instance's /ready handshake before giving up.</summary>
     public static readonly TimeSpan DefaultHandshakeTimeout = TimeSpan.FromSeconds(90);
 
-    /// <summary>Settings key for the last-check timestamp. Matches Go (RFC3339Nano string).</summary>
     public const string LastUpdateCheckAtKey = "last_update_check_at";
 
-    /// <summary>Settings key for the cached latest tag. Matches Go.</summary>
     public const string KnownLatestVersionKey = "known_latest_version";
 
-    /// <summary>Settings key for the cached latest release notes. Matches Go.</summary>
     public const string KnownLatestReleaseNotesKey = "known_latest_release_notes";
 
     private readonly GithubReleaseClient _github;
@@ -42,13 +30,6 @@ public sealed class UpdateService : IUpdateStatusProvider {
     private readonly IndexedDbSettings? _settings;
     private readonly Func<DateTimeOffset> _now;
 
-    /// <param name="exitAction">
-    /// OLD-instance exit run once the new instance reports in (or the wait times out), letting it rename EggLedger_new -&gt; EggLedger. Defaults to a no-op.
-    /// </param>
-    /// <param name="settings">
-    /// Store backing the 12h cooldown snapshot. Null disables the cooldown so every check polls; the live host supplies the SQLite-backed store.
-    /// </param>
-    /// <param name="now">Wall clock for the cooldown decision (injected for testing).</param>
     public UpdateService(
         GithubReleaseClient github,
         Func<string> runningVersion,
@@ -70,7 +51,6 @@ public sealed class UpdateService : IUpdateStatusProvider {
         _now = now ?? (() => DateTimeOffset.UtcNow);
     }
 
-    /// <summary>Build the argv passed to the launched EggLedger_new instance: --replace-pid, --replace-path, plus the handshake pair when a listener is up.</summary>
     public static IReadOnlyList<string> BuildReplaceArgs(int oldPid, string oldPath, string? handshakeAddr, string? handshakeToken) {
         var args = new List<string>
         {
@@ -93,12 +73,6 @@ public sealed class UpdateService : IUpdateStatusProvider {
 
     public event Action? Changed;
 
-    /// <summary>Poll GitHub and decide whether a newer version is available, gated by the 12h cooldown + stored snapshot.</summary>
-    /// <remarks>
-    /// A known-newer stored tag reports Available without polling; within the cooldown an unforced check stays UpToDate.
-    /// Otherwise fetch latest (and pre-releases when running is newer), persist the snapshot, and report Available iff running &lt; latest.
-    /// </remarks>
-    /// <param name="force">Bypass the cooldown and always poll (About-overlay check passes true).</param>
     public async Task CheckForUpdatesAsync(bool force = false) {
         SetPhase(UpdatePhase.Checking);
 
@@ -109,8 +83,8 @@ public sealed class UpdateService : IUpdateStatusProvider {
 
         var snapshot = await ReadSnapshotAsync().ConfigureAwait(false);
 
-        // A known newer version is already stored: skip the remote poll and report it.
-        // Mirrors the first branch of Go CheckForUpdates.
+        
+        
         if (!force && !string.IsNullOrEmpty(snapshot.KnownTag)
             && SemVersion.TryParse(snapshot.KnownTag, out var knownVersion) && knownVersion is not null
             && knownVersion.GreaterThan(running)) {
@@ -121,8 +95,8 @@ public sealed class UpdateService : IUpdateStatusProvider {
             return;
         }
 
-        // Within the cooldown and not forced: skip the network check entirely. The
-        // stored known-latest was not newer (handled above), so we are up to date.
+        
+        
         if (!force && snapshot.LastCheckedAt is { } last && _now() - last < UpdateCheckInterval) {
             AvailableVersion = null;
             ReleaseNotes = null;
@@ -144,8 +118,8 @@ public sealed class UpdateService : IUpdateStatusProvider {
             return;
         }
 
-        // If running a version newer than the latest stable (a pre-release build),
-        // look at pre-releases for the true latest.
+        
+        
         if (running.GreaterThan(latestVersion)) {
             var pre = await _github.GetLatestTagIncludingPreReleasesAsync().ConfigureAwait(false);
             if (pre is not null && SemVersion.TryParse(pre.Value.Tag, out var preVersion) && preVersion is not null) {
@@ -155,7 +129,7 @@ public sealed class UpdateService : IUpdateStatusProvider {
             }
         }
 
-        // Persist the snapshot + bump the last-check timestamp.
+        
         await WriteSnapshotAsync(latestTag, latestNotes).ConfigureAwait(false);
 
         if (running.LessThan(latestVersion)) {
@@ -171,11 +145,9 @@ public sealed class UpdateService : IUpdateStatusProvider {
         }
     }
 
-    /// <summary>The cooldown snapshot read from the settings store.</summary>
     private readonly record struct UpdateCheckSnapshot(
         DateTimeOffset? LastCheckedAt, string? KnownTag, string? KnownNotes);
 
-    /// <summary>Read the stored cooldown snapshot. Returns empty when no store is wired or a value is missing/unparseable, so a fresh data dir always polls.</summary>
     private async Task<UpdateCheckSnapshot> ReadSnapshotAsync() {
         if (_settings is null) {
             return default;
@@ -194,7 +166,6 @@ public sealed class UpdateService : IUpdateStatusProvider {
         return new UpdateCheckSnapshot(lastCheckedAt, knownTag, knownNotes);
     }
 
-    /// <summary>Persist the fetched tag + notes and stamp last-check to now (round-trip timestamp matching the Go on-disk format). No-op when no store is wired.</summary>
     private async Task WriteSnapshotAsync(string latestTag, string latestNotes) {
         if (_settings is null) {
             return;
@@ -207,8 +178,6 @@ public sealed class UpdateService : IUpdateStatusProvider {
         }).ConfigureAwait(false);
     }
 
-    /// <summary>Download the release binary for tag to the _new path, then begin the OLD-instance handoff.</summary>
-    /// <remarks>MANUAL-VERIFY: the live two-process choreography is not unit-tested.</remarks>
     public async Task DownloadAndInstallAsync(string tag) {
         DownloadedBytes = 0;
         TotalBytes = 0;
@@ -230,12 +199,12 @@ public sealed class UpdateService : IUpdateStatusProvider {
         var tempPath = NewBinaryTempPath(exePath);
         BinaryReplacement.TryDelete(tempPath);
 
-        // Expected SHA-256 from the release's SHA256SUMS asset. Verified against the downloaded
-        // bytes before extract/launch. Null (asset absent on older releases) skips the check.
+        
+        
         var expectedSha = await _github.GetExpectedSha256Async(tag).ConfigureAwait(false);
 
-        // Windows asset is the raw binary (straight to tempPath). Linux .tar.gz / mac
-        // .zip assets download to a temp archive, then extract + chmod into tempPath.
+        
+        
         var assetName = GithubReleaseClient.ExpectedAssetName();
         if (ArchiveExtraction.IsArchive(assetName)) {
             var archivePath = Path.Combine(Path.GetTempPath(), assetName);
@@ -273,14 +242,11 @@ public sealed class UpdateService : IUpdateStatusProvider {
         AvailableVersion = tag;
         SetPhase(UpdatePhase.Ready);
 
-        // Hand off: start the listener, launch the new instance with the token, wait
-        // for /ready, then exit after the delay. Blocks on the handshake + exit delay.
+        
+        
         await RunSelfReplaceHandoffAsync(_exitAction, _handshakeTimeout, _exitDelay).ConfigureAwait(false);
     }
 
-    /// <summary>Launch the downloaded binary as the NEW instance and wait for its /ready ping, then exit after <see cref="OldExitDelay"/> so it can rename itself.</summary>
-    /// <remarks>MANUAL-VERIFY: the live two-process choreography is not unit-tested.</remarks>
-    /// <param name="exitAction">Run once the new instance reports in or the wait times out (injected for testing).</param>
     public async Task<bool> RunSelfReplaceHandoffAsync(
         Func<Task> exitAction,
         TimeSpan? handshakeTimeout = null,
@@ -301,7 +267,7 @@ public sealed class UpdateService : IUpdateStatusProvider {
         try {
             listener = HandshakeListener.Start(token);
         } catch (Exception ex) when (ex is System.Net.HttpListenerException or System.Net.Sockets.SocketException) {
-            // No listener; fall back to a name/pid-based hand-off.
+            
         }
 
         var args = BuildReplaceArgs(Environment.ProcessId, exePath, listener?.Address, token);
@@ -309,7 +275,7 @@ public sealed class UpdateService : IUpdateStatusProvider {
             await _processRunner.RunAsync(tempPath, args).ConfigureAwait(false);
         } catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or IOException) {
             listener?.Dispose();
-            // The staged binary is still valid (Ready): only the live handoff attempt failed.
+            
             Message = $"could not launch the updated instance: {ex.Message}";
             return false;
         }
@@ -319,13 +285,12 @@ public sealed class UpdateService : IUpdateStatusProvider {
             listener.Dispose();
         }
 
-        // Give the new instance the exit delay to settle, then exit so it can rename.
+        
         await Task.Delay(oldExitDelay).ConfigureAwait(false);
         await exitAction().ConfigureAwait(false);
         return true;
     }
 
-    /// <summary>Path of the downloaded binary: &lt;exe&gt;_new (+ .exe on Windows).</summary>
     public static string NewBinaryTempPath(string exePath) {
         var dir = Path.GetDirectoryName(exePath) ?? "";
         var name = Path.GetFileName(exePath);
@@ -356,7 +321,7 @@ public sealed class UpdateService : IUpdateStatusProvider {
         SetPhase(UpdatePhase.Failed);
     }
 
-    // True when expected is null (no published sum to check) or the file's SHA-256 matches it.
+    
     private static bool VerifySha256(string path, string? expected) {
         if (string.IsNullOrEmpty(expected)) {
             return true;

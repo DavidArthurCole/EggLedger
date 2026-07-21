@@ -4,8 +4,8 @@ using EggLedger.Web.Ships;
 
 namespace EggLedger.Web.Server.Ships;
 
-// Reads the auth-gated ship asset set from a server-local dir (never wwwroot). Manifest loads once;
-// bytes are sha-verified against it before serving.
+
+
 public sealed class ShipAssetService {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
     private readonly string _dir;

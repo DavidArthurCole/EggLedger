@@ -2,12 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace EggLedger.Domain.LedgerData;
 
-/// <summary>
-/// All game display strings extracted from source. Mirrors Go ledgerdata.LedgerDisplayData
-/// struct and JSON field names exactly.
-/// </summary>
 public sealed class LedgerDisplayData {
-    /// <summary>Maps proto enum name to a [level][rarity] string matrix of effect substitution values.</summary>
     [JsonPropertyName("artifactEffects")]
     public Dictionary<string, string[][]> ArtifactEffects { get; set; } = [];
     [JsonPropertyName("farmerRoles")]
@@ -28,7 +23,6 @@ public sealed class LedgerDisplayData {
     public Dictionary<string, string> StoneFragmentMap { get; set; } = [];
 }
 
-/// <summary>Maps an EB order-of-magnitude bucket to a display tier.</summary>
 public sealed class FarmerRole {
     [JsonPropertyName("oom")]
     public int Oom { get; set; }
@@ -38,7 +32,6 @@ public sealed class FarmerRole {
     public string Color { get; set; } = "";
 }
 
-/// <summary>A filterable mission target entry with display metadata.</summary>
 public sealed class ArtifactTarget {
     [JsonPropertyName("name")]
     public string Name { get; set; } = "";

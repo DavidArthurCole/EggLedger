@@ -4,9 +4,7 @@ using EggLedger.Domain.Reports.Charts;
 
 namespace EggLedger.Web.Settings;
 
-/// <summary>Color math for the Settings picker. Reuses <see cref="SliceColors"/>, adapting its [0..1] S/L to the picker's integer percentages.</summary>
 public static partial class ColorPickerMath {
-    /// <summary>24 preset swatches, in grid order.</summary>
     public static readonly IReadOnlyList<string> PresetColors =
     [
         "#f43f5e", "#ef4444", "#f97316", "#f59e0b",
@@ -17,7 +15,6 @@ public static partial class ColorPickerMath {
         "#60a5fa", "#34d399", "#f9a8d4", "#ffffff",
     ];
 
-    /// <summary>Used when input is unparseable.</summary>
     public const string Fallback = "#6366f1";
     [GeneratedRegex("^#[0-9a-fA-F]{6}$")]
     private static partial Regex HexRegexGen();
@@ -27,10 +24,8 @@ public static partial class ColorPickerMath {
     public static bool IsValidHex(string? value) =>
         value is not null && HexRegexGen().IsMatch(value);
 
-    /// <summary>Integer-percentage HSL: hue [0, 360], saturation/lightness [0, 100].</summary>
     public readonly record struct HslInt(int H, int S, int L);
 
-    /// <summary>To <c>#rrggbb</c>: a hex literal (lowered), an <c>hsl(h, s%, l%)</c> string, else the fallback.</summary>
     public static string NormalizeToHex(string? value) {
         if (value is null) {
             return Fallback;
@@ -48,11 +43,9 @@ public static partial class ColorPickerMath {
         return Fallback;
     }
 
-    /// <summary>S/L scaled to [0..1] for <see cref="SliceColors.HslToHex"/>.</summary>
     public static string HslToHex(double h, double s, double l) =>
         SliceColors.HslToHex(h, s / 100.0, l / 100.0);
 
-    /// <summary>Rounds h/s/l to integers.</summary>
     public static HslInt HexToHslInt(string hex) {
         var (h, s, l) = SliceColors.HexToHsl(hex);
         return new HslInt(
@@ -61,7 +54,6 @@ public static partial class ColorPickerMath {
             (int)Math.Round(l * 100));
     }
 
-    /// <summary>Maps a wheel hit (cursor delta from centre + radius) to hue/saturation. Angle is atan2+90deg wrapped to [0,360); saturation is the clamped radial distance as a percent.</summary>
     public static (int H, int S) WheelHueSaturation(double dx, double dy, double radius) {
         double rawAngle = Math.Atan2(dy, dx) * (180 / Math.PI) + 90;
         double hue = Mod(rawAngle, 360);
@@ -71,7 +63,6 @@ public static partial class ColorPickerMath {
         return ((int)Math.Round(hue), sat);
     }
 
-    /// <summary>Selector dot position (percent of the wheel box) for a hue/saturation. Angle is (h-90)deg, radius is saturation scaled to ~45% of the box, centred at 50%/50%.</summary>
     public static (double LeftPct, double TopPct) DotPosition(int hue, int saturation) {
         double rad = (hue - 90) * Math.PI / 180;
         double r = saturation / 100.0 * 45;

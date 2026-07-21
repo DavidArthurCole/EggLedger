@@ -1,8 +1,6 @@
 namespace EggLedger.Domain.Reports;
 
-/// <summary>Client-side post-filter on 1D report results. Port of Vue ReportCard.vue filteredResult.</summary>
 public static class ValueFilter {
-    /// <summary>Keeps only label/value pairs matching op+threshold; 2D results and an empty op pass through unchanged.</summary>
     public static ReportResult Apply(ReportResult result, string op, double threshold) {
         if (string.IsNullOrEmpty(op) || result.Is2D) {
             return result;

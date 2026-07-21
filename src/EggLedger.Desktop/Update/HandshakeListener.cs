@@ -2,12 +2,6 @@ using System.Net;
 
 namespace EggLedger.Desktop.Update;
 
-/// <summary>
-/// Loopback-only HTTP listener owned by the OLD instance during a self-update. A
-/// matching-token POST to /ready signals <see cref="Served"/> once (CAS-gated); a
-/// wrong/missing token gets 403 and never signals.
-/// </summary>
-/// <remarks>MANUAL-VERIFY: the token check is unit-tested but the cross-process part is not.</remarks>
 public sealed class HandshakeListener : IDisposable {
     private readonly HttpListener _listener;
     private readonly string _token;
@@ -22,19 +16,12 @@ public sealed class HandshakeListener : IDisposable {
         Address = address;
     }
 
-    /// <summary>The bound address ("127.0.0.1:N") to hand to the new process.</summary>
     public string Address { get; }
 
-    /// <summary>Completes once a valid /ready ping has arrived (the handshake is served).</summary>
     public Task Served => _served.Task;
 
-    /// <summary>
-    /// Open a loopback HTTP listener on an ephemeral port and begin serving /ready.
-    /// Ports startHandshakeListener; binds 127.0.0.1 only.
-    /// </summary>
     public static HandshakeListener Start(string token) {
-        // HttpListener needs an explicit port; probe a free loopback port first.
-        var port = FindFreeLoopbackPort();
+               var port = FindFreeLoopbackPort();
         var listener = new HttpListener();
         var address = $"127.0.0.1:{port}";
         listener.Prefixes.Add($"http://{address}/");
@@ -84,8 +71,7 @@ public sealed class HandshakeListener : IDisposable {
             }
 
             response.StatusCode = (int)HttpStatusCode.OK;
-            // Gate the one-shot signal so concurrent /ready requests are race-free.
-            if (Interlocked.CompareExchange(ref _handoffDone, 1, 0) == 0) {
+                       if (Interlocked.CompareExchange(ref _handoffDone, 1, 0) == 0) {
                 _served.TrySetResult();
             }
         } finally {
@@ -99,10 +85,7 @@ public sealed class HandshakeListener : IDisposable {
     public void Dispose() {
         _cts?.Cancel();
         _cts?.Dispose();
-        // Close() alone stops + deregisters the prefix; calling Stop() first double-removes
-        // it from the managed HttpListener's static EndPointManager on Linux, throwing
-        // "Address already in use" if another listener has since claimed the port.
-        try {
+                             try {
             _listener.Close();
         } catch (HttpListenerException) {
         }

@@ -3,26 +3,15 @@ using System.Text.Json;
 
 namespace EggLedger.Desktop.Update;
 
-/// <summary>
-/// GitHub releases API client + asset download. HttpClient is injected so URL
-/// construction, JSON parse, and byte write are unit-testable with a stubbed handler.
-/// </summary>
 public sealed class GithubReleaseClient(HttpClient httpClient) {
-    /// <summary>Repo the updater polls. Matches Go _githubRepo.</summary>
     public const string GithubRepo = "DavidArthurCole/EggLedger";
 
-    /// <summary>Download read-buffer size and progress-report granularity.</summary>
     private const int DownloadChunkBytes = 64 * 1024;
 
     private readonly HttpClient _httpClient = httpClient;
 
-    /// <summary>A release tag plus its body (notes).</summary>
     public readonly record struct Release(string Tag, string Body);
 
-    /// <summary>
-    /// Fetch the latest stable release tag + notes (GET /releases/latest). Ports
-    /// getLatestTag. Returns null when the tag is empty or the request fails.
-    /// </summary>
     public async Task<Release?> GetLatestTagAsync(CancellationToken cancel = default) {
         var url = $"https://api.github.com/repos/{GithubRepo}/releases/latest";
         var json = await GetStringAsync(url, cancel).ConfigureAwait(false);
@@ -39,10 +28,6 @@ public sealed class GithubReleaseClient(HttpClient httpClient) {
         });
     }
 
-    /// <summary>
-    /// Fetch the highest non-draft release including pre-releases (GET /releases).
-    /// Ports getLatestTagIncludingPreReleases. Returns null when none parse.
-    /// </summary>
     public async Task<Release?> GetLatestTagIncludingPreReleasesAsync(CancellationToken cancel = default) {
         var url = $"https://api.github.com/repos/{GithubRepo}/releases?per_page=10";
         var json = await GetStringAsync(url, cancel).ConfigureAwait(false);
@@ -74,9 +59,6 @@ public sealed class GithubReleaseClient(HttpClient httpClient) {
         });
     }
 
-    /// <summary>
-    /// Release asset filename for the current platform. Ports expectedAssetName.
-    /// </summary>
     public static string ExpectedAssetName() {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
             return "EggLedger.exe";
@@ -92,10 +74,6 @@ public sealed class GithubReleaseClient(HttpClient httpClient) {
         return "EggLedger";
     }
 
-    /// <summary>
-    /// Resolve the browser_download_url for this platform's asset in release
-    /// <paramref name="tag"/>. Ports getUpdateAssetURL; null when the asset is missing.
-    /// </summary>
     public async Task<string?> GetUpdateAssetUrlAsync(string tag, CancellationToken cancel = default) {
         var url = $"https://api.github.com/repos/{GithubRepo}/releases/tags/{tag}";
         var json = await GetStringAsync(url, cancel).ConfigureAwait(false);
@@ -119,10 +97,6 @@ public sealed class GithubReleaseClient(HttpClient httpClient) {
         });
     }
 
-    /// <summary>
-    /// Expected SHA-256 (lowercase hex) for this platform's asset, read from the release's
-    /// SHA256SUMS asset (lines of "hash␠␠filename"). Null when the asset or its line is absent.
-    /// </summary>
     public async Task<string?> GetExpectedSha256Async(string tag, CancellationToken cancel = default) {
         var listUrl = $"https://api.github.com/repos/{GithubRepo}/releases/tags/{tag}";
         var json = await GetStringAsync(listUrl, cancel).ConfigureAwait(false);
@@ -162,10 +136,6 @@ public sealed class GithubReleaseClient(HttpClient httpClient) {
         return null;
     }
 
-    /// <summary>
-    /// Stream the asset to <paramref name="destPath"/>, reporting (downloaded, total)
-    /// roughly every 64KB. Ports downloadUpdate; throws on non-success or truncated download.
-    /// </summary>
     public async Task DownloadAsync(
         string assetUrl,
         string destPath,
@@ -198,8 +168,8 @@ public sealed class GithubReleaseClient(HttpClient httpClient) {
         }
     }
 
-    // Shared JSON-parse-and-extract wrapper: parses json and hands the root element to
-    // extract, returning null on any parse failure instead of throwing.
+    
+    
     private static T? TryParseJson<T>(string json, Func<JsonElement, T?> extract) {
         try {
             using var doc = JsonDocument.Parse(json);
@@ -212,7 +182,7 @@ public sealed class GithubReleaseClient(HttpClient httpClient) {
     private async Task<string?> GetStringAsync(string url, CancellationToken cancel) {
         try {
             using var req = new HttpRequestMessage(HttpMethod.Get, url);
-            // GitHub requires a User-Agent; the Go default client sends one implicitly.
+            
             if (_httpClient.DefaultRequestHeaders.UserAgent.Count == 0) {
                 req.Headers.UserAgent.ParseAdd("EggLedger");
             }

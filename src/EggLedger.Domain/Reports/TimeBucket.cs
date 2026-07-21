@@ -2,14 +2,9 @@ using System.Globalization;
 
 namespace EggLedger.Domain.Reports;
 
-/// <summary>
-/// In-memory reproduction of the SQLite time expressions the report queries use,
-/// all UTC, so the SQL-free path produces identical bucket strings and date comparisons.
-/// </summary>
 internal static class TimeBucket {
     private static readonly DateTime Epoch = new(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
-    /// <summary>Bucket label for a unix timestamp, matching strftime(TimeBucketFormat(...), datetime(ts, 'unixepoch')).</summary>
     public static string Format(string timeBucket, string customUnit, long unixSeconds) {
         var fmt = QueryBuilder.TimeBucketFormat(timeBucket, customUnit);
         var t = Epoch.AddSeconds(unixSeconds);
@@ -22,10 +17,6 @@ internal static class TimeBucket {
         };
     }
 
-    /// <summary>
-    /// SQLite strftime('%Y-%W') label: week 0 is days before the year's first Monday,
-    /// week 1 starts on the first Monday. Mirrors TimeFill.FormatSQLiteWeekLabel.
-    /// </summary>
     private static string WeekLabel(DateTime t) {
         var jan1 = new DateTime(t.Year, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         var jan1MondayOffset = ((int)jan1.DayOfWeek + 6) % 7;
@@ -33,10 +24,6 @@ internal static class TimeBucket {
         return string.Format(CultureInfo.InvariantCulture, "{0:D4}-{1:D2}", t.Year, week);
     }
 
-    /// <summary>
-    /// Parses a date-filter value to a unix timestamp (strftime('%s', value)). Accepts
-    /// "YYYY-MM-DD" (midnight UTC) and "YYYY-MM-DD HH:MM:SS"; false on an unrecognized date.
-    /// </summary>
     public static bool TryParseDateToUnix(string value, out long unixSeconds) {
         unixSeconds = 0;
         string[] formats =
@@ -53,10 +40,6 @@ internal static class TimeBucket {
         return true;
     }
 
-    /// <summary>
-    /// Reproduces strftime('%s', 'now', modifier) for the custom-window cutoff using
-    /// UTC now; modifier is "-N days" or "-N months" from CustomWindowCondition.
-    /// </summary>
     public static long NowMinus(string modifier) {
         var now = DateTime.UtcNow;
         var parts = modifier.Split(' ');

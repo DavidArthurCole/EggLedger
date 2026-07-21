@@ -145,7 +145,7 @@
         _open = false;
     }
 
-    // Focus the search box after the overlay is in the DOM (interop only post-render).
+    
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (_focusPending) {
             _focusPending = false;

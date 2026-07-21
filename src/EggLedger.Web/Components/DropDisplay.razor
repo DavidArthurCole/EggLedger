@@ -57,7 +57,6 @@
 
 @code {
 
-    /// <summary>Spec type group: "artifact", "stone", "ingredient", or "stone_fragment".</summary>
     [Parameter]
     public string Type { get; set; } = "";
 
@@ -65,7 +64,6 @@
     [Parameter] public MissionMennoData? MennoData { get; set; }
     [Parameter] public bool ShowExpectedDrops { get; set; }
 
-    /// <summary>Total drop count across all spec sections of the mission; the expected-per-ship multiplier.</summary>
     [Parameter]
     public int MissionTotalDrops { get; set; }
 
@@ -113,12 +111,12 @@
         return rarity >= 0 && rarity < Rarities.Length ? Rarities[rarity] : "";
     }
 
-    // Stone -> +2, else +1.
+    
     private static int SpecPathOffset(DropLike item) {
         return item.SpecType == "Stone" ? 2 : 1;
     }
 
-    // Artifacts carry their rarity background, others bg-r-0.
+    
     private static string RarityBgClass(DropLike item) {
         return item.SpecType == "Artifact" ? "ledger-af-link bg-r-" + item.Rarity : "ledger-af-link bg-r-0";
     }
@@ -131,7 +129,7 @@
         return $"https://wasmegg-carpet.netlify.app/artifact-explorer/#/artifact/{slug}-{item.Level + SpecPathOffset(item)}";
     }
 
-    // Count badge width by digit count.
+    
     private static string NumToDigClass(int num) {
         return num switch {
             > 999999 => "w-sevendig",
@@ -152,7 +150,7 @@
         return ContentPaths.Asset($"images/artifacts/{fixedName}/{fixedName}_{item.Level + SpecPathOffset(item)}.png");
     }
 
-    // Port of boundEffectString: splits "[x]" or "!!...<x>" into prefix / highlight / suffix.
+    
     private static (string Prefix, string Highlight, string Suffix) BoundEffectString(string str) {
         if (str.StartsWith("!!", StringComparison.Ordinal)) {
             var open = str.IndexOf('<', StringComparison.Ordinal);
@@ -169,7 +167,7 @@
             : ("?", "?", "?");
     }
 
-    // Port of getDropCalcs (mission mode): [community drops for this artifact, community total].
+    
     private (long Seen, long Total)? DropCalcs(DropLike item) {
         if (MennoData?.Configs is null) {
             return null;
@@ -189,7 +187,7 @@
         return null;
     }
 
-    // Port of getExpectedPerShip: (seen / total) * missionTotalDrops, 3 decimals.
+    
     private string ExpectedPerShip(DropLike item) {
         var calc = DropCalcs(item);
         if (calc is null || calc.Value.Total == 0) {

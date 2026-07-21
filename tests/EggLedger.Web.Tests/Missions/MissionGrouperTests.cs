@@ -3,9 +3,8 @@ using EggLedger.Web.Missions;
 
 namespace EggLedger.Web.Tests.Missions;
 
-/// <summary>Golden parity with www/src/composables/useMissionListGrouping.ts.</summary>
 public sealed class MissionGrouperTests {
-    // Treats LaunchDT as already-encoded yyyymmdd so tests do not depend on the local time zone.
+    
     private static DateTime FakeLedgerDate(long encoded) {
         int y = (int)(encoded / 10000);
         int mo = (int)(encoded / 100 % 100);

@@ -2,11 +2,6 @@ using EggLedger.Desktop.Update;
 
 namespace EggLedger.Desktop.Tests;
 
-/// <summary>
-/// Stubbed-HttpClient tests for the GitHub release fetch + download
-/// (EggLedger/update/version.go). Assert the right URL is hit, the JSON is parsed,
-/// and the bytes are written. No real GitHub call.
-/// </summary>
 public sealed class GithubReleaseClientTests {
     [Fact]
     public async Task GetLatestTag_ParsesTagAndBodyFromExpectedUrl() {
@@ -44,7 +39,7 @@ public sealed class GithubReleaseClientTests {
         var rel = await client.GetLatestTagIncludingPreReleasesAsync();
 
         Assert.NotNull(rel);
-        // 2.2.0 (stable) > 2.2.0-rc.1; the 2.3.0 draft is excluded.
+        
         Assert.Equal("2.2.0", rel.Value.Tag);
         Assert.Contains("releases?per_page=10", stub.RequestedUrls[0]);
     }
@@ -102,7 +97,7 @@ public sealed class GithubReleaseClientTests {
 
     [Fact]
     public async Task Download_ThrowsOnTruncatedContent() {
-        // Content-Length claims more than the body delivers.
+        
         var stub = new StubHttpMessageHandler(_ => {
             var content = new ByteArrayContent([1, 2, 3]);
             content.Headers.ContentLength = 999;

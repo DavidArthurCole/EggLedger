@@ -80,7 +80,7 @@
         InvokeAsync(LoadAsync);
     }
 
-    // Refresh on fetch completion so new missions show without a manual reload.
+    
     private void OnAppStateChanged() {
         if (AppState.PipelineState == Services.AppState.Success && Active.ActiveAccountId is not null) {
             DataCache.InvalidateAll();

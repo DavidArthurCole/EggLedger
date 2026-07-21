@@ -308,7 +308,6 @@
 @code {
     [Parameter] [EditorRequired] public string AccountId { get; set; } = "";
 
-    /// <summary>Group id for new reports, or null for ungrouped.</summary>
     [Parameter]
     public string? GroupId { get; set; }
 
@@ -407,8 +406,8 @@
         _open = true;
         StateHasChanged();
 
-        // Per-label swatches need the chart's actual labels; fetch them once by running the
-        // saved definition. Best-effort: a failed run just leaves the swatch grid empty.
+        
+        
         try {
             var result = await MissionDb.RunReportAsync(def, def.AccountId);
             _editingResultLabels = result.Is2D ? Array.Empty<string>() : result.Labels;
@@ -523,8 +522,8 @@
         var timeSeries = f.Mode == "time_series";
         var hasSecondary = !string.IsNullOrEmpty(f.SecondaryGroupBy);
 
-        // Coerce DisplayMode to one the current mode/secondary combination actually offers, so a
-        // stale value from before a mode switch cannot save an invalid chart type.
+        
+        
         var displayMode = f.DisplayMode;
         if (hasSecondary) {
             if (displayMode is not ("heatmap" or "grouped_bar")) displayMode = "heatmap";

@@ -25,7 +25,6 @@ public sealed class ViewMissionData {
     public MissionMennoData MennoData { get; set; } = new();
 }
 
-/// <summary>Pure mission-detail computation: shapes already-fetched data only. Async overlay state, bridge fetches, and caching stay in the Blazor component.</summary>
 public static class MissionDetailBuilder {
     private static DropLike ToDropLike(MissionDrop d) => new() {
         Id = d.Id,
@@ -39,7 +38,6 @@ public static class MissionDetailBuilder {
         SpecType = d.SpecType,
     };
 
-    /// <summary>Splits drops by spec type, groups + sorts each, derives dates/capacity modifier/prev-next ids. Initial sort is sortedGroupedSpecType; ApplySortMethod re-sorts per the active method.</summary>
     public static ViewMissionData BuildBase(
         DatabaseMission missionInfo,
         IReadOnlyList<MissionDrop> allDrops,
@@ -88,7 +86,6 @@ public static class MissionDetailBuilder {
         };
     }
 
-    /// <summary>Re-sorts the already-grouped drop lists: iv -> inventoryVisualizerSort, otherwise sortGroupAlreadyCombed.</summary>
     public static void ApplySortMethod(ViewMissionData data, MissionSortMethod method) {
         Func<IEnumerable<DropLike>, List<DropLike>> sortFn = method == MissionSortMethod.Iv
             ? DropSorter.InventoryVisualizerSort
@@ -99,7 +96,6 @@ public static class MissionDetailBuilder {
         data.Ingredients = sortFn(data.Ingredients);
     }
 
-    /// <summary>Menno lookup parameters for a mission: target -1 remapped to the no-target sentinel (10000).</summary>
     public static (int Ship, int Duration, int Level, int Target) MennoParams(DatabaseMission mission) {
         int target = mission.TargetInt == -1 ? 10000 : mission.TargetInt;
         int ship = mission.Ship is { } s ? Convert.ToInt32(s) : 0;
@@ -107,7 +103,6 @@ public static class MissionDetailBuilder {
         return (ship, duration, mission.Level, target);
     }
 
-    /// <summary>Menno lookup key for a mission, key is ship_duration_level_target.</summary>
     public static string MennoKey(DatabaseMission mission) {
         var (ship, duration, level, target) = MennoParams(mission);
         return $"{ship}_{duration}_{level}_{target}";

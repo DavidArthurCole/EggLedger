@@ -7,14 +7,10 @@ using Npgsql;
 
 namespace EggLedger.Web.Server.Tests;
 
-/// <summary>
-/// Security-critical cross-user isolation for the multi-tenant PostgresIndexedDb: user A must never read user B's rows.
-/// Runs only against a disposable Postgres at EGGLEDGER_TEST_DB_URL (unique schema created and dropped, never prod); skipped when the env var is unset.
-/// </summary>
 public sealed class PostgresIsolationTests {
     private static string? TestDbUrl => Environment.GetEnvironmentVariable("EGGLEDGER_TEST_DB_URL");
 
-    // Fixed auth principal for one user id, mimicking the cookie-auth claim.
+    
     private sealed class FakeAuth(Guid? userId) : AuthenticationStateProvider {
         public override Task<AuthenticationState> GetAuthenticationStateAsync() {
             var identity = userId is null
@@ -57,15 +53,15 @@ public sealed class PostgresIsolationTests {
             Assert.Single(bAll);
             Assert.Equal("EI_B", bAll[0].PlayerId);
 
-            // B must not see A's mission even by exact key.
+            
             var leaked = await b.GetAsync<MissionRow>("mission", new object[] { "EI_A", "m1" });
             Assert.Null(leaked);
 
-            // A's count is scoped.
+            
             Assert.Equal(2, await a.CountAsync("mission"));
             Assert.Equal(1, await b.CountAsync("mission"));
 
-            // B clearing its store leaves A's rows intact.
+            
             await b.ClearAsync("mission");
             Assert.Equal(2, (await a.GetAllAsync<MissionRow>("mission")).Length);
             Assert.Empty(await b.GetAllAsync<MissionRow>("mission"));
@@ -82,7 +78,7 @@ public sealed class PostgresIsolationTests {
         await CreateSchemaAsync(src);
         try {
             var anon = StoreFor(src, null);
-            // Reads tolerate the gated state (return empty); writes must throw.
+            
             Assert.Empty(await anon.GetAllAsync<MissionRow>("mission"));
             await Assert.ThrowsAsync<InvalidOperationException>(
                 async () => await anon.PutAsync("mission", Mission("EI_X", "x1")));
@@ -91,13 +87,13 @@ public sealed class PostgresIsolationTests {
         }
     }
 
-    // Runs the storage migration into a throwaway schema named per test run so concurrent
-    // runs and prod tables never collide. search_path scopes the el_* tables to it.
+    
+    
     private const string Schema = "eltest_iso";
 
     private static async Task CreateSchemaAsync(NpgsqlDataSource src) {
         await Exec(src, $"DROP SCHEMA IF EXISTS {Schema} CASCADE; CREATE SCHEMA {Schema}; SET search_path TO {Schema};");
-        // user_id only exists after migration 8 backfills it onto the migration-4 tables.
+        
         await ApplyMigrationAsync(src, "1_initial_schema.up.sql");
         await ApplyMigrationAsync(src, "4_eggledger_storage.up.sql");
         await ApplyMigrationAsync(src, "8_identities.up.sql");

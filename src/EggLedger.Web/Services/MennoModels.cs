@@ -2,7 +2,6 @@ using System.Text.Json.Serialization;
 
 namespace EggLedger.Web.Services;
 
-/// <summary>Menno community drop-rate DTOs. <see cref="MennoDecode.Validate"/> rejects unbound required nested objects so schema drift fails loudly instead of yielding silent zeros.</summary>
 public sealed record IdNamePair {
     [JsonPropertyName("id")]
     public int Id { get; init; }
@@ -30,7 +29,6 @@ public sealed record ArtifactConfiguration {
     public int ArtifactLevel { get; init; }
 }
 
-/// <summary>One aggregate record; the endpoint returns a raw JSON array of these.</summary>
 public sealed record ConfigurationItem {
     [JsonPropertyName("shipConfiguration")]
     public ShipConfiguration? ShipConfiguration { get; init; }

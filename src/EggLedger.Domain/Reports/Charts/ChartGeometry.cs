@@ -7,10 +7,6 @@ public readonly record struct ChartPoint(double X, double Y, string Label, doubl
 
 public readonly record struct YTick(double Y, string Label);
 
-/// <summary>
-/// Geometry for the line-family charts. Port of ReportLineChart.vue / ReportMultiLineChart.vue
-/// math; SVG padding constants match the Vue components exactly.
-/// </summary>
 public static partial class ChartGeometry {
     public const double PadLeft = 36;
     public const double PadRight = 8;
@@ -23,16 +19,11 @@ public static partial class ChartGeometry {
         "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
     ];
 
-    /// <summary>Float values when IsFloat, else integers widened. Port of ReportLineChart values.</summary>
     public static List<double> Values(IReadOnlyList<long> values, IReadOnlyList<double> floatValues, bool isFloat) =>
         isFloat
             ? [.. floatValues]
             : [.. values.Select(v => (double)v)];
 
-    /// <summary>
-    /// Scales values to plotted points across the chart width; empty when fewer than
-    /// 2 values (Vue guard). Port of ReportLineChart points.
-    /// </summary>
     public static List<ChartPoint> Points(IReadOnlyList<double> values, IReadOnlyList<string> labels, double w, double h) {
         if (values.Count < 2) {
             return [];
@@ -52,14 +43,9 @@ public static partial class ChartGeometry {
         return points;
     }
 
-    /// <summary>Space-separated "x,y" polyline points string.</summary>
     public static string PolylinePoints(IReadOnlyList<ChartPoint> points) =>
         string.Join(" ", points.Select(p => Fmt(p.X) + "," + Fmt(p.Y)));
 
-    /// <summary>
-    /// Closed area path from the polyline down to the baseline; empty when fewer than 2 points.
-    /// Port of ReportLineChart areaPath.
-    /// </summary>
     public static string AreaPath(IReadOnlyList<ChartPoint> points, double h) {
         if (points.Count < 2) {
             return "";
@@ -71,7 +57,6 @@ public static partial class ChartGeometry {
         return $"{line} L{Fmt(last.X)},{Fmt(baseline)} L{Fmt(first.X)},{Fmt(baseline)} Z";
     }
 
-    /// <summary>Thins point labels to at most <see cref="MaxLabels"/>, always keeping the last. Port of ReportLineChart labeledPoints.</summary>
     public static List<ChartPoint> ThinLabels(IReadOnlyList<ChartPoint> points) {
         if (points.Count <= MaxLabels) {
             return [.. points];
@@ -86,7 +71,6 @@ public static partial class ChartGeometry {
         return result;
     }
 
-    /// <summary>Three y-axis ticks at 33/67/100% of max; empty when max is zero. Port of ReportLineChart yTicks.</summary>
     public static List<YTick> YTicks(double max, double h, bool isFloat) {
         if (max == 0) {
             return [];
@@ -105,10 +89,6 @@ public static partial class ChartGeometry {
         return ticks;
     }
 
-    /// <summary>
-    /// Formats an x-axis label: "yyyy-MM" to "Mon 'yy" (or "Www 'yy" for week > 12),
-    /// "yyyy-MM-dd" to "d Mon", else truncated. Port of ReportLineChart formatXLabel.
-    /// </summary>
     public static string FormatXLabel(string s) {
         var ym = YearMonthRegex().Match(s);
         if (ym.Success) {
@@ -128,21 +108,12 @@ public static partial class ChartGeometry {
         return s.Length > 10 ? s[..9] + "..." : s;
     }
 
-    /// <summary>
-    /// HSL series colors spread across the hue wheel from the base color, honoring
-    /// per-label overrides. Returns CSS hsl() strings. Port of ReportMultiLineChart seriesColors.
-    /// </summary>
     public static List<string> SeriesColors(
         IReadOnlyList<string> colLabels,
         string baseColor,
         IReadOnlyDictionary<string, string> labelColors) =>
         SeriesColors(colLabels, baseColor, labelColors, colLabels.Count, null);
 
-    /// <summary>
-    /// Hue-spread series colors with an explicit hue denominator and optional "Other"-sentinel.
-    /// Grouped-bar spreads over the RAW column count (kept hues stable under an "Other" rollup)
-    /// and paints "Other" gray; per-label overrides win for non-sentinel labels.
-    /// </summary>
     public static List<string> SeriesColors(
         IReadOnlyList<string> colLabels,
         string baseColor,
@@ -155,7 +126,7 @@ public static partial class ChartGeometry {
         }
         string baseHex = baseColor.StartsWith('#') && baseColor.Length == 7 ? baseColor : "#6366f1";
         var (h, s, _) = SliceColors.HexToHsl(baseHex);
-        // SliceColors.HexToHsl returns s in 0..1; the Vue multi-line uses 0..100, so scale.
+        
         double sPct = s * 100;
         double denom = hueDenominator <= 0 ? n : hueDenominator;
         var result = new List<string>(n);
@@ -179,10 +150,6 @@ public static partial class ChartGeometry {
         return result;
     }
 
-    /// <summary>
-    /// Extracts one series' values from a row-major matrix (rows = buckets, cols = series).
-    /// Port of ReportMultiLineChart allSeriesData.
-    /// </summary>
     public static List<double> SeriesValues(IReadOnlyList<double> matrix, int rowCount, int colCount, int seriesIdx) {
         var result = new List<double>(rowCount);
         for (int r = 0; r < rowCount; r++) {
@@ -192,7 +159,6 @@ public static partial class ChartGeometry {
         return result;
     }
 
-    /// <summary>Escapes the five XML special characters so text is safe in SVG element and attribute contexts.</summary>
     public static string EscapeText(string s) =>
         s.Replace("&", "&amp;")
             .Replace("<", "&lt;")

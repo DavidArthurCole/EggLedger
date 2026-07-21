@@ -6,14 +6,14 @@ using Npgsql;
 
 namespace EggLedger.Web.Server.Sync.Blobs;
 
-// Go parity: the original server swallowed DB errors on best-effort writes (fire-and-forget);
-// the catch blocks below ignore failures to stay behavior-identical, but now log them.
+
+
 public sealed class BlobEndpoints(NpgsqlDataSource source, ILogger<BlobEndpoints> logger) {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
     private static long Now() => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
-    // X-Discord-ID now carries the provider-neutral user_id string (header name unchanged;
-    // only its semantic meaning changed, per SessionStore).
+    
+    
     private static Guid UserId(HttpContext ctx) => Guid.Parse(ctx.Request.Headers["X-Discord-ID"].ToString());
 
     private static async Task WriteTextAsync(HttpContext ctx, int statusCode, string text) {
@@ -39,9 +39,9 @@ public sealed class BlobEndpoints(NpgsqlDataSource source, ILogger<BlobEndpoints
             await WriteTextAsync(ctx, StatusCodes.Status400BadRequest, "bad request\n");
             return;
         }
-        // No users upsert here: RequireAuth only lets a request through with a token minted by
-        // AuthEndpoints.StorePending, which already created the users row for this user_id, so
-        // by the time a request reaches this handler the row is guaranteed to exist.
+        
+        
+        
         try {
             await using var cmd = source.CreateCommand(
                 "INSERT INTO blobs (user_id, name, ciphertext, updated_at) VALUES ($1, $2, $3, $4) " +

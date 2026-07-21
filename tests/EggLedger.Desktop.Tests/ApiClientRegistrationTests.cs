@@ -11,7 +11,7 @@ public class ApiClientRegistrationTests {
     public void DesktopApiClient_CallsAuxbrainDirect_NotEggApiProxy() {
         var services = new ServiceCollection();
 
-        // Mirror Program.cs Main registration order.
+        
         services.AddEggLedgerWeb(new Uri("https://eggledger.davidarthurcole.me/"));
         var missionDb = SqliteDatabase.OpenMissionDb(":memory:");
         var reportDb = SqliteDatabase.OpenReportDb(":memory:");

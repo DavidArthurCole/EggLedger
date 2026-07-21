@@ -9,14 +9,6 @@ using ProtoBuf;
 
 namespace EggLedger.Web.Tests.Services;
 
-/// <summary>
-/// End-to-end tests build a real FetchService over FakeIndexedDb + a routing HttpMessageHandler
-/// (matching FetchServiceTests' convention), since FetchService is a concrete sealed class with
-/// no test seam. The carry-forward and Changed-notification behavior belongs to FetchOrchestrator
-/// itself, so those are exercised with FetchService only where needed to drive it (single mission,
-/// deterministic segment sequence); cancellation reuses FetchServiceTests' "cancel from inside the
-/// handler" pattern, calling StopFetch() instead of the raw CTS to prove the wiring.
-/// </summary>
 public sealed class FetchOrchestratorTests {
     private const string Eid = "EI1234567890123456";
 
@@ -78,10 +70,10 @@ public sealed class FetchOrchestratorTests {
         return Convert.ToBase64String(authBytes.ToArray());
     }
 
-    // Routes first-contact and complete-mission POSTs to canned bodies; supports an optional
-    // callback fired right before a complete-mission response is produced, for cancellation tests.
-    // The callback also receives the request's own CancellationToken so a test can observe whether
-    // that specific in-flight request's token became cancelled during the callback.
+    
+    
+    
+    
     private sealed class RoutingHandler : HttpMessageHandler {
         private readonly string _firstContactBody;
         private readonly Func<string, string?> _completeMission;
@@ -159,8 +151,8 @@ public sealed class FetchOrchestratorTests {
 
         await orchestrator.StartFetchAsync(Eid);
 
-        // First counts-bearing FetchingMissions report, then subsequent segment-only reports for m1
-        // must carry forward that report's Total/Finished/Failed/Retried rather than zeroing them.
+        
+        
         var firstCounts = reports.First(r => r.State == AppState.FetchingMissions && r.Segment is null);
         var segmentReports = reports.Where(r => r.Segment is not null).ToList();
         Assert.NotEmpty(segmentReports);
@@ -202,8 +194,8 @@ public sealed class FetchOrchestratorTests {
 
         await orchestrator.StartFetchAsync(Eid);
 
-        // Confirms Changed fires per in-progress report, not just "more than once total":
-        // one checkpoint mid-fetch, a distinct one at final completion.
+        
+        
         Assert.True(firedDuringFetchingMissions);
         Assert.True(firedAtSuccess);
     }
@@ -220,12 +212,12 @@ public sealed class FetchOrchestratorTests {
                 if (reentrantFetch is not null) {
                     return;
                 }
-                // Kick off a second fetch for the same account synchronously, from inside the
-                // initial fetch's own in-flight request, mirroring a same-page re-click of Fetch
-                // while one is already running. StartFetchAsync cancels+replaces the shared CTS
-                // before its first await, so by the time this call returns, this request's own
-                // token (the initial fetch's, captured before the replacement) must already
-                // observe the cancellation.
+                
+                
+                
+                
+                
+                
                 reentrantFetch = orchestrator!.StartFetchAsync(Eid);
                 initialRequestTokenCancelledAfterReentry = requestToken.IsCancellationRequested;
             });
@@ -237,9 +229,9 @@ public sealed class FetchOrchestratorTests {
             await reentrantFetch;
         }
 
-        // Proves the initial fetch's own CancellationTokenSource was actually cancelled: its
-        // in-flight request's token, captured before the reentrant call replaced _cts, observed
-        // cancellation the instant that call ran its synchronous cancel-and-replace prefix.
+        
+        
+        
         Assert.True(initialRequestTokenCancelledAfterReentry);
         Assert.Equal(AppState.Success, orchestrator.TerminalState);
     }

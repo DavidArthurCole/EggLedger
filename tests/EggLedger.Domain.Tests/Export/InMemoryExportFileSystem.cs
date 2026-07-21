@@ -2,7 +2,6 @@ using EggLedger.Domain.Export;
 
 namespace EggLedger.Domain.Tests.Export;
 
-/// <summary>In-memory IExportFileSystem double; keys are full Path.Combine paths.</summary>
 internal sealed class InMemoryExportFileSystem : IExportFileSystem {
     private readonly Dictionary<string, long> _files = new(StringComparer.Ordinal);
 
@@ -13,7 +12,7 @@ internal sealed class InMemoryExportFileSystem : IExportFileSystem {
     public bool Exists(string path) => _files.ContainsKey(path);
 
     public IReadOnlyList<ExportFileEntry>? ListFiles(string dir) {
-        // A directory "exists" if any tracked file lives directly under it.
+        
         var prefix = dir.TrimEnd(System.IO.Path.DirectorySeparatorChar) + System.IO.Path.DirectorySeparatorChar;
         var entries = new List<ExportFileEntry>();
         bool dirSeen = false;

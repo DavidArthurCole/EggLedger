@@ -79,21 +79,17 @@
     [Parameter] public EventCallback<LegacyFilter> OnApply { get; set; }
     [Parameter] public bool IsLifetime { get; set; }
 
-    /// <summary>Show the Apply button + status. Off when embedded in a dialog that saves on its own submit.</summary>
     [Parameter]
     public bool ShowApply { get; set; } = true;
 
-    /// <summary>Include artifact-scope fields (name/rarity/tier/spec type/quality). On for Reports, off for Mission Data.</summary>
     [Parameter]
     public bool IncludeArtifactFields { get; set; }
 
-    /// <summary>Seed rows from an existing filter (Reports edit). Mission Data leaves these null (transient).</summary>
     [Parameter]
     public IReadOnlyList<FilterCondition>? InitialAnd { get; set; }
 
     [Parameter] public IReadOnlyList<IReadOnlyList<FilterCondition>?>? InitialOr { get; set; }
 
-    /// <summary>The legacy AND list + parallel per-index OR-sibling lists the matcher consumes.</summary>
     public sealed record LegacyFilter(
         IReadOnlyList<FilterCondition> And,
         IReadOnlyList<IReadOnlyList<FilterCondition>?> Or);
@@ -156,8 +152,7 @@
 
     private bool RowIncomplete(FilterCondition c) {
         var def = FieldOf(c);
-        // Nothing picked yet: not flagged.
-        if (def is null)
+               if (def is null)
             return false;
         return !RowComplete(c);
     }
@@ -169,8 +164,7 @@
         return !RowComplete(or[^1]);
     }
 
-    // value-control rendering
-
+   
     private RenderFragment RenderConditionControls(FilterCondition c, Action changed) => __builder => {
         var def = FieldOf(c);
 
@@ -263,9 +257,7 @@
         }
     };
 
-    // Splits "Filtered in Xs (N shown, M filtered out)" into a green outer phrase
-    // with a gray parenthetical wrapping a green inner count, matching the Go/Vue layout.
-    private static RenderFragment RenderResultText(string text) => __builder => {
+          private static RenderFragment RenderResultText(string text) => __builder => {
         var openParen = text.IndexOf('(');
         var closeParen = openParen < 0 ? -1 : text.LastIndexOf(')');
         if (openParen < 0 || closeParen < openParen) {
@@ -282,8 +274,7 @@
         </span>
     };
 
-    // The modal value shows the option's label; SearchablePicker matches by Value, so pass the raw stored value.
-    private static string? ModalSelectedValue(FilterFieldDef def, string val) =>
+       private static string? ModalSelectedValue(FilterFieldDef def, string val) =>
         string.IsNullOrEmpty(val) ? null : val;
 
     private RenderFragment DropAdvancedFooter => @<label class="flex items-center gap-1.5 text-xs text-gray-400 cursor-pointer select-none">
@@ -309,8 +300,7 @@
         return opts;
     }
 
-    // Field change resets op + value to the new field's defaults.
-    private void SetField(FilterCondition c, string? key) {
+       private void SetField(FilterCondition c, string? key) {
         c.TopLevel = key ?? "";
         var def = FieldOf(c);
         if (def is null) {
@@ -332,8 +322,7 @@
     private void OnOrRowChanged(int index) {
     }
 
-    // The grid always keeps one blank trailing AND row; filling it appends another.
-    private void EnsureTrailingRow() {
+       private void EnsureTrailingRow() {
         var last = _rows[^1].Cond;
         if (!string.IsNullOrEmpty(last.TopLevel))
             _rows.Add(new Row());
@@ -353,10 +342,6 @@
 
     private void RemoveOr(int index, int orIndex) => _rows[index].Or.RemoveAt(orIndex);
 
-    /// <summary>
-    ///     Current filter as the legacy (and, orFilters) shape, incomplete rows dropped. For embedded use, read on the
-    ///     host's save.
-    /// </summary>
     public LegacyFilter BuildFilter() {
         var and = new List<FilterCondition>();
         var or = new List<IReadOnlyList<FilterCondition>?>();

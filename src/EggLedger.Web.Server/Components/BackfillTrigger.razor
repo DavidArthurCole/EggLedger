@@ -8,7 +8,7 @@
 
     protected override async Task OnInitializedAsync() {
         if (Services.GetService(typeof(FirstLoginBackfill)) is FirstLoginBackfill backfill) {
-            // Never block the UI on backfill; manual restore stays available.
+            
             try {
                 await backfill.RunIfNeededAsync();
             }

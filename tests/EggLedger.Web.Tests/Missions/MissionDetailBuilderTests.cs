@@ -5,7 +5,6 @@ using Ei;
 
 namespace EggLedger.Web.Tests.Missions;
 
-/// <summary>Golden parity with the pure core of www/src/composables/useMissionDetail.ts.</summary>
 public sealed class MissionDetailBuilderTests {
     private static MissionDrop Drop(string spec, int id = 1, int level = 0, int rarity = 0) =>
         new() { SpecType = spec, Id = id, Level = level, Rarity = rarity };
@@ -110,7 +109,7 @@ public sealed class MissionDetailBuilderTests {
         };
         var data = MissionDetailBuilder.BuildBase(M("m1"), drops, Array.Empty<DatabaseMission>(), false);
         MissionDetailBuilder.ApplySortMethod(data, MissionSortMethod.Default);
-        // sortGroupAlreadyCombed nets level asc, so level 0 sorts first.
+        
         Assert.Equal(0, data.Artifacts[0].Level);
         Assert.Equal(1, data.Artifacts[1].Level);
     }

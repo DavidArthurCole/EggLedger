@@ -5,19 +5,11 @@ using Microsoft.Data.Sqlite;
 
 namespace EggLedger.Desktop.Storage;
 
-/// <summary>Native SQLite <see cref="IIndexedDb"/> (the browser uses a JS-interop wrapper).</summary>
-/// <remarks>
-/// Each logical store maps to a table whose columns are the snake_case JSON property
-/// names of the row record; rows round-trip through a <see cref="JsonElement"/>.
-/// Operations dispatch to the mission or report DB by store name.
-/// </remarks>
 public sealed class SqliteIndexedDb : IIndexedDb {
     private readonly SqliteDatabase _missionDb;
     private readonly SqliteDatabase _reportDb;
     private readonly Dictionary<string, StoreMeta> _stores;
 
-    /// <param name="missionDb">DB holding mission/backup/artifact_drops/settings.</param>
-    /// <param name="reportDb">DB holding reports/report_groups.</param>
     public SqliteIndexedDb(SqliteDatabase missionDb, SqliteDatabase reportDb) {
         _missionDb = missionDb ?? throw new ArgumentNullException(nameof(missionDb));
         _reportDb = reportDb ?? throw new ArgumentNullException(nameof(reportDb));
@@ -119,8 +111,8 @@ public sealed class SqliteIndexedDb : IIndexedDb {
     }
 
     private void Upsert(StoreMeta meta, object value, SqliteTransaction? tx = null) {
-        // Serialize to JSON; snake_case property names are the column names. A null
-        // autoIncrement column is skipped so SQLite assigns it.
+        
+        
         using var doc = JsonSerializer.SerializeToDocument(value, value.GetType(), JsonOpts);
         var props = new List<(string Col, JsonElement Val)>();
         foreach (var prop in doc.RootElement.EnumerateObject()) {
@@ -140,15 +132,15 @@ public sealed class SqliteIndexedDb : IIndexedDb {
         var placeholders = props.Select((_, i) => "@p" + i.ToString(CultureInfo.InvariantCulture)).ToList();
 
         if (meta.UpsertByDelete) {
-            // No UNIQUE(player_id) on the backup table, so ON CONFLICT is impossible.
-            // Emulate keyPath=player_id (one row per player) by delete-then-insert.
+            
+            
             DeleteByKey(meta, props, connection, tx);
         }
 
         string conflict;
         if (meta.AutoIncrementColumn is not null || meta.UpsertByDelete) {
-            // Plain INSERT: autoIncrement stores get a fresh key; UpsertByDelete
-            // stores already removed any prior row above.
+            
+            
             conflict = "";
         } else {
             var updates = cols
@@ -165,8 +157,8 @@ public sealed class SqliteIndexedDb : IIndexedDb {
         cmd.ExecuteNonQuery();
     }
 
-    // Deletes any rows matching the row's key-column values. Used by UpsertByDelete
-    // stores to emulate put-by-keyPath against a table with no UNIQUE on the key.
+    
+    
     private static void DeleteByKey(
         StoreMeta meta, List<(string Col, JsonElement Val)> props, SqliteConnection connection, SqliteTransaction? tx) {
         using var del = connection.CreateCommand();
@@ -210,7 +202,7 @@ public sealed class SqliteIndexedDb : IIndexedDb {
             ? meta
             : throw new ArgumentException($"unknown store {store}", nameof(store));
 
-    // Composite key (mission: [player_id, mission_id]) arrives as an array.
+    
     private static (string where, object[] args) KeyPredicate(StoreMeta meta, object key) =>
         JsonRowCodec.KeyPredicate(meta.Table, meta.KeyColumns, key, c => c, JsonRowCodec.Sqlite);
 
@@ -228,7 +220,7 @@ public sealed class SqliteIndexedDb : IIndexedDb {
             keyColumns: ["player_id"],
             autoIncrementColumn: null,
             boolColumns: [],
-            // No UNIQUE(player_id), so emulate keyPath=player_id by delete-then-insert.
+            
             upsertByDelete: true),
         [IndexedDbStores.ArtifactDrops] = new StoreMeta(
             "artifact_drops", useReportDb: false,
@@ -252,8 +244,8 @@ public sealed class SqliteIndexedDb : IIndexedDb {
             boolColumns: []),
     };
 
-    // Derives BLOB columns from PRAGMA table_info (schema is the source of truth) so
-    // a new BLOB column never silently stores as base64 TEXT.
+    
+    
     private void BindBlobColumns() {
         foreach (var meta in _stores.Values) {
             var connection = Conn(meta);
@@ -261,7 +253,7 @@ public sealed class SqliteIndexedDb : IIndexedDb {
             cmd.CommandText = $"PRAGMA table_info({meta.Table});";
             using var reader = cmd.ExecuteReader();
             while (reader.Read()) {
-                // table_info columns: cid, name, type, notnull, dflt_value, pk.
+                
                 var name = reader.GetString(1);
                 var declaredType = reader.IsDBNull(2) ? "" : reader.GetString(2);
                 if (declaredType.Equals("BLOB", StringComparison.OrdinalIgnoreCase)) {

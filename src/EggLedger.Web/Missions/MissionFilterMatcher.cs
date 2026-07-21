@@ -5,15 +5,13 @@ using EggLedger.Web.Missions.Model;
 
 namespace EggLedger.Web.Missions;
 
-/// <summary>Drops fetcher seam (Vue getShipDrops bridge). null on cache miss/error, treated as "no match".</summary>
 public delegate Task<IReadOnlyList<MissionDrop>?> ShipDropsFetcher(string accountId, string missionId);
 
-/// <summary>Tests a mission against a typed MissionFilter (OR of AND-groups). Pure except Drops (async, fetched per mission); date compares are same-day Equals with inclusive GE/LE.</summary>
 public sealed class MissionFilterMatcher {
     private readonly string _accountId;
     private readonly ShipDropsFetcher _fetchDrops;
 
-    // Built-once lookups; the drop-filter path hits these per mission, where linear scans were O(ships*durations).
+    
     private readonly Dictionary<int, PossibleMission> _shipConfigs;
     private readonly Dictionary<int, Dictionary<int, DurationConfig>> _durByShip;
 
@@ -40,7 +38,7 @@ public sealed class MissionFilterMatcher {
     public static DateTime LedgerDate(long timestampSeconds) =>
         DateTimeOffset.FromUnixTimeSeconds(timestampSeconds).LocalDateTime;
 
-    // OR over groups, AND within a group; empty filter matches everything. Drop conditions run last so cheap fields short-circuit before the async fetch.
+    
     public async Task<bool> MatchesAsync(DatabaseMission mission, MissionFilter filter) {
         if (filter.IsEmpty) {
             return true;
@@ -57,7 +55,7 @@ public sealed class MissionFilterMatcher {
         if (group.Conditions.Count == 0) {
             return true;
         }
-        // Cheap (synchronous) conditions first; drops last.
+        
         foreach (var c in group.Conditions) {
             if (c.Field != FilterField.Drops && !MatchesScalar(mission, c)) {
                 return false;
@@ -71,7 +69,6 @@ public sealed class MissionFilterMatcher {
         return true;
     }
 
-    /// <summary>Single-condition test. Pure except for the Drops case.</summary>
     public async Task<bool> MatchesAsync(DatabaseMission mission, Condition condition) {
         if (condition.Field == FilterField.Drops) {
             return await MatchesDropAsync(mission, condition.Operator, DropOf(condition.Value)).ConfigureAwait(false);
@@ -101,7 +98,7 @@ public sealed class MissionFilterMatcher {
     private static int? EnumCode<T>(T? e) where T : struct, Enum =>
         e is null ? null : Convert.ToInt32(e.Value, CultureInfo.InvariantCulture);
 
-    // null enum value: fails Equals, passes NotEquals. Ordering operators compare underlying enum codes (legacy filters allowed them).
+    
     private static bool EnumMatch(int? missionValue, Condition c) {
         if (c.Value is not FilterValue.EnumValue e) {
             return false;
@@ -167,7 +164,7 @@ public sealed class MissionFilterMatcher {
             return false;
         }
 
-        // Quality gate: a picked quality threshold is reachable only within the matched duration's quality range for this mission level.
+        
         if (m.Quality is { } q) {
             double maxQual = durConfig.MaxQuality + durConfig.LevelQualityBump * mission.Level;
             if (q > maxQual || durConfig.MinQuality > q) {
@@ -206,21 +203,21 @@ public sealed class MissionFilterMatcher {
         return _durByShip.TryGetValue(shipKey, out var durs) && durs.TryGetValue(duration, out var d) ? d : null;
     }
 
-    // Compat shim for the legacy string filter API (the existing UI + tests).
+    
     public async Task<bool> TestMissionAgainstFilterAsync(DatabaseMission mission, FilterCondition filter) {
-        // Incomplete (missing field/op) -> no match.
+        
         if (string.IsNullOrEmpty(filter.TopLevel) || string.IsNullOrEmpty(filter.Op)) {
             return false;
         }
         var typed = FilterCodec.FromLegacyCondition(filter);
         if (typed is null) {
-            // Unknown but well-formed field: impose no constraint, so it does not filter every mission out.
+            
             return true;
         }
         return await MatchesAsync(mission, typed).ConfigureAwait(false);
     }
 
-    // Legacy AND-list + per-index OR-sibling semantics (see docs/filter-legacy-semantics.md).
+    
     public async Task<bool> MissionMatchesFilterAsync(
         DatabaseMission mission,
         IReadOnlyList<FilterCondition> filters,

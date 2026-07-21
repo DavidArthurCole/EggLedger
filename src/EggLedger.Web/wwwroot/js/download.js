@@ -10,7 +10,7 @@ export function downloadText(filename, text, mime) {
   globalThis.URL.revokeObjectURL(url);
 }
 
-// Opens the OS file picker and resolves with the chosen file's text content, or null on cancel.
+
 export function pickTextFile(accept) {
   return new Promise((resolve) => {
     const input = globalThis.document.createElement("input");

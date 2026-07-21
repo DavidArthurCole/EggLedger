@@ -3,11 +3,6 @@ using EggLedger.Desktop.Platform;
 
 namespace EggLedger.Desktop.Tests;
 
-/// <summary>
-/// DesktopPlatformCapabilities over fake seams: asserts the built command, the
-/// dialog-cancel contract, window-size passthrough, and restart relaunch-then-exit.
-/// The real dialog and relaunch are manual-verify.
-/// </summary>
 public sealed class DesktopPlatformCapabilitiesTests {
     private sealed class FakeProcessRunner : IProcessRunner {
         public List<(string Exe, IReadOnlyList<string> Args)> Calls { get; } = [];
@@ -99,7 +94,7 @@ public sealed class DesktopPlatformCapabilitiesTests {
 
         await caps.RestartAppAsync();
 
-        // Test host has a process path, so the relaunch command is recorded; exit is faked.
+        
         var call = Assert.Single(runner.Calls);
         Assert.Equal(Environment.ProcessPath, call.Exe);
         Assert.Empty(call.Args);

@@ -15,9 +15,9 @@ module.exports = {
     '../EggLedger.Desktop/wwwroot/desktop.html',
     '../EggLedger.Web.Server/**/*.razor',
   ],
-  // text-rarity-N is only ever built via C# interpolation (DropDisplay.razor) and
-  // text-rare/epic/legendary live in FilterOptions.cs, outside the .razor content
-  // glob above - neither literal class name is scannable, so JIT needs a safelist.
+  
+  
+  
   safelist: [
     'text-rarity-0', 'text-rarity-1', 'text-rarity-2', 'text-rarity-3',
     'text-rare', 'text-epic', 'text-legendary',

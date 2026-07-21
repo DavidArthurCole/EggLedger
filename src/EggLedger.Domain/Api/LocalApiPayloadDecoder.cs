@@ -3,10 +3,6 @@ using Ei;
 
 namespace EggLedger.Domain.Api;
 
-/// <summary>
-/// protobuf-net decode in-process. Used by the desktop host (Reflection.Emit is
-/// allowed there) and by tests. Wraps the existing <see cref="ApiClient"/> decode.
-/// </summary>
 public sealed class LocalApiPayloadDecoder : IApiPayloadDecoder {
     private readonly ApiClient _api;
 

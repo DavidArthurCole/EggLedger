@@ -3,16 +3,11 @@ using ProtoBuf;
 
 namespace EggLedger.Domain.Eiafx;
 
-/// <summary>
-/// Default <see cref="IEiafxConfigSource"/>: lazily decodes the embedded eiafx-config.bin once.
-/// Wire-equivalent to Go loading eiafx-config-min.json.
-/// </summary>
 public sealed class EmbeddedEiafxConfigSource : IEiafxConfigSource {
     public static readonly EmbeddedEiafxConfigSource Instance = new();
     private const string ResourceName = "EggLedger.Domain.Resources.eiafx-config.bin";
     private static readonly Lazy<ArtifactsConfigurationResponse> _config = new(LoadEmbedded);
 
-    /// <inheritdoc />
     public ArtifactsConfigurationResponse Config => _config.Value;
 
     private static ArtifactsConfigurationResponse LoadEmbedded() {

@@ -5,19 +5,11 @@ using Ei;
 
 namespace EggLedger.Domain.Reports;
 
-/// <summary>
-/// Raw-value to display-string conversion and sort ordering for report group-by dimensions.
-/// Port of Go reports/labels.go.
-/// </summary>
 public static class Labels {
     private static readonly string[] RarityNames = ["Common", "Rare", "Epic", "Legendary"];
     private static readonly string[] TierNames = ["T1", "T2", "T3", "T4"];
     private static LedgerDisplayData Config => LedgerData.LedgerData.Config;
 
-    /// <summary>
-    /// Display name for an artifact enum value via ledgerdata.ArtifactTargets,
-    /// falling back to CasedName. Port of Go artifactDisplayName.
-    /// </summary>
     private static string ArtifactDisplayName(int v) {
         var protoName = EnumNames.ProtoName((ArtifactSpec.Name)v);
         foreach (var t in Config.ArtifactTargets) {
@@ -28,17 +20,12 @@ public static class Labels {
         return ((ArtifactSpec.Name)v).CasedName();
     }
 
-    /// <summary>GROUP BY dimensions whose raw SQL value is an integer. Port of Go numericGroupBys.</summary>
     private static readonly HashSet<string> NumericGroupBys = new(StringComparer.Ordinal)
     {
         "ship_type", "duration_type", "level", "mission_type",
         "rarity", "tier", "artifact_name", "mission_target",
     };
 
-    /// <summary>
-    /// True when rawA sorts before rawB for the groupBy. Numeric dimensions compare
-    /// by integer, others ordinal. Port of Go LabelSortLess.
-    /// </summary>
     public static bool LabelSortLess(string groupBy, string rawA, string rawB) {
         if (NumericGroupBys.Contains(groupBy)) {
             var okA = long.TryParse(rawA, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var a);
@@ -50,7 +37,6 @@ public static class Labels {
         return string.CompareOrdinal(rawA, rawB) < 0;
     }
 
-    /// <summary>Converts a raw SQL GROUP BY value to a display string. Port of Go FormatLabel.</summary>
     public static string FormatLabel(string groupBy, string rawVal) {
         int ParseInt() {
             int.TryParse(rawVal, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var v);

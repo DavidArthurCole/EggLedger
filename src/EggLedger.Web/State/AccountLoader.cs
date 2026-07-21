@@ -3,7 +3,6 @@ using EggLedger.Web.Data;
 
 namespace EggLedger.Web.State;
 
-/// <summary>Loads persisted accounts + active id into shared state once, persisting the active id on change.</summary>
 public sealed class AccountLoader : IDisposable {
     private readonly IndexedDbAccountStore _store;
     private readonly AppStateService _appState;
@@ -18,10 +17,8 @@ public sealed class AccountLoader : IDisposable {
         _active = active;
     }
 
-    /// <summary>Richest form of the last-loaded list (SE/PE/TE included).</summary>
     public IReadOnlyList<AccountInfo> Accounts { get; private set; } = [];
 
-    /// <summary>Idempotent: later calls re-read the list without re-subscribing.</summary>
     public async Task EnsureLoadedAsync() {
         if (!_subscribed) {
             _active.Changed += OnActiveChanged;
@@ -50,7 +47,7 @@ public sealed class AccountLoader : IDisposable {
         if (_persisting) {
             return;
         }
-        // Fire-and-forget; in-memory state is already updated.
+        
         _ = _store.SetActiveAccountIdAsync(_active.ActiveAccountId ?? "");
     }
 

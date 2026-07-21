@@ -2,7 +2,7 @@ using EggLedger.Domain.Reports;
 
 namespace EggLedger.Domain.Tests.Reports;
 
-// Menno comparison math; mirrors the compare-mode computed props in ReportCard.vue plus ShouldRender gating.
+
 public class MennoComparisonTests {
     private static ReportResult Heatmap2D(
         List<double> matrix,

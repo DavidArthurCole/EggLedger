@@ -88,8 +88,8 @@
     private MissionCardConfigModal? _cardConfigModal;
     private static readonly JsonSerializerOptions CardJsonOptions = new(JsonSerializerDefaults.Web);
 
-    // All drops keyed by mission id, loaded once on first drop-filter so the matcher
-    // reads memory instead of decoding per mission. Null = not loaded yet.
+    
+    
     private Dictionary<string, List<MissionDrop>>? _allDrops;
 
     protected override async Task OnInitializedAsync() {
@@ -107,7 +107,7 @@
         InvokeAsync(LoadAsync);
     }
 
-    // Refresh on fetch completion so new missions show without a manual reload.
+    
     private void OnAppStateChanged() {
         if (AppState.PipelineState == Services.AppState.Success && Active.ActiveAccountId is not null) {
             DataCache.InvalidateAll();
@@ -157,7 +157,7 @@
         StateHasChanged();
     }
 
-    // Serves drops from the one-shot all-drops cache; loads it on first use.
+    
     private async Task<IReadOnlyList<MissionDrop>?> DropsFetcher(string accountId, string missionId) {
         _allDrops ??= await Queries.GetAllPlayerDropsAsync(accountId) ?? [];
         return _allDrops.TryGetValue(missionId, out var drops) ? drops : [];
@@ -312,7 +312,7 @@
         }
     }
 
-    // Row/Date and Free Select both funnel here: one id opens single, many open the multi grid.
+    
     private async Task ViewRowAsync(IReadOnlyList<string> missionIds) {
         if (missionIds.Count == 0 || _overlay is null) {
             return;

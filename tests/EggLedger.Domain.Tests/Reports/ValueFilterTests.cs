@@ -2,8 +2,8 @@ using EggLedger.Domain.Reports;
 
 namespace EggLedger.Domain.Tests.Reports;
 
-// Port of Vue ReportCard.vue filteredResult: keeps only label/value pairs passing the
-// op+threshold comparison. 1D results only; empty op is a no-op passthrough.
+
+
 public class ValueFilterTests {
     private static ReportResult IntResult(IReadOnlyList<string> labels, IReadOnlyList<long> values) =>
         new() { Labels = [.. labels], Values = [.. values], IsFloat = false };

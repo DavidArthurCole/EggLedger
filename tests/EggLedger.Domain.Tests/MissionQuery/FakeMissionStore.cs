@@ -3,7 +3,6 @@ using Ei;
 
 namespace EggLedger.Domain.Tests.MissionQuery;
 
-/// <summary>In-memory IMissionStore double; null-typed fields simulate Go store errors.</summary>
 internal sealed class FakeMissionStore : IMissionStore {
     public IReadOnlyList<string>? CompleteMissionIds { get; set; }
     public List<KnownAccount> KnownAccounts { get; } = [];
@@ -66,7 +65,6 @@ internal sealed class FakeMissionCompiler : IMissionCompiler {
         new FakeMissionRow(mission.Info?.Identifier ?? "");
 }
 
-/// <summary>Quality stub: fixed value per (name,level,rarity) tuple, else 0.</summary>
 internal sealed class FakeQuality : IArtifactQuality {
     public Dictionary<(ArtifactSpec.Name, ArtifactSpec.Level, ArtifactSpec.Rarity), double> Map { get; } = [];
 

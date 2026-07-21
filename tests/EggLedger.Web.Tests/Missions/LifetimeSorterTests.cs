@@ -2,7 +2,6 @@ using EggLedger.Web.Missions;
 
 namespace EggLedger.Web.Tests.Missions;
 
-/// <summary>Golden parity with the sort functions in www/src/composables/useLifetimeSorting.ts.</summary>
 public sealed class LifetimeSorterTests {
     private static DropLike D(int id, int level, int rarity, int count, double quality = 0, int iv = 0, string spec = "Artifact") =>
         new() { Id = id, Name = "X", Level = level, Rarity = rarity, Count = count, Quality = quality, IvOrder = iv, SpecType = spec };
@@ -45,7 +44,7 @@ public sealed class LifetimeSorterTests {
 
     [Fact]
     public void SortGroupByCount_TieBreaksByLevelThenRarityThenIdThenQuality() {
-        // Equal count: level desc, then rarity desc, then id desc, then quality asc.
+        
         var input = new[]
         {
             D(1, level: 1, rarity: 0, count: 2, quality: 0),
@@ -59,10 +58,10 @@ public sealed class LifetimeSorterTests {
 
         Assert.Equal(2, sorted[0].Level);
         Assert.Equal(1, sorted[0].Rarity);
-        // id 4 and 5 share level/rarity/quality; id desc puts 5 before 4.
+        
         Assert.Equal(5, sorted[0].Id);
         Assert.Equal(4, sorted[1].Id);
-        // id 3 same level/rarity but quality 0 (asc) sorts after the quality-9 pair.
+        
         Assert.Equal(3, sorted[2].Id);
         Assert.Equal(2, sorted[3].Id);
         Assert.Equal(1, sorted[4].Id);
@@ -76,7 +75,7 @@ public sealed class LifetimeSorterTests {
 
         LifetimeSorter.Sort(data, LifetimeSortMethod.Default);
 
-        // sortGroupAlreadyCombed nets level asc, so level 0 sorts first.
+        
         Assert.Equal(0, data.Artifacts[0].Level);
         Assert.Equal(2, data.Artifacts[1].Level);
     }

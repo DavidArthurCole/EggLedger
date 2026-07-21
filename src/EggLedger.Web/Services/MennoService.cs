@@ -8,15 +8,13 @@ using Ei;
 
 namespace EggLedger.Web.Services;
 
-/// <summary>Decode helpers for the Menno payload, split from the HTTP fetch so decode and validation are unit-testable without a network stub.</summary>
 public static class MennoDecode {
     private static readonly JsonSerializerOptions Options = new() {
         PropertyNameCaseInsensitive = false,
-        // A renamed field just fails to bind, but a type mismatch must surface rather than be coerced.
+        
         NumberHandling = JsonNumberHandling.Strict,
     };
 
-    /// <summary>Decodes the raw JSON array into typed records, validating required nested objects bound. Throws <see cref="MennoSchemaException"/> on empty/non-array/missing-field so schema drift fails loudly.</summary>
     public static List<ConfigurationItem> Decode(ReadOnlySpan<byte> json) {
         List<ConfigurationItem>? items;
         try {
@@ -35,7 +33,6 @@ public static class MennoDecode {
         return items;
     }
 
-    /// <summary>STJ leaves a missing nested object null and the comparison math dereferences these, so an unbound required object would be a silent drop.</summary>
     private static void Validate(ConfigurationItem item, int index) {
         var sc = item.ShipConfiguration
             ?? throw Missing(index, "shipConfiguration");
@@ -53,19 +50,17 @@ public static class MennoDecode {
         new($"Menno item {index} is missing required field '{field}'; schema may have changed");
 }
 
-/// <summary>Raised when the Menno payload cannot be decoded or an item is missing a required field.</summary>
 public sealed class MennoSchemaException : Exception {
     public MennoSchemaException(string message) : base(message) { }
     public MennoSchemaException(string message, Exception inner) : base(message, inner) { }
 }
 
-/// <summary>Community drop-rate stats client: fetches the gzipped aggregate, typed-decodes it, and caches it in memory. Read-only; the cache lives only for the scoped service's lifetime since the browser has no writable disk.</summary>
 public sealed class MennoService {
     public const string DataUrl =
         "https://eggincdatacollectionsa.blob.core.windows.net/mission-data/all-data.json.gz";
 
-    // Registered as a singleton so the multi-MB community payload downloads once for all circuits,
-    // not per user/tab. Owns one long-lived HttpClient (the data URL is absolute, no base address).
+    
+    
     private readonly HttpClient _http;
     private readonly Lock _gate = new();
     private List<ConfigurationItem>? _cache;
@@ -73,7 +68,6 @@ public sealed class MennoService {
     public MennoService(HttpClient http) => _http = http;
     public bool HasData => _cache is { Count: > 0 };
 
-    /// <summary>Concurrent callers share a single in-flight download; a failed download is not cached, so a later call retries.</summary>
     public Task<IReadOnlyList<ConfigurationItem>> EnsureLoadedAsync(CancellationToken cancellationToken = default) {
         if (_cache is { Count: > 0 } cached) {
             return Task.FromResult<IReadOnlyList<ConfigurationItem>>(cached);
@@ -97,7 +91,6 @@ public sealed class MennoService {
         }
     }
 
-    /// <summary>Throws <see cref="MennoSchemaException"/> on a bad payload; network/decompression errors propagate natively.</summary>
     public async Task<IReadOnlyList<ConfigurationItem>> RefreshAsync(CancellationToken cancellationToken = default) {
         await using var compressed = await _http.GetStreamAsync(DataUrl, cancellationToken).ConfigureAwait(false);
         await using var gz = new GZipStream(compressed, CompressionMode.Decompress);
@@ -111,10 +104,8 @@ public sealed class MennoService {
 
     public IReadOnlyList<ConfigurationItem>? CachedItems => _cache;
 
-    /// <summary>Sentinel target id for "no target set" missions in the community data.</summary>
     public const int NoTarget = 10000;
 
-    /// <summary>Mirrors mennodata.go GetData: if nothing matches a real target, retries with the no-target sentinel.</summary>
     public IReadOnlyList<ConfigurationItem> GetData(int shipId, int durationId, int level, int targetId) {
         if (_cache is not { Count: > 0 } items) {
             return Array.Empty<ConfigurationItem>();
@@ -144,7 +135,6 @@ public sealed class MennoService {
         return result;
     }
 
-    /// <summary>Runs a community-data comparison, returning a <see cref="ReportResult"/> matrix or null when the report is ineligible. rawRowLabels/rawColLabels are the pre-FormatLabel integer strings used to map cells back to record ids without string matching.</summary>
     public static ReportResult? ExecuteComparison(
         ReportDefinition def,
         IReadOnlyList<ConfigurationItem> items,
@@ -339,7 +329,7 @@ public sealed class MennoService {
 
     private delegate bool MennoMatcher(ConfigurationItem item, string rawVal);
 
-    // Null-forgives assume MennoDecode.Validate already ran and guaranteed these non-null.
+    
     private static MennoMatcher? MatcherFor(string groupBy) => groupBy switch {
         "ship_type" => (item, raw) => TryInt(raw, out var v) && item.ShipConfiguration!.ShipType!.Id == v,
         "duration_type" => (item, raw) => TryInt(raw, out var v) && item.ShipConfiguration!.ShipDurationType!.Id == v,
@@ -351,7 +341,6 @@ public sealed class MennoService {
         _ => null,
     };
 
-    /// <summary>Null means match all (empty or unknown family weight).</summary>
     private static HashSet<int>? FamilyAfxIdSet(string familyWeight) {
         if (familyWeight == "") {
             return null;
@@ -362,7 +351,6 @@ public sealed class MennoService {
         return [.. ids];
     }
 
-    /// <summary>Level-adjusted nominal capacity: base + levelCapacityBump * level, with a 4.0 fallback when the lookup misses.</summary>
     private static double LevelAdjustedCapacityFor(int shipId, int durationId, int level) {
         var ship = (MissionInfo.Spaceship)shipId;
         var dur = (MissionInfo.DurationType)durationId;
@@ -382,7 +370,6 @@ public sealed class MennoService {
         return 4;
     }
 
-    /// <summary>Nominal flight seconds for a (ship, duration), or 0 if absent.</summary>
     private static double DurationSecondsFor(int shipId, int durationId) {
         var ship = (MissionInfo.Spaceship)shipId;
         var dur = (MissionInfo.DurationType)durationId;

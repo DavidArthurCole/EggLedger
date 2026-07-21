@@ -741,6 +741,10 @@ input[type=number] {
 }
 
 .admin-table-wrap {
+  @apply overflow-x-auto rounded-md border border-gray-700/50;
+}
+
+.admin-table-wrap-scroll {
   @apply overflow-auto rounded-md border border-gray-700/50 max-h-96;
 }
 

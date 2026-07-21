@@ -6,13 +6,6 @@ using SyncKit.Identity.Client;
 
 namespace EggLedger.Web.Server.Tests.Sync.Db;
 
-/// <summary>
-/// LookupAsync must resolve `user_id`, not `discord_id`, from the `sessions` table: SyncKit.Auth's
-/// ISessionStore tuple still calls the field "DiscordId" (an external package, can't rename it),
-/// but this migration repurposes that slot to carry the provider-neutral user id.
-/// Runs only against a disposable Postgres at EGGLEDGER_TEST_DB_URL (unique schema created
-/// and dropped, never prod); skipped when the env var is unset.
-/// </summary>
 public sealed class SessionStoreTests {
     private static string? TestDbUrl => Environment.GetEnvironmentVariable("EGGLEDGER_TEST_DB_URL");
 

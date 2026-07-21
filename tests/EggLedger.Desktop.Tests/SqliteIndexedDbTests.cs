@@ -4,12 +4,6 @@ using EggLedger.Web.Data;
 
 namespace EggLedger.Desktop.Tests;
 
-/// <summary>
-/// SqliteIndexedDb round-trip tests over the real SQLite schema, exercising the
-/// store surface the browser stores (mission/settings/reports/artifact_drops) sit
-/// on: composite keys, the player_id/account_id index, blob+bool columns, the
-/// autoIncrement drops store, and upsert-on-conflict.
-/// </summary>
 public sealed class SqliteIndexedDbTests : IDisposable {
     private readonly SqliteDatabase _missionDb;
     private readonly SqliteDatabase _reportDb;
@@ -36,7 +30,7 @@ public sealed class SqliteIndexedDbTests : IDisposable {
         Assert.NotNull(row);
         Assert.Equal("dark", row!.Value);
 
-        // Upsert replaces by key.
+        
         await _db.PutAsync("settings", new SettingRow { Key = "theme", Value = "light" });
         row = await _db.GetAsync<SettingRow>("settings", "theme");
         Assert.Equal("light", row!.Value);
@@ -142,8 +136,8 @@ public sealed class SqliteIndexedDbTests : IDisposable {
 
     [Fact]
     public async Task ReportStore_OverSqlite_CrudWorks() {
-        // The concrete IndexedDbReportStore unchanged, backed by SQLite via the
-        // IIndexedDb seam. Proves the browser store layer works natively.
+        
+        
         var store = new IndexedDbReportStore(_db, now: () => 1234);
         await store.InsertReportAsync(new ReportRow {
             Id = "r1",
@@ -178,8 +172,8 @@ public sealed class SqliteIndexedDbTests : IDisposable {
 
     [Fact]
     public async Task Backup_RoundTripTimestampAndPayload() {
-        // Direct store round-trip against the migrated backup table (id PK, backed_up_at
-        // column): a stale column name or missing UNIQUE would throw on INSERT.
+        
+        
         var payload = new byte[] { 9, 8, 7, 254, 255, 0 };
         await _db.PutAsync("backup", new BackupRow {
             PlayerId = "EI1",
@@ -193,7 +187,7 @@ public sealed class SqliteIndexedDbTests : IDisposable {
         Assert.Equal(1700000000d, got.RecordedAt);
         Assert.Equal(payload, got.Payload);
 
-        // Put-by-player_id keeps a single row per player (browser keyPath semantics).
+        
         await _db.PutAsync("backup", new BackupRow {
             PlayerId = "EI1",
             RecordedAt = 1700000500d,
@@ -206,8 +200,8 @@ public sealed class SqliteIndexedDbTests : IDisposable {
 
     [Fact]
     public async Task InsertBackup_RoundTripAndTwelveHourDedup() {
-        // Through the real IndexedDbMissionStore.InsertBackupAsync over migrated
-        // SQLite: the timestamp+payload survive and the 12h min-gap dedup works.
+        
+        
         var store = new IndexedDbMissionStore(_db, new EggLedger.Domain.Api.LocalApiPayloadDecoder(new EggLedger.Domain.Api.ApiClient()));
         var raw = new byte[] { 42, 7, 0, 255 };
         var gap = TimeSpan.FromHours(12);
@@ -219,14 +213,14 @@ public sealed class SqliteIndexedDbTests : IDisposable {
         Assert.Equal(t0, row!.RecordedAt);
         Assert.Equal(raw, Gunzip(row.Payload));
 
-        // Within 12h: skipped, original retained.
+        
         await store.InsertBackupAsync("EI1", t0 + 3600, [1, 2, 3], gap);
         row = await _db.GetAsync<BackupRow>("backup", "EI1");
         Assert.Equal(t0, row!.RecordedAt);
         Assert.Equal(raw, Gunzip(row.Payload));
         Assert.Equal(1, await _db.CountAsync("backup"));
 
-        // After 12h: overwrites, still one row.
+        
         var later = new byte[] { 5, 6, 7, 8 };
         double t1 = t0 + (13 * 3600);
         await store.InsertBackupAsync("EI1", t1, later, gap);

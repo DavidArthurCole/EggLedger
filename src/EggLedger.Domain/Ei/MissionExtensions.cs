@@ -4,7 +4,6 @@ using Ei;
 
 namespace EggLedger.Domain.Ei;
 
-/// <summary>Port of Go ei/missions.go.</summary>
 public static class MissionExtensions {
     private static LedgerDisplayData Config => LedgerData.LedgerData.Config;
 
@@ -15,7 +14,6 @@ public static class MissionExtensions {
 
     public static string GetDurationString(this MissionInfo d) => GetDurationString(d.DurationSeconds);
 
-    /// <summary>Compact human-readable duration string, e.g. "1d2h3m". Mirrors Go durationStringFromSecs.</summary>
     public static string GetDurationString(double seconds) {
         if (seconds == 0) {
             return "0m";
@@ -68,7 +66,7 @@ public static class MissionExtensions {
         }
 
         var completed = new List<MissionInfo>();
-        // Dedupe: the archive can contain duplicates even without intentional glitching.
+        
         var seen = new HashSet<string>(StringComparer.Ordinal);
         foreach (var mission in allMissions) {
             var status = mission.status;

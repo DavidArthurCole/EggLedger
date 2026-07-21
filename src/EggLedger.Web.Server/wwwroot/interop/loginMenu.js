@@ -1,8 +1,8 @@
-// Positions the login provider dropdown as a fixed-position element anchored to its trigger button.
-// Fixed positioning is what lets it escape any overflow:hidden/auto ancestor; a plain absolute child
-// would be clipped. The JS owns the width so positioning never depends on a CSS sheet having loaded.
-// The requested placement is a preference: it flips to the opposite side if it would overflow, and a
-// final clamp keeps the whole menu inside the viewport regardless. Repositions on scroll/resize.
+
+
+
+
+
 
 const GAP = 6;
 const WIDTH = 200;

@@ -6,11 +6,6 @@ using EggLedger.Web.Settings;
 
 namespace EggLedger.Web.Tests.Settings;
 
-/// <summary>
-/// Golden tests for <see cref="CloudSyncBlobs"/> against the Go cloudsync package
-/// (cloudsync/blob.go): the syncable-settings projection, the frozen JSON wire
-/// names, account merge, and report import selection.
-/// </summary>
 public sealed class CloudSyncBlobsTests {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
@@ -64,7 +59,7 @@ public sealed class CloudSyncBlobsTests {
         };
         var json = JsonSerializer.Serialize(s, Json);
 
-        // The frozen snake_case keys the Go cloudSyncableSettings struct emits.
+        
         foreach (var key in new[]
         {
             "auto_refresh_menno_pref", "retry_failed_missions", "hide_timeout_errors",
@@ -104,7 +99,7 @@ public sealed class CloudSyncBlobsTests {
     [Fact]
     public void UnpackSettings_OmitsMachineLocalKeys() {
         var unpacked = CloudSyncBlobs.UnpackSettings(new CloudSyncableSettings());
-        // Machine-local prefs must never appear (Go applyCloudSettings skips them).
+        
         Assert.False(unpacked.ContainsKey("default_resolution_x"));
         Assert.False(unpacked.ContainsKey("preferred_chromium_path"));
         Assert.False(unpacked.ContainsKey("auto_export_csv"));
@@ -118,17 +113,17 @@ public sealed class CloudSyncBlobsTests {
             [
                 new CloudReportGroup { Id = "g1" },
                 new CloudReportGroup { Id = "g2" },
-                // Duplicate.
+                
                 new CloudReportGroup { Id = "g2" },
-                // Blank, skipped.
+                
                 new CloudReportGroup { Id = "" },
             ],
             Reports =
             [
                 new ReportDefinition { Id = "r1" },
-                // Already exists locally.
+                
                 new ReportDefinition { Id = "r2" },
-                // Blank, skipped.
+                
                 new ReportDefinition { Id = "" },
             ],
         };
@@ -164,11 +159,11 @@ public sealed class CloudSyncBlobsTests {
         var blob = CloudReportsBlob.Pack([row], [group]);
         var json = JsonSerializer.Serialize(blob, Json);
 
-        // Top-level keys match the Go cloudReportsBlob json tags (lowercase).
+        
         Assert.Contains("\"reports\"", json, StringComparison.Ordinal);
         Assert.Contains("\"groups\"", json, StringComparison.Ordinal);
 
-        // Reports are Go reports.ReportDefinition camelCase, never the snake_case row.
+        
         Assert.Contains("\"accountId\"", json, StringComparison.Ordinal);
         Assert.Contains("\"displayMode\"", json, StringComparison.Ordinal);
         Assert.Contains("\"groupBy\"", json, StringComparison.Ordinal);
@@ -176,15 +171,15 @@ public sealed class CloudSyncBlobsTests {
         Assert.DoesNotContain("\"account_id\"", json, StringComparison.Ordinal);
         Assert.DoesNotContain("\"display_mode\"", json, StringComparison.Ordinal);
 
-        // filters is a NESTED object with and/or arrays, not a JSON string.
+        
         Assert.Contains("\"filters\":{", json, StringComparison.Ordinal);
         Assert.Contains("\"and\":[", json, StringComparison.Ordinal);
         Assert.Contains("\"or\":[", json, StringComparison.Ordinal);
         Assert.Contains("\"topLevel\":\"ship\"", json, StringComparison.Ordinal);
-        // The escaped-string form would look like "filters":"{\"and\"...; ensure it is absent.
+        
         Assert.DoesNotContain("\"filters\":\"{", json, StringComparison.Ordinal);
 
-        // Groups are the untagged Go reportdb.ReportGroupRow = PascalCase keys.
+        
         Assert.Contains("\"Id\":\"grp1\"", json, StringComparison.Ordinal);
         Assert.Contains("\"AccountId\":\"EI42\"", json, StringComparison.Ordinal);
         Assert.Contains("\"SortOrder\":3", json, StringComparison.Ordinal);
@@ -193,8 +188,8 @@ public sealed class CloudSyncBlobsTests {
 
     [Fact]
     public void ReportsBlob_DeserializesGoWireShape_RoundTrips() {
-        // Hand-written Go-shaped blob: camelCase report with nested filters,
-        // PascalCase group. Mirrors what the desktop app (Go) would PUT.
+        
+        
         const string goJson = """
         {
           "reports": [
@@ -226,7 +221,7 @@ public sealed class CloudSyncBlobsTests {
         Assert.Equal("rep1", r.Id);
         Assert.Equal("EI42", r.AccountId);
         Assert.Equal("ship_type", r.GroupBy);
-        // The nested filters object survives back into the local row's filters string.
+        
         Assert.Contains("\"topLevel\":\"ship\"", r.Filters, StringComparison.Ordinal);
         Assert.Contains("\"op\":\"eq\"", r.Filters, StringComparison.Ordinal);
         Assert.Contains("\"val\":\"henerprise\"", r.Filters, StringComparison.Ordinal);

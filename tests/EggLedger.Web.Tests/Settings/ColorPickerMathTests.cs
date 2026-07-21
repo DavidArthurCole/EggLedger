@@ -2,11 +2,6 @@ using EggLedger.Web.Settings;
 
 namespace EggLedger.Web.Tests.Settings;
 
-/// <summary>
-/// Golden tests for <see cref="ColorPickerMath"/> against
-/// www/src/components/ColorPicker.vue: hex validation, normalize-to-hex, the
-/// preset palette, and the wheel/dot coordinate math.
-/// </summary>
 public sealed class ColorPickerMathTests {
     [Theory]
     [InlineData("#6366f1", true)]
@@ -33,9 +28,9 @@ public sealed class ColorPickerMathTests {
 
     [Fact]
     public void NormalizeToHex_ParsesHslString() {
-        // hsl(0, 100%, 50%) is pure red.
+        
         Assert.Equal("#ff0000", ColorPickerMath.NormalizeToHex("hsl(0, 100%, 50%)"));
-        // hsl(120, 100%, 50%) is pure green.
+        
         Assert.Equal("#00ff00", ColorPickerMath.NormalizeToHex("hsl(120, 100%, 50%)"));
     }
 
@@ -49,7 +44,7 @@ public sealed class ColorPickerMathTests {
 
     [Fact]
     public void HslToHex_RoundTripsThroughHexToHslInt() {
-        // Pure red at full saturation/half lightness round-trips.
+        
         var hsl = ColorPickerMath.HexToHslInt("#ff0000");
         Assert.Equal(0, hsl.H);
         Assert.Equal(100, hsl.S);
@@ -72,7 +67,7 @@ public sealed class ColorPickerMathTests {
 
     [Fact]
     public void WheelHueSaturation_EdgeIsFullSaturationAndWrapsHue() {
-        // Straight up from centre (dy negative) maps to hue 0 (atan2 + 90 wrap).
+        
         var (h, s) = ColorPickerMath.WheelHueSaturation(0, -70, 70);
         Assert.Equal(100, s);
         Assert.Equal(0, h);
@@ -87,7 +82,7 @@ public sealed class ColorPickerMathTests {
 
     [Fact]
     public void DotPosition_OffsetForSaturation() {
-        // Hue 90 places the dot to the right ((h-90) shift puts the angle at 0).
+        
         var (left, top) = ColorPickerMath.DotPosition(90, 100);
         Assert.Equal(95, left, 3);
         Assert.Equal(50, top, 3);

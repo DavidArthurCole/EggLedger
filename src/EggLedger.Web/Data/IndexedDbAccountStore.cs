@@ -4,11 +4,6 @@ using EggLedger.Domain.MissionQuery;
 
 namespace EggLedger.Web.Data;
 
-/// <summary>
-/// Known-account persistence (Go storage.AppStorage). No dedicated accounts store:
-/// the list lives as one JSON blob under <c>known_accounts</c> and the selection
-/// under <c>active_account_id</c> in the <c>settings</c> store (no schema bump).
-/// </summary>
 public sealed class IndexedDbAccountStore {
     internal const string KnownAccountsKey = "known_accounts";
     internal const string ActiveAccountKey = "active_account_id";
@@ -23,7 +18,6 @@ public sealed class IndexedDbAccountStore {
         return Deserialize(all);
     }
 
-    /// <summary>Upsert by id keeps one row per account. Mirrors Go AddKnownAccount.</summary>
     public async Task AddKnownAccountAsync(AccountInfo account) {
         var all = await _settings.GetAllSettingsAsync();
         var list = Deserialize(all);
@@ -45,7 +39,6 @@ public sealed class IndexedDbAccountStore {
         }
     }
 
-    /// <summary>Null when unset or blank.</summary>
     public async Task<string?> GetActiveAccountIdAsync() {
         var all = await _settings.GetAllSettingsAsync();
         if (all.TryGetValue(ActiveAccountKey, out var id) && !string.IsNullOrEmpty(id)) {
@@ -54,7 +47,6 @@ public sealed class IndexedDbAccountStore {
         return null;
     }
 
-    /// <summary>Empty string clears the selection.</summary>
     public async Task SetActiveAccountIdAsync(string id) =>
         await _settings.SetSettingAsync(ActiveAccountKey, id ?? "");
 
@@ -68,7 +60,7 @@ public sealed class IndexedDbAccountStore {
                 ? []
                 : rows.ConvertAll(AccountInfoRow.ToAccount);
         } catch (JsonException) {
-            // Corrupt blob: start clean rather than wedge the Ledger tab.
+            
             return [];
         }
     }
@@ -79,10 +71,6 @@ public sealed class IndexedDbAccountStore {
     }
 }
 
-/// <summary>
-/// Persistence DTO for a known account. Explicit snake_case names decouple the
-/// stored blob from Domain <see cref="AccountInfo"/>, so a rename cannot break round-trip.
-/// </summary>
 public sealed record AccountInfoRow {
     [JsonPropertyName("id")]
     public string Id { get; init; } = "";

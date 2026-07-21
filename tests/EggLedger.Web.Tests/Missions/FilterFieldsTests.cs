@@ -2,7 +2,6 @@ using EggLedger.Web.Missions;
 
 namespace EggLedger.Web.Tests.Missions;
 
-/// <summary>Golden parity with www/src/utils/filterFields.ts.</summary>
 public sealed class FilterFieldsTests {
     [Fact]
     public void ReportFilterFields_HasExpectedKeysInOrder() {
@@ -26,7 +25,7 @@ public sealed class FilterFieldsTests {
         Assert.Equal("true", FilterFields.DefaultOpForField(FilterFields.GetReportField("dubcap")!));
         Assert.Equal("c", FilterFields.DefaultOpForField(FilterFields.GetReportField("drops")!));
         Assert.Equal("=", FilterFields.DefaultOpForField(FilterFields.GetReportField("ship")!));
-        // Date "on" must default to "d=", since a date "=" never matches in MissionFilterMatcher.
+        
         Assert.Equal("d=", FilterFields.DefaultOpForField(FilterFields.GetReportField("launchDT")!));
         Assert.Equal("d=", FilterFields.DefaultOpForField(FilterFields.GetReportField("returnDT")!));
     }
@@ -37,7 +36,7 @@ public sealed class FilterFieldsTests {
         Assert.Equal(new[] { "d=", "<", ">" }, ops.Select(o => o.Value).ToArray());
         Assert.Equal("d=", ops.First(o => o.Label == "on").Value);
 
-        // Non-date fields keep their own ops unchanged.
+        
         var shipOps = FilterFields.MissionBarOpsFor(FilterFields.GetReportField("ship")!);
         Assert.Same(FilterFields.GetReportField("ship")!.Ops, shipOps);
     }

@@ -5,11 +5,6 @@ using EggLedger.Web.Tests.Data;
 
 namespace EggLedger.Web.Tests.Settings;
 
-/// <summary>
-/// Tests for <see cref="CloudSessionStore"/> over a fake IndexedDB: the persisted
-/// session round-trips through the Go cloud_* setting keys, disconnect clears
-/// creds, timestamps and the auto-sync flag persist.
-/// </summary>
 public sealed class CloudSessionStoreTests {
     private static CloudSessionStore Make() => new(new IndexedDbSettings(new FakeIndexedDb()));
 

@@ -4,10 +4,6 @@ using Ei;
 
 namespace EggLedger.Domain.MissionPacking;
 
-/// <summary>
-/// Mission compilation + nominal-capacity logic. Go port of package missionpacking
-/// (capacity.go + missionpacking.go), including the mission_type = -1 ("not yet determined") sentinel.
-/// </summary>
 public sealed class MissionPacker : IMissionCompiler {
     private const long BuggedCapLower = 1712721600;
     private const long BuggedCapUpper = 1713286800;
@@ -20,10 +16,6 @@ public sealed class MissionPacker : IMissionCompiler {
         _caps = new(BuildNominalShipCapacities);
     }
 
-    /// <summary>
-    /// Builds the nominal-capacity table from the eiafx config: per-level slice is
-    /// capacity + (levelCapacityBump * level). Mirrors Go initNominalShipCapacities.
-    /// </summary>
     private Dictionary<MissionInfo.Spaceship, Dictionary<MissionInfo.DurationType, float[]>> BuildNominalShipCapacities() {
         var table = new Dictionary<MissionInfo.Spaceship, Dictionary<MissionInfo.DurationType, float[]>>();
         foreach (var mission in _configSource.Config.mission_parameters) {
@@ -48,10 +40,6 @@ public sealed class MissionPacker : IMissionCompiler {
         return table;
     }
 
-    /// <summary>
-    /// Nominal-capacity slice for a ship+duration; false when ship/duration absent.
-    /// Mirrors Go ShipCapacities.
-    /// </summary>
     public bool TryGetShipCapacities(MissionInfo.Spaceship ship, MissionInfo.DurationType dur, out float[] caps) {
         if (_caps.Value.TryGetValue(ship, out var byDuration)
             && byDuration.TryGetValue(dur, out var found)) {
@@ -62,18 +50,12 @@ public sealed class MissionPacker : IMissionCompiler {
         return false;
     }
 
-    /// <summary>Proto name for a target artifact, empty when none. Mirrors Go properTargetName.</summary>
     private static string ProperTargetName(ArtifactSpec.Name? name) =>
         name is null ? "" : EnumNames.ProtoName(name.Value);
 
-    /// <summary>Compact human-readable duration string. Mirrors Go durationStringFromSecs.</summary>
     public static string DurationStringFromSecs(double seconds) =>
         MissionExtensions.GetDurationString(seconds);
 
-    /// <summary>
-    /// Extracts migration-6 filter columns from a decoded mission; false when Info is null.
-    /// Mirrors Go ComputeMissionFilterCols.
-    /// </summary>
     public bool TryComputeMissionFilterCols(double startTimestamp, CompleteMissionResponse resp, out MissionFilterCols cols) {
         var info = resp.Info;
         if (info is null) {
@@ -114,7 +96,6 @@ public sealed class MissionPacker : IMissionCompiler {
         return true;
     }
 
-    /// <summary>Builds a DatabaseMission from a MissionMeta row. Mirrors Go MissionMetaToDBMission.</summary>
     public DatabaseMission MissionMetaToDBMission(MissionMeta meta) {
         var ship = (MissionInfo.Spaceship)meta.Ship;
         var durationType = (MissionInfo.DurationType)meta.DurationType;
@@ -156,10 +137,6 @@ public sealed class MissionPacker : IMissionCompiler {
         };
     }
 
-    /// <summary>
-    /// Resolves mission-type, falling back to the proto payload when the stored value
-    /// is the -1 sentinel. Mirrors Go resolveMissionType.
-    /// </summary>
     private static int ResolveMissionType(int dbMissionType, CompleteMissionResponse mission) {
         int missionType = dbMissionType;
         if (missionType == -1) {
@@ -171,10 +148,6 @@ public sealed class MissionPacker : IMissionCompiler {
         return missionType;
     }
 
-    /// <summary>
-    /// Compiles a full DatabaseMission from a decoded mission; empty record when Info is null.
-    /// Mirrors Go CompileMissionInformation.
-    /// </summary>
     IMissionRow IMissionCompiler.CompileMissionInformation(CompleteMissionResponse mission) =>
         CompileMissionInformation(mission);
 
@@ -185,7 +158,7 @@ public sealed class MissionPacker : IMissionCompiler {
         }
 
         long launch = (long)info.StartTimeDerived;
-        // Go: time.Unix(launch,0).Add(durationSeconds) then .Unix() floors.
+        
         long returnDt = launch + (long)Math.Floor(info.DurationSeconds);
 
         float nominalCap = 0;
@@ -221,10 +194,6 @@ public sealed class MissionPacker : IMissionCompiler {
         return mission;
     }
 
-    /// <summary>
-    /// True when capacity is at least 1.7x nominal; false when ship/duration/level unknown.
-    /// Mirrors Go isDubCap.
-    /// </summary>
     public bool IsDubCap(CompleteMissionResponse mission) {
         if (mission.Info is null) {
             return false;
@@ -238,9 +207,6 @@ public sealed class MissionPacker : IMissionCompiler {
         return (float)info.Capacity >= nominalCapacity * 1.7f;
     }
 
-    /// <summary>
-    /// True when launched inside the 2024-04-10..2024-04-16 bugged window (exclusive). Mirrors Go isBuggedCap.
-    /// </summary>
     public bool IsBuggedCap(CompleteMissionResponse mission) {
         if (mission.Info is null) {
             return false;

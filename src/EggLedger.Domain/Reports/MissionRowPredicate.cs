@@ -2,7 +2,7 @@ using System.Globalization;
 
 namespace EggLedger.Domain.Reports;
 
-// Evaluates reports/query.go BuildWhereClause filter semantics over typed rows.
+
 internal sealed class MissionRowPredicate {
     private readonly ReportDefinition _def;
     private readonly ILookup<(string Player, string Mission), ArtifactDropRowData> _dropsByMission;
@@ -14,7 +14,7 @@ internal sealed class MissionRowPredicate {
         _dropsByMission = dropsByMission;
     }
 
-    // Mission-scope filter evaluation (the m.* conditions of BuildWhereClause).
+    
     public bool PassesFilters(MissionRowData m) {
         foreach (var c in _def.Filters.And) {
             if (!EvalMission(c, m)) {
@@ -40,7 +40,7 @@ internal sealed class MissionRowPredicate {
         return true;
     }
 
-    // Artifact-scope (d.*) filter evaluation, applied per drop row in the JOIN.
+    
     public bool PassesArtifactFilters(ArtifactDropRowData d) {
         foreach (var c in _def.Filters.And) {
             if (IsArtifactScope(c) && !EvalArtifact(c, d)) {
@@ -75,8 +75,8 @@ internal sealed class MissionRowPredicate {
 
     private static bool IsMissionScope(FilterCondition c) => !IsArtifactScope(c);
 
-    // Evaluates a mission-scope condition; artifact-scope and no-op conditions return
-    // true so they do not exclude a mission on the m.* pass.
+    
+    
     private bool EvalMission(FilterCondition c, MissionRowData m) {
         return c.TopLevel switch {
             "dubcap" => m.IsDubCap == (c.Op == "true"),
@@ -94,7 +94,7 @@ internal sealed class MissionRowPredicate {
     }
 
     private static bool EvalArtifact(FilterCondition c, ArtifactDropRowData d) {
-        // Only comparison ops are valid; ConditionToSql rejects others as no-ops.
+        
         if (c.Op is not ("=" or "!=" or ">" or "<" or ">=" or "<=")) {
             return true;
         }
@@ -116,7 +116,7 @@ internal sealed class MissionRowPredicate {
             return true;
         }
         var parts = c.Val.Split('_');
-        // composite is name_level_rarity_quality; quality (index 3) is ignored.
+        
         bool Matches(ArtifactDropRowData d) {
             if (parts.Length > 0 && parts[0] != "%" && parts[0] != "" && d.ArtifactId.ToString(CultureInfo.InvariantCulture) != parts[0]) {
                 return false;
@@ -138,7 +138,7 @@ internal sealed class MissionRowPredicate {
             return true;
         }
         if (!IsInt(c.Val)) {
-            // no-op condition, does not exclude
+            
             return true;
         }
         return CompareLong(c.Op, actual, long.Parse(c.Val, CultureInfo.InvariantCulture));

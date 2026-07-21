@@ -2,7 +2,7 @@ using EggLedger.Domain.Reports;
 
 namespace EggLedger.Domain.Tests.Reports;
 
-// Golden for the grid packing math; mirrors Vue utils/reportGridLayout.ts (CSS grid auto-placement, row direction).
+
 public class ReportGridLayoutTests {
     private static ReportDefinition Def(int w, int h) => new() { GridW = w, GridH = h };
 
@@ -19,7 +19,7 @@ public class ReportGridLayoutTests {
 
     [Fact]
     public void BuildOccupancy_PacksRowMajorWrappingAtEightCols() {
-        // Three 4-wide cards: two fit on row 1 (cols 1 and 5), third wraps to row 2.
+        
         var defs = new[] { Def(4, 2), Def(4, 2), Def(4, 2) };
         var (positions, _) = ReportGridLayout.BuildOccupancyFromLayout(defs);
 
@@ -30,7 +30,7 @@ public class ReportGridLayoutTests {
 
     [Fact]
     public void BuildOccupancy_FillsGapLeftByTallNeighbor() {
-        // A 2x2 then a 2x1: card 0 occupies cols 1-2 rows 1-2, card 1 lands at col 3 row 1.
+        
         var defs = new[] { Def(2, 2), Def(2, 1) };
         var (positions, occupied) = ReportGridLayout.BuildOccupancyFromLayout(defs);
 
@@ -53,14 +53,14 @@ public class ReportGridLayoutTests {
     [Fact]
     public void FindPlacement_WrapsToNextRowWhenOverflowing() {
         var occupied = new HashSet<(int, int)>();
-        // Want a 6-wide card starting at col 5: cannot fit (5+6-1=10 > 8), wraps to row 2 col 1.
+        
         var pos = ReportGridLayout.FindPlacement(occupied, 6, 1, 5, 1);
         Assert.Equal((1, 2), pos);
     }
 
     [Fact]
     public void ComputeEmptyZones_FindsTrailingGapOnLastRow() {
-        // One 4-wide card on row 1 leaves cols 5-8 empty.
+        
         var defs = new[] { Def(4, 1) };
         var zones = ReportGridLayout.ComputeEmptyZones(defs);
 
@@ -78,7 +78,7 @@ public class ReportGridLayoutTests {
 
     [Fact]
     public void FindInsertIndexForZone_PlacesDraggedCardIntoTrailingGap() {
-        // Layout [3][3][2]; removing the 2-wide leaves a trailing gap at cols 7-8 row 1. The drag for that zone must map to an in-range insert position.
+        
         var defs = new[] { Def(3, 1), Def(3, 1), Def(2, 1) };
         var zones = ReportGridLayout.ComputeEmptyZones(defs.Where((_, i) => i != 2).ToList());
         Assert.NotEmpty(zones);

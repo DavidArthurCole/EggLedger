@@ -4,7 +4,6 @@ using Ei;
 
 namespace EggLedger.Domain.MissionPacking;
 
-/// <summary>One artifact drop ready for persistence. Go port of db.BuildArtifactDropRows row shape.</summary>
 public readonly record struct ArtifactDrop(
     int DropIndex,
     int ArtifactId,
@@ -13,10 +12,6 @@ public readonly record struct ArtifactDrop(
     int Rarity,
     double Quality);
 
-/// <summary>
-/// Builds artifact-drop rows from a decoded mission. Go port of db.BuildArtifactDropRows:
-/// DropIndex is 0-based, SpecType classified by proto name, Quality is eiafx base quality.
-/// </summary>
 public static class ArtifactDrops {
     public static List<ArtifactDrop> Build(CompleteMissionResponse resp) {
         ArgumentNullException.ThrowIfNull(resp);

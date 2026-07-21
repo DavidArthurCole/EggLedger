@@ -3,11 +3,6 @@ using EggLedger.Web.Platform;
 
 namespace EggLedger.Desktop.Tests;
 
-/// <summary>
-/// DesktopStorageService over temp dirs and fake seams: backup copies only selected
-/// parts (missing parts skipped), move copies all parts plus bootstrap and fires restart.
-/// The bootstrap write is faked so the real user bootstrap.json is untouched.
-/// </summary>
 public sealed class DesktopStorageServiceTests : IDisposable {
     private readonly string _root =
         Path.Combine(Path.GetTempPath(), "egglg-store-" + Guid.NewGuid().ToString("N"));

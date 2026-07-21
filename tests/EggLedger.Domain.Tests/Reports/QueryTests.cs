@@ -2,8 +2,8 @@ using EggLedger.Domain.Reports;
 
 namespace EggLedger.Domain.Tests.Reports;
 
-// Port of Go reports/query_test.go: where-clause building, numeric validation,
-// time-pivot generation, family-weight clause, weighted-builder shape checks.
+
+
 public class QueryTests {
     [Fact]
     public void BuildWhereClause_MissionScope() {

@@ -4,7 +4,6 @@ using EggLedger.Web.Services;
 
 namespace EggLedger.Web.Settings;
 
-/// <summary>Persists the cloud-sync session + sync timestamps in <see cref="IndexedDbSettings"/>, using the Go cloud_* setting keys (storage.go).</summary>
 public sealed class CloudSessionStore {
     public const string KeyToken = "cloud_session_token";
     public const string KeyEncryptionKey = "cloud_encryption_key";
@@ -14,7 +13,6 @@ public sealed class CloudSessionStore {
     public const string KeyLastPullAt = "cloud_last_pull_at";
     public const string KeyAutoSync = "cloud_auto_sync";
 
-    /// <summary>Browser-only: poll state saved before the Discord redirect so the reloaded SPA resumes polling.</summary>
     public const string KeyPendingAuthState = "cloud_pending_auth_state";
     private readonly IndexedDbSettings _settings;
 
@@ -22,7 +20,6 @@ public sealed class CloudSessionStore {
         _settings = settings;
     }
 
-    /// <summary>Persisted session, or null when no token is stored (disconnected).</summary>
     public async Task<CloudSession?> GetSessionAsync() {
         var all = await _settings.GetAllSettingsAsync();
         if (!all.TryGetValue(KeyToken, out var token) || string.IsNullOrEmpty(token)) {
@@ -44,7 +41,6 @@ public sealed class CloudSessionStore {
         });
     }
 
-    /// <summary>Clears session creds (disconnect). Timestamps are left as-is.</summary>
     public async Task ClearSessionAsync() {
         await _settings.SetSettingsAsync(new Dictionary<string, string> {
             [KeyToken] = "",
@@ -54,10 +50,8 @@ public sealed class CloudSessionStore {
         });
     }
 
-    /// <summary>Last successful push time (Unix seconds), or 0 when never pushed.</summary>
     public async Task<long> GetLastPushAtAsync() => await GetUnixAsync(KeyLastPushAt);
 
-    /// <summary>Last successful pull time (Unix seconds), or 0 when never pulled.</summary>
     public async Task<long> GetLastPullAtAsync() => await GetUnixAsync(KeyLastPullAt);
 
     public async Task SetLastPushAtAsync(long unixSeconds) =>
@@ -66,7 +60,6 @@ public sealed class CloudSessionStore {
     public async Task SetLastPullAtAsync(long unixSeconds) =>
         await _settings.SetSettingAsync(KeyLastPullAt, unixSeconds.ToString(CultureInfo.InvariantCulture));
 
-    /// <summary>Whether settings changes auto-trigger a sync. Default false.</summary>
     public async Task<bool> GetAutoSyncAsync() {
         var all = await _settings.GetAllSettingsAsync();
         return all.TryGetValue(KeyAutoSync, out var raw) && bool.TryParse(raw, out var v) && v;
@@ -75,7 +68,6 @@ public sealed class CloudSessionStore {
     public async Task SetAutoSyncAsync(bool enabled) =>
         await _settings.SetSettingAsync(KeyAutoSync, SettingsModel.FormatBool(enabled));
 
-    /// <summary>The pending auth state to resume polling, or null when none is set.</summary>
     public async Task<string?> GetPendingAuthStateAsync() {
         var all = await _settings.GetAllSettingsAsync();
         return all.TryGetValue(KeyPendingAuthState, out var s) && !string.IsNullOrEmpty(s) ? s : null;

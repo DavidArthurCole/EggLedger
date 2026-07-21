@@ -4,18 +4,10 @@ using EggLedger.Domain.Reports;
 
 namespace EggLedger.Web.Data;
 
-/// <summary>
-/// Shared serializer options for IndexedDB row DTOs. Per-property
-/// <see cref="JsonPropertyNameAttribute"/> fixes wire names to the snake_case keyPaths
-/// the JS shim expects; web defaults only affect read-side casing tolerance.
-/// </summary>
 public static class Rows {
     public static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 }
 
-/// <summary>
-/// Mirrors the IndexedDB <c>mission</c> store (keyPath <c>["player_id","mission_id"]</c>).
-/// </summary>
 public sealed record MissionRow {
     [JsonPropertyName("player_id")]
     public string PlayerId { get; init; } = "";
@@ -24,7 +16,6 @@ public sealed record MissionRow {
     [JsonPropertyName("start_timestamp")]
     public double StartTimestamp { get; init; }
 
-    /// <summary>Gzip-compressed protobuf bytes. Serialized as base64, the on-wire form the JS shim stores.</summary>
     [JsonPropertyName("complete_payload")]
     public byte[] CompletePayload { get; init; } = [];
     [JsonPropertyName("mission_type")]
@@ -49,7 +40,7 @@ public sealed record MissionRow {
     public int NominalCapacity { get; init; }
 }
 
-// MissionRow without complete_payload, for metadata reads that must not pull the blob.
+
 public sealed record MissionMetaRow {
     [JsonPropertyName("player_id")] public string PlayerId { get; init; } = "";
     [JsonPropertyName("mission_id")] public string MissionId { get; init; } = "";
@@ -66,11 +57,6 @@ public sealed record MissionMetaRow {
     [JsonPropertyName("nominal_capacity")] public int NominalCapacity { get; init; }
 }
 
-/// <summary>
-/// Mirrors the IndexedDB <c>backup</c> store (keyPath <c>player_id</c>): one row per player.
-/// The timestamp serializes to <c>backed_up_at</c> to line up with the desktop SQLite schema;
-/// the extra SQLite columns (surrogate id, payload_authenticated) are ignored here.
-/// </summary>
 public sealed record BackupRow {
     [JsonPropertyName("player_id")]
     public string PlayerId { get; init; } = "";
@@ -80,11 +66,7 @@ public sealed record BackupRow {
     public byte[] Payload { get; init; } = [];
 }
 
-/// <summary>
-/// Mirrors the IndexedDB <c>artifact_drops</c> store (keyPath <c>id</c>, autoIncrement).
-/// </summary>
 public sealed record ArtifactDropRow {
-    /// <summary>Auto-incremented PK. Left null on insert so IndexedDB assigns it; ignore-when-null keeps it off the wire.</summary>
     [JsonPropertyName("id")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public long? Id { get; init; }
@@ -106,9 +88,6 @@ public sealed record ArtifactDropRow {
     public double Quality { get; init; }
 }
 
-/// <summary>
-/// Mirrors the IndexedDB <c>settings</c> store (keyPath <c>key</c>).
-/// </summary>
 public sealed record SettingRow {
     [JsonPropertyName("key")]
     public string Key { get; init; } = "";
@@ -116,9 +95,6 @@ public sealed record SettingRow {
     public string Value { get; init; } = "";
 }
 
-/// <summary>
-/// Mirrors the IndexedDB <c>reports</c> store (keyPath <c>id</c>, index <c>account_id</c>).
-/// </summary>
 public sealed record ReportRow {
     [JsonPropertyName("id")]
     public string Id { get; init; } = "";
@@ -188,9 +164,6 @@ public sealed record ReportRow {
     public int MinSampleSize { get; init; }
 }
 
-/// <summary>
-/// Mirrors the IndexedDB <c>report_groups</c> store (keyPath <c>id</c>, index <c>account_id</c>).
-/// </summary>
 public sealed record ReportGroupRow {
     [JsonPropertyName("id")]
     public string Id { get; init; } = "";

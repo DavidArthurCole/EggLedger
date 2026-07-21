@@ -44,7 +44,7 @@
         InvokeAsync(StateHasChanged);
     }
 
-    // Ledger tab ("/") matches exactly so it isn't highlighted everywhere; rest match by prefix.
+    
     private bool IsActive(string href) {
         var path = "/" + Nav.ToBaseRelativePath(Nav.Uri).Split('?', '#')[0].TrimEnd('/');
         if (href == "/") {

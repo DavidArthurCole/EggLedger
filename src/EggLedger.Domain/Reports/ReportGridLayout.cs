@@ -1,26 +1,17 @@
 namespace EggLedger.Domain.Reports;
 
-/// <summary>Resolved position and size of a placed report card.</summary>
 public readonly record struct GridCardPos(int Col, int Row, int W, int H, int Idx);
 
-/// <summary>A contiguous run of empty cells in a single grid row that can accept a drop.</summary>
 public readonly record struct EmptyZone(int ColStart, int ColEnd, int RowStart, int InsertAfter);
 
-/// <summary>
-/// Grid layout geometry for the report dashboard. Port of Vue utils/reportGridLayout.ts;
-/// replicates CSS grid auto-placement (row direction, no dense) for card placement, drop zones, and insertion order.
-/// </summary>
 public static class ReportGridLayout {
     public const int GridCols = 8;
 
-    /// <summary>Gap between grid cells, in pixels.</summary>
     public const int GridGap = 12;
 
-    /// <summary>Clamp a card's requested grid width/height to the valid range.</summary>
     public static (int W, int H) ClampDims(int gridW, int gridH) =>
         (Math.Min(Math.Max(gridW, 1), GridCols), Math.Min(Math.Max(gridH, 1), 8));
 
-    /// <summary>Mark a w x h block of cells starting at (col, row) as occupied.</summary>
     public static void MarkOccupied(HashSet<(int, int)> occupied, int col, int row, int w, int h) {
         for (int rr = row; rr < row + h; rr++) {
             for (int cc = col; cc < col + w; cc++) {
@@ -29,7 +20,6 @@ public static class ReportGridLayout {
         }
     }
 
-    /// <summary>Whether a w x h block starting at (c, r) fits without overlapping occupied cells.</summary>
     public static bool CellsFit(HashSet<(int, int)> occupied, int c, int r, int w, int h) {
         for (int rr = r; rr < r + h; rr++) {
             for (int cc = c; cc < c + w; cc++) {
@@ -41,7 +31,6 @@ public static class ReportGridLayout {
         return true;
     }
 
-    /// <summary>Replicates CSS grid auto-placement (row direction, no dense).</summary>
     public static (int Col, int Row) FindPlacement(HashSet<(int, int)> occupied, int w, int h, int col, int row) {
         int c = col;
         int r = row;
@@ -57,7 +46,6 @@ public static class ReportGridLayout {
         }
     }
 
-    /// <summary>Simulate placing a sequence of defs and return the final cursor + occupancy.</summary>
     public static (int Col, int Row, HashSet<(int, int)> Occupied) SimulatePlacement(IReadOnlyList<ReportDefinition> defs) {
         var occupied = new HashSet<(int, int)>();
         int col = 1;
@@ -73,7 +61,6 @@ public static class ReportGridLayout {
         return (col, row, occupied);
     }
 
-    /// <summary>Build the card positions + occupancy set for a displayed list of defs.</summary>
     public static (List<GridCardPos> CardPositions, HashSet<(int, int)> Occupied) BuildOccupancyFromLayout(
         IReadOnlyList<ReportDefinition> defs) {
         var cardPositions = new List<GridCardPos>();
@@ -93,7 +80,6 @@ public static class ReportGridLayout {
         return (cardPositions, occupied);
     }
 
-    /// <summary>Index of the last card preceding a zone's first cell, for insertion ordering.</summary>
     public static int ZoneInsertAfter(IReadOnlyList<GridCardPos> cardPositions, int targetRow, int runStart) {
         int zoneFirst = (targetRow - 1) * GridCols + runStart;
         int best = -1;
@@ -105,7 +91,6 @@ public static class ReportGridLayout {
         return best;
     }
 
-    /// <summary>Resolve the list index at which a dragged card should be inserted to land in a zone.</summary>
     public static int FindInsertIndexForZone(IReadOnlyList<ReportDefinition> defs, EmptyZone zone, int fromIdx) {
         if (fromIdx < 0 || fromIdx >= defs.Count) {
             return fromIdx;
@@ -123,7 +108,7 @@ public static class ReportGridLayout {
             }
         }
 
-        // Fallback: use zone.InsertAfter.
+        
         int insertAt = zone.InsertAfter;
         if (fromIdx <= insertAt) {
             insertAt--;
@@ -131,7 +116,6 @@ public static class ReportGridLayout {
         return Math.Max(insertAt + 1, 0);
     }
 
-    /// <summary>Empty drop zones (contiguous empty cell runs) within a single grid row.</summary>
     public static List<EmptyZone> RowEmptyZones(int r, HashSet<(int, int)> occupied, IReadOnlyList<GridCardPos> cardPositions) {
         var zones = new List<EmptyZone>();
         int? runStart = null;
@@ -149,7 +133,6 @@ public static class ReportGridLayout {
         return zones;
     }
 
-    /// <summary>Compute all empty drop zones across the rows occupied by the given defs.</summary>
     public static List<EmptyZone> ComputeEmptyZones(IReadOnlyList<ReportDefinition> defs) {
         var (cardPositions, occupied) = BuildOccupancyFromLayout(defs);
         if (cardPositions.Count == 0) {
@@ -163,7 +146,6 @@ public static class ReportGridLayout {
         return zones;
     }
 
-    /// <summary>Row height in px so grid cells stay roughly square at the given container width. 80px floor matches the Go reference.</summary>
     public static int ComputeRowHeightPx(double containerWidthPx) {
         var raw = (containerWidthPx - (GridCols - 1) * GridGap) / GridCols;
         return Math.Max(80, (int)Math.Floor(raw));

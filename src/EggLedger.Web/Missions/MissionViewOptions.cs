@@ -13,9 +13,8 @@ public enum MissionSortMethod {
     Iv
 }
 
-/// <summary>Display flags default to and (de)serialize exactly as the Go storage settings do.</summary>
 public sealed class MissionViewOptions {
-    // Go storage setting keys (storage.go).
+    
     public const string KeyViewByDate = "mission_view_by_date";
     public const string KeyViewTimes = "mission_view_times";
     public const string KeyMultiViewMode = "mission_multi_view_mode";
@@ -23,16 +22,14 @@ public sealed class MissionViewOptions {
 
     public const string KeyCardPresets = "mission_card_presets";
 
-    // Vue defaults (useMissionViewOptions.ts).
+    
     public bool ViewByDate { get; set; }
     public bool ViewMissionTimes { get; set; } = true;
     public MultiViewMode MultiViewMode { get; set; } = MultiViewMode.Off;
     public MissionSortMethod SortMethod { get; set; } = MissionSortMethod.Default;
 
-    /// <summary>null = All, 0 = Home, 1 = Virtue.</summary>
     public int? MissionTypeTab { get; set; }
 
-    /// <summary>True only when the loaded set contains at least one Home (0) and one Virtue (1) mission.</summary>
     public static bool HasBothMissionTypes(IReadOnlyList<DatabaseMission>? missions) {
         if (missions is null || missions.Count == 0) {
             return false;
@@ -50,10 +47,6 @@ public sealed class MissionViewOptions {
         return home && virtue;
     }
 
-    /// <summary>
-    ///     When no tab is selected (null) the input passes through unchanged; otherwise only missions whose type equals
-    ///     the tab.
-    /// </summary>
     public static IReadOnlyList<DatabaseMission>? TabFilteredMissions(
         IReadOnlyList<DatabaseMission>? filteredMissions,
         int? missionTypeTab) {
@@ -87,7 +80,6 @@ public sealed class MissionViewOptions {
     public static string SortMethodToString(MissionSortMethod method) =>
         method == MissionSortMethod.Iv ? "iv" : "default";
 
-    /// <summary>Hydrates display flags from a settings map; missing keys keep the defaults.</summary>
     public void LoadFrom(IReadOnlyDictionary<string, string> settings) {
         if (settings.TryGetValue(KeyViewByDate, out var vbd)) {
             ViewByDate = ParseBool(vbd, ViewByDate);

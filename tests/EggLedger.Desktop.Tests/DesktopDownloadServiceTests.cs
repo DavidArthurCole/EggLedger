@@ -5,11 +5,6 @@ using Microsoft.JSInterop;
 
 namespace EggLedger.Desktop.Tests;
 
-/// <summary>
-/// DesktopDownloadService over a fake IPlatformCapabilities: the chosen path gets the
-/// Domain export bytes (compared against the producers, not re-derived) and is revealed,
-/// a cancelled dialog writes nothing. Real dialog/reveal are manual-verify.
-/// </summary>
 public sealed class DesktopDownloadServiceTests : IDisposable {
     private readonly string _tempDir =
         Path.Combine(Path.GetTempPath(), "egglg-dl-" + Guid.NewGuid().ToString("N"));

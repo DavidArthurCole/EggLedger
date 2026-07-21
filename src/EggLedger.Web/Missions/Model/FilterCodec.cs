@@ -3,12 +3,12 @@ using WebCondition = EggLedger.Web.Missions.FilterCondition;
 
 namespace EggLedger.Web.Missions.Model;
 
-// Bridges the persisted/Go-interop string condition shape and the typed Condition; legacy strings live only here and in option-list encodings.
-// Operators: = != > < >= <=, d= (same-day), true/false (bool in Val), c/dnc (drops contains/not); drops Val glob is name_level_rarity_quality with % wildcards.
+
+
 public static class FilterCodec {
     public static Condition? FromLegacyCondition(WebCondition c) => ParseCondition(c.TopLevel, c.Op, c.Val);
 
-    // null when the field is unknown or the value does not parse.
+    
     public static Condition? ParseCondition(string topLevel, string op, string val) {
         var c = new WebCondition(topLevel, op, val);
         if (string.IsNullOrEmpty(c.TopLevel)) {

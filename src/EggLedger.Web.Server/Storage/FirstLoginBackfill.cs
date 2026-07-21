@@ -10,15 +10,6 @@ using Npgsql;
 
 namespace EggLedger.Web.Server.Storage;
 
-/// <summary>
-/// First login to the unified host: restores accounts + settings + reports from the old sync
-/// server's encrypted blobs so returning users don't lose synced data on the empty Postgres store.
-/// </summary>
-/// <remarks>
-/// Mission history is not in any blob (only the first-contact backup is), so the user re-fetches
-/// once. Guard is "no known accounts yet"; settings-empty is unreliable since the app writes
-/// settings early. Decrypts in process via IBlobCipher (managed AES-GCM); no HTTP, no Bearer.
-/// </remarks>
 public sealed class FirstLoginBackfill(
     NpgsqlDataSource source,
     CurrentUser user,
@@ -88,8 +79,8 @@ public sealed class FirstLoginBackfill(
         }
     }
 
-    // Looks up the current user's linked Discord identity via the provider-neutral `identities`
-    // table, since CurrentUser only knows user_id, not Discord ids, post-migration.
+    
+    
     private async Task<string?> DiscordIdForCurrentUserAsync(CancellationToken ct) {
         var userId = await user.GetUserIdAsync().ConfigureAwait(false);
         if (userId is null) {
@@ -108,7 +99,7 @@ public sealed class FirstLoginBackfill(
         if (result is not string { Length: > 0 } stored) {
             return null;
         }
-        // Tolerates rows written before this protector existed (plain 64-char hex).
+        
         try {
             return _keyProtector.Unprotect(stored);
         } catch (CryptographicException) {
@@ -131,8 +122,8 @@ public sealed class FirstLoginBackfill(
             var plaintext = await cipher.DecryptAsync(encKey, ciphertext, ct).ConfigureAwait(false);
             return JsonSerializer.Deserialize<T>(plaintext, Json);
         } catch (Exception ex) {
-            // Corrupt/incompatible blob: skip rather than block login. The manual restore
-            // in the Settings tab remains available.
+            
+            
             logger.LogWarning(ex, "backfill: failed to decrypt blob {Name}", name);
             return default;
         }

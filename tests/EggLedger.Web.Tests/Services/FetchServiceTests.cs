@@ -29,8 +29,8 @@ public sealed class FetchServiceTests {
         return new FetchService(api, store, settings, new LocalApiPayloadDecoder(api));
     }
 
-    // base64(protobuf) is the wire form ApiClient POSTs/reads. The handler returns
-    // the same base64 body ApiClient base64-decodes back to the raw payload.
+    
+    
     private static string ToApiBody<T>(T msg) {
         using var ms = new MemoryStream();
         Serializer.Serialize(ms, msg);
@@ -56,7 +56,7 @@ public sealed class FetchServiceTests {
         return ToApiBody(fc);
     }
 
-    // Invalid: empty backup so Validate() fails.
+    
     private static string InvalidFirstContactBody() {
         var fc = new EggIncFirstContactResponse();
         return ToApiBody(fc);
@@ -86,7 +86,7 @@ public sealed class FetchServiceTests {
         return Convert.ToBase64String(authBytes.ToArray());
     }
 
-    // Routes first-contact and complete-mission POSTs to canned bodies; counts hits.
+    
     private sealed class RoutingHandler : HttpMessageHandler {
         private readonly Func<string, string?>? _firstContact;
         private readonly Func<string, string?> _completeMission;
@@ -126,7 +126,7 @@ public sealed class FetchServiceTests {
         private static HttpResponseMessage Ok(string? body) =>
             new(System.Net.HttpStatusCode.OK) { Content = new StringContent(body ?? "") };
 
-        // Decode the POSTed MissionRequest to recover the requested mission id.
+        
         private static string ExtractMissionId(string form) {
             const string prefix = "data=";
             int i = form.IndexOf(prefix, StringComparison.Ordinal);
@@ -189,7 +189,7 @@ public sealed class FetchServiceTests {
     [Fact]
     public async Task FetchPlayerData_CachedMission_NotRefetched() {
         var db = new FakeIndexedDb();
-        // Pre-seed m1 so the diff treats it as already present.
+        
         db.Seed("mission", SeededMission("m1"));
         var handler = new RoutingHandler(FirstContactBody(new[] { "m1" }), CompleteMissionBody);
         var service = Make(db, handler);
@@ -248,8 +248,8 @@ public sealed class FetchServiceTests {
         Assert.Contains(AppState.ExportingData, states);
         Assert.Contains(AppState.Success, states);
 
-        // Segment sequence for m1: Cache active -> Cache skipped -> Fetch active/done
-        // -> Decode active/done -> Store active/done.
+        
+        
         var segs = events
             .Where(e => e.MissionId == "m1" && e.Segment is not null)
             .Select(e => (e.Segment, e.SegmentStatus))
@@ -263,8 +263,8 @@ public sealed class FetchServiceTests {
     [Fact]
     public async Task FetchPlayerData_MissionFails_ReportsFailedMissionWithReason() {
         var db = new FakeIndexedDb();
-        // The complete-mission handler returns null for "bad", which the routing
-        // handler turns into a 500 the ApiClient throws on.
+        
+        
         var handler = new RoutingHandler(
             FirstContactBody(new[] { "bad" }),
             id => id == "bad" ? null : CompleteMissionBody(id));
@@ -308,7 +308,7 @@ public sealed class FetchServiceTests {
         var db = new FakeIndexedDb();
         using var cts = new CancellationTokenSource();
         var ids = Enumerable.Range(0, 20).Select(i => $"m{i}").ToArray();
-        // Cancel as soon as the first mission fetch begins.
+        
         var handler = new RoutingHandler(FirstContactBody(ids), id => {
             cts.Cancel();
             return CompleteMissionBody(id);
@@ -340,7 +340,7 @@ public sealed class FetchServiceTests {
         };
     }
 
-    // Invokes the callback inline so all events land before the await returns.
+    
     private sealed class SynchronousProgress<T> : IProgress<T> {
         private readonly Action<T> _handler;
         public SynchronousProgress(Action<T> handler) => _handler = handler;

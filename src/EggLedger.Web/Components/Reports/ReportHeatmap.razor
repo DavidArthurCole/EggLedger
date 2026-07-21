@@ -42,14 +42,9 @@
     [Parameter] public string? UnfilledColor { get; set; }
     [Parameter] public int MinSampleSize { get; set; }
 
-    /// <summary>Optional per-cell sub-line under the primary value (Menno community number); null hides it.</summary>
     [Parameter]
     public IReadOnlyList<double>? SecondaryValues { get; set; }
 
-    /// <summary>
-    ///     Optional per-cell color-intensity override (ratio: 1.0 = community avg, 2.0 = full).
-    ///     Affects only the cell background, not display values.
-    /// </summary>
     [Parameter]
     public IReadOnlyList<double>? ColorValues { get; set; }
 

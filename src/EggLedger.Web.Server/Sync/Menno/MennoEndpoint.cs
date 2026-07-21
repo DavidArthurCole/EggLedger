@@ -9,8 +9,8 @@ namespace EggLedger.Web.Server.Sync.Menno;
 public sealed record MennoRequest(
     [property: JsonPropertyName("eid")] string Eid);
 
-// Unauthenticated proxy to the community-data Azure function using a server-held function key.
-// Guarded by an EID format check and a per-IP rate limit so the key can't be abused to burn quota.
+
+
 public sealed partial class MennoEndpoint(HttpClient client, string functionKey, string upstreamUrl) {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
     private static readonly IpRateLimiter Limiter = new(maxPerWindow: 10, window: TimeSpan.FromMinutes(1));

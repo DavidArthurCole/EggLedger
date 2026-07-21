@@ -2,11 +2,6 @@ using EggLedger.Desktop.Update;
 
 namespace EggLedger.Desktop.Tests;
 
-/// <summary>
-/// Loopback + token tests for the update handshake (Go update_handshake.go,
-/// TestHandshakeReadyPing). A real 127.0.0.1 listener is pinged; the cross-process part
-/// is manual-verify, but the token check and request/response shape run here.
-/// </summary>
 public sealed class HandshakeTests {
     [Fact]
     public async Task CorrectToken_SignalsServed() {
@@ -31,7 +26,7 @@ public sealed class HandshakeTests {
         var ok = await client.PingOldReadyAsync(listener.Address, "wrong");
 
         Assert.False(ok);
-        // Give any stray handler a moment; the served task must remain incomplete.
+        
         var won = await Task.WhenAny(listener.Served, Task.Delay(200));
         Assert.NotEqual(listener.Served, won);
         Assert.False(listener.Served.IsCompleted);
@@ -45,7 +40,7 @@ public sealed class HandshakeTests {
         var client = new HandshakeClient(http);
 
         Assert.True(await client.PingOldReadyAsync(listener.Address, token));
-        // A second valid ping still returns 200 but does not throw / double-signal.
+        
         Assert.True(await client.PingOldReadyAsync(listener.Address, token));
         Assert.True(listener.Served.IsCompletedSuccessfully);
     }

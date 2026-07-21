@@ -2,18 +2,12 @@ using EggLedger.Web.Data;
 
 namespace EggLedger.Web.Tests.Data;
 
-/// <summary>
-/// In-memory <see cref="IIndexedDb"/> double: one list of rows per store, serving the
-/// index queries the stores under test issue (player_id on mission, account_id on reports/report_groups).
-/// Stores with a known string keyPath upsert on Put and support Get/Delete.
-/// </summary>
 public sealed class FakeIndexedDb : IIndexedDb {
-    // Models the JS shim serializing every transaction on one browser thread, so concurrent
-    // fetch workers cannot corrupt a store list.
+    
+    
     private readonly Lock _gate = new();
     private readonly Dictionary<string, List<object>> _stores = [];
 
-    /// <summary>Seeds one row into a store (always appends, no upsert).</summary>
     public void Seed(string store, object row) {
         lock (_gate) {
             if (!_stores.TryGetValue(store, out var list)) {
@@ -24,7 +18,6 @@ public sealed class FakeIndexedDb : IIndexedDb {
         }
     }
 
-    /// <summary>The string key of a row for stores with a known keyPath, else null.</summary>
     private static string? KeyOf(object row) => row switch {
         ReportRow r => r.Id,
         ReportGroupRow g => g.Id,
@@ -85,10 +78,6 @@ public sealed class FakeIndexedDb : IIndexedDb {
         }
     }
 
-    /// <summary>
-    /// Resolves a row's index value. Throws for any unmodelled index so those queries fail loudly
-    /// rather than silently returning nothing.
-    /// </summary>
     private static object? IndexValue<T>(T row, string index) => (row, index) switch {
         (MissionRow m, "player_id") => m.PlayerId,
         (ArtifactDropRow d, "player_id") => d.PlayerId,
@@ -108,7 +97,7 @@ public sealed class FakeIndexedDb : IIndexedDb {
         int n = 0;
         lock (_gate) {
             foreach (var v in values) {
-                // PutLocked so keyed stores upsert, matching the JS shim's per-row putMany.
+                
                 PutLocked(store, v);
                 n++;
             }
@@ -122,7 +111,7 @@ public sealed class FakeIndexedDb : IIndexedDb {
             _stores[store] = list;
         }
 
-        // Upsert by keyPath for stores with a known string key; append otherwise.
+        
         var key = KeyOf(value);
         if (key is not null) {
             int i = list.FindIndex(r => KeyOf(r) == key);
@@ -144,8 +133,8 @@ public sealed class FakeIndexedDb : IIndexedDb {
         }
     }
 
-    // Mission uses the composite [player_id, mission_id] key (passed as object[]); other stores
-    // use the single string keyPath via KeyOf.
+    
+    
     private static bool KeyMatches(object row, object key) =>
         row is MissionRow m && key is object[] { Length: 2 } k
             ? m.PlayerId.Equals(k[0]) && m.MissionId.Equals(k[1])

@@ -27,16 +27,16 @@
     </div>
 
     <script>
-        // Pipe JS errors to the host (logged in --debug mode; a no-op otherwise).
+        
         function post(m) { try { window.external.sendMessage(m); } catch (e) { } }
         window.onerror = function (msg, src, line, col) { post("onerror: " + msg + " @ " + src + ":" + line + ":" + col); };
         window.addEventListener("unhandledrejection", function (e) { post("unhandledrejection: " + (e.reason && e.reason.stack || e.reason)); });
         var ce = console.error;
         console.error = function () { post("console.error: " + Array.prototype.join.call(arguments, " ")); ce.apply(console, arguments); };
 
-        // Off-origin links would navigate the WebView away from the app. Intercept clicks on
-        // external http(s) anchors and hand the URL to the host (OS default browser). Same-origin
-        // links (Blazor nav like /missions) fall through to normal in-app routing.
+        
+        
+        
         document.addEventListener("click", function (e) {
             var a = e.target && e.target.closest && e.target.closest("a[href]");
             if (!a) return;

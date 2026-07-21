@@ -11,7 +11,9 @@
 <PageTitle>EggLedger - Admin</PageTitle>
 
 <section class="view-layout overflow-auto">
-    @if (_token is null) {
+    @if (_loading) {
+        <p class="text-gray-500 italic mt-0_5rem">Loading...</p>
+    } else if (_token is null) {
         <p class="text-gray-400 italic mt-0_5rem">Connect cloud sync on the Settings tab to access admin.</p>
     } else if (!_isAdmin) {
         <p class="text-red-700 italic mt-0_5rem">Admin access required.</p>
@@ -31,6 +33,7 @@
 </section>
 
 @code {
+    private bool _loading = true;
     private string? _token;
     private bool _isAdmin;
     private IReadOnlyList<AdminUser>? _users;
@@ -40,17 +43,24 @@
     protected override async Task OnInitializedAsync() {
         var session = await SessionStore.GetSessionAsync();
         _token = session?.Token;
-        if (_token is null) return;
+        if (_token is null) {
+            _loading = false;
+            return;
+        }
 
         _isAdmin = await Admin.IsAdminAsync(_token);
         AdminState.IsAdmin = _isAdmin;
+        _loading = false;
         if (_isAdmin) await RefreshAsync();
     }
 
     private async Task RefreshAsync() {
         if (_token is null) return;
-        _users = await Admin.GetUsersAsync(_token);
-        _metrics = await Admin.GetMetricsAsync(_token);
+        var usersTask = Admin.GetUsersAsync(_token);
+        var metricsTask = Admin.GetMetricsAsync(_token);
+        await Task.WhenAll(usersTask, metricsTask);
+        _users = usersTask.Result;
+        _metrics = metricsTask.Result;
         StateHasChanged();
     }
 

@@ -7,10 +7,6 @@ using EggLedger.Web.Platform;
 
 namespace EggLedger.Desktop.Tests;
 
-/// <summary>
-/// Status-file round-trip mirrors Go TestUpdateStatusRoundTrip; the rest drive
-/// CheckForUpdates through a stubbed GitHub client.
-/// </summary>
 public sealed class UpdateStatusTests {
     private sealed class RecordingRunner : IProcessRunner {
         public string? Exe { get; private set; }
@@ -23,8 +19,8 @@ public sealed class UpdateStatusTests {
         }
     }
 
-    // A valid release asset for the current platform: tar.gz/zip carry an "EggLedger" binary
-    // entry; Windows ships the raw exe bytes. Feeding zero bytes makes the archive extractor throw.
+    
+    
     private static byte[] AssetPayload(string assetName) {
         var binary = new byte[1024];
         if (assetName.EndsWith(".tar.gz", StringComparison.Ordinal)) {
@@ -51,7 +47,6 @@ public sealed class UpdateStatusTests {
     private static GithubReleaseClient Github(Func<HttpRequestMessage, HttpResponseMessage> responder)
         => new(new HttpClient(new StubHttpMessageHandler(responder)));
 
-    /// <summary>HTTP handler that counts requests so a test can prove no poll happened.</summary>
     private sealed class CountingHandler(Func<HttpRequestMessage, HttpResponseMessage> responder) : HttpMessageHandler {
         public int Calls { get; private set; }
 
@@ -61,10 +56,6 @@ public sealed class UpdateStatusTests {
         }
     }
 
-    /// <summary>
-    /// In-memory <see cref="IIndexedDb"/> over the settings store only, so the cooldown
-    /// snapshot runs without SQLite. Supports GetAll + keyed upsert; anything else throws.
-    /// </summary>
     private sealed class InMemorySettingsDb : IIndexedDb {
         private readonly Dictionary<string, SettingRow> _rows = [];
 
@@ -150,8 +141,8 @@ public sealed class UpdateStatusTests {
 
     [Fact]
     public async Task CheckForUpdates_RunningNewerThanStable_ChecksPreReleases() {
-        // Running 2.6.0 is newer than the stable 2.5.0, so the pre-release list is
-        // consulted; it has 2.7.0-rc.1 which IS newer than running -> Available.
+        
+        
         var stableJson = """{"tag_name":"2.5.0","body":"stable"}""";
         var preJson = """[{"tag_name":"2.7.0-rc.1","body":"rc","draft":false}]""";
         var github = Github(req =>
@@ -254,9 +245,9 @@ public sealed class UpdateStatusTests {
 
     [Fact]
     public async Task DownloadAndInstall_ReachesHandoff_LaunchesNewAndExits() {
-        // DownloadAndInstall reaches the self-replace handoff and, after the handshake
-        // wait + exit delay, runs the injected exit. Runner + exit are fakes here, the
-        // handshake just times out fast; real spawn/handshake/exit stay manual-verify.
+        
+        
+        
         var exeDir = Path.Combine(Path.GetTempPath(), "egg-dl-handoff-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(exeDir);
         var exePath = Path.Combine(exeDir, OperatingSystem.IsWindows() ? "EggLedger.exe" : "EggLedger");
@@ -326,7 +317,7 @@ public sealed class UpdateStatusTests {
 
         await svc.CheckForUpdatesAsync();
 
-        // No stored timestamp -> the poll runs and the snapshot is persisted.
+        
         Assert.Equal(1, handler.Calls);
         Assert.Equal(UpdatePhase.Available, svc.Phase);
         Assert.Equal("2.5.0", svc.AvailableVersion);
@@ -342,7 +333,7 @@ public sealed class UpdateStatusTests {
         var settingsDb = new InMemorySettingsDb();
         var settings = new IndexedDbSettings(settingsDb);
         var now = DateTimeOffset.Parse("2026-06-23T12:00:00Z", System.Globalization.CultureInfo.InvariantCulture);
-        // Last checked 1h ago, snapshot says latest == running -> up to date, no poll.
+        
         await settings.SetSettingsAsync(new Dictionary<string, string> {
             [UpdateService.LastUpdateCheckAtKey] = now.AddHours(-1).ToString("O", System.Globalization.CultureInfo.InvariantCulture),
             [UpdateService.KnownLatestVersionKey] = "2.1.4",
@@ -386,7 +377,7 @@ public sealed class UpdateStatusTests {
         var settingsDb = new InMemorySettingsDb();
         var settings = new IndexedDbSettings(settingsDb);
         var now = DateTimeOffset.Parse("2026-06-23T12:00:00Z", System.Globalization.CultureInfo.InvariantCulture);
-        // Last checked 13h ago (> 12h) -> cooldown elapsed, real poll runs.
+        
         await settings.SetSettingsAsync(new Dictionary<string, string> {
             [UpdateService.LastUpdateCheckAtKey] = now.AddHours(-13).ToString("O", System.Globalization.CultureInfo.InvariantCulture),
             [UpdateService.KnownLatestVersionKey] = "2.1.4",
@@ -412,7 +403,7 @@ public sealed class UpdateStatusTests {
         var settingsDb = new InMemorySettingsDb();
         var settings = new IndexedDbSettings(settingsDb);
         var now = DateTimeOffset.Parse("2026-06-23T12:00:00Z", System.Globalization.CultureInfo.InvariantCulture);
-        // Checked 1h ago and stored latest is newer; force must still poll past both.
+        
         await settings.SetSettingsAsync(new Dictionary<string, string> {
             [UpdateService.LastUpdateCheckAtKey] = now.AddHours(-1).ToString("O", System.Globalization.CultureInfo.InvariantCulture),
             [UpdateService.KnownLatestVersionKey] = "2.5.0",
@@ -434,8 +425,8 @@ public sealed class UpdateStatusTests {
 
     [Fact]
     public async Task Cooldown_NoSettingsStore_AlwaysPolls() {
-        // No settings store wired -> cooldown disabled, every check polls (pre-snapshot
-        // behavior the existing tests rely on).
+        
+        
         var handler = new CountingHandler(_ => StubHttpMessageHandler.Json("""{"tag_name":"2.5.0","body":"n"}"""));
         var github = new GithubReleaseClient(new HttpClient(handler));
         var svc = new UpdateService(github, () => "2.1.4");
@@ -452,7 +443,7 @@ public sealed class UpdateStatusTests {
         Directory.CreateDirectory(exeDir);
         var exePath = Path.Combine(exeDir, OperatingSystem.IsWindows() ? "EggLedger.exe" : "EggLedger");
         try {
-            // Pre-place the downloaded _new binary so the handoff has something to launch.
+            
             var tempPath = UpdateService.NewBinaryTempPath(exePath);
             await File.WriteAllBytesAsync(tempPath, new byte[8]);
 

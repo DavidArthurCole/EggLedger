@@ -4,14 +4,9 @@ using Ei;
 
 namespace EggLedger.Domain.Ei;
 
-/// <summary>
-/// Port of Go ei/artifacts.go: display + classification for ArtifactSpec and its enums. Go
-/// pointer-presence (a.Name == nil) maps to the protobuf-net ShouldSerialize* guards.
-/// </summary>
 public static class ArtifactExtensions {
     private static LedgerDisplayData Config => LedgerData.LedgerData.Config;
 
-    /// <summary>All caps. Use CasedName for cased version.</summary>
     public static string GameName(this ArtifactSpec.Name a) {
         string name = EnumNames.ProtoName(a).Replace("_", " ");
         switch (a) {
@@ -50,14 +45,9 @@ public static class ArtifactExtensions {
         return ArtifactSpec.Type.Artifact;
     }
 
-    /// <summary>
-    /// Family of the artifact, which is simply itself other than when it is a
-    /// stone fragment, in which case the corresponding stone is returned.
-    /// </summary>
     public static ArtifactSpec.Name Family(this ArtifactSpec.Name a) =>
         a.ArtifactType() == ArtifactSpec.Type.StoneIngredient ? a.CorrespondingStone() : a;
 
-    /// <summary>Corresponding stone for a stone fragment. Undefined for non-fragments.</summary>
     public static ArtifactSpec.Name CorrespondingStone(this ArtifactSpec.Name a) {
         if (Config.StoneFragmentMap.TryGetValue(EnumNames.ProtoName(a), out var stone)
             && EnumNames.TryValue<ArtifactSpec.Name>(stone, out var val)) {
@@ -66,7 +56,6 @@ public static class ArtifactExtensions {
         return ArtifactSpec.Name.Unknown;
     }
 
-    /// <summary>Corresponding stone fragment for a stone. Undefined for non-stones.</summary>
     public static ArtifactSpec.Name CorrespondingFragment(this ArtifactSpec.Name a) {
         string target = EnumNames.ProtoName(a);
         foreach (var (fragment, stone) in Config.StoneFragmentMap) {
@@ -89,7 +78,6 @@ public static class ArtifactExtensions {
         return v == "" ? "" : "[" + v + "]";
     }
 
-    /// <summary>Looks up the effect-table value for this artifact's level/rarity; "" when absent.</summary>
     private static string EffectTableValue(ArtifactSpec a) {
         if (!a.ShouldSerializename()) {
             return "";
@@ -105,10 +93,6 @@ public static class ArtifactExtensions {
         return row[(int)a.rarity];
     }
 
-    /// <summary>
-    /// Combines the artifact's specific value with its generic benefit description. Special !! values
-    /// are returned as-is; normal values substitute into the generic template where [^b] appears.
-    /// </summary>
     public static string CombinedEffectString(this ArtifactSpec a) {
         var v = EffectTableValue(a);
         if (v == "") {
@@ -140,11 +124,10 @@ public static class ArtifactExtensions {
         return includeSpace ? tierName + " " : tierName;
     }
 
-    /// <summary>All caps. Use CasedName for cased version.</summary>
     public static string GameName(this ArtifactSpec a) {
         string baseName = "";
         switch (a.name) {
-            // Artifacts
+            
             case ArtifactSpec.Name.LunarTotem:
                 baseName = "LUNAR TOTEM";
                 break;
@@ -208,7 +191,7 @@ public static class ArtifactExtensions {
             case ArtifactSpec.Name.MercurysLens:
                 baseName = "MERCURY'S LENS";
                 break;
-            // Stones
+            
             case ArtifactSpec.Name.TachyonStone:
                 baseName = "TACHYON STONE";
                 break;
@@ -239,7 +222,7 @@ public static class ArtifactExtensions {
             case ArtifactSpec.Name.ClarityStone:
                 baseName = "CLARITY STONE";
                 break;
-            // Stone fragments
+            
             case ArtifactSpec.Name.TachyonStoneFragment:
             case ArtifactSpec.Name.DilithiumStoneFragment:
             case ArtifactSpec.Name.ShellStoneFragment:
@@ -251,7 +234,7 @@ public static class ArtifactExtensions {
             case ArtifactSpec.Name.LifeStoneFragment:
             case ArtifactSpec.Name.ClarityStoneFragment:
                 return EnumNames.ProtoName(a.name).Replace("_", " ");
-            // Ingredients
+            
             case ArtifactSpec.Name.GoldMeteorite:
                 switch (a.level) {
                     case ArtifactSpec.Level.Inferior:
@@ -282,7 +265,7 @@ public static class ArtifactExtensions {
                         return "SOLAR TITANIUM GEOGON";
                 }
                 break;
-            // Unconfirmed ingredients
+            
             case ArtifactSpec.Name.ExtraterrestrialAluminum:
             case ArtifactSpec.Name.AncientTungsten:
             case ArtifactSpec.Name.SpaceRocks:
@@ -306,10 +289,6 @@ public static class ArtifactExtensions {
 
     public static ArtifactSpec.Type Type(this ArtifactSpec a) => a.name.ArtifactType();
 
-    /// <summary>
-    /// Family the artifact belongs to, which is the corresponding stone for
-    /// stone fragments.
-    /// </summary>
     public static ArtifactSpec.Name Family(this ArtifactSpec a) => a.name.Family();
 
     public static int TierNumber(this ArtifactSpec a) {
@@ -361,7 +340,7 @@ public static class ArtifactExtensions {
 
     private static string CapitalizeArtifactName(string n) {
         n = char.ToUpperInvariant(n[0]) + n[1..];
-        // Capitalize proper nouns.
+        
         var replacements = new (string from, string to)[]
         {
             ("demeters", "Demeters"),

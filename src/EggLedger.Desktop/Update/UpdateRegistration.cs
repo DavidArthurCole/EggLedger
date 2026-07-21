@@ -5,12 +5,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace EggLedger.Desktop.Update;
 
-/// <summary>Registers the live desktop updater as a singleton, replacing the browser no-op <see cref="IUpdateStatusProvider"/>. Call AFTER AddEggLedgerWeb so this override wins.</summary>
 public static class UpdateRegistration {
-    /// <param name="runningVersion">Resolves the running app version string.</param>
-    /// <param name="exitAction">
-    /// OLD-instance exit run after the new instance signals /ready so it can rename itself. Defaults to <see cref="Environment.Exit(int)"/>.
-    /// </param>
     public static IServiceCollection AddDesktopUpdater(
         this IServiceCollection services, Func<string> runningVersion, Func<Task>? exitAction = null) {
         var exit = exitAction ?? (() => {
@@ -26,7 +21,7 @@ public static class UpdateRegistration {
             sp.GetRequiredService<GithubReleaseClient>(),
             runningVersion,
             exitAction: exit,
-            // Constructing IndexedDbSettings here keeps the singleton updater off the scoped IndexedDbSettings.
+            
             settings: new IndexedDbSettings(sp.GetRequiredService<IIndexedDb>())));
 
         return services;

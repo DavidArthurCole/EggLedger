@@ -2,10 +2,6 @@ using System.Globalization;
 
 namespace EggLedger.Domain.Reports;
 
-/// <summary>
-/// A single mission row, typed equivalent of the SQLite <c>mission</c> columns the
-/// report queries read. Browser materializes these from IndexedDB.
-/// </summary>
 public sealed record MissionRowData {
     public string PlayerId { get; init; } = "";
     public string MissionId { get; init; } = "";
@@ -22,7 +18,6 @@ public sealed record MissionRowData {
     public bool IsBuggedCap { get; init; }
 }
 
-/// <summary>Typed equivalent of the SQLite <c>artifact_drops</c> columns.</summary>
 public sealed record ArtifactDropRowData {
     public string PlayerId { get; init; } = "";
     public string MissionId { get; init; } = "";
@@ -34,11 +29,6 @@ public sealed record ArtifactDropRowData {
     public double Quality { get; init; }
 }
 
-/// <summary>
-/// SQL-free report execution path for the browser (IndexedDB has no SQL engine).
-/// Reuses <see cref="ReportExecutor"/> verbatim by wrapping the typed rows in an
-/// in-memory <see cref="IMissionDb"/>, so the report math is identical by construction.
-/// </summary>
 public sealed class InMemoryReportRunner {
     private readonly IWeightData _weights;
 
@@ -46,10 +36,6 @@ public sealed class InMemoryReportRunner {
         _weights = weights ?? throw new ArgumentNullException(nameof(weights));
     }
 
-    /// <summary>
-    /// Executes the report against the supplied rows. Filters by <c>def.AccountId</c>
-    /// internally, so callers may pass all rows or only the player's rows.
-    /// </summary>
     public ReportResult Run(
         ReportDefinition def,
         IReadOnlyList<MissionRowData> missions,

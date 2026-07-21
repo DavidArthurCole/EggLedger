@@ -27,8 +27,8 @@ public sealed record AppConfig(
     string DataProtectionCertPassword) {
     public const string MennoUpstreamUrl = "https://eggincdatacollection.azurewebsites.net/api/SubmitEid";
 
-    // Private + ULA + loopback ranges. The container sits behind nginx on a private docker network,
-    // so only forwarded headers from those sources are trusted. Override with TRUSTED_PROXY_NETWORKS.
+    
+    
     private static readonly string[] DefaultProxyNetworks =
         ["127.0.0.0/8", "::1/128", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "fc00::/7", "fe80::/10"];
 
@@ -58,10 +58,10 @@ public sealed record AppConfig(
             AuthentikClientSecret: V("AUTHENTIK_CLIENT_SECRET"),
             IdentityApiUrl: V("IDENTITY_API_URL"),
             IdentityApiSecret: V("IDENTITY_API_SECRET"),
-            // Browser-facing address serving /synckit-login.js + the popup flow. Distinct from
-            // IdentityApiUrl (server-to-server, e.g. an internal/loopback address under
-            // network_mode: host) which a <script src> can't reach. Defaults to IdentityApiUrl
-            // for deploys where both happen to be the same public host.
+            
+            
+            
+            
             IdentityWidgetUrl: get("IDENTITY_WIDGET_URL") is { Length: > 0 } widgetUrl ? widgetUrl : V("IDENTITY_API_URL"),
             TrustedProxyNetworks: proxyNets.Length > 0 ? proxyNets : DefaultProxyNetworks,
             BuildSha: get("BUILD_SHA") is { Length: > 0 } sha ? sha : "dev",

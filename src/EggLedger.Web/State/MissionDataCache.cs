@@ -3,7 +3,6 @@ using EggLedger.Domain.MissionQuery;
 
 namespace EggLedger.Web.State;
 
-/// <summary>Per-circuit cache for Mission Data/Lifetime page fetches, keyed by account id with a staleness TTL.</summary>
 public sealed class MissionDataCache {
     private readonly TimeSpan _ttl;
     private (string AccountId, IReadOnlyList<DatabaseMission> Missions, DateTime LoadedAt)? _missions;
@@ -11,8 +10,8 @@ public sealed class MissionDataCache {
 
     public MissionDataCache() : this(TimeSpan.FromMinutes(5)) { }
 
-    // Public overload so tests can inject a short TTL instead of waiting real minutes.
-    // No InternalsVisibleTo wiring exists between EggLedger.Web and its test project.
+    
+    
     public MissionDataCache(TimeSpan ttl) {
         _ttl = ttl;
     }
@@ -39,8 +38,8 @@ public sealed class MissionDataCache {
         _drops = (accountId, drops, now);
     }
 
-    // Called on account switch and on successful fetch-pipeline completion - both slots
-    // invalidate together since a fetch can add missions with new drops.
+    
+    
     public void InvalidateAll() {
         _missions = null;
         _drops = null;

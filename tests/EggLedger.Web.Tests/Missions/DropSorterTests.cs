@@ -2,7 +2,6 @@ using EggLedger.Web.Missions;
 
 namespace EggLedger.Web.Tests.Missions;
 
-/// <summary>Golden parity with www/src/composables/useMissionSorting.ts.</summary>
 public sealed class DropSorterTests {
     private static DropLike D(int id, string name, int level, int rarity, double quality = 0, int iv = 0, string spec = "Artifact") =>
         new() { Id = id, Name = name, Level = level, Rarity = rarity, Quality = quality, IvOrder = iv, SpecType = spec };
@@ -34,7 +33,7 @@ public sealed class DropSorterTests {
 
     [Fact]
     public void SortGroupAlreadyCombed_OrdersLevelAscRarityAsc() {
-        // Comparator is level/rarity/id desc, quality asc, then reversed; net is level/rarity/id asc, quality desc.
+        
         var input = new[]
         {
             D(1, "A", 2, 0),
@@ -72,7 +71,7 @@ public sealed class DropSorterTests {
         };
         var sorted = DropSorter.InventoryVisualizerSort(input);
         Assert.Equal(3, sorted[0].Rarity);
-        // Within rarity 1, higher iv sorts first.
+        
         Assert.Equal(9, sorted[1].IvOrder);
         Assert.Equal(1, sorted[2].IvOrder);
     }

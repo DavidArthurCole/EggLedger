@@ -2,7 +2,6 @@ using System.Text.RegularExpressions;
 
 namespace EggLedger.Web.State;
 
-/// <summary>When on, masks any EI+16-digits so EIDs do not leak into screenshots.</summary>
 public sealed partial class ScreenshotSafetyState {
     public bool Enabled {
         get;

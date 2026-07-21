@@ -67,8 +67,8 @@
 
     [CascadingParameter] private Task<AuthenticationState>? AuthStateTask { get; set; }
 
-    // No cascading AuthenticationState (desktop host) means there is no auth gate at all, so
-    // tabs/account UI stay enabled unconditionally there.
+    
+    
     private bool IsLoggedIn = true;
 
     protected override async Task OnInitializedAsync() {
@@ -80,16 +80,16 @@
             IsLoggedIn = authState.User.Identity?.IsAuthenticated ?? false;
         }
 
-        // Load once per circuit here (not per-page) so the active account is set
-        // regardless of which tab the user lands on first.
+        
+        
         await Loader.EnsureLoadedAsync();
 
-        // Seed the shared mask-EID toggle so masking components reflect it on first render.
+        
         var settings = await Settings.GetAllSettingsAsync();
         if (settings.TryGetValue(SettingsModel.KeyScreenshotSafety, out var v))
             ScreenshotSafety.Enabled = v == "true";
 
-        // Resolve admin status once so the Admin tab can appear without visiting it.
+        
         var session = await SessionStore.GetSessionAsync();
         if (session?.Token is { } token)
             AdminState.IsAdmin = await Admin.IsAdminAsync(token);

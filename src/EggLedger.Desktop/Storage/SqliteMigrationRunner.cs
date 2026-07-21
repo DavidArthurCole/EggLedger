@@ -5,18 +5,9 @@ using Microsoft.Data.Sqlite;
 
 namespace EggLedger.Desktop.Storage;
 
-/// <summary>Applies embedded SQL migrations in numeric order, tracking applied version via <c>PRAGMA user_version</c>.</summary>
-/// <remarks>
-/// Port of the Go golang-migrate runner; a re-run is a no-op once user_version equals
-/// the target. Resources are named
-/// <c>EggLedger.Desktop.Storage.Migrations.&lt;Set&gt;.&lt;N&gt;_&lt;name&gt;.up.sql</c>;
-/// each file runs in one transaction so a partial failure rolls back.
-/// </remarks>
 public static class SqliteMigrationRunner {
-    /// <summary>Mission DB target schema version (Go db._schemaVersion = 9).</summary>
     public const int MissionTargetVersion = 9;
 
-    /// <summary>Report DB target schema version (Go reportdb migrations 1..12).</summary>
     public const int ReportTargetVersion = 12;
 
     private static readonly Regex FileNamePattern =
@@ -28,10 +19,6 @@ public static class SqliteMigrationRunner {
     public static void MigrateReportDb(SqliteConnection connection) =>
         Migrate(connection, "Report", ReportTargetVersion);
 
-    /// <summary>
-    /// Applies only files numbered above the current user_version and up to
-    /// targetVersion, in ascending order.
-    /// </summary>
     public static void Migrate(SqliteConnection connection, string set, int targetVersion) {
         var migrations = LoadMigrations(set);
         int current = GetUserVersion(connection);
@@ -52,8 +39,8 @@ public static class SqliteMigrationRunner {
             cmd.CommandText = sql;
             cmd.ExecuteNonQuery();
         }
-        // user_version is a PRAGMA; it cannot be parameterized and is set after the
-        // migration body so a failed body rolls the whole step back.
+        
+        
         using (var setVersion = connection.CreateCommand()) {
             setVersion.Transaction = tx;
             setVersion.CommandText = string.Format(

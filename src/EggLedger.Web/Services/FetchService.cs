@@ -7,7 +7,6 @@ using Ei;
 
 namespace EggLedger.Web.Services;
 
-/// <summary>The EID-fetch pipeline: fetch a player's first-contact backup, diff completed missions against the local IndexedDB store, then fan out bounded-concurrency workers to fetch and store the missing missions. Reports progress and drives the <see cref="AppState"/> machine.</summary>
 public sealed class FetchService {
     private const int DefaultWorkerCount = 1;
     private const int MaxWorkerCount = 10;
@@ -26,7 +25,6 @@ public sealed class FetchService {
         _packer = packer ?? new MissionPacker(EiafxMissionConfigSource.Instance);
     }
 
-    /// <summary>Runs the full fetch pipeline, returning the terminal <see cref="AppState"/>. Cancellation drives the pipeline to Interrupted.</summary>
     public async Task<AppState> FetchPlayerDataAsync(
         string playerId,
         IProgress<FetchProgress>? progress,
@@ -54,7 +52,7 @@ public sealed class FetchService {
             return AppState.Interrupted;
         }
 
-        // Diff completed missions against the local store.
+        
         var completed = fc.GetCompletedMissions();
         var existing = await _store.GetCompleteMissionIdsAsync(playerId).ConfigureAwait(false) ?? [];
         var seen = new HashSet<string>(existing, StringComparer.Ordinal);
@@ -99,7 +97,7 @@ public sealed class FetchService {
                 return AppState.Interrupted;
             }
 
-            // Retry pass over the failed set when the setting is on.
+            
             if (Volatile.Read(ref failed) > 0 && retryFailed && failures.Count > 0) {
                 Volatile.Write(ref retried, failures.Count);
                 Interlocked.Add(ref total, failures.Count);
@@ -140,14 +138,13 @@ public sealed class FetchService {
             }
         }
 
-        // Export is DownloadService's job; this state is reported only for parity with the Go state machine.
+        
         Report(AppState.ExportingData);
 
         Report(AppState.Success);
         return AppState.Success;
     }
 
-    /// <summary>Fetches, validates, and stores the first-contact backup (12h min-gap dedup). Throws "please double check your ID" on validation failure.</summary>
     private async Task<EggIncFirstContactResponse> FetchFirstContactAsync(string playerId, CancellationToken cancellationToken) {
         byte[] payload = await _api.RequestFirstContactRawPayloadAsync(playerId, cancellationToken).ConfigureAwait(false);
         var fc = await _decoder.DecodeFirstContactAsync(payload, cancellationToken).ConfigureAwait(false);
@@ -159,7 +156,7 @@ public sealed class FetchService {
 
         double lastBackupTime = fc.Backup?.settings?.LastBackupTime ?? 0;
         if (lastBackupTime != 0) {
-            // Swallow store errors so a backup write hiccup does not abort the fetch.
+            
             try {
                 await _store.InsertBackupAsync(playerId, lastBackupTime, payload, BackupMinGap).ConfigureAwait(false);
             } catch {
@@ -168,7 +165,6 @@ public sealed class FetchService {
         return fc;
     }
 
-    /// <summary>Fans out SemaphoreSlim-gated tasks over the mission set; returns true if cancellation was observed. No per-batch sleep: the browser has no shared rate limiter.</summary>
     private async Task<bool> RunWorkersAsync(
         string playerId,
         IReadOnlyList<(string Id, double Start)> missions,
@@ -193,7 +189,7 @@ public sealed class FetchService {
                 try {
                     await FetchOneMissionAsync(playerId, id, start, progress, cancellationToken).ConfigureAwait(false);
                 } catch (OperationCanceledException) {
-                    // Outer cancellation check turns the run into Interrupted.
+                    
                     onError(new FailedMission(id, start, "cancelled"));
                 } catch (Exception ex) {
                     onError(new FailedMission(id, start, ex.Message));
@@ -207,13 +203,12 @@ public sealed class FetchService {
         try {
             await Task.WhenAll(tasks).ConfigureAwait(false);
         } catch (OperationCanceledException) {
-            // Pending Task.Run bodies cancelled before starting; reflected in the return below.
+            
         }
 
         return cancellationToken.IsCancellationRequested;
     }
 
-    /// <summary>Fetches and stores a single mission. Cache hit returns without an API call; otherwise fetch, decode, validate Success + non-empty Artifacts, pack filter columns, and store.</summary>
     private async Task FetchOneMissionAsync(
         string playerId,
         string missionId,

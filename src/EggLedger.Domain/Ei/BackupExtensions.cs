@@ -2,11 +2,7 @@ using Ei;
 
 namespace EggLedger.Domain.Ei;
 
-/// <summary>Port of Go ei/backup.go. Preserves exact arithmetic.</summary>
 public static class BackupExtensions {
-    /// <summary>
-    /// Maps each element to a double and accumulates (Go's generic Sum). Returns 0 for empty/null.
-    /// </summary>
     public static double Sum<T>(IEnumerable<T>? slice, Func<T, double> toFloat) {
         double total = 0;
         if (slice != null) {

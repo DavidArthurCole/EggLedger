@@ -2,7 +2,6 @@ using Microsoft.JSInterop;
 
 namespace EggLedger.Web.Platform;
 
-/// <summary>Browser <see cref="IPlatformCapabilities"/>. No OS file access: file ops are no-ops, restart is a reload.</summary>
 public sealed class BrowserPlatformCapabilities(IJSRuntime js) : IPlatformCapabilities, IAsyncDisposable {
     private const string ModulePath = "./_content/EggLedger.Web/js/platform.js";
     private readonly IJSRuntime _js = js;
@@ -15,13 +14,10 @@ public sealed class BrowserPlatformCapabilities(IJSRuntime js) : IPlatformCapabi
     public Task OpenFileAsync(string path) => Task.CompletedTask;
     public Task OpenFileInFolderAsync(string path) => Task.CompletedTask;
 
-    /// <summary>No-op: the browser opens target="_blank" links in a real tab itself.</summary>
     public Task OpenUrlAsync(string url) => Task.CompletedTask;
 
-    /// <summary>Always null: downloads go to the browser's own download path.</summary>
     public Task<string?> ChooseSaveFilePathAsync(string defaultName) => Task.FromResult<string?>(null);
 
-    /// <summary>Reloads the page; the closest browser analogue of a restart.</summary>
     public async Task RestartAppAsync() {
         var module = await ModuleAsync();
         await module.InvokeVoidAsync("reload");
@@ -33,7 +29,6 @@ public sealed class BrowserPlatformCapabilities(IJSRuntime js) : IPlatformCapabi
         return (dims[0], dims[1]);
     }
 
-    /// <summary>No native picker in the browser.</summary>
     public Task<string?> ChooseFolderAsync() => Task.FromResult<string?>(null);
 
     public Task SetFolderHiddenAsync(string path, bool hidden) => Task.CompletedTask;

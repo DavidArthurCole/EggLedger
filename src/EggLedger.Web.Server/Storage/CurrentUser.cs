@@ -3,14 +3,6 @@ using Microsoft.AspNetCore.Components.Authorization;
 
 namespace EggLedger.Web.Server.Storage;
 
-/// <summary>
-/// Resolves the circuit's provider-neutral user id from the framework AuthenticationState, read per op by
-/// <see cref="PostgresIndexedDb"/> to scope storage to the right tenant.
-/// </summary>
-/// <remarks>
-/// <see cref="GetUserIdAsync"/> is tolerant (null when unauthenticated, for reads);
-/// <see cref="RequireUserIdAsync"/> throws (for writes).
-/// </remarks>
 public sealed class CurrentUser(AuthenticationStateProvider auth) {
     public async Task<Guid?> GetUserIdAsync() {
         var state = await auth.GetAuthenticationStateAsync().ConfigureAwait(false);

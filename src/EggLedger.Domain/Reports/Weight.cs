@@ -2,14 +2,9 @@ using System.Globalization;
 
 namespace EggLedger.Domain.Reports;
 
-/// <summary>
-/// Heuristic query-cost classification for report definitions. Port of Go reports/weight.go.
-/// Uses wall-clock for date-window sizing.
-/// </summary>
 public static class Weight {
-    /// <summary>Assigns a cost tier ("LOW"/"MEDIUM"/"HEAVY") to a report definition. Port of Go ClassifyWeight.</summary>
     public static string ClassifyWeight(ReportDefinition def) {
-        // Time pivot (most expensive case first).
+        
         if (def.SecondaryGroupBy != "" && def.Mode == "time_series") {
             var eitherIsArtifact = IsArtifactDimension(def.GroupBy) || IsArtifactDimension(def.SecondaryGroupBy);
             if (eitherIsArtifact) {
@@ -27,7 +22,7 @@ public static class Weight {
             return "MEDIUM";
         }
 
-        // Aggregate 2D pivot.
+        
         if (def.SecondaryGroupBy != "") {
             var eitherIsArtifact = IsArtifactDimension(def.GroupBy) || IsArtifactDimension(def.SecondaryGroupBy);
             if (eitherIsArtifact) {
@@ -39,7 +34,7 @@ public static class Weight {
             return "LOW";
         }
 
-        // 1D time series.
+        
         if (def.Mode == "time_series") {
             if (def.TimeBucket == "custom") {
                 var days = CustomBucketDays(def.CustomBucketN, def.CustomBucketUnit);
@@ -87,7 +82,6 @@ public static class Weight {
         return false;
     }
 
-    /// <summary>Rough filter-window estimate in days; 9999 if undeterminable. Port of Go dateFilterWindowDays.</summary>
     private static int DateFilterWindowDays(ReportFilters f) {
         var minDays = 9999;
         var all = new List<FilterCondition>(f.And);

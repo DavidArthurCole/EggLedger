@@ -40,7 +40,6 @@
 @code {
     [Parameter] [EditorRequired] public string AccountId { get; set; } = "";
 
-    /// <summary>Group id filter, or null for all reports.</summary>
     [Parameter]
     public string? GroupFilter { get; set; }
 
@@ -122,7 +121,6 @@
         await ReloadAsync();
     }
 
-    /// <summary>Downloads every report definition for the account as one JSON array.</summary>
     public async Task ExportAllAsync() {
         var rows = await Store.RetrieveAccountReportsAsync(AccountId);
         var defs = rows.Select(ReportMapping.ToDefinition).ToList();
@@ -133,7 +131,6 @@
         ClearMessageLater();
     }
 
-    /// <summary>Prompts a file picker and imports one report definition or an array of them.</summary>
     public async Task ImportAsync() {
         var json = await Downloader.PickJsonFileAsync();
         if (string.IsNullOrWhiteSpace(json)) {

@@ -105,12 +105,11 @@
 @code {
     [Parameter] [EditorRequired] public SettingsModel Model { get; set; } = default!;
 
-    /// <summary>Persist callback (key, stringValue); invoked after the model is mutated.</summary>
     [Parameter]
     [EditorRequired]
     public EventCallback<(string Key, string Value)> OnSetting { get; set; }
 
-    // Worker bands: 1-4 safe (green), 5-7 caution (orange), 8-10 risky (red).
+    
     private static string WorkerCellClass(int n) {
         return n <= 4 ? "bg-green-600" : n <= 7 ? "bg-orange-500" : "bg-red-600";
     }

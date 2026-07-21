@@ -3,12 +3,6 @@ using EggLedger.Desktop.Update;
 
 namespace EggLedger.Desktop.Tests;
 
-/// <summary>
-/// Temp-file tests for the file-system side of the self-replace
-/// (EggLedger/update/update.go renameWithRetry / acquireUpdateLock /
-/// CleanStaleBinaries) plus the process-exists probe (update_windows.go /
-/// update_unix.go waitForProcessExit). No real process replace happens.
-/// </summary>
 public sealed class BinaryReplacementTests : IDisposable {
     private readonly string _dir;
 
@@ -52,7 +46,7 @@ public sealed class BinaryReplacementTests : IDisposable {
 
     [Fact]
     public void AcquireLock_SecondAcquireFailsWhileHeldThenSucceedsAfterRelease() {
-        // The lock writes the CURRENT process id, which the real probe reports alive.
+        
         var repl = new BinaryReplacement(new ProcessProbe());
         var lockPath = Path.Combine(_dir, BinaryReplacement.LockFileName);
 
@@ -74,7 +68,7 @@ public sealed class BinaryReplacementTests : IDisposable {
     [Fact]
     public void AcquireLock_ReclaimsStaleLockFromDeadOwner() {
         var lockPath = Path.Combine(_dir, BinaryReplacement.LockFileName);
-        // A lock file whose owner PID is reported dead by the fake probe.
+        
         File.WriteAllText(lockPath, "424242");
         var repl = new BinaryReplacement(new FakeProbe([]));
 
@@ -130,7 +124,7 @@ public sealed class BinaryReplacementTests : IDisposable {
     public void ProcessProbe_CurrentProcessExists_BogusDoesNot() {
         var probe = new ProcessProbe();
         Assert.True(probe.Exists(Environment.ProcessId));
-        // A PID extremely unlikely to be live.
+        
         Assert.False(probe.Exists(int.MaxValue - 1));
         Assert.False(probe.Exists(0));
         Assert.False(probe.Exists(-5));

@@ -2,10 +2,6 @@ using Ei;
 
 namespace EggLedger.Domain.Eiafx;
 
-/// <summary>
-/// Base-quality lookup. Port of Go eiafx/quality.go, backed by a lazily-built map keyed by
-/// (name, level, rarity) so each call is O(1). Matches by value, not pointer identity.
-/// </summary>
 public static class Quality {
     private readonly record struct SpecKey(
         ArtifactSpec.Name Name,
@@ -15,10 +11,6 @@ public static class Quality {
     private static readonly Lock _gate = new();
     private static Dictionary<SpecKey, double>? _baseQuality;
 
-    /// <summary>
-    /// Configured base quality for an artifact spec, matched by
-    /// name+level+rarity. Returns 0 if the spec is not in the config.
-    /// </summary>
     public static double BaseQualityFor(ArtifactSpec spec) {
         ArgumentNullException.ThrowIfNull(spec);
         var map = Map();

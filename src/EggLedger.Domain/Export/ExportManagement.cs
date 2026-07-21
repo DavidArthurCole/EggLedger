@@ -3,7 +3,6 @@ using System.Text.RegularExpressions;
 
 namespace EggLedger.Domain.Export;
 
-/// <summary>One timestamp group (csv + xlsx) for one EID. Port of Go FilePair.</summary>
 public sealed class FilePair {
     public string Timestamp { get; set; } = "";
     public string DisplayDate { get; set; } = "";
@@ -13,7 +12,6 @@ public sealed class FilePair {
     public long XlsxSize { get; set; }
 }
 
-/// <summary>All timestamp groups for one EID, newest-first. Port of Go Group.</summary>
 public sealed class ExportGroup {
     public string Eid { get; set; } = "";
     public string Nickname { get; set; } = "";
@@ -21,28 +19,16 @@ public sealed class ExportGroup {
     public List<FilePair> Pairs { get; set; } = [];
 }
 
-/// <summary>An export file with its size. Decouples ListGroups from the disk.</summary>
 public readonly record struct ExportFileEntry(string Name, long Size);
 
-/// <summary>
-/// Minimal filesystem surface used by export management. Tests supply an
-/// in-memory double; production uses <see cref="PhysicalExportFileSystem"/>.
-/// </summary>
 public interface IExportFileSystem {
-    /// <summary>
-    /// Lists files (not directories) directly under <paramref name="dir"/>.
-    /// Returns null when the directory does not exist.
-    /// </summary>
     IReadOnlyList<ExportFileEntry>? ListFiles(string dir);
 
-    /// <summary>Returns the file size, or null if it does not exist.</summary>
     long? Size(string path);
 
-    /// <summary>Deletes the file. No-op (no error) if it does not exist.</summary>
     void Delete(string path);
 }
 
-/// <summary>Disk-backed <see cref="IExportFileSystem"/>.</summary>
 public sealed class PhysicalExportFileSystem : IExportFileSystem {
     public IReadOnlyList<ExportFileEntry>? ListFiles(string dir) {
         if (!Directory.Exists(dir)) {
@@ -65,18 +51,10 @@ public sealed class PhysicalExportFileSystem : IExportFileSystem {
     }
 }
 
-/// <summary>
-/// Lists and prunes export file groups. Pure logic over an
-/// <see cref="IExportFileSystem"/>. Port of Go export_management.go.
-/// </summary>
 public static class ExportManagement {
     private static readonly Regex ExportFileRe =
         new(@"^(EI\d+)\.(\d{8}_\d{6})\.(csv|xlsx)$", RegexOptions.Compiled);
 
-    /// <summary>
-    /// Reads {exportsDir}/missions/ and groups files by EID+timestamp. Returns
-    /// an empty list when the directory does not exist.
-    /// </summary>
     public static List<ExportGroup> ListGroups(string exportsDir, IExportFileSystem? fs = null) {
         fs ??= new PhysicalExportFileSystem();
         string missionsDir = Path.Combine(exportsDir, "missions");
@@ -126,7 +104,7 @@ public static class ExportManagement {
         var groups = new List<ExportGroup>(eidOrder.Count);
         foreach (var eid in eidOrder) {
             var pairs = pairsByEid[eid].Values.ToList();
-            // Newest first by timestamp string (lexicographic == chronological).
+            
             pairs.Sort((a, b) => string.CompareOrdinal(b.Timestamp, a.Timestamp));
             groups.Add(new ExportGroup { Eid = eid, Pairs = pairs });
         }
@@ -145,10 +123,6 @@ public static class ExportManagement {
         return ts;
     }
 
-    /// <summary>
-    /// Deletes the oldest timestamp groups for <paramref name="playerId"/>,
-    /// keeping at most <paramref name="keepCount"/>. keepCount &lt;= 0 is a no-op.
-    /// </summary>
     public static (int DeletedCount, long FreedBytes) PruneForPlayer(
         string exportsDir,
         string playerId,

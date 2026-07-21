@@ -4,10 +4,6 @@ using Npgsql;
 
 namespace EggLedger.Web.Server.Auth;
 
-/// <summary>
-/// Persists the DataProtection key ring to Postgres (table data_protection_keys) so cookie-auth
-/// keys survive container redeploys; otherwise an ephemeral container path logs everyone out per deploy.
-/// </summary>
 public sealed class PostgresXmlRepository(NpgsqlDataSource source) : IXmlRepository {
     public IReadOnlyCollection<XElement> GetAllElements() {
         var elements = new List<XElement>();

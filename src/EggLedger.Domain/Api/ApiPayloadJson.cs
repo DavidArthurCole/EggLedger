@@ -10,7 +10,6 @@ only bloat the payload).
 
 namespace EggLedger.Domain.Api;
 
-/// <summary>JSON options shared by both ends of the decode transport. See file header.</summary>
 public static class ApiPayloadJson {
     public static JsonSerializerOptions Options { get; } = new() {
         PreferredObjectCreationHandling = JsonObjectCreationHandling.Populate,

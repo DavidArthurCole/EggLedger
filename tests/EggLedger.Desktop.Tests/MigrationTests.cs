@@ -4,14 +4,10 @@ using Microsoft.Data.Sqlite;
 
 namespace EggLedger.Desktop.Tests;
 
-/// <summary>
-/// Migration runner tests: a fresh DB migrates to the right version (mission v9,
-/// report v12), the expected tables/columns exist, and a re-run is a no-op.
-/// </summary>
 public sealed class MigrationTests {
     private static SqliteConnection FreshConnection() {
-        // A uniquely-named shared in-memory DB kept alive by the returned open
-        // connection. Each test gets its own database.
+        
+        
         var name = "migtest_" + Guid.NewGuid().ToString("N");
         var conn = new SqliteConnection($"Data Source={name};Mode=Memory;Cache=Shared");
         conn.Open();
@@ -92,8 +88,8 @@ public sealed class MigrationTests {
         SqliteMigrationRunner.MigrateMissionDb(conn);
         Assert.Equal(9, UserVersion(conn));
 
-        // Re-running against an already-migrated DB must not throw and must leave
-        // the version unchanged (idempotent, like golang-migrate ErrNoChange).
+        
+        
         SqliteMigrationRunner.MigrateMissionDb(conn);
         SqliteMigrationRunner.MigrateMissionDb(conn);
         Assert.Equal(9, UserVersion(conn));
@@ -121,8 +117,8 @@ public sealed class MigrationTests {
             cmd.CommandText = "PRAGMA foreign_keys;";
             Assert.Equal(1L, (long)cmd.ExecuteScalar()!);
         } finally {
-            // Release the connection pool so the WAL/SHM sidecar files unlock before
-            // the temp dir is removed.
+            
+            
             SqliteConnection.ClearAllPools();
             if (Directory.Exists(dir)) {
                 Directory.Delete(dir, recursive: true);

@@ -2,18 +2,13 @@ using EggLedger.Web.Settings;
 
 namespace EggLedger.Web.Tests.Settings;
 
-/// <summary>
-/// Golden tests for <see cref="SettingsModel"/> against the Go storage defaults
-/// (storage.go) and www/src/composables/useSettings.ts: the default values, the
-/// worker-count clamp, and the settings-map hydration.
-/// </summary>
 public sealed class SettingsModelTests {
     [Fact]
     public void Defaults_MatchGo() {
         var m = new SettingsModel();
         Assert.False(m.AutoRefreshMenno);
-        // Diverges from Go (false): silent one-shot failures with no visible reason left
-        // users unable to recover lost missions, so the C# port defaults retry to on.
+        
+        
         Assert.True(m.AutoRetry);
         Assert.False(m.HideTimeoutErrors);
         Assert.Equal(1, m.WorkerCount);

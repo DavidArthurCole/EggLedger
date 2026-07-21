@@ -12,16 +12,13 @@ public sealed class FilterFieldDef {
     public string Key { get; init; } = "";
     public string Label { get; init; } = "";
 
-    /// <summary>"mission" or "artifact".</summary>
     public string Scope { get; init; } = "mission";
     public FilterValueKind ValueKind { get; init; }
     public IReadOnlyList<FilterOp> Ops { get; init; } = Array.Empty<FilterOp>();
 
-    /// <summary>For select/modal kinds: builds the option list. Null otherwise.</summary>
     public Func<FilterFieldCtx, List<FilterOption>>? OptionsSource { get; init; }
 }
 
-/// <summary>Static filter field/operator definitions, golden-matched to filterFields.ts (field set, operator lists, default-operator rules, scope partitions).</summary>
 public static class FilterFields {
     public static readonly IReadOnlyList<FilterOp> EqualityOps = new[]
     {
@@ -48,7 +45,6 @@ public static class FilterFields {
         new FilterOp(">=", "on or after"),
     };
 
-    /// <summary>Date operators for the Mission Data tab filter bar. "on" must map to "d=" (day-equality), since a date "=" reference-compares and never matches (see MissionFilterMatcher).</summary>
     public static readonly IReadOnlyList<FilterOp> MissionDateOps = new[]
     {
         new FilterOp("d=", "on"),
@@ -56,7 +52,6 @@ public static class FilterFields {
         new FilterOp(">", "after"),
     };
 
-    /// <summary>Operators the Mission Data filter bar presents for a field. Date fields use MissionDateOps; everything else uses the field's own Ops.</summary>
     public static IReadOnlyList<FilterOp> MissionBarOpsFor(FilterFieldDef def) =>
         def.ValueKind == FilterValueKind.Date ? MissionDateOps : def.Ops;
 
@@ -72,7 +67,6 @@ public static class FilterFields {
         new FilterOp("false", "False"),
     };
 
-    /// <summary>All filter fields, mission then artifact scope.</summary>
     public static readonly IReadOnlyList<FilterFieldDef> ReportFilterFields = new[]
     {
         new FilterFieldDef
@@ -153,7 +147,6 @@ public static class FilterFields {
         },
     };
 
-    /// <summary>Field definition for a key, or null.</summary>
     public static FilterFieldDef? GetReportField(string key) {
         foreach (var f in ReportFilterFields) {
             if (f.Key == key) {
@@ -163,7 +156,6 @@ public static class FilterFields {
         return null;
     }
 
-    /// <summary>Default operator for a field in the Mission Data bar: bool -> "true", drops -> "c", date -> "d=", else first operator.</summary>
     public static string DefaultOpForField(FilterFieldDef def) {
         if (def.ValueKind == FilterValueKind.Bool) {
             return "true";
@@ -175,7 +167,6 @@ public static class FilterFields {
         return ops.Count > 0 ? ops[0].Value : "";
     }
 
-    /// <summary>Mission-scoped fields.</summary>
     public static List<FilterFieldDef> ReportMissionFields() {
         var result = new List<FilterFieldDef>();
         foreach (var f in ReportFilterFields) {
@@ -186,7 +177,6 @@ public static class FilterFields {
         return result;
     }
 
-    /// <summary>Artifact-scoped fields.</summary>
     public static List<FilterFieldDef> ReportArtifactFields() {
         var result = new List<FilterFieldDef>();
         foreach (var f in ReportFilterFields) {

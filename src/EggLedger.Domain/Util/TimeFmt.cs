@@ -2,16 +2,13 @@ using System.Globalization;
 
 namespace EggLedger.Domain.Util;
 
-/// <summary>Time formatting helpers. Go port of util/timefmt.go.</summary>
 public static class TimeFmt {
-    /// <summary>Converts an instant to fractional Unix seconds (Go TimeToUnix).</summary>
     public static double TimeToUnix(DateTimeOffset t) {
-        // Mirror Go: float64(UnixNano()) / 1e9.
+        
         var unixNano = t.ToUnixTimeMilliseconds() * 1_000_000L + (t.Ticks % 10_000L) * 100L;
         return unixNano / 1e9;
     }
 
-    /// <summary>Converts fractional Unix seconds to an instant (Go UnixToTime).</summary>
     public static DateTimeOffset UnixToTime(double t) {
         var sec = Math.Truncate(t);
         var dec = t - sec;
@@ -19,10 +16,6 @@ public static class TimeFmt {
         return DateTimeOffset.FromUnixTimeSeconds((long)sec).AddTicks(nanos / 100L);
     }
 
-    /// <summary>
-    /// Renders a coarse relative-time string using the same bucket boundaries and
-    /// plural quirks as Go HumanizeTime. <paramref name="now"/> defaults to current UTC.
-    /// </summary>
     public static string HumanizeTime(DateTimeOffset t, DateTimeOffset? now = null) {
         var reference = now ?? DateTimeOffset.UtcNow;
         var delta = reference - t;

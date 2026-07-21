@@ -3,14 +3,9 @@ using EggLedger.Domain.Reports;
 
 namespace EggLedger.Web.Data;
 
-/// <summary>
-/// Pure conversions between the persisted <see cref="ReportRow"/> (snake_case wire)
-/// and the <see cref="ReportDefinition"/> the engine and builder use (Go reportdb/converters).
-/// </summary>
 public static class ReportMapping {
     private static readonly JsonSerializerOptions FilterOptions = new(JsonSerializerDefaults.Web);
 
-    /// <summary>Builds a <see cref="ReportDefinition"/> from a row, parsing filters JSON. Blank/invalid yields empty AND/OR groups.</summary>
     public static ReportDefinition ToDefinition(ReportRow r) => new() {
         Id = r.Id,
         AccountId = r.AccountId,
@@ -47,7 +42,6 @@ public static class ReportMapping {
         MinSampleSize = r.MinSampleSize,
     };
 
-    /// <summary>Builds a row from a definition, serializing filters to compact JSON. Timestamps are left for the store to stamp.</summary>
     public static ReportRow ToRow(ReportDefinition d) => new() {
         Id = d.Id,
         AccountId = d.AccountId,
@@ -84,7 +78,6 @@ public static class ReportMapping {
         MinSampleSize = d.MinSampleSize,
     };
 
-    /// <summary>Parses filters JSON into structured groups, tolerating blank/invalid input.</summary>
     public static ReportFilters ParseFilters(string? json) {
         if (string.IsNullOrWhiteSpace(json)) {
             return new ReportFilters();

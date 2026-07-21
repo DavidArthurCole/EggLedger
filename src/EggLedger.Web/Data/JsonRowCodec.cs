@@ -4,26 +4,11 @@ using System.Text.Json;
 
 namespace EggLedger.Web.Data;
 
-/// <summary>
-/// JSON&lt;-&gt;DB row marshaling shared by the SQL <see cref="IIndexedDb"/> impls (Postgres,
-/// SQLite). Rows round-trip through their snake_case JSON property names; each impl keeps
-/// only its provider-specific SQL execution and supplies the two differences via a
-/// <see cref="Provider"/>: how bools encode (native vs 1/0) and the key-predicate placeholder
-/// syntax (<c>@k0</c> vs <c>?</c>). Wire format (base64 blobs, column names) must not change.
-/// </summary>
 public static class JsonRowCodec {
-    /// <param name="BoolAsInteger">SQLite stores bools as 1/0 INTEGER; Postgres uses native bool.</param>
-    /// <param name="KeyPlaceholder">Placeholder for the i-th key arg: SQLite <c>?</c>, Postgres <c>@k{i}</c>.</param>
     public readonly record struct Provider(bool BoolAsInteger, Func<int, string> KeyPlaceholder);
     public static readonly Provider Sqlite = new(BoolAsInteger: true, _ => "?");
     public static readonly Provider Postgres = new(BoolAsInteger: false, i => "@k" + i.ToString(CultureInfo.InvariantCulture));
 
-    /// <summary>
-    /// Rebuilds a row's JSON object from the SELECT columns, then deserializes to T. The
-    /// <paramref name="skipColumn"/> predicate drops internal columns not on the Row record
-    /// (Postgres tenancy <c>discord_id</c>); <paramref name="isBool"/>/<paramref name="isBlob"/>
-    /// classify columns whose reader type is ambiguous (SQLite bool-as-int, blob-as-base64).
-    /// </summary>
     public static T Materialize<T>(
         DbDataReader reader,
         string table,
@@ -93,17 +78,13 @@ public static class JsonRowCodec {
         _ => el.GetRawText(),
     };
 
-    // System.Text.Json serializes byte[] columns as base64 strings; blob columns must
-    // store real bytes. Plain text columns stay strings.
+    
+    
     public static object DecodeString(JsonElement el, bool isBlob) {
         var s = el.GetString() ?? "";
         return isBlob ? Convert.FromBase64String(s) : s;
     }
 
-    /// <summary>
-    /// Single-key predicate emits "col = ?0"; composite expects an object[] of matching
-    /// length. No tenancy scoping (the Postgres caller prepends discord_id itself).
-    /// </summary>
     public static (string where, object[] args) KeyPredicate(
         string table, string[] keyColumns, object key, Func<string, string> ident, Provider provider) {
         if (keyColumns.Length == 1) {

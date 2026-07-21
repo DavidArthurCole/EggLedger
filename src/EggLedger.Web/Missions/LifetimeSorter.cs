@@ -7,9 +7,7 @@ public enum LifetimeSortMethod {
     Random,
 }
 
-/// <summary>Sort/ordering for aggregated lifetime drops. Reuses DropSorter comparators; adds the count comparator and random shuffle unique to the Lifetime tab.</summary>
 public static class LifetimeSorter {
-    /// <summary>Unknown values fall back to Default.</summary>
     public static LifetimeSortMethod ParseMethod(string? value) => value switch {
         "iv" => LifetimeSortMethod.Iv,
         "count" => LifetimeSortMethod.Count,
@@ -24,7 +22,6 @@ public static class LifetimeSorter {
         _ => "default",
     };
 
-    /// <summary>Re-sorts every spec-type list per the active method. Random uses the supplied RNG so callers can seed it for tests.</summary>
     public static void Sort(LifetimeData data, LifetimeSortMethod method, Random? rng = null) {
         data.Artifacts = SortList(data.Artifacts, method, rng);
         data.Stones = SortList(data.Stones, method, rng);
@@ -39,7 +36,6 @@ public static class LifetimeSorter {
         _ => DropSorter.SortGroupAlreadyCombed(list),
     };
 
-    /// <summary>Count desc, then level/rarity/id desc, quality asc. No reverse (unlike sortGroupAlreadyCombed).</summary>
     public static List<DropLike> SortGroupByCount(IEnumerable<DropLike> collection) {
         var indexed = new List<(DropLike Item, int Index)>();
         int i = 0;
@@ -76,7 +72,6 @@ public static class LifetimeSorter {
         return 0;
     }
 
-    /// <summary>Fisher-Yates shuffle.</summary>
     public static List<DropLike> Shuffle(IEnumerable<DropLike> collection, Random rng) {
         var list = new List<DropLike>(collection);
         for (int i = list.Count - 1; i > 0; i--) {

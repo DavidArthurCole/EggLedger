@@ -1,6 +1,6 @@
 namespace EggLedger.Web.State;
 
-// Gates the Admin tab. Resolved once at shell startup from the sync server.
+
 public sealed class AdminState {
     public bool IsAdmin {
         get;

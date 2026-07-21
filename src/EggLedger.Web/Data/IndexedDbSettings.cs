@@ -1,9 +1,5 @@
 namespace EggLedger.Web.Data;
 
-/// <summary>
-/// IndexedDB-backed key-value settings store (Go <c>db</c> settings ops). Writes are
-/// upserts: <c>put</c> on the keyPath store replaces by key, matching Go's INSERT ... ON CONFLICT.
-/// </summary>
 public sealed class IndexedDbSettings {
     private readonly IIndexedDb _db;
 
@@ -26,7 +22,6 @@ public sealed class IndexedDbSettings {
     public async Task RemoveSettingAsync(string key) =>
         await _db.DeleteAsync(IndexedDbStores.Settings, key);
 
-    /// <summary>Single-transaction batch upsert. Mirrors Go <c>SetSettings</c>.</summary>
     public async Task SetSettingsAsync(IReadOnlyDictionary<string, string> settings) {
         var rows = settings.Select(kv => (object)new SettingRow { Key = kv.Key, Value = kv.Value });
         await _db.PutManyAsync(IndexedDbStores.Settings, rows);

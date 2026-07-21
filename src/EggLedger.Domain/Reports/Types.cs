@@ -2,7 +2,6 @@ using System.Text.Json.Serialization;
 
 namespace EggLedger.Domain.Reports;
 
-/// <summary>Mirrors the frontend FilterCondition structure. Port of Go reports.FilterCondition.</summary>
 public sealed class FilterCondition {
     [JsonPropertyName("topLevel")]
     public string TopLevel { get; set; } = "";
@@ -12,7 +11,6 @@ public sealed class FilterCondition {
     public string Val { get; set; } = "";
 }
 
-/// <summary>Holds the AND and OR filter groups for a report. Port of Go reports.ReportFilters.</summary>
 public sealed class ReportFilters {
     [JsonPropertyName("and")]
     public List<FilterCondition> And { get; set; } = [];
@@ -20,7 +18,6 @@ public sealed class ReportFilters {
     public List<List<FilterCondition>> Or { get; set; } = [];
 }
 
-/// <summary>Full configuration for a single report. Port of Go reports.ReportDefinition.</summary>
 public sealed class ReportDefinition {
     [JsonPropertyName("id")]
     public string Id { get; set; } = "";
@@ -90,7 +87,6 @@ public sealed class ReportDefinition {
     public int MinSampleSize { get; set; }
 }
 
-/// <summary>Computed output of executing a report. Port of Go reports.ReportResult.</summary>
 public sealed class ReportResult : IEquatable<ReportResult> {
     [JsonPropertyName("labels")]
     public List<string> Labels { get; set; } = [];
@@ -121,10 +117,6 @@ public sealed class ReportResult : IEquatable<ReportResult> {
     [JsonPropertyName("missionCountMatrix")]
     public List<long>? MissionCountMatrix { get; set; }
 
-    /// <summary>
-    /// Value equality across all fields (in-memory vs SQL parity tests). Null and empty
-    /// lists differ only for the nullable optional fields, matching how each path leaves them.
-    /// </summary>
     public bool Equals(ReportResult? other) {
         if (other is null) {
             return false;
@@ -150,7 +142,7 @@ public sealed class ReportResult : IEquatable<ReportResult> {
 
     public override bool Equals(object? obj) => Equals(obj as ReportResult);
 
-    // Coarse (counts only): consistent with Equals but not a good dictionary key.
+    
     public override int GetHashCode() {
         var h = new HashCode();
         h.Add(IsFloat);
@@ -177,9 +169,7 @@ public sealed class ReportResult : IEquatable<ReportResult> {
     }
 }
 
-/// <summary>Static report helpers that do not need DB access.</summary>
 public static class Report {
-    /// <summary>True if the groupBy can be matched against Menno community data. Port of Go reports.MennoComparableGroupBy.</summary>
     public static bool MennoComparableGroupBy(string groupBy) => groupBy switch {
         "ship_type" or "duration_type" or "level" or "mission_target"
             or "artifact_name" or "rarity" or "tier" => true,

@@ -21,7 +21,7 @@ public sealed class MennoServiceTests {
         return ms.ToArray();
     }
 
-    // Returns the gzipped fixture for any GET, simulating the Azure blob.
+    
     private sealed class GzipHandler : HttpMessageHandler {
         private readonly byte[] _gzipped;
         public int Hits;
@@ -68,8 +68,8 @@ public sealed class MennoServiceTests {
 
     [Fact]
     public void Decode_MissingRequiredNestedField_ThrowsLoudly() {
-        // shipConfiguration present but shipType (a field the comparison reads)
-        // renamed: the Go loose decode would have silently zeroed it.
+        
+        
         const string drifted = """
         [
           {
@@ -102,7 +102,7 @@ public sealed class MennoServiceTests {
 
     [Fact]
     public void Decode_NotAnArray_ThrowsLoudly() {
-        // A wholesale shape change (object instead of array) must fail, not coerce.
+        
         Assert.Throws<MennoSchemaException>(
             () => MennoDecode.Decode(Encoding.UTF8.GetBytes("{\"configurationItems\":[]}")));
     }
@@ -145,14 +145,14 @@ public sealed class MennoServiceTests {
         Assert.Equal(new[] { "9", "10" }, result.RawRowLabels);
         Assert.Equal(new[] { "0", "1" }, result.RawColLabels);
 
-        // Hand-traced from fixture + embedded eiafx capacities, weight = eggs / (eggs/capacity summed per ship).
+        
         var expected = new[] { 70.0, 62.0, 60.0, 78.0 };
         Assert.Equal(expected.Length, result.MatrixValues.Count);
         for (int i = 0; i < expected.Length; i++) {
             Assert.Equal(expected[i], result.MatrixValues[i], 9);
         }
 
-        // airtime = matrix / (nominalSeconds / 3600).
+        
         Assert.NotNull(result.AirtimeMatrixValues);
         var expectedAir = new[] { 70.0 / 24, 62.0 / 48, 60.0 / 48, 78.0 / 72 };
         for (int i = 0; i < expectedAir.Length; i++) {
@@ -170,8 +170,8 @@ public sealed class MennoServiceTests {
             def, items, new[] { "9", "10" }, new[] { "0", "1" });
 
         Assert.NotNull(result);
-        // Pre-normalization familyDrops: [2800, 620, 1200, 780].
-        // row 0 sum 3420 -> [81.871..., 18.128...]; row 1 sum 1980 -> [60.606..., 39.393...].
+        
+        
         var expected = new[]
         {
             2800.0 / 3420 * 100, 620.0 / 3420 * 100,
@@ -180,7 +180,7 @@ public sealed class MennoServiceTests {
         for (int i = 0; i < expected.Length; i++) {
             Assert.Equal(expected[i], result!.MatrixValues[i], 9);
         }
-        // Percentage modes never produce airtime values.
+        
         Assert.Null(result!.AirtimeMatrixValues);
     }
 
@@ -193,7 +193,7 @@ public sealed class MennoServiceTests {
             ShipDurationDef(), items, new[] { "9", "10" }, new[] { "0", "1" });
 
         Assert.NotNull(result);
-        // FormatLabel ship_type 9 -> Henerprise display name; duration 0 -> Short.
+        
         Assert.Equal(2, result!.RowLabels.Count);
         Assert.Equal(2, result.ColLabels.Count);
         Assert.DoesNotContain("9", result.RowLabels[0], StringComparison.Ordinal);
@@ -201,8 +201,8 @@ public sealed class MennoServiceTests {
 
     [Fact]
     public async Task ExecuteComparison_IgnoresNonMatchingItems() {
-        // The fixture has a Cornish Hen Corvette (ship 5) item that matches no
-        // requested cell; it must not leak into any cell total.
+        
+        
         var service = Make(FixtureBytes("menno-sample.json"), out _);
         var items = await service.RefreshAsync();
 
@@ -210,16 +210,16 @@ public sealed class MennoServiceTests {
             ShipDurationDef(), items, new[] { "9", "10" }, new[] { "0", "1" });
 
         Assert.NotNull(result);
-        // Sum of matrix would change if the stray item leaked; assert exact cells.
+        
         Assert.Equal(70.0, result!.MatrixValues[0], 9);
         Assert.Equal(78.0, result.MatrixValues[3], 9);
     }
 
     [Theory]
-    [InlineData(false, "artifacts", "ship_type", "duration_type")] // Menno disabled
-    [InlineData(true, "ships", "ship_type", "duration_type")] // wrong subject
-    [InlineData(true, "artifacts", "spec_type", "duration_type")] // non-comparable groupBy
-    [InlineData(true, "artifacts", "ship_type", "")] // empty secondary groupBy
+    [InlineData(false, "artifacts", "ship_type", "duration_type")] 
+    [InlineData(true, "ships", "ship_type", "duration_type")] 
+    [InlineData(true, "artifacts", "spec_type", "duration_type")] 
+    [InlineData(true, "artifacts", "ship_type", "")] 
     public async Task ExecuteComparison_IneligibleReport_ReturnsNull(
         bool enabled, string subject, string groupBy, string secondary) {
         var service = Make(FixtureBytes("menno-sample.json"), out _);

@@ -4,14 +4,6 @@ using Microsoft.Data.Sqlite;
 
 namespace EggLedger.Desktop.Tests;
 
-/// <summary>
-/// D2 parity gate. Same fixtures run two ways must produce an identical ReportResult:
-/// the SQL path (ReportExecutor over SqliteMissionDb) and the in-memory path
-/// (InMemoryReportRunner over typed rows). Shapes cover 1D/2D aggregate, mission and
-/// drops-EXISTS filters, drops-subject, time buckets, normalized, and family-weighted,
-/// exercising the WHERE clause, artifact_drops JOIN, EXISTS subquery, strftime
-/// bucketing, and weighted cap_weight SUM.
-/// </summary>
 public sealed class ReportParityTests {
     private const string Eid = "EI1";
 
@@ -27,7 +19,7 @@ public sealed class ReportParityTests {
         public IReadOnlyList<int> FamilyAfxIds(string familyId) => _ids;
     }
 
-    // Typed-row fixture builders (mirrors InMemoryReportRunnerTests.M / D).
+    
     private static MissionRowData M(
         string id, int ship, int duration, long start, long ret,
         int cap = 1, int nominal = 1, int target = 0, int type = 0,
@@ -60,12 +52,12 @@ public sealed class ReportParityTests {
             SpecType = spec,
         };
 
-    // 1758067200 = the mission-type cutoff; keep all fixtures well after it and
-    // within distinct months so the time-series buckets are stable.
+    
+    
     private static List<MissionRowData> Missions() =>
     [
-        // Distinct per-group counts to avoid SQLite tie-order ambiguity in count-DESC
-        // aggregates: ship 1 -> 3 missions, ship 2 -> 2, ship 3 -> 1.
+        
+        
         M("m1", ship: 1, duration: 0, start: 1758100000, ret: 1758100000 + 3600, cap: 10, nominal: 5, type: 0, level: 1),
         M("m2", ship: 1, duration: 0, start: 1758200000, ret: 1758200000 + 7200, cap: 10, nominal: 5, type: 0, level: 1),
         M("m3", ship: 1, duration: 1, start: 1761000000, ret: 1761000000 + 3600, cap: 8, nominal: 4, type: 1, level: 2),
@@ -76,18 +68,18 @@ public sealed class ReportParityTests {
 
     private static List<ArtifactDropRowData> Drops() =>
     [
-        // m1: two drops (rarity 0, 1), artifact ids 12/13.
+        
         D("m1", artifactId: 12, rarity: 0, tier: 1, dropIndex: 0, spec: "Artifact"),
         D("m1", artifactId: 13, rarity: 1, tier: 2, dropIndex: 1, spec: "Stone"),
-        // m2: one drop rarity 1.
+        
         D("m2", artifactId: 12, rarity: 1, tier: 1, dropIndex: 0, spec: "Artifact"),
-        // m3: one drop rarity 3.
+        
         D("m3", artifactId: 14, rarity: 3, tier: 2, dropIndex: 0, spec: "Artifact"),
-        // m4: one drop rarity 0.
+        
         D("m4", artifactId: 13, rarity: 0, tier: 1, dropIndex: 0, spec: "Stone"),
-        // m5: zero-drop sentinel (drop_index -1, excluded by the engine).
+        
         D("m5", artifactId: 0, rarity: 0, tier: 0, dropIndex: -1, spec: ""),
-        // m6: two drops rarity 2.
+        
         D("m6", artifactId: 12, rarity: 2, tier: 3, dropIndex: 0, spec: "Artifact"),
         D("m6", artifactId: 14, rarity: 2, tier: 1, dropIndex: 1, spec: "Artifact"),
     ];

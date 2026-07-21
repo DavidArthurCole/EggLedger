@@ -10,13 +10,11 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace EggLedger.Web;
 
-/// <summary>Shared DI registration for the Blazor UI. Host-specific bits (HttpClient base, platform capabilities, storage) are supplied or overridden by the caller.</summary>
 public static class WebServiceRegistration {
-    /// <summary>Registers host-agnostic UI services plus browser defaults. Desktop overrides storage and platform capabilities.</summary>
     public static IServiceCollection AddEggLedgerWeb(this IServiceCollection services, Uri httpBaseAddress) {
         services.AddScoped(_ => new HttpClient { BaseAddress = httpBaseAddress });
 
-        // No default IIndexedDb here: both hosts must register a backend (Postgres/SQLite).
+        
         services.AddScoped<IndexedDbSettings>();
         services.AddScoped<IndexedDbAccountStore>();
         services.AddScoped<IndexedDbReportStore>();
@@ -34,7 +32,7 @@ public static class WebServiceRegistration {
 
         services.AddSingleton<EggLedger.Web.Missions.MissionConfigProvider>();
 
-        // CORS blocks auxbrain directly; the prefix is a same-origin path the host reverse-proxies upstream.
+        
         services.AddScoped(sp => new ApiClient(sp.GetRequiredService<HttpClient>(), apiPrefix: "/egg-api"));
 
         services.AddScoped<IApiPayloadDecoder>(sp => new LocalApiPayloadDecoder(sp.GetRequiredService<ApiClient>()));
@@ -43,17 +41,17 @@ public static class WebServiceRegistration {
         services.AddScoped<FetchOrchestrator>();
         services.AddScoped<AddAccountService>();
 
-        // UI binds IDownloadService so desktop can swap a save-to-disk sink; the concrete impl stays resolvable for IAsyncDisposable cleanup.
+        
         services.AddScoped<DownloadService>();
         services.AddScoped<IDownloadService>(sp => sp.GetRequiredService<DownloadService>());
 
         services.AddSingleton<IWeightData>(_ => EiafxWeightData.Instance);
 
-        // Singleton: the multi-MB community payload downloads once for all circuits. Owns a
-        // dedicated long-lived HttpClient (not the scoped one) to avoid a captive dependency.
+        
+        
         services.AddSingleton(_ => new MennoService(new HttpClient()));
 
-        // Redirect is behind INavigation for testability.
+        
         services.AddScoped<INavigation, BlazorNavigation>();
         services.AddScoped<IBlobCipher, LocalBlobCipher>();
         services.AddScoped<CloudSyncService>();
@@ -61,7 +59,7 @@ public static class WebServiceRegistration {
         services.AddScoped<AdminState>();
         services.AddScoped<EggLedger.Web.Settings.CloudSessionStore>();
 
-        // Desktop overrides the browser platform impl with a native one.
+        
         services.AddScoped<ActiveAccount>();
         services.AddScoped<ScreenshotSafetyState>();
         services.AddScoped<AppStateService>();
@@ -69,12 +67,12 @@ public static class WebServiceRegistration {
         services.AddScoped<AccountLoader>();
         services.AddScoped<IPlatformCapabilities, BrowserPlatformCapabilities>();
 
-        // Desktop storage/export seams: browser no-ops; desktop swaps native impls.
+        
         services.AddScoped<BrowserStorageManagement>();
         services.AddScoped<IStorageManagement>(sp => sp.GetRequiredService<BrowserStorageManagement>());
         services.AddScoped<IExportManagement>(sp => sp.GetRequiredService<BrowserStorageManagement>());
 
-        // Browser default is the no-op; desktop overrides with the live updater.
+        
         services.AddScoped<IUpdateStatusProvider, NoOpUpdateStatusProvider>();
 
         return services;

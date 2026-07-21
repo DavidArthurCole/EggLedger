@@ -1,18 +1,19 @@
 @using System.Globalization
 @using System.Text.Json
 @using EggLedger.Web.Components
+@using EggLedger.Web.Server.Sync
 @using SyncKit.Bot
 @using SyncKit.Contract
 @inject IServiceProvider Services
+@inject AppConfig Config
 
 <div class="admin-panel">
     <div class="admin-panel-head">
         <span class="admin-panel-title">Bot config</span>
-        <span class="text-xs text-gray-500">dashboard + deploy-notification embeds</span>
     </div>
 
     @if (Service is null) {
-        <p class="text-gray-500 italic text-sm">Bot not configured (needs a bot token, a dashboard channel, and Postgres).</p>
+        <p class="text-gray-500 italic text-sm">Bot not configured. Missing: @string.Join(", ", MissingConfig()).</p>
     } else if (!_loaded) {
         <p class="text-gray-500 italic text-sm">Loading...</p>
     } else {
@@ -142,6 +143,15 @@
         [("success", "Success"), ("failure", "Failure"), ("uptodate", "Already up to date")];
 
     private BotConfigService? Service => Services.GetService<BotConfigService>();
+
+    private List<string> MissingConfig() {
+        var missing = new List<string>();
+        if (string.IsNullOrEmpty(Config.BotToken)) missing.Add("DISCORD_BOT_TOKEN");
+        if (string.IsNullOrEmpty(Config.GuildId)) missing.Add("DISCORD_GUILD_ID");
+        if (string.IsNullOrEmpty(Config.DatabaseUrl)) missing.Add("DATABASE_URL");
+        if (string.IsNullOrEmpty(Config.DashboardChannelId)) missing.Add("DISCORD_DASHBOARD_CHANNEL_ID");
+        return missing.Count > 0 ? missing : ["bot guild membership not yet resolved, retry shortly"];
+    }
 
     private bool _loaded;
     private bool _saving;

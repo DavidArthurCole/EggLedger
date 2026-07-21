@@ -5,10 +5,6 @@ using EggLedger.Web.Platform;
 
 namespace EggLedger.Desktop.Export;
 
-/// <summary>
-/// Desktop "Export management" backend over the pure <see cref="ExportManagement"/>
-/// logic. Port of Go main.go bindings listExportFiles/pruneOldExports/deleteExportFiles.
-/// </summary>
 public sealed class DesktopExportService : IExportManagement {
     private readonly string _exportsDir;
     private readonly IExportFileSystem _fs;
@@ -23,7 +19,6 @@ public sealed class DesktopExportService : IExportManagement {
         _accountLookup = accountLookup;
     }
 
-    /// <summary>Groups newest-first, enriched with account nickname/color when a lookup is supplied.</summary>
     public async Task<List<ExportGroup>> ListAsync() {
         var dir = _exportsDir;
         var groups = await Task.Run(() => ExportManagement.ListGroups(dir, _fs));
@@ -44,7 +39,6 @@ public sealed class DesktopExportService : IExportManagement {
         return groups;
     }
 
-    /// <summary>Prunes every group to at most <paramref name="keepCount"/> newest pairs; aggregates counts.</summary>
     public Task<(int deleted, long freedBytes)> PruneAsync(int keepCount) {
         var dir = _exportsDir;
         return Task.Run(() => {
@@ -59,7 +53,6 @@ public sealed class DesktopExportService : IExportManagement {
         });
     }
 
-    /// <summary>Deletes each path; missing files are ignored by the filesystem seam.</summary>
     public Task DeleteAsync(IEnumerable<string> paths) {
         var snapshot = paths.ToList();
         return Task.Run(() => {

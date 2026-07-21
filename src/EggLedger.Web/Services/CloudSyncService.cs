@@ -6,9 +6,7 @@ using EggLedger.Domain.Crypto;
 
 namespace EggLedger.Web.Services;
 
-/// <summary>Browser cloud-sync client: same-origin Discord OAuth (redirect + poll) plus generic encrypted blob transport. Blobs are encrypted client-side under the per-user key before PUT and decrypted after GET.</summary>
 public sealed class CloudSyncService {
-    /// <summary>Same-origin API prefix, relative to the HttpClient base address.</summary>
     public const string ApiPrefix = "api/v1";
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
     private readonly HttpClient _http;
@@ -21,7 +19,6 @@ public sealed class CloudSyncService {
         _cipher = cipher;
     }
 
-    /// <summary>Probes <c>GET /api/v1/verify</c> for reachability. Any non-200 or transport error returns false; never throws.</summary>
     public async Task<bool> CheckReachableAsync(CancellationToken cancellationToken = default) {
         try {
             using var resp = await _http.GetAsync($"{ApiPrefix}/verify", cancellationToken).ConfigureAwait(false);
@@ -33,7 +30,6 @@ public sealed class CloudSyncService {
         }
     }
 
-    /// <summary>Starts the Discord OAuth flow: gets the auth URL + poll state, redirects the browser, and returns the state to poll via <see cref="PollOnceAsync"/>.</summary>
     public async Task<string> BeginAuthAsync(CancellationToken cancellationToken = default) {
         AuthInitResponse? init;
         using (var resp = await _http.GetAsync($"{ApiPrefix}/auth/discord", cancellationToken).ConfigureAwait(false)) {
@@ -50,7 +46,6 @@ public sealed class CloudSyncService {
         return init.State;
     }
 
-    /// <summary>Polls <c>GET /api/v1/auth/poll?state=</c> once. 202 and 404 both mean keep polling; 200 returns the session; any other status fails loudly.</summary>
     public async Task<PollResult> PollOnceAsync(string state, CancellationToken cancellationToken = default) {
         var url = $"{ApiPrefix}/auth/poll?state={Uri.EscapeDataString(state)}";
         using var resp = await _http.GetAsync(url, cancellationToken).ConfigureAwait(false);
@@ -71,7 +66,6 @@ public sealed class CloudSyncService {
         return PollResult.Done(session);
     }
 
-    /// <summary>Mints a sync session from the caller's already-authenticated cookie login (Web only - no Discord OAuth handshake). Same-origin POST, cookie flows automatically.</summary>
     public async Task<CloudSession> ConnectViaLoginAsync(CancellationToken cancellationToken = default) {
         using var resp = await _http.PostAsync($"{ApiPrefix}/auth/session-from-login", content: null, cancellationToken).ConfigureAwait(false);
         if (resp.StatusCode == HttpStatusCode.Unauthorized) {
@@ -85,15 +79,13 @@ public sealed class CloudSyncService {
         return new CloudSession(poll.Token, poll.Username, poll.AvatarUrl, poll.EncryptionKey);
     }
 
-    /// <summary>Invalidates the server-side session (<c>DELETE /api/v1/auth/session</c>). Server always returns 204; clearing local creds is the caller's job.</summary>
     public async Task DisconnectAsync(string token, CancellationToken cancellationToken = default) {
         using var req = new HttpRequestMessage(HttpMethod.Delete, $"{ApiPrefix}/auth/session");
         req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        // Server always 204; errors are non-fatal, so the response is ignored.
+        
         using var resp = await _http.SendAsync(req, cancellationToken).ConfigureAwait(false);
     }
 
-    /// <summary>Sets the bearer header, sends the request, and applies the shared 401 check. Callers own the returned response and remaining status handling.</summary>
     private async Task<HttpResponseMessage> SendAuthedAsync(
         CloudSession session, HttpRequestMessage request, string expiredMessage, CancellationToken cancellationToken) {
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", session.Token);
@@ -105,7 +97,6 @@ public sealed class CloudSyncService {
         return resp;
     }
 
-    /// <summary>Serializes the payload to JSON, encrypts under the session key, and PUTs the ciphertext to <c>/api/v1/blobs/{name}</c>.</summary>
     public async Task PutBlobAsync<T>(CloudSession session, string name, T payload, CancellationToken cancellationToken = default) {
         var plaintext = JsonSerializer.SerializeToUtf8Bytes(payload, Json);
         var ciphertext = await _cipher.EncryptAsync(session.EncryptionKey, plaintext, cancellationToken).ConfigureAwait(false);
@@ -119,7 +110,6 @@ public sealed class CloudSyncService {
         }
     }
 
-    /// <summary>GETs <c>/api/v1/blobs/{name}</c>, decrypts under the session key, and deserializes into <typeparamref name="T"/>. 404 and 401 both fail loudly.</summary>
     public async Task<T> GetBlobAsync<T>(CloudSession session, string name, CancellationToken cancellationToken = default) {
         using var req = new HttpRequestMessage(HttpMethod.Get, $"{ApiPrefix}/blobs/{Uri.EscapeDataString(name)}");
 
@@ -144,7 +134,6 @@ public sealed class CloudSyncService {
         return value;
     }
 
-    /// <summary>Lists the caller's blob names + update times (<c>GET /api/v1/blobs</c>). Empty list when none.</summary>
     public async Task<IReadOnlyList<BlobListEntry>> ListBlobsAsync(CloudSession session, CancellationToken cancellationToken = default) {
         using var req = new HttpRequestMessage(HttpMethod.Get, $"{ApiPrefix}/blobs");
 
@@ -156,7 +145,6 @@ public sealed class CloudSyncService {
             ?? [];
     }
 
-    /// <summary>Deletes one blob (<c>DELETE /api/v1/blobs/{name}</c>). Server returns 204.</summary>
     public async Task DeleteBlobAsync(CloudSession session, string name, CancellationToken cancellationToken = default) {
         using var req = new HttpRequestMessage(HttpMethod.Delete, $"{ApiPrefix}/blobs/{Uri.EscapeDataString(name)}");
         using var resp = await SendAuthedAsync(session, req, "deleteBlob: session expired - please reconnect", cancellationToken).ConfigureAwait(false);
@@ -165,7 +153,6 @@ public sealed class CloudSyncService {
         }
     }
 
-    /// <summary>Deletes the user's entire cloud account (<c>DELETE /api/v1/user</c>, CASCADE). Server returns 204; caller clears local creds after.</summary>
     public async Task DeleteAccountAsync(CloudSession session, CancellationToken cancellationToken = default) {
         using var req = new HttpRequestMessage(HttpMethod.Delete, $"{ApiPrefix}/user");
         using var resp = await SendAuthedAsync(session, req, "deleteAccount: session expired - please reconnect", cancellationToken).ConfigureAwait(false);

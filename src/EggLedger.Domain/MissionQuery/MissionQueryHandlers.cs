@@ -3,10 +3,6 @@ using Ei;
 
 namespace EggLedger.Domain.MissionQuery;
 
-/// <summary>
-/// Port of Go package missionquery (missionquery.go + drops.go). Handler logic only;
-/// data access via <see cref="IMissionStore"/>, base quality via <see cref="IArtifactQuality"/>. SQL not ported.
-/// </summary>
 public sealed class MissionQueryHandlers {
     private readonly IMissionStore _store;
     private readonly IArtifactQuality _quality;
@@ -18,14 +14,9 @@ public sealed class MissionQueryHandlers {
         _compiler = compiler;
     }
 
-    /// <summary>Port of GetMissionIds. Null on store error.</summary>
     public Task<IReadOnlyList<string>?> GetMissionIdsAsync(string playerId) =>
         _store.GetCompleteMissionIdsAsync(playerId);
 
-    /// <summary>
-    /// Port of GetExistingData. Joins known accounts with their stats, dropping
-    /// accounts with no stored missions or whose stats errored. Order follows the known-account list.
-    /// </summary>
     public async Task<List<DatabaseAccount>> GetExistingDataAsync() {
         var result = new List<DatabaseAccount>();
         foreach (var acct in await _store.GetKnownAccountsAsync()) {
@@ -47,20 +38,19 @@ public sealed class MissionQueryHandlers {
         return result;
     }
 
-    /// <summary>Port of ViewMissionsOfEid -> viewMissionsOfId. Null on error.</summary>
     public async Task<IReadOnlyList<IMissionRow>?> ViewMissionsOfEidAsync(string eid) {
-        // Self-limiting (per-account in-flight guard + per-mission row check), so
-        // triggering on every view is cheap once the one-time backfill has run.
+        
+        
         _store.QueueArtifactDropsBackfill(eid);
 
         int? pending = await _store.CountPendingFilterColsAsync(eid);
 
-        // Fast path: every mission has filter columns; build from DB columns only.
+        
         if (pending is 0) {
             return await _store.GetPlayerMissionMetaAsync(eid);
         }
 
-        // Slow path: decode + compile every payload.
+        
         var complete = await _store.GetPlayerCompleteMissionsAsync(eid);
         if (complete is null) {
             return null;
@@ -70,7 +60,7 @@ public sealed class MissionQueryHandlers {
             missions.Add(_compiler.CompileMissionInformation(cm));
         }
 
-        // Kick a one-time background backfill so the next call uses the fast path.
+        
         if (pending is > 0) {
             _store.QueueFilterColBackfill(eid);
         }
@@ -78,10 +68,6 @@ public sealed class MissionQueryHandlers {
         return missions;
     }
 
-    /// <summary>
-    /// Port of GetDurationConfigs. Shapes eiafx mission parameters into the per-ship
-    /// duration config list; the parameter table is supplied by the caller.
-    /// </summary>
     public static List<PossibleMission> GetDurationConfigs(
         IEnumerable<ArtifactsConfigurationResponse.MissionParameters> missionParameters) {
         var result = new List<PossibleMission>();
@@ -102,15 +88,10 @@ public sealed class MissionQueryHandlers {
         return result;
     }
 
-    /// <summary>
-    /// Port of GetAllPlayerDrops. Maps missionId to drops from pre-extracted drop rows.
-    /// Seeded with every stored mission id (zero-drop missions get an empty list) so
-    /// callers counting dictionary entries get the true mission count. Null on store error.
-    /// </summary>
     public async Task<Dictionary<string, List<MissionDrop>>?> GetAllPlayerDropsAsync(string playerId) {
-        // Read pre-extracted drop rows instead of re-decoding every mission. In the
-        // browser each decode is a server round-trip, so decoding a full history here
-        // would mean thousands of sequential requests.
+        
+        
+        
         var stored = await _store.GetStoredPlayerDropsAsync(playerId);
         if (stored is null) {
             return null;
@@ -142,7 +123,6 @@ public sealed class MissionQueryHandlers {
         return result;
     }
 
-    /// <summary>Port of GetShipDrops. Drops for one mission. Null on error or cache miss.</summary>
     public async Task<List<MissionDrop>?> GetShipDropsAsync(string playerId, string missionId) {
         var cm = await _store.GetCompleteMissionAsync(playerId, missionId);
         if (cm is null) {
@@ -158,10 +138,6 @@ public sealed class MissionQueryHandlers {
         return drops;
     }
 
-    /// <summary>
-    /// Shared drop-shaping logic from drops.go. Classifies SpecType by proto name;
-    /// effect string attached for Stones/Artifacts only.
-    /// </summary>
     private MissionDrop ShapeDrop(ArtifactSpec spec) {
         string protoName = EnumNames.ProtoName(spec.name);
         var drop = new MissionDrop {

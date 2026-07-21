@@ -3,12 +3,12 @@ using SyncKit.Identity.Client;
 
 namespace EggLedger.Web.Server.Sync.Auth;
 
-// Distinct from Storage.CurrentUser (the Blazor-circuit, AuthenticationStateProvider-based
-// one). This is for the minimal-API /api/v1/* and /api/ships/* surface, which RequireAuth gates
-// via a bearer token -> X-Discord-ID header (actually a user_id GUID string post-migration) and
-// never populates HttpContext.User/ClaimsPrincipal at all. Role isn't in that header, so it's
-// resolved with one identity-API call per request and cached on HttpContext.Items for the
-// lifetime of the request.
+
+
+
+
+
+
 public interface ICurrentUser {
     Guid? UserId(HttpContext ctx);
     Task<string?> RoleAsync(HttpContext ctx, CancellationToken ct);

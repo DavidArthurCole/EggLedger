@@ -4,7 +4,6 @@ using EggLedger.Domain.MissionQuery;
 
 namespace EggLedger.Web.Missions;
 
-/// <summary>Filter value-option builders, golden-matched to filterOptions.ts (option order, value encoding, dedup/sort rules). MissionFilterMatcher validates against these.</summary>
 public static class FilterOptions {
     private static readonly string[] ShipNames =
     [
@@ -90,7 +89,6 @@ public static class FilterOptions {
         new FilterOption { Text = "Ingredient", Value = "3" },
     ];
 
-    /// <summary>Value options for a mission filter field. Returns [] for target (caller supplies targets) and drops (caller has its own modal).</summary>
     public static List<FilterOption> GetMissionFilterValueOptions(string topLevel) => topLevel switch {
         "ship" => GetShipFilterOptions(),
         "farm" => GetFarmFilterOptions(),
@@ -101,7 +99,6 @@ public static class FilterOptions {
         _ => [],
     };
 
-    /// <summary>One option per distinct artifact level: dedup by level, sort ascending, value is the raw level int.</summary>
     public static List<FilterOption> GetArtifactTierFilterOptions(IEnumerable<PossibleArtifact> artifactConfigs) {
         var levels = new SortedSet<int>();
         foreach (var a in artifactConfigs) {
@@ -117,7 +114,6 @@ public static class FilterOptions {
         return result;
     }
 
-    /// <summary>One option per artifact family: pick the lowest-level entry per name enum, value is the name enum, sort alphabetically by text.</summary>
     public static List<FilterOption> GetArtifactNameFilterOptions(IReadOnlyList<PossibleArtifact> artifactConfigs) {
         var representatives = new Dictionary<int, PossibleArtifact>();
         foreach (var a in artifactConfigs) {
@@ -133,7 +129,7 @@ public static class FilterOptions {
                 ImagePath = DropPath(a),
             });
         }
-        // Vue sorts via localeCompare; invariant culture compare orders like the live app, not raw UTF-16 ordinal.
+        
         result.Sort((x, y) => string.Compare(x.Text, y.Text, StringComparison.OrdinalIgnoreCase));
         return result;
     }
@@ -170,7 +166,6 @@ public static class FilterOptions {
         return "artifacts/" + fixedName + "/" + fixedName + "_" + (drop.Level + 1 + addendum) + ".png";
     }
 
-    /// <summary>Insertion order preserved: "Any Rare/Epic/Legendary" trio first, then per family/tier in first-seen order. Value encoding is name_level_rarity_baseQuality, "%" marks a wildcard segment.</summary>
     public static List<FilterOption> GetDropFilterOptions(
         IReadOnlyList<PossibleArtifact> artifactConfigs,
         double maxQuality,
@@ -189,9 +184,9 @@ public static class FilterOptions {
             new() { Text = "Any Legendary", Value = "%_%_3_%", Rarity = 3, StyleClass = "text-legendary", ImagePath = "icon_help.webp" },
         };
 
-        // Stone fragments are the same family as their stone (e.g. LUNAR_STONE_FRAGMENT
-        // rolls into LUNAR_STONE) despite being a distinct ArtifactSpec.Name enum value;
-        // merge them for grouping/display only, never for the Value string.
+        
+        
+        
         var stoneProtoNames = new HashSet<string>();
         foreach (var a in artifactList) {
             if (!a.ProtoName.Contains("_FRAGMENT", StringComparison.Ordinal)) {
@@ -213,7 +208,7 @@ public static class FilterOptions {
             }
         }
 
-        // Insertion-ordered family -> tier(TierNumber) -> artifacts grouping.
+        
         var byFamily = new Dictionary<int, Dictionary<int, List<PossibleArtifact>>>();
         var familyOrder = new List<int>();
         foreach (var a in artifactList) {
@@ -284,8 +279,8 @@ public static class FilterOptions {
         return result;
     }
 
-    // Prefers the non-fragment (stone/artifact) DisplayName so a merged family reads
-    // as "Lunar stone", not "Lunar stone fragment".
+    
+    
     private static string FamilyDisplayName(Dictionary<int, List<PossibleArtifact>> tierMap, List<int> tierOrder) {
         foreach (var tier in tierOrder) {
             foreach (var a in tierMap[tier]) {

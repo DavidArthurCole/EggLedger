@@ -31,7 +31,6 @@
                 </rect>
             }
         </svg>
-        <div class="text-xs text-gray-500 mt-1 mb-2">@Metrics.Minutes.Sum(m => m.Total) requests in the last 60 minutes</div>
 
         <div class="tile-group mb-2">
             <button type="button" class="tile-group-item @(_tab == "endpoint" ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover")" @onclick="@(() => _tab = "endpoint")">By endpoint</button>
@@ -58,7 +57,6 @@
                 </table>
             </div>
         } else {
-            <div class="text-xs text-gray-500 mb-1">Invalid /api/v1 requests (no matching route). Likely scanners probing for other software.</div>
             <div class="admin-table-wrap">
                 <table class="admin-table">
                     <thead>

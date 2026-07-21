@@ -21,10 +21,6 @@ public sealed class IndexedDbMissionStoreTests {
         ReturnTimestamp = start + 100,
     };
 
-    /// <summary>
-    /// Builds a stored complete_payload (gzipped AuthenticatedMessage wrapping a
-    /// serialized CompleteMissionResponse), mirroring the on-disk format the Go fetch pipeline writes.
-    /// </summary>
     private static byte[] PackPayload(CompleteMissionResponse resp) {
         using var inner = new MemoryStream();
         Serializer.Serialize(inner, resp);
@@ -120,7 +116,7 @@ public sealed class IndexedDbMissionStoreTests {
         Assert.Equal(MissionInfo.Spaceship.Henerprise, got.Info.Ship);
         Assert.Single(got.Artifacts);
         Assert.Equal(ArtifactSpec.Name.TachyonDeflector, got.Artifacts[0].Spec!.name);
-        // StartTimeDerived is restored from the row, not the payload.
+        
         Assert.Equal(12345, got.Info.StartTimeDerived);
     }
 

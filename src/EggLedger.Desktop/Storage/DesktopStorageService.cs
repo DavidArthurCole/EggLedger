@@ -8,10 +8,6 @@ public enum StoragePart {
     Logs,
 }
 
-/// <summary>
-/// Backup and move of the desktop data tree. Port of Go main.go backupStoragePart /
-/// moveStorageTo over StoragePaths copy helpers. Source files are never deleted.
-/// </summary>
 public sealed class DesktopStorageService : IStorageManagement {
     private readonly string _rootDir;
     private readonly IPlatformCapabilities _platform;
@@ -21,7 +17,6 @@ public sealed class DesktopStorageService : IStorageManagement {
         : this(rootDir, platform, StoragePaths.WriteBootstrapConfig) {
     }
 
-    /// <summary>The bootstrap-write seam lets tests avoid touching the global user bootstrap.json.</summary>
     public DesktopStorageService(string rootDir, IPlatformCapabilities platform, Action<string> writeBootstrap) {
         _rootDir = rootDir;
         _platform = platform;
@@ -30,7 +25,6 @@ public sealed class DesktopStorageService : IStorageManagement {
 
     public string GetDataRootDir() => StoragePaths.ResolveDataRootDir(_rootDir);
 
-    /// <summary>Copies each selected part into destPath/{internal,exports,logs}. Missing source parts are skipped.</summary>
     public Task BackupAsync(string destPath, bool db, bool exports, bool logs) {
         return Task.Run(() => {
             if (db) {
@@ -45,7 +39,6 @@ public sealed class DesktopStorageService : IStorageManagement {
         });
     }
 
-    /// <summary>Copies all parts to destPath, points the bootstrap data root there, then restarts.</summary>
     public async Task MoveAsync(string destPath) {
         if (PathsEqual(destPath, GetDataRootDir())) {
             throw new InvalidOperationException("destination is the current data root");

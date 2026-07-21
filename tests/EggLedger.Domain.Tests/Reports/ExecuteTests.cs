@@ -2,11 +2,11 @@ using EggLedger.Domain.Reports;
 
 namespace EggLedger.Domain.Tests.Reports;
 
-// Port of Go reports/execute_test.go (gap-fill matrix sanity), plus end-to-end
-// ExecuteReport coverage against an in-memory IMissionDb double.
+
+
 public class ExecuteTests {
-    // Direct port of TestGapFill_SparseSeries: build a buckets x groups matrix and
-    // verify missing cells are zero-filled and present cells carry through.
+    
+    
     [Fact]
     public void GapFill_SparseSeries() {
         var buckets = new[] { "2025-01", "2025-02", "2025-03" };
@@ -28,16 +28,16 @@ public class ExecuteTests {
             }
         }
 
-        Assert.Equal(0, matrix[(1 * nC) + 1]); // 2025-02 Henerprise gap-filled
-        Assert.Equal(5, matrix[(0 * nC) + 0]); // 2025-01 Eagle
-        Assert.Equal(8, matrix[(2 * nC) + 1]); // 2025-03 Henerprise
+        Assert.Equal(0, matrix[(1 * nC) + 1]); 
+        Assert.Equal(5, matrix[(0 * nC) + 0]); 
+        Assert.Equal(8, matrix[(2 * nC) + 1]); 
     }
 
     private sealed class FakeDb : IMissionDb {
         private readonly Dictionary<string, IReadOnlyList<object?[]>> _byPrefix = new(StringComparer.Ordinal);
         public List<(string sql, IReadOnlyList<object?> args)> Calls { get; } = [];
 
-        // Match on a unique substring of the query so tests need not reproduce whitespace.
+        
         public FakeDb On(string contains, IReadOnlyList<object?[]> rows) {
             _byPrefix[contains] = rows;
             return this;
@@ -66,7 +66,7 @@ public class ExecuteTests {
 
     [Fact]
     public void ExecuteReport_Aggregate_FormatsShipLabels() {
-        // ship_type aggregate: raw ship enum values -> ship names via FormatLabel.
+        
         var db = new FakeDb().On("GROUP BY m.ship", new object?[][]
         {
             ["9", 10L],
@@ -80,7 +80,7 @@ public class ExecuteTests {
         Assert.False(result.Is2D);
         Assert.False(result.IsFloat);
         Assert.Equal([10, 4], result.Values);
-        // ship 9 -> Henerprise, ship 3 -> BCR.
+        
         Assert.Equal("Henerprise", result.Labels[0]);
         Assert.Equal("BCR", result.Labels[1]);
         Assert.Equal("EI1", db.Calls[0].args[0]);
@@ -105,18 +105,18 @@ public class ExecuteTests {
         var result = ex.ExecuteReport(def);
 
         Assert.True(result.Is2D);
-        // Rows sorted by raw ship value: 3 (BCR) then 9 (Henerprise).
+        
         Assert.Equal(["BCR", "Henerprise"], result.RowLabels);
-        // Cols sorted by raw duration value: 0 (Short) then 1 (Standard).
+        
         Assert.Equal(["Short", "Standard"], result.ColLabels);
-        // Matrix row-major: [BCR/Short=0, BCR/Standard=2, Hen/Short=5, Hen/Standard=7].
+        
         Assert.Equal([0, 2, 5, 7], result.MatrixValues);
     }
 
     [Fact]
     public void ExecuteReport_FamilyWeighted_UsesWeightedPath() {
-        // FamilyWeight set + non-empty FamilyAfxIds routes to the weighted aggregate.
-        // Oracle rows: rawLabel, artifactId, level, capWeight.
+        
+        
         var db = new FakeDb().On("cap_weight", new object?[][]
         {
             ["9", 1L, 0L, 2.0],
@@ -134,7 +134,7 @@ public class ExecuteTests {
         var result = ex.ExecuteReport(def);
 
         Assert.True(result.IsFloat);
-        // capWeight * craftingWeight(=1); values sorted descending: 2.0 then 1.0.
+        
         Assert.Equal([2.0, 1.0], result.FloatValues);
     }
 

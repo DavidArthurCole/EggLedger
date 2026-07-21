@@ -45,13 +45,13 @@ public class UtilFormatTests {
 
     [Fact]
     public void AbbreviateFloat_TenBillion() {
-        // 10B: vCopy=10.0, precision=1 -> "10.0B"
+        
         Assert.Equal("10.0B", Format.AbbreviateFloat(10_000_000_000));
     }
 
     [Fact]
     public void AbbreviateFloat_HundredBillion() {
-        // 100B: vCopy=100.0, precision=0 -> "100B"
+        
         Assert.Equal("100B", Format.AbbreviateFloat(100_000_000_000));
     }
 }

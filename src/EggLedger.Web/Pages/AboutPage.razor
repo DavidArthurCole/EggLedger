@@ -178,7 +178,7 @@
         InvokeAsync(StateHasChanged);
     }
 
-    // Explicit user check bypasses the 12h cooldown (force=true).
+    
     private Task CheckUpdate() {
         return UpdateStatus.CheckForUpdatesAsync(true);
     }

@@ -52,7 +52,6 @@
 
 @code {
 
-    /// <summary>The bound color, a canonical #rrggbb string.</summary>
     [Parameter]
     public string Value { get; set; } = ColorPickerMath.Fallback;
 
@@ -68,7 +67,7 @@
     private readonly string _registrationId = $"color-picker-{Interlocked.Increment(ref _nextId)}";
 
     protected override void OnParametersSet() {
-        // Re-derive the editor state when the bound value changes from outside.
+        
         if (CurrentHex != _lastSynced) {
             SyncFromHex(CurrentHex);
             _lastSynced = CurrentHex;

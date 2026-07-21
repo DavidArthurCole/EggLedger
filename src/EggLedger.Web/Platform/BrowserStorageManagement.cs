@@ -2,7 +2,6 @@ using EggLedger.Domain.Export;
 
 namespace EggLedger.Web.Platform;
 
-/// <summary>Browser no-ops for the desktop storage seams. The Storage/Export panels are gated on IsDesktop, so these never run.</summary>
 public sealed class BrowserStorageManagement : IStorageManagement, IExportManagement {
     public string GetDataRootDir() => "";
     public Task BackupAsync(string destPath, bool db, bool exports, bool logs) => Task.CompletedTask;

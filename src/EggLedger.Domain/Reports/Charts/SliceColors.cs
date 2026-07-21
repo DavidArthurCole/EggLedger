@@ -3,14 +3,9 @@ using System.Text.Json;
 
 namespace EggLedger.Domain.Reports.Charts;
 
-/// <summary>
-/// Color math for pie and bar chart slices. Port of Vue useSliceColors.ts: hex/HSL
-/// conversion and the auto hue-spread. Labels without an override fall back to the spread.
-/// </summary>
 public static class SliceColors {
     private const string DefaultBase = "#6366f1";
 
-    /// <summary>Converts #rrggbb to (hue[0..360), saturation[0..1], lightness[0..1]). Malformed input falls back to the default base color.</summary>
     public static (double H, double S, double L) HexToHsl(string hex) {
         if (!IsHexColor(hex)) {
             hex = DefaultBase;
@@ -37,7 +32,6 @@ public static class SliceColors {
         return (h, s, l);
     }
 
-    /// <summary>Converts HSL (hue degrees, s[0..1], l[0..1]) to #rrggbb. Port of useSliceColors hslToHex.</summary>
     public static string HslToHex(double h, double s, double l) {
         double a = s * Math.Min(l, 1 - l);
         string F(int n) {
@@ -49,7 +43,6 @@ public static class SliceColors {
         return $"#{F(0)}{F(8)}{F(4)}";
     }
 
-    /// <summary><paramref name="count"/> colors spread across the hue wheel from the base color's hue. Port of useSliceColors autoSliceColors.</summary>
     public static IReadOnlyList<string> AutoSliceColors(string baseColor, int count) {
         var (h, s, l) = HexToHsl(baseColor);
         var result = new List<string>(Math.Max(count, 0));
@@ -59,7 +52,6 @@ public static class SliceColors {
         return result;
     }
 
-    /// <summary>Parses a JSON label-to-hex map; empty map on blank or invalid input. Port of useSliceColors parseLabelColors.</summary>
     public static Dictionary<string, string> ParseLabelColors(string? raw) {
         if (string.IsNullOrEmpty(raw)) {
             return new Dictionary<string, string>(StringComparer.Ordinal);
@@ -72,10 +64,6 @@ public static class SliceColors {
         }
     }
 
-    /// <summary>
-    /// Color for a label: explicit override, else the hue-spread slot for the label's
-    /// index, else the base color. Port of useSliceColors getLabelColor.
-    /// </summary>
     public static string GetLabelColor(
         string label,
         string baseColor,
@@ -116,7 +104,7 @@ public static class SliceColors {
     private static int ParseByte(string hex, int start) =>
         int.Parse(hex.AsSpan(start, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture);
 
-    // Non-negative modulo, matching the Vue hue-math contract for any input.
+    
     private static double Mod(double a, double n) {
         double r = a % n;
         return r < 0 ? r + n : r;

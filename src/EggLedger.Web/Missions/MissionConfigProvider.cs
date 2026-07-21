@@ -3,7 +3,6 @@ using EggLedger.Domain.MissionQuery;
 
 namespace EggLedger.Web.Missions;
 
-/// <summary>Scoped wrapper caching the Domain MissionConfigData builders (duration configs, targets, artifacts, max quality) the filter UI and matcher share.</summary>
 public sealed class MissionConfigProvider {
     private readonly Lazy<IReadOnlyList<PossibleMission>> _durationConfigs =
         new(() => MissionQueryHandlers.GetDurationConfigs(EiafxConfig.Config.mission_parameters));

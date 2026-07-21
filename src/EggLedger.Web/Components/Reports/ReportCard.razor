@@ -123,7 +123,6 @@
     [Parameter] public EventCallback<ReportDefinition> OnEdit { get; set; }
     [Parameter] public EventCallback<string> OnDelete { get; set; }
 
-    /// <summary>Fires after a copy or group change, so the grid reloads its list.</summary>
     [Parameter]
     public EventCallback OnChanged { get; set; }
 
@@ -210,8 +209,8 @@
     private async Task CopyAsync() {
         _copying = true;
         try {
-            // ReportDefinition is a plain mutable class; JSON round-trip clones every
-            // field without hand-listing them (and staying correct as fields are added).
+            
+            
             var copy = JsonSerializer.Deserialize<ReportDefinition>(JsonSerializer.Serialize(Def))!;
             copy.Id = Guid.NewGuid().ToString("D");
             copy.Name = Def.Name + " (copy)";
@@ -254,7 +253,7 @@
     }
 
     protected override async Task OnParametersSetAsync() {
-        // Re-run when the definition meaningfully changes (id + updated_at).
+        
         var key = Def.Id + ":" + Def.UpdatedAt;
         if (key == _ranKey) {
             return;
@@ -281,10 +280,6 @@
         await RunMennoComparisonAsync();
     }
 
-    /// <summary>
-    ///     Runs the Menno comparison for Menno-enabled 2D-heatmap results; a null
-    ///     comparison leaves the plain user chart. Per-cell min-sample gating lives in the heatmap.
-    /// </summary>
     private async Task RunMennoComparisonAsync() {
         if (_result is null
             || !Def.MennoEnabled
@@ -317,7 +312,7 @@
             StateHasChanged();
         }
         catch {
-            // Failed download/comparison leaves the plain user chart; the overlay is supplementary.
+            
             _mennoResult = null;
         }
     }

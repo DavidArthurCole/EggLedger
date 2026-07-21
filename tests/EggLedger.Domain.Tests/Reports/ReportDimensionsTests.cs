@@ -2,7 +2,7 @@ using EggLedger.Domain.Reports;
 
 namespace EggLedger.Domain.Tests.Reports;
 
-// Pins value/label/scope against Vue utils/reportDimensions.ts, the source of truth.
+
 public class ReportDimensionsTests {
     [Fact]
     public void Mission_HasExpectedValuesAndLabels() {

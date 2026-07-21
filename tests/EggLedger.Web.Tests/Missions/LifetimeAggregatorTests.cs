@@ -3,10 +3,6 @@ using EggLedger.Web.Missions;
 
 namespace EggLedger.Web.Tests.Missions;
 
-/// <summary>
-/// Golden parity with the mergeItems/bucket logic in www/src/views/LifetimeDataView.vue.
-/// Guards the empty-artifacts history: real input must produce non-empty buckets.
-/// </summary>
 public sealed class LifetimeAggregatorTests {
     private static MissionDrop Drop(
         int id,
@@ -39,7 +35,7 @@ public sealed class LifetimeAggregatorTests {
 
     [Fact]
     public void Aggregate_RepresentativeInput_ProducesNonEmptyGroups() {
-        // Guards the empty-artifacts regression: a real spread of spec types must produce one non-empty list per bucket.
+        
         var input = Missions(
             ("m1", new[]
             {
@@ -64,7 +60,7 @@ public sealed class LifetimeAggregatorTests {
 
     [Fact]
     public void Aggregate_CombinesIdenticalDropsAndSumsCount() {
-        // Same id+level+rarity across two missions merges to one representative, count 2.
+        
         var input = Missions(
             ("m1", new[] { Drop(1, "Artifact", level: 5, rarity: 2) }),
             ("m2", new[] { Drop(1, "Artifact", level: 5, rarity: 2) }));
@@ -77,7 +73,7 @@ public sealed class LifetimeAggregatorTests {
 
     [Fact]
     public void Aggregate_MergeKeyIsIdLevelRarity_NotName() {
-        // The Vue merge key is id_level_rarity, not name or specType, so same id different level splits.
+        
         var input = Missions(
             ("m1", new[]
             {
@@ -127,7 +123,7 @@ public sealed class LifetimeAggregatorTests {
 
     [Fact]
     public void Aggregate_UnknownSpecType_IsDropped() {
-        // A spec type the Vue split does not match has no bucket.
+        
         var input = Missions(("m1", new[] { Drop(1, "Mystery") }));
 
         var result = LifetimeAggregator.Aggregate(input);
@@ -168,7 +164,7 @@ public sealed class LifetimeAggregatorTests {
         Assert.Equal(4.5, d.Quality);
         Assert.Equal(7, d.IvOrder);
         Assert.Equal("Artifact", d.SpecType);
-        // Lifetime tooltip showed an empty title and "???" effect before these two fields were carried.
+        
         Assert.Equal("QUANTUM", d.GameName);
         Assert.Equal("+75% egg value", d.EffectString);
     }

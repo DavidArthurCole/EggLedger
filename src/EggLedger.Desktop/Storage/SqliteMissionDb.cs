@@ -3,12 +3,6 @@ using Microsoft.Data.Sqlite;
 
 namespace EggLedger.Desktop.Storage;
 
-/// <summary>Native <see cref="IMissionDb"/> backed by real SQLite, parity-tested against the in-memory path.</summary>
-/// <remarks>
-/// Runs the parameterized SQL from <see cref="ReportExecutor"/> against the mission /
-/// artifact_drops tables, returning rows in the positional shape the executor
-/// consumes. Row boxing: integers as long, REAL as double, text as string.
-/// </remarks>
 public sealed class SqliteMissionDb : IMissionDb {
     private readonly SqliteConnection _connection;
 
@@ -17,7 +11,6 @@ public sealed class SqliteMissionDb : IMissionDb {
         _connection = missionDb.Connection;
     }
 
-    /// <summary>Direct-connection constructor for tests.</summary>
     public SqliteMissionDb(SqliteConnection connection) {
         _connection = connection ?? throw new ArgumentNullException(nameof(connection));
     }
@@ -39,8 +32,8 @@ public sealed class SqliteMissionDb : IMissionDb {
         return rows;
     }
 
-    // Boxes a column the way the executor expects: integers as long, reals as
-    // double, text as string, NULL as null.
+    
+    
     private static object? ReadValue(SqliteDataReader reader, int i) {
         if (reader.IsDBNull(i)) {
             return null;
@@ -55,7 +48,7 @@ public sealed class SqliteMissionDb : IMissionDb {
         if (type == typeof(byte[])) {
             return reader.GetValue(i);
         }
-        // CAST(... AS TEXT) and strftime produce text; COUNT(*) is integer affinity.
+        
         return reader.GetString(i);
     }
 }

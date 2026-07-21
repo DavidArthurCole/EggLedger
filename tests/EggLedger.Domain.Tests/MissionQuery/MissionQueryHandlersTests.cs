@@ -73,7 +73,7 @@ public class MissionQueryHandlersTests {
         var rows = new IMissionRow[] { new FakeMissionRow("m1") };
         store.PendingFilterCols["eid"] = 0;
         store.MissionMeta["eid"] = rows;
-        // Slow-path data present but must not be used.
+        
         store.PlayerCompleteMissions["eid"] = new[] { Mission("ignored") };
 
         var got = await h.ViewMissionsOfEidAsync("eid");
@@ -99,7 +99,7 @@ public class MissionQueryHandlersTests {
     [Fact]
     public async Task ViewMissionsOfEid_SlowPath_NullCountSuppressesBackfill() {
         var (h, store, _) = NewSut();
-        // Null count mirrors Go countErr != nil: slow path, no backfill kick.
+        
         store.PendingFilterCols["eid"] = null;
         store.PlayerCompleteMissions["eid"] = new[] { Mission("m1") };
 
@@ -196,7 +196,7 @@ public class MissionQueryHandlersTests {
         Assert.Equal(artifact.CombinedEffectString(), drops[0].EffectString);
         Assert.NotEqual("", drops[0].EffectString);
 
-        // Stone has an effect string; fragment and ingredient do not.
+        
         Assert.Equal("Stone", drops[1].SpecType);
         Assert.Equal("TACHYON_STONE", drops[1].Name);
         Assert.Equal(stone.CombinedEffectString(), drops[1].EffectString);
@@ -228,7 +228,7 @@ public class MissionQueryHandlersTests {
     [Fact]
     public async Task GetAllPlayerDrops_MapsMissionIdsToDrops() {
         var (h, store, _) = NewSut();
-        // Stored drop rows (no decode): m1 = one fragment; m2 = gold + fragment.
+        
         int frag = (int)ArtifactSpec.Name.TachyonStoneFragment;
         int gold = (int)ArtifactSpec.Name.GoldMeteorite;
         store.CompleteMissionIds = ["m1", "m2"];
@@ -265,8 +265,8 @@ public class MissionQueryHandlersTests {
     [Fact]
     public async Task GetAllPlayerDrops_ZeroDropMissionsAreSeededWithEmptyList() {
         var (h, store, _) = NewSut();
-        // m2 completed with zero drops (no StoredDrops row) must still count as a mission
-        // (regression: dropsByMission.Count silently excluded zero-drop missions).
+        
+        
         int frag = (int)ArtifactSpec.Name.TachyonStoneFragment;
         store.CompleteMissionIds = ["m1", "m2"];
         store.StoredDrops["p"] = [new StoredDrop("m1", frag, 0, 0)];
@@ -282,8 +282,8 @@ public class MissionQueryHandlersTests {
     [Fact]
     public async Task GetAllPlayerDrops_SentinelRowExcludedFromDropsButMissionCounted() {
         var (h, store, _) = NewSut();
-        // m1 was backfilled and genuinely has zero drops (drop_index=-1 sentinel);
-        // m2 has a real drop. The sentinel must not appear as a fake drop.
+        
+        
         int frag = (int)ArtifactSpec.Name.TachyonStoneFragment;
         store.CompleteMissionIds = ["m1", "m2"];
         store.StoredDrops["p"] =
@@ -303,7 +303,7 @@ public class MissionQueryHandlersTests {
     [Fact]
     public async Task GetAllPlayerDrops_NullOnStoreError() {
         var (h, _, _) = NewSut();
-        // No StoredDrops entry -> fake returns null -> handler returns null.
+        
         Assert.Null(await h.GetAllPlayerDropsAsync("p"));
     }
 

@@ -48,8 +48,8 @@
     private string ColorOr => string.IsNullOrEmpty(Def.Color) ? "#6366f1" : Def.Color;
     private string NormalizeOr => string.IsNullOrEmpty(Def.NormalizeBy) ? "none" : Def.NormalizeBy;
 
-    // 1D display modes (bar/line/pie) apply the value filter client-side; 2D modes
-    // (heatmap/grouped_bar/multi_line) ignore it (ValueFilter.Apply is a no-op on Is2D).
+    
+    
     private ReportResult FilteredResult => ValueFilter.Apply(Result, Def.ValueFilterOp, Def.ValueFilterThreshold);
 
     private string? NormalizeLabel => Def.NormalizeBy switch {

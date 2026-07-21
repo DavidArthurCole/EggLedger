@@ -5,12 +5,7 @@ using Ei;
 
 namespace EggLedger.Domain.MissionQuery;
 
-/// <summary>
-/// Builds an <see cref="AccountInfo"/> from a first-contact backup. Port of the
-/// Go addAccount binding's field shaping; data access lives in the Web layer.
-/// </summary>
 public static class AccountFactory {
-    /// <summary>Mirrors the Go addAccount binding: TE is summed across the Virtue EoV slice.</summary>
     public static AccountInfo FromBackup(string eid, Backup backup) {
         string nickname = backup.UserName;
         double eb = backup.GetEarningsBonus();
