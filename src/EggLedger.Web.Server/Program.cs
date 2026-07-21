@@ -116,6 +116,10 @@ if (hasDb) {
     builder.Services.AddScoped<EggLedger.Web.Components.Auth.IPairCompletion, EggLedger.Web.Server.Auth.PairCompletion>();
     builder.Services.AddScoped<EggLedger.Web.Components.Admin.IAdminAccess, EggLedger.Web.Server.Auth.AdminAccess>();
 
+    builder.Services.AddSingleton(new EggLedger.Web.Server.Sync.Admin.ApiMetrics(TimeProvider.System));
+    builder.Services.AddSingleton<EggLedger.Web.Server.Sync.Admin.SpamLog>();
+    builder.Services.AddSingleton<EggLedger.Web.Components.Admin.IAdminData, EggLedger.Web.Server.Sync.Admin.AdminDataService>();
+
     EggLedger.Web.Server.Auth.AuthentikAuth.AddIfConfigured(authBuilder, cfg, identityClient, dataSource);
 
     if (!string.IsNullOrEmpty(cfg.BotToken)) {

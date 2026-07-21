@@ -1,11 +1,8 @@
 @page "/admin"
 @using EggLedger.Web.Components.Admin
 @using EggLedger.Web.Services
-@using EggLedger.Web.Settings
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.Extensions.DependencyInjection
-@inject AdminService Admin
-@inject CloudSessionStore SessionStore
 @inject AdminState AdminState
 @inject IServiceProvider Services
 
@@ -33,7 +30,7 @@
     [CascadingParameter] private Task<AuthenticationState>? AuthStateTask { get; set; }
 
     private bool _isAdmin;
-    private string? _token;
+    private Guid? _currentUserId;
     private IReadOnlyList<AdminUser>? _users;
     private AdminMetrics? _metrics;
     private string _error = "";
@@ -41,23 +38,19 @@
     protected override async Task OnInitializedAsync() {
         if (AuthStateTask is not null) {
             var authState = await AuthStateTask;
-            _isAdmin = Services.GetService<IAdminAccess>()?.IsAdmin(authState.User) ?? false;
+            var access = Services.GetService<IAdminAccess>();
+            _isAdmin = access?.IsAdmin(authState.User) ?? false;
+            _currentUserId = access?.CurrentUserId(authState.User);
         }
         AdminState.IsAdmin = _isAdmin;
-        if (_isAdmin) _ = LoadDataAsync();
-    }
-
-    private async Task LoadDataAsync() {
-        var session = await SessionStore.GetSessionAsync();
-        _token = session?.Token;
-        if (_token is null) return;
-        await RefreshAsync();
+        if (_isAdmin) _ = RefreshAsync();
     }
 
     private async Task RefreshAsync() {
-        if (_token is null) return;
-        var usersTask = Admin.GetUsersAsync(_token);
-        var metricsTask = Admin.GetMetricsAsync(_token);
+        var data = Services.GetService<IAdminData>();
+        if (data is null) return;
+        var usersTask = data.GetUsersAsync();
+        var metricsTask = data.GetMetricsAsync();
         await Task.WhenAll(usersTask, metricsTask);
         _users = usersTask.Result;
         _metrics = metricsTask.Result;
@@ -65,8 +58,13 @@
     }
 
     private async Task DeleteUser(Guid userId) {
-        if (_token is null) return;
-        if (await Admin.DeleteUserAsync(_token, userId)) await RefreshAsync();
+        if (userId == _currentUserId) {
+            _error = "cannot delete your own account";
+            return;
+        }
+        var data = Services.GetService<IAdminData>();
+        if (data is null) return;
+        if (await data.DeleteUserAsync(userId)) await RefreshAsync();
         else _error = $"failed to delete {userId}";
     }
 
