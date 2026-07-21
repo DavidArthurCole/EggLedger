@@ -21,6 +21,7 @@ var builder = WebApplication.CreateBuilder(args);
 var cfg = AppConfig.FromEnv(Environment.GetEnvironmentVariable);
 var hasDb = !string.IsNullOrEmpty(cfg.DatabaseUrl);
 var build = new VerifyInfo { Name = "EggLedger", Sha256 = cfg.BuildSha, Version = EggLedger.Web.AppVersionInfo.Current, Date = cfg.BuildDate };
+var startedAt = DateTimeOffset.UtcNow;
 
 
 
@@ -135,6 +136,14 @@ if (hasDb) {
             SharedRoleId = cfg.SharedRoleId,
             DashboardChannelId = cfg.DashboardChannelId,
             PostgresConnectionString = cfg.DatabaseUrl,
+            DashboardProvider = _ => Task.FromResult(new SyncKit.Contract.DashboardSnapshot {
+                AppName = "EggLedger",
+                Version = build.Version,
+                BuildHash = build.Sha256,
+                DeployStatus = "online",
+                UptimeSince = startedAt,
+                RepoUrl = "https://github.com/DavidArthurCole/EggLedger",
+            }),
         });
         builder.Services.AddSingleton<EggLedger.Web.Server.Bot.EggLedgerBotHostedService>();
         builder.Services.AddHostedService(sp => sp.GetRequiredService<EggLedger.Web.Server.Bot.EggLedgerBotHostedService>());

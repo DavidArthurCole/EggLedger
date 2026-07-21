@@ -78,27 +78,38 @@
         <div class="reconnect-failed-text">
             Connection lost. <a onclick="window.Blazor.reconnect()">Retry</a> or <a href=".">reload</a>.
         </div>
-        <div class="reconnect-rejected-text">
-            Server updated. Reloading...
+        <div class="reconnect-rejected-text" id="reconnect-rejected-text">
+            Server reconnected. Reloading...
         </div>
     </div>
 </div>
+<script>window.__eggLedgerVersion = "@AppVersionInfo.Current";</script>
 <script src="_content/EggLedger.Web/js/reportChartTooltip.js"></script>
 <script src="_content/EggLedger.Web/js/outsideClick.js"></script>
 <script src="_content/EggLedger.Web/js/beforeUnloadWarning.js"></script>
 <script src="_framework/blazor.web.js"></script>
 <script>
-    
-    
     (function () {
         var modal = document.getElementById("components-reconnect-modal");
         if (!modal) return;
+        var textEl = document.getElementById("reconnect-rejected-text");
+        var pageVersion = window.__eggLedgerVersion || "";
         var reloading = false;
         new MutationObserver(function () {
             if (reloading) return;
             if (modal.classList.contains("components-reconnect-rejected")) {
                 reloading = true;
-                setTimeout(function () { location.reload(); }, 2000);
+                fetch("/api/v1/verify", { cache: "no-store" })
+                    .then(function (r) { return r.ok ? r.json() : null; })
+                    .then(function (data) {
+                        if (textEl && data && data.version && pageVersion && data.version !== pageVersion) {
+                            textEl.textContent = "Server updated to v" + data.version + ". Reloading...";
+                        }
+                    })
+                    .catch(function () { })
+                    .finally(function () {
+                        setTimeout(function () { location.reload(); }, 2000);
+                    });
             }
         }).observe(modal, { attributes: true, attributeFilter: ["class"] });
     })();

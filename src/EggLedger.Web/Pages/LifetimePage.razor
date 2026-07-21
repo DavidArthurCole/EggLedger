@@ -57,7 +57,7 @@
 
 @code {
     private const string KeySortMethod = "lifetime_sort_method";
-    private bool _loading;
+    private bool _loading = true;
     private LifetimeData? _data;
     private LifetimeSortMethod _sortMethod = LifetimeSortMethod.Default;
     private bool _hideFilter;
@@ -107,9 +107,9 @@
             if (dropsByMission is not null) {
                 DataCache.SetDrops(id, dropsByMission, DateTime.UtcNow);
             }
-
-            _loading = false;
         }
+
+        _loading = false;
 
         if (dropsByMission is null) {
             _data = null;
