@@ -26,7 +26,8 @@ public sealed class FetchServiceTests {
             settings.SetSettingAsync("retry_failed_missions", "true").GetAwaiter().GetResult();
         }
         var store = new IndexedDbMissionStore(db, new LocalApiPayloadDecoder(new ApiClient()));
-        return new FetchService(api, store, settings, new LocalApiPayloadDecoder(api));
+        var accounts = new IndexedDbAccountStore(settings);
+        return new FetchService(api, store, settings, accounts, new LocalApiPayloadDecoder(api));
     }
 
 
@@ -37,7 +38,7 @@ public sealed class FetchServiceTests {
         return Convert.ToBase64String(ms.ToArray());
     }
 
-    private static string FirstContactBody(IEnumerable<string> completedMissionIds, double lastBackupTime = 1000) {
+    private static string FirstContactBody(IEnumerable<string> completedMissionIds, double lastBackupTime = 1000, double soulEggs = 0) {
         var afxdb = new ArtifactsDB();
         foreach (var id in completedMissionIds) {
             afxdb.MissionInfos.Add(new MissionInfo {
@@ -48,7 +49,8 @@ public sealed class FetchServiceTests {
         }
         var fc = new EggIncFirstContactResponse {
             Backup = new Backup {
-                game = new Backup.Game(),
+                UserName = "tester",
+                game = new Backup.Game { SoulEggsD = soulEggs },
                 settings = new Backup.Settings { LastBackupTime = lastBackupTime },
                 ArtifactsDb = afxdb,
             },
@@ -198,6 +200,28 @@ public sealed class FetchServiceTests {
 
         Assert.Equal(AppState.Success, final);
         Assert.Empty(handler.CompleteMissionRequests);
+    }
+
+    [Fact]
+    public async Task FetchPlayerData_RefreshesAccountStatsFromLatestBackup() {
+        var db = new FakeIndexedDb();
+        var settings = new IndexedDbSettings(db);
+        var accounts = new IndexedDbAccountStore(settings);
+        await accounts.AddKnownAccountAsync(new EggLedger.Domain.MissionQuery.AccountInfo {
+            Id = Eid,
+            Nickname = "tester",
+            EBString = "0",
+            AccountColor = "abc",
+            SeString = "0",
+        });
+
+        var handler = new RoutingHandler(FirstContactBody(Array.Empty<string>(), soulEggs: 10_800_000_000_000), CompleteMissionBody);
+        var service = Make(db, handler);
+
+        await service.FetchPlayerDataAsync(Eid, null, CancellationToken.None);
+
+        var updated = (await accounts.GetKnownAccountsAsync()).Single(a => a.Id == Eid);
+        Assert.Equal("10.8T", updated.SeString);
     }
 
     [Fact]

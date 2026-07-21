@@ -17,7 +17,8 @@ public sealed class FetchOrchestratorTests {
         var api = new ApiClient(http);
         var settings = new IndexedDbSettings(db);
         var store = new IndexedDbMissionStore(db, new LocalApiPayloadDecoder(new ApiClient()));
-        var fetch = new FetchService(api, store, settings, new LocalApiPayloadDecoder(api));
+        var accounts = new IndexedDbAccountStore(settings);
+        var fetch = new FetchService(api, store, settings, accounts, new LocalApiPayloadDecoder(api));
         return new FetchOrchestrator(fetch, new AppStateService(), settings, NullLogger<FetchOrchestrator>.Instance);
     }
 

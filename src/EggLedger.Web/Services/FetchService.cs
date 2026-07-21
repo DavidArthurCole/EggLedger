@@ -2,6 +2,7 @@ using System.Globalization;
 using EggLedger.Domain.Api;
 using EggLedger.Domain.Ei;
 using EggLedger.Domain.MissionPacking;
+using EggLedger.Domain.MissionQuery;
 using EggLedger.Web.Data;
 using Ei;
 
@@ -14,13 +15,15 @@ public sealed class FetchService {
     private readonly ApiClient _api;
     private readonly IndexedDbMissionStore _store;
     private readonly IndexedDbSettings _settings;
+    private readonly IndexedDbAccountStore _accounts;
     private readonly IApiPayloadDecoder _decoder;
     private readonly MissionPacker _packer;
 
-    public FetchService(ApiClient api, IndexedDbMissionStore store, IndexedDbSettings settings, IApiPayloadDecoder decoder, MissionPacker? packer = null) {
+    public FetchService(ApiClient api, IndexedDbMissionStore store, IndexedDbSettings settings, IndexedDbAccountStore accounts, IApiPayloadDecoder decoder, MissionPacker? packer = null) {
         _api = api;
         _store = store;
         _settings = settings;
+        _accounts = accounts;
         _decoder = decoder;
         _packer = packer ?? new MissionPacker(EiafxMissionConfigSource.Instance);
     }
@@ -162,6 +165,12 @@ public sealed class FetchService {
             } catch {
             }
         }
+
+        if (fc.Backup is not null) {
+            var account = AccountFactory.FromBackup(playerId, fc.Backup);
+            await _accounts.AddKnownAccountAsync(account).ConfigureAwait(false);
+        }
+
         return fc;
     }
 
