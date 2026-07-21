@@ -46,8 +46,7 @@ public sealed class FetchOrchestrator : IDisposable {
         _cts?.Cancel();
         _cts?.Dispose();
         var cts = _cts = new CancellationTokenSource();
-
-
+        var token = cts.Token;
 
         await _settings.SetSettingAsync(InProgressKeyPrefix + accountId, "1").ConfigureAwait(false);
 
@@ -75,7 +74,7 @@ public sealed class FetchOrchestrator : IDisposable {
 
         AppState result;
         try {
-            result = await _fetch.FetchPlayerDataAsync(accountId, progress, cts.Token);
+            result = await _fetch.FetchPlayerDataAsync(accountId, progress, token);
         } catch (Exception ex) {
             _logger.LogError(ex, "Fetch failed for account {AccountId}", accountId);
             result = AppState.Failed;
