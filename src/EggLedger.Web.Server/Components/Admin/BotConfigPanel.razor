@@ -18,17 +18,21 @@
         <p class="text-gray-500 italic text-sm">Loading...</p>
     } else {
         <div class="flex flex-col gap-2 mb-3 max-w-[520px]">
-            <label class="text-xs text-gray-400">Dashboard channel ID
+            <label class="text-xs text-gray-400">
+                Dashboard channel ID
                 <input class="rb-control w-full mt-1" @bind="_dashboardChannelId" placeholder="snowflake"/>
             </label>
-            <label class="text-xs text-gray-400">GitHub feed thread ID
+            <label class="text-xs text-gray-400">
+                GitHub feed thread ID
                 <input class="rb-control w-full mt-1" @bind="_githubFeedThreadId" placeholder="snowflake (optional)"/>
             </label>
-            <label class="text-xs text-gray-400">Deploy notifications thread ID
+            <label class="text-xs text-gray-400">
+                Deploy notifications thread ID
                 <input class="rb-control w-full mt-1" @bind="_deployThreadId" placeholder="snowflake (unset = no deploy pings)"/>
             </label>
             @if (!string.IsNullOrEmpty(_githubWebhookUrl)) {
-                <label class="text-xs text-gray-400">GitHub webhook URL (read-only)
+                <label class="text-xs text-gray-400">
+                    GitHub webhook URL (read-only)
                     <input class="rb-control w-full mt-1 font-mono text-xs" value="@_githubWebhookUrl" readonly/>
                 </label>
             }
@@ -40,7 +44,9 @@
                 <table class="admin-table">
                     <tbody>
                     @foreach (var v in Service.Variables) {
-                        <tr><td class="font-mono">@v.Name</td><td class="text-gray-500">@v.Desc</td></tr>
+                        <tr>
+                            <td class="font-mono">@v.Name</td><td class="text-gray-500">@v.Desc</td>
+                        </tr>
                     }
                     </tbody>
                 </table>
@@ -54,33 +60,40 @@
         </div>
 
         <div class="admin-embed-row">
-            <label class="admin-embed-field">Author icon URL
+            <label class="admin-embed-field">
+                Author icon URL
                 <input class="rb-control w-full mt-1" @bind="Current.AuthorIconUrl"/>
             </label>
-            <label class="admin-embed-field">Author name
+            <label class="admin-embed-field">
+                Author name
                 <input class="rb-control w-full mt-1" @bind="Current.AuthorName"/>
             </label>
-            <label class="admin-embed-field">Author name URL
+            <label class="admin-embed-field">
+                Author name URL
                 <input class="rb-control w-full mt-1" @bind="Current.AuthorUrl"/>
             </label>
         </div>
 
         <div class="admin-embed-row">
-            <span class="admin-embed-field">Color
+            <span class="admin-embed-field">
+                Color
                 <div class="admin-color-swatch mt-1">
                     <input type="color" value="@ColorInputValue" @onchange="OnColorInput" title="Pick a color"/>
                     <input class="rb-control" style="width: 6rem" @bind="Current.ColorHex" placeholder="RRGGBB"/>
                 </div>
             </span>
-            <label class="admin-embed-field">Title
+            <label class="admin-embed-field">
+                Title
                 <input class="rb-control w-full mt-1" @bind="Current.Title"/>
             </label>
-            <label class="admin-embed-field">Title URL
+            <label class="admin-embed-field">
+                Title URL
                 <input class="rb-control w-full mt-1" @bind="Current.TitleUrl"/>
             </label>
         </div>
 
-        <label class="admin-embed-field block mb-2">Description
+        <label class="admin-embed-field block mb-2">
+            Description
             <textarea class="rb-control w-full mt-1 font-mono text-xs" rows="2" @bind="Current.Description"></textarea>
         </label>
 
@@ -91,12 +104,15 @@
         @if (Current.Fields.Count == 0) {
             <p class="text-gray-500 text-xs">No fields.</p>
         }
+
         @foreach (var fld in Current.Fields) {
             <div class="admin-embed-row">
-                <label class="admin-embed-field">Name
+                <label class="admin-embed-field">
+                    Name
                     <input class="rb-control w-full mt-1" @bind="fld.Name"/>
                 </label>
-                <label class="admin-embed-field">Value
+                <label class="admin-embed-field">
+                    Value
                     <input class="rb-control w-full mt-1" @bind="fld.Value"/>
                 </label>
                 <label class="text-xs text-gray-400 flex items-center gap-1">
@@ -107,19 +123,23 @@
         }
 
         <div class="admin-embed-row">
-            <label class="admin-embed-field">Image URL
+            <label class="admin-embed-field">
+                Image URL
                 <input class="rb-control w-full mt-1" @bind="Current.ImageUrl"/>
             </label>
-            <label class="admin-embed-field">Thumbnail URL
+            <label class="admin-embed-field">
+                Thumbnail URL
                 <input class="rb-control w-full mt-1" @bind="Current.ThumbnailUrl"/>
             </label>
         </div>
 
         <div class="admin-embed-row items-center">
-            <label class="admin-embed-field">Footer
+            <label class="admin-embed-field">
+                Footer
                 <input class="rb-control w-full mt-1" @bind="Current.FooterText"/>
             </label>
-            <label class="admin-embed-field">Footer icon URL
+            <label class="admin-embed-field">
+                Footer icon URL
                 <input class="rb-control w-full mt-1" @bind="Current.FooterIconUrl"/>
             </label>
             <label class="text-xs text-gray-400 flex items-center gap-1">
@@ -139,6 +159,7 @@
 
 @code {
     private static readonly JsonSerializerOptions JsonOpts = new(JsonSerializerDefaults.Web);
+
     private static readonly (string Key, string Label)[] Events =
         [("success", "Success"), ("failure", "Failure"), ("uptodate", "Already up to date")];
 
@@ -166,7 +187,9 @@
         }
     }
 
-    private void OnColorInput(ChangeEventArgs e) => Current.ColorHex = (e.Value?.ToString() ?? "").TrimStart('#').ToUpperInvariant();
+    private void OnColorInput(ChangeEventArgs e) {
+        Current.ColorHex = (e.Value?.ToString() ?? "").TrimStart('#').ToUpperInvariant();
+    }
 
     private string _dashboardChannelId = "";
     private string _githubFeedThreadId = "";
@@ -177,7 +200,10 @@
     private EmbedForm _failure = new();
     private EmbedForm _uptodate = new();
 
-    private EmbedForm Form(string key) => key switch { "failure" => _failure, "uptodate" => _uptodate, _ => _success };
+    private EmbedForm Form(string key) {
+        return key switch { "failure" => _failure, "uptodate" => _uptodate, _ => _success };
+    }
+
     private EmbedForm Current => Form(_tab);
 
     protected override async Task OnInitializedAsync() {
@@ -197,9 +223,11 @@
         if (!string.IsNullOrWhiteSpace(savedJson)) {
             try {
                 return EmbedForm.From(JsonSerializer.Deserialize<EmbedSpec>(savedJson, JsonOpts)!);
-            } catch (JsonException) {
+            }
+            catch (JsonException) {
             }
         }
+
         return EmbedForm.From(fallback);
     }
 
@@ -239,15 +267,19 @@
                 _error = true;
                 _msg = $"Save failed: {result.Error}";
             }
-        } catch (Exception ex) {
+        }
+        catch (Exception ex) {
             _error = true;
             _msg = ex.Message;
-        } finally {
+        }
+        finally {
             _saving = false;
         }
     }
 
-    private static string ToJson(EmbedForm f) => JsonSerializer.Serialize(f.ToSpec(), JsonOpts);
+    private static string ToJson(EmbedForm f) {
+        return JsonSerializer.Serialize(f.ToSpec(), JsonOpts);
+    }
 
     private sealed class FieldForm {
         public string Name { get; set; } = "";
@@ -270,35 +302,43 @@
         public string FooterIconUrl { get; set; } = "";
         public bool Timestamp { get; set; }
 
-        public static EmbedForm From(EmbedSpec s) => new() {
-            ColorHex = s.Color is { } c ? c.ToString("X6") : "",
-            AuthorName = s.AuthorName ?? "",
-            AuthorUrl = s.AuthorUrl ?? "",
-            AuthorIconUrl = s.AuthorIconUrl ?? "",
-            Title = s.Title ?? "",
-            TitleUrl = s.TitleUrl ?? "",
-            Description = s.Description ?? "",
-            Fields = (s.Fields ?? []).Select(x => new FieldForm { Name = x.Name, Value = x.Value, Inline = x.Inline }).ToList(),
-            ImageUrl = s.ImageUrl ?? "",
-            ThumbnailUrl = s.ThumbnailUrl ?? "",
-            FooterText = s.FooterText ?? "",
-            FooterIconUrl = s.FooterIconUrl ?? "",
-            Timestamp = s.Timestamp,
-        };
+        public static EmbedForm From(EmbedSpec s) {
+            return new EmbedForm {
+                ColorHex = s.Color is { } c ? c.ToString("X6") : "",
+                AuthorName = s.AuthorName ?? "",
+                AuthorUrl = s.AuthorUrl ?? "",
+                AuthorIconUrl = s.AuthorIconUrl ?? "",
+                Title = s.Title ?? "",
+                TitleUrl = s.TitleUrl ?? "",
+                Description = s.Description ?? "",
+                Fields = (s.Fields ?? []).Select(x => new FieldForm { Name = x.Name, Value = x.Value, Inline = x.Inline }).ToList(),
+                ImageUrl = s.ImageUrl ?? "",
+                ThumbnailUrl = s.ThumbnailUrl ?? "",
+                FooterText = s.FooterText ?? "",
+                FooterIconUrl = s.FooterIconUrl ?? "",
+                Timestamp = s.Timestamp
+            };
+        }
 
-        public EmbedSpec ToSpec() => new(
-            ParseColor(ColorHex),
-            NullIfBlank(AuthorName), NullIfBlank(AuthorUrl), NullIfBlank(AuthorIconUrl),
-            NullIfBlank(Title), NullIfBlank(TitleUrl), NullIfBlank(Description),
-            Fields.Where(x => !string.IsNullOrWhiteSpace(x.Name) || !string.IsNullOrWhiteSpace(x.Value))
-                .Select(x => new EmbedFieldSpec(x.Name, x.Value, x.Inline)).ToList(),
-            NullIfBlank(ImageUrl), NullIfBlank(ThumbnailUrl),
-            NullIfBlank(FooterText), NullIfBlank(FooterIconUrl),
-            Timestamp);
+        public EmbedSpec ToSpec() {
+            return new EmbedSpec(
+                ParseColor(ColorHex),
+                NullIfBlank(AuthorName), NullIfBlank(AuthorUrl), NullIfBlank(AuthorIconUrl),
+                NullIfBlank(Title), NullIfBlank(TitleUrl), NullIfBlank(Description),
+                Fields.Where(x => !string.IsNullOrWhiteSpace(x.Name) || !string.IsNullOrWhiteSpace(x.Value))
+                    .Select(x => new EmbedFieldSpec(x.Name, x.Value, x.Inline)).ToList(),
+                NullIfBlank(ImageUrl), NullIfBlank(ThumbnailUrl),
+                NullIfBlank(FooterText), NullIfBlank(FooterIconUrl),
+                Timestamp);
+        }
 
-        private static uint? ParseColor(string hex) =>
-            uint.TryParse(hex.TrimStart('#'), NumberStyles.HexNumber, null, out var v) ? v : null;
+        private static uint? ParseColor(string hex) {
+            return uint.TryParse(hex.TrimStart('#'), NumberStyles.HexNumber, null, out var v) ? v : null;
+        }
 
-        private static string? NullIfBlank(string s) => string.IsNullOrWhiteSpace(s) ? null : s;
+        private static string? NullIfBlank(string s) {
+            return string.IsNullOrWhiteSpace(s) ? null : s;
+        }
     }
+
 }

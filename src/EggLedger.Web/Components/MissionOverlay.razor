@@ -153,8 +153,7 @@
 @code {
     [Parameter] public string? AccountId { get; set; }
 
-    [Parameter]
-    public IReadOnlyList<DatabaseMission> FilteredMissions { get; set; } = Array.Empty<DatabaseMission>();
+    [Parameter] public IReadOnlyList<DatabaseMission> FilteredMissions { get; set; } = Array.Empty<DatabaseMission>();
 
     [Parameter] public MissionSortMethod SortMethod { get; set; } = MissionSortMethod.Default;
     [Parameter] public bool ShowExpectedDrops { get; set; }
@@ -188,8 +187,6 @@
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        
-        
         if (_focusPending && _open) {
             _focusPending = false;
             await _rootRef.FocusAsync();
@@ -236,8 +233,7 @@
         _isLoading = false;
         StateHasChanged();
 
-        
-        
+
         foreach (var data in _multi) {
             var mission = FindMission(data.MissionInfo.MissiondId);
             if (mission is not null) {
@@ -249,7 +245,7 @@
         StateHasChanged();
     }
 
-    
+
     private void RebuildCombined() {
         RebuildCombined(SortMethod);
     }
@@ -294,8 +290,7 @@
         _isLoading = false;
         StateHasChanged();
 
-        
-        
+
         if (_data is not null) {
             var mission = FindMission(missionId);
             if (mission is not null) {
@@ -333,7 +328,6 @@
             await Menno.EnsureLoadedAsync();
         }
         catch {
-            
             return;
         }
 

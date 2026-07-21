@@ -127,30 +127,23 @@
     [Parameter] public MultiViewMode MultiViewMode { get; set; } = MultiViewMode.Off;
     [Parameter] public MissionCardConfig Config { get; set; } = MissionCardConfig.Classic;
 
-    [Parameter]
-    public RenderFragment? TileSelector { get; set; }
+    [Parameter] public RenderFragment? TileSelector { get; set; }
 
     [Parameter] public RenderFragment? HeaderExtra { get; set; }
 
-    [Parameter]
-    public HashSet<string> SelectedIds { get; set; } = new();
+    [Parameter] public HashSet<string> SelectedIds { get; set; } = new();
 
-    [Parameter]
-    public IReadOnlyList<DatabaseMission> TabFiltered { get; set; } = Array.Empty<DatabaseMission>();
+    [Parameter] public IReadOnlyList<DatabaseMission> TabFiltered { get; set; } = Array.Empty<DatabaseMission>();
 
-    [Parameter]
-    public string? MissionBeingViewed { get; set; }
+    [Parameter] public string? MissionBeingViewed { get; set; }
 
     [Parameter] public EventCallback<string> OnViewMission { get; set; }
 
-    [Parameter]
-    public EventCallback<IReadOnlyList<string>> OnViewRow { get; set; }
+    [Parameter] public EventCallback<IReadOnlyList<string>> OnViewRow { get; set; }
 
-    [Parameter]
-    public EventCallback OnSelectionChanged { get; set; }
+    [Parameter] public EventCallback OnSelectionChanged { get; set; }
 
-    [Parameter]
-    public EventCallback OnGroupingChanged { get; set; }
+    [Parameter] public EventCallback OnGroupingChanged { get; set; }
 
     private async Task OnView(string missionId) {
         await OnViewMission.InvokeAsync(missionId);
@@ -168,7 +161,6 @@
     }
 
     private async Task ViewSelected() {
-        
         var ids = new List<string>();
         foreach (var m in TabFiltered) {
             if (SelectedIds.Contains(m.MissiondId)) {
@@ -240,7 +232,7 @@
         return ViewByDate ? Grouping!.Arrays.Day[yi][mi][di].Enabled : Grouping!.Arrays.Month[yi][mi].Enabled;
     }
 
-    
+
     private bool AllExpanded {
         get {
             if (Grouping is null) {
@@ -305,7 +297,6 @@
     }
 
     private async Task NotifyAsync() {
-        
         await OnGroupingChanged.InvokeAsync();
     }
 

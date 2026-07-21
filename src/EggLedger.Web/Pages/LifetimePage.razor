@@ -80,7 +80,7 @@
         InvokeAsync(LoadAsync);
     }
 
-    
+
     private void OnAppStateChanged() {
         if (AppState.PipelineState == Services.AppState.Success && Active.ActiveAccountId is not null) {
             DataCache.InvalidateAll();
@@ -136,6 +136,7 @@
             data = LifetimeAggregator.Aggregate(dropsByMission);
             DataCache.SetLifetimeAggregate(id, data, now);
         }
+
         LifetimeSorter.Sort(data, _sortMethod);
         _data = data;
         StateHasChanged();

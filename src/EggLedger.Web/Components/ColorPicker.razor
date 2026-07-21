@@ -52,8 +52,7 @@
 
 @code {
 
-    [Parameter]
-    public string Value { get; set; } = ColorPickerMath.Fallback;
+    [Parameter] public string Value { get; set; } = ColorPickerMath.Fallback;
 
     [Parameter] public EventCallback<string> ValueChanged { get; set; }
     private bool _open;
@@ -67,7 +66,6 @@
     private readonly string _registrationId = $"color-picker-{Interlocked.Increment(ref _nextId)}";
 
     protected override void OnParametersSet() {
-        
         if (CurrentHex != _lastSynced) {
             SyncFromHex(CurrentHex);
             _lastSynced = CurrentHex;

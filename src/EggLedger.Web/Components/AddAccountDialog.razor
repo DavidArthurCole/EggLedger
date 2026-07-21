@@ -44,8 +44,7 @@
     private bool _loading;
     private string _error = "";
 
-    [Parameter]
-    public EventCallback<AccountInfo> Added { get; set; }
+    [Parameter] public EventCallback<AccountInfo> Added { get; set; }
 
     private string Normalized => LedgerFormatting.NormalizeEid(_eid);
     private string _problem => LedgerFormatting.EidProblem(Normalized);
@@ -72,8 +71,8 @@
         _error = "";
         try {
             var account = await AddAccount.AddAccountAsync(Normalized);
-            
-            
+
+
             _loading = false;
             Close();
             await Added.InvokeAsync(account);

@@ -105,11 +105,9 @@
 @code {
     [Parameter] [EditorRequired] public SettingsModel Model { get; set; } = default!;
 
-    [Parameter]
-    [EditorRequired]
-    public EventCallback<(string Key, string Value)> OnSetting { get; set; }
+    [Parameter] [EditorRequired] public EventCallback<(string Key, string Value)> OnSetting { get; set; }
 
-    
+
     private static string WorkerCellClass(int n) {
         return n <= 4 ? "bg-green-600" : n <= 7 ? "bg-orange-500" : "bg-red-600";
     }

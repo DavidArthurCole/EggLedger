@@ -194,7 +194,7 @@
         _reachable = await CheckReachableAsync();
         _reachableChecking = false;
 
-        
+
         if (_reachable && !_connected) {
             var pending = await SessionStore.GetPendingAuthStateAsync();
             if (!string.IsNullOrEmpty(pending)) {
@@ -209,9 +209,6 @@
                 await OnAuthCompleteAsync(session);
             }
             catch (CloudSyncException) {
-                
-                
-                
             }
         }
     }
@@ -270,7 +267,6 @@
             }
         }
         catch (OperationCanceledException) {
-            
             if (_pollCts is not null && _pollCts.IsCancellationRequested && !_disposed) {
                 await SessionStore.ClearPendingAuthStateAsync();
             }
@@ -373,7 +369,6 @@
         _restoreSuccess = false;
         StateHasChanged();
         try {
-            
             try {
                 var remoteAccounts = await Cloud.GetBlobAsync<List<AccountInfo>>(_session, CloudSyncBlobs.AccountsBlob);
                 foreach (var acct in remoteAccounts ?? []) {
@@ -452,8 +447,7 @@
         }
     }
 
-    
-    
+
     private async Task DeleteAllRemoteBlobsAsync() {
         if (_session is null) {
             return;

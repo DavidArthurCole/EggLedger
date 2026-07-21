@@ -27,8 +27,7 @@
     [Parameter] public string? UnitLabel { get; set; }
     [Parameter] public string? LabelColors { get; set; }
 
-    [Parameter]
-    public string? ChartType { get; set; }
+    [Parameter] public string? ChartType { get; set; }
 
     private string UnitSuffix => string.IsNullOrEmpty(UnitLabel) ? "" : " " + UnitLabel;
 

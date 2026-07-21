@@ -55,7 +55,7 @@
     private CloudSyncPanel? _cloudPanel;
     private IReadOnlyList<DatabaseAccount> _existing = [];
 
-    
+
     private AccountDataPanel.FetchingCard? FetchingCardInfo =>
         !Fetch.IsIdle && Fetch.FetchingAccountId is { } id && Loader.Accounts.FirstOrDefault(a => a.Id == id) is { } info
             ? new AccountDataPanel.FetchingCard(id, info.Nickname, info.AccountColor, Fetch.Progress?.Finished ?? 0, Fetch.Progress?.Total ?? 0)
@@ -86,12 +86,12 @@
 
     private async Task OnSettingAsync((string Key, string Value) change) {
         await Settings.SetSettingAsync(change.Key, change.Value);
-        
+
         if (change.Key == SettingsModel.KeyScreenshotSafety) {
             ScreenshotSafety.Enabled = change.Value == "true";
         }
 
-        
+
         if (_cloudPanel is not null && IsCloudSyncableKey(change.Key)) {
             await _cloudPanel.AutoSyncIfEnabledAsync();
         }

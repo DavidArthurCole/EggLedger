@@ -88,8 +88,7 @@
     private MissionCardConfigModal? _cardConfigModal;
     private static readonly JsonSerializerOptions CardJsonOptions = new(JsonSerializerDefaults.Web);
 
-    
-    
+
     private Dictionary<string, List<MissionDrop>>? _allDrops;
 
     protected override async Task OnInitializedAsync() {
@@ -107,7 +106,7 @@
         InvokeAsync(LoadAsync);
     }
 
-    
+
     private void OnAppStateChanged() {
         if (AppState.PipelineState == Services.AppState.Success && Active.ActiveAccountId is not null) {
             DataCache.InvalidateAll();
@@ -157,7 +156,7 @@
         StateHasChanged();
     }
 
-    
+
     private async Task<IReadOnlyList<MissionDrop>?> DropsFetcher(string accountId, string missionId) {
         _allDrops ??= await Queries.GetAllPlayerDropsAsync(accountId) ?? [];
         return _allDrops.TryGetValue(missionId, out var drops) ? drops : [];
@@ -312,7 +311,7 @@
         }
     }
 
-    
+
     private async Task ViewRowAsync(IReadOnlyList<string> missionIds) {
         if (missionIds.Count == 0 || _overlay is null) {
             return;

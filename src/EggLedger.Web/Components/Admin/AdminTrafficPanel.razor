@@ -1,5 +1,4 @@
 @using EggLedger.Web.Services
-
 <div class="admin-panel">
     <div class="admin-panel-head">
         <span class="admin-panel-title">Traffic</span>
@@ -91,6 +90,8 @@
     [Parameter] public AdminMetrics? Metrics { get; set; }
     private string _tab = "endpoint";
 
-    private static string FormatEpoch(long unixSeconds) =>
-        DateTimeOffset.FromUnixTimeSeconds(unixSeconds).ToLocalTime().ToString("yyyy-MM-dd HH:mm");
+    private static string FormatEpoch(long unixSeconds) {
+        return DateTimeOffset.FromUnixTimeSeconds(unixSeconds).ToLocalTime().ToString("yyyy-MM-dd HH:mm");
+    }
+
 }

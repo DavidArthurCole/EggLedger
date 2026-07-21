@@ -308,8 +308,7 @@
 @code {
     [Parameter] [EditorRequired] public string AccountId { get; set; } = "";
 
-    [Parameter]
-    public string? GroupId { get; set; }
+    [Parameter] public string? GroupId { get; set; }
 
     [Parameter] public EventCallback Saved { get; set; }
     private bool _open;
@@ -406,8 +405,7 @@
         _open = true;
         StateHasChanged();
 
-        
-        
+
         try {
             var result = await MissionDb.RunReportAsync(def, def.AccountId);
             _editingResultLabels = result.Is2D ? Array.Empty<string>() : result.Labels;
@@ -522,8 +520,7 @@
         var timeSeries = f.Mode == "time_series";
         var hasSecondary = !string.IsNullOrEmpty(f.SecondaryGroupBy);
 
-        
-        
+
         var displayMode = f.DisplayMode;
         if (hasSecondary) {
             if (displayMode is not ("heatmap" or "grouped_bar")) displayMode = "heatmap";

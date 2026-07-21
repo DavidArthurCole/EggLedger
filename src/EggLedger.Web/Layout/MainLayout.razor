@@ -1,7 +1,6 @@
 @inherits LayoutComponentBase
 @using EggLedger.Web.Components.Admin
 @using EggLedger.Web.Data
-@using EggLedger.Web.Services
 @using EggLedger.Web.Settings
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.Extensions.DependencyInjection
@@ -69,8 +68,7 @@
 
     [CascadingParameter] private Task<AuthenticationState>? AuthStateTask { get; set; }
 
-    
-    
+
     private bool IsLoggedIn = true;
 
     protected override async Task OnInitializedAsync() {

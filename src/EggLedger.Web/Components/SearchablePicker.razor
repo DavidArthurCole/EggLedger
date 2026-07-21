@@ -131,6 +131,7 @@
         if (RarityRing && o.Rarity is { } r) {
             return $"rounded-full bg-r-{r}";
         }
+
         return o.ImagePath == "icon_help.webp" ? "rounded-full bg-gray-500" : "";
     }
 
@@ -145,7 +146,7 @@
         _open = false;
     }
 
-    
+
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (_focusPending) {
             _focusPending = false;

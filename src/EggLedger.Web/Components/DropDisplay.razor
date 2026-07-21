@@ -57,15 +57,13 @@
 
 @code {
 
-    [Parameter]
-    public string Type { get; set; } = "";
+    [Parameter] public string Type { get; set; } = "";
 
     [Parameter] public IReadOnlyList<DropLike>? Items { get; set; }
     [Parameter] public MissionMennoData? MennoData { get; set; }
     [Parameter] public bool ShowExpectedDrops { get; set; }
 
-    [Parameter]
-    public int MissionTotalDrops { get; set; }
+    [Parameter] public int MissionTotalDrops { get; set; }
 
     private DropLike? _hovered;
 
@@ -111,12 +109,12 @@
         return rarity >= 0 && rarity < Rarities.Length ? Rarities[rarity] : "";
     }
 
-    
+
     private static int SpecPathOffset(DropLike item) {
         return item.SpecType == "Stone" ? 2 : 1;
     }
 
-    
+
     private static string RarityBgClass(DropLike item) {
         return item.SpecType == "Artifact" ? "ledger-af-link bg-r-" + item.Rarity : "ledger-af-link bg-r-0";
     }
@@ -129,7 +127,7 @@
         return $"https://wasmegg-carpet.netlify.app/artifact-explorer/#/artifact/{slug}-{item.Level + SpecPathOffset(item)}";
     }
 
-    
+
     private static string NumToDigClass(int num) {
         return num switch {
             > 999999 => "w-sevendig",
@@ -150,7 +148,7 @@
         return ContentPaths.Asset($"images/artifacts/{fixedName}/{fixedName}_{item.Level + SpecPathOffset(item)}.png");
     }
 
-    
+
     private static (string Prefix, string Highlight, string Suffix) BoundEffectString(string str) {
         if (str.StartsWith("!!", StringComparison.Ordinal)) {
             var open = str.IndexOf('<', StringComparison.Ordinal);
@@ -167,7 +165,7 @@
             : ("?", "?", "?");
     }
 
-    
+
     private (long Seen, long Total)? DropCalcs(DropLike item) {
         if (MennoData?.Configs is null) {
             return null;
@@ -187,7 +185,7 @@
         return null;
     }
 
-    
+
     private string ExpectedPerShip(DropLike item) {
         var calc = DropCalcs(item);
         if (calc is null || calc.Value.Total == 0) {

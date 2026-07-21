@@ -123,8 +123,7 @@
     [Parameter] public EventCallback<ReportDefinition> OnEdit { get; set; }
     [Parameter] public EventCallback<string> OnDelete { get; set; }
 
-    [Parameter]
-    public EventCallback OnChanged { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
 
     private ReportResult? _result;
     private ReportResult? _mennoResult;
@@ -209,8 +208,6 @@
     private async Task CopyAsync() {
         _copying = true;
         try {
-            
-            
             var copy = JsonSerializer.Deserialize<ReportDefinition>(JsonSerializer.Serialize(Def))!;
             copy.Id = Guid.NewGuid().ToString("D");
             copy.Name = Def.Name + " (copy)";
@@ -253,7 +250,6 @@
     }
 
     protected override async Task OnParametersSetAsync() {
-        
         var key = Def.Id + ":" + Def.UpdatedAt;
         if (key == _ranKey) {
             return;
@@ -312,7 +308,6 @@
             StateHasChanged();
         }
         catch {
-            
             _mennoResult = null;
         }
     }

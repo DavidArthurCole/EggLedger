@@ -8,7 +8,6 @@
 
     protected override async Task OnInitializedAsync() {
         if (Services.GetService(typeof(FirstLoginBackfill)) is FirstLoginBackfill backfill) {
-            
             try {
                 await backfill.RunIfNeededAsync();
             }

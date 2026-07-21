@@ -79,14 +79,11 @@
     [Parameter] public EventCallback<LegacyFilter> OnApply { get; set; }
     [Parameter] public bool IsLifetime { get; set; }
 
-    [Parameter]
-    public bool ShowApply { get; set; } = true;
+    [Parameter] public bool ShowApply { get; set; } = true;
 
-    [Parameter]
-    public bool IncludeArtifactFields { get; set; }
+    [Parameter] public bool IncludeArtifactFields { get; set; }
 
-    [Parameter]
-    public IReadOnlyList<FilterCondition>? InitialAnd { get; set; }
+    [Parameter] public IReadOnlyList<FilterCondition>? InitialAnd { get; set; }
 
     [Parameter] public IReadOnlyList<IReadOnlyList<FilterCondition>?>? InitialOr { get; set; }
 
@@ -152,7 +149,7 @@
 
     private bool RowIncomplete(FilterCondition c) {
         var def = FieldOf(c);
-               if (def is null)
+        if (def is null)
             return false;
         return !RowComplete(c);
     }
@@ -164,7 +161,7 @@
         return !RowComplete(or[^1]);
     }
 
-   
+
     private RenderFragment RenderConditionControls(FilterCondition c, Action changed) => __builder => {
         var def = FieldOf(c);
 
@@ -257,7 +254,7 @@
         }
     };
 
-          private static RenderFragment RenderResultText(string text) => __builder => {
+    private static RenderFragment RenderResultText(string text) => __builder => {
         var openParen = text.IndexOf('(');
         var closeParen = openParen < 0 ? -1 : text.LastIndexOf(')');
         if (openParen < 0 || closeParen < openParen) {
@@ -274,7 +271,7 @@
         </span>
     };
 
-       private static string? ModalSelectedValue(FilterFieldDef def, string val) =>
+    private static string? ModalSelectedValue(FilterFieldDef def, string val) =>
         string.IsNullOrEmpty(val) ? null : val;
 
     private RenderFragment DropAdvancedFooter => @<label class="flex items-center gap-1.5 text-xs text-gray-400 cursor-pointer select-none">
@@ -300,7 +297,7 @@
         return opts;
     }
 
-       private void SetField(FilterCondition c, string? key) {
+    private void SetField(FilterCondition c, string? key) {
         c.TopLevel = key ?? "";
         var def = FieldOf(c);
         if (def is null) {
@@ -322,7 +319,7 @@
     private void OnOrRowChanged(int index) {
     }
 
-       private void EnsureTrailingRow() {
+    private void EnsureTrailingRow() {
         var last = _rows[^1].Cond;
         if (!string.IsNullOrEmpty(last.TopLevel))
             _rows.Add(new Row());

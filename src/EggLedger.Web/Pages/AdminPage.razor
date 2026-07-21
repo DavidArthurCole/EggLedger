@@ -42,6 +42,7 @@
             _isAdmin = access?.IsAdmin(authState.User) ?? false;
             _currentUserId = access?.CurrentUserId(authState.User);
         }
+
         AdminState.IsAdmin = _isAdmin;
         if (_isAdmin) _ = RefreshAsync();
     }
@@ -62,6 +63,7 @@
             _error = "cannot delete your own account";
             return;
         }
+
         var data = Services.GetService<IAdminData>();
         if (data is null) return;
         if (await data.DeleteUserAsync(userId)) await RefreshAsync();

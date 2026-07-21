@@ -48,8 +48,7 @@
     private string ColorOr => string.IsNullOrEmpty(Def.Color) ? "#6366f1" : Def.Color;
     private string NormalizeOr => string.IsNullOrEmpty(Def.NormalizeBy) ? "none" : Def.NormalizeBy;
 
-    
-    
+
     private ReportResult FilteredResult => ValueFilter.Apply(Result, Def.ValueFilterOp, Def.ValueFilterThreshold);
 
     private string? NormalizeLabel => Def.NormalizeBy switch {

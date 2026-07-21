@@ -148,9 +148,7 @@
         await ResumeIncompleteFetchAsync();
     }
 
-    
-    
-    
+
     private async Task ResumeIncompleteFetchAsync() {
         if (!Fetch.IsIdle) {
             return;
@@ -180,7 +178,6 @@
             await Js.InvokeVoidAsync("setFetchInProgressWarning", active);
         }
         catch (JSDisconnectedException) {
-            
         }
     }
 

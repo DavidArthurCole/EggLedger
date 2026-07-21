@@ -71,8 +71,7 @@
     [Parameter] [EditorRequired] public string Color { get; set; } = "#6366f1";
     [Parameter] public string? UnitLabel { get; set; }
 
-    [Parameter]
-    public string? ChartType { get; set; }
+    [Parameter] public string? ChartType { get; set; }
 
     private string UnitSuffix => string.IsNullOrEmpty(UnitLabel) ? "" : " " + UnitLabel;
 

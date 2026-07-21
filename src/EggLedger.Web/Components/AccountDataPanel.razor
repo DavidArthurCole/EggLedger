@@ -74,14 +74,11 @@
     private bool _busy;
     private string _error = "";
 
-    [Parameter]
-    public IReadOnlyList<DatabaseAccount> Accounts { get; set; } = [];
+    [Parameter] public IReadOnlyList<DatabaseAccount> Accounts { get; set; } = [];
 
-    [Parameter]
-    public EventCallback Changed { get; set; }
+    [Parameter] public EventCallback Changed { get; set; }
 
-    [Parameter]
-    public FetchingCard? Fetching { get; set; }
+    [Parameter] public FetchingCard? Fetching { get; set; }
 
     public sealed record FetchingCard(string Id, string Nickname, string Color, int Finished, int Total);
 

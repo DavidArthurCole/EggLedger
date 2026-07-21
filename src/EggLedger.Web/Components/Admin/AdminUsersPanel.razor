@@ -1,6 +1,4 @@
 @using EggLedger.Web.Services
-@using EggLedger.Web.State
-
 <div class="admin-panel">
     <div class="admin-panel-head">
         <span class="admin-panel-title">Users (@(Users?.Count ?? 0))</span>
@@ -77,14 +75,14 @@
 
     private List<AdminUser> SortedUsers() {
         if (Users is null) return [];
-        IOrderedEnumerable<AdminUser> ordered = _sortKey switch {
+        var ordered = _sortKey switch {
             "discord" => Order(u => u.DiscordId ?? ""),
             "missions" => Order(u => u.MissionCount),
             "reports" => Order(u => u.ReportCount),
             "backups" => Order(u => u.BackupCount),
             "storage" => Order(u => u.StorageBytes),
             "lastLogin" => Order(u => u.LastSession ?? 0),
-            _ => Order(u => u.Username),
+            _ => Order(u => u.Username)
         };
         return ordered.ToList();
     }
@@ -97,4 +95,5 @@
 
     private static string LastLoginTitle(long? lastSession) =>
         lastSession is { } s ? DateTimeOffset.FromUnixTimeSeconds(s).ToLocalTime().ToString("yyyy-MM-dd HH:mm") : "";
+
 }

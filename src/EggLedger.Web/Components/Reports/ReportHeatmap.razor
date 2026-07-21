@@ -42,11 +42,9 @@
     [Parameter] public string? UnfilledColor { get; set; }
     [Parameter] public int MinSampleSize { get; set; }
 
-    [Parameter]
-    public IReadOnlyList<double>? SecondaryValues { get; set; }
+    [Parameter] public IReadOnlyList<double>? SecondaryValues { get; set; }
 
-    [Parameter]
-    public IReadOnlyList<double>? ColorValues { get; set; }
+    [Parameter] public IReadOnlyList<double>? ColorValues { get; set; }
 
     private double GlobalMax() {
         return Result.MatrixValues.DefaultIfEmpty(0).Max();
