@@ -43,19 +43,25 @@ public sealed class AdminEndpoints(NpgsqlDataSource source, ApiMetrics metrics, 
         var users = new List<object>();
         await using var cmd = source.CreateCommand(
             "SELECT u.discord_id, u.username, u.avatar_url, u.user_id, " +
-            "(SELECT COUNT(*) FROM blobs b WHERE b.user_id = u.user_id) AS blob_count, " +
-            "(SELECT COALESCE(SUM(octet_length(b.ciphertext)), 0) FROM blobs b WHERE b.user_id = u.user_id) AS storage_bytes, " +
-            "(SELECT MAX(expires_at) FROM sessions s WHERE s.user_id = u.user_id) AS last_session " +
+            "(SELECT COUNT(*) FROM el_mission m WHERE m.user_id = u.user_id) AS mission_count, " +
+            "COALESCE((SELECT SUM(pg_column_size(m.*)) FROM el_mission m WHERE m.user_id = u.user_id), 0) + " +
+            "COALESCE((SELECT SUM(pg_column_size(bk.*)) FROM el_backup bk WHERE bk.user_id = u.user_id), 0) + " +
+            "COALESCE((SELECT SUM(pg_column_size(d.*)) FROM el_artifact_drops d WHERE d.user_id = u.user_id), 0) + " +
+            "COALESCE((SELECT SUM(pg_column_size(s.*)) FROM el_settings s WHERE s.user_id = u.user_id), 0) + " +
+            "COALESCE((SELECT SUM(pg_column_size(r.*)) FROM el_reports r WHERE r.user_id = u.user_id), 0) + " +
+            "COALESCE((SELECT SUM(pg_column_size(g.*)) FROM el_report_groups g WHERE g.user_id = u.user_id), 0) + " +
+            "COALESCE((SELECT SUM(pg_column_size(b.*)) FROM blobs b WHERE b.user_id = u.user_id), 0) AS storage_bytes, " +
+            "(SELECT MAX(expires_at) FROM sessions se WHERE se.user_id = u.user_id) AS last_session " +
             "FROM users u ORDER BY u.username");
         await using var reader = await cmd.ExecuteReaderAsync(ctx.RequestAborted);
         while (await reader.ReadAsync(ctx.RequestAborted)) {
             var rowUserId = reader.GetGuid(3);
             users.Add(new {
-                discordId = reader.IsDBNull(0) ? "" : reader.GetString(0),
+                discordId = reader.IsDBNull(0) ? null : reader.GetString(0),
                 username = reader.GetString(1),
                 avatarUrl = reader.GetString(2),
                 userId = rowUserId,
-                blobCount = reader.GetInt64(4),
+                missionCount = reader.GetInt64(4),
                 storageBytes = reader.GetInt64(5),
                 lastSession = reader.IsDBNull(6) ? (long?)null : reader.GetInt64(6),
                 isAdmin = roleByUserId.GetValueOrDefault(rowUserId) == "admin",
@@ -74,7 +80,7 @@ public sealed class AdminEndpoints(NpgsqlDataSource source, ApiMetrics metrics, 
         });
     }
 
-    // DELETE /api/v1/admin/users/{userId}: remove a user (cascades sessions + blobs).
+    // DELETE /api/v1/admin/users/{userId}: remove a user (cascades sessions + blobs + el_*).
     public async Task DeleteUser(HttpContext ctx, string userId) {
         if (!await IsAdminAsync(ctx)) { await ForbidAsync(ctx); return; }
         if (!Guid.TryParse(userId, out var parsedUserId)) {
@@ -82,7 +88,7 @@ public sealed class AdminEndpoints(NpgsqlDataSource source, ApiMetrics metrics, 
             await JsonAsync(ctx, new { error = "invalid user id" });
             return;
         }
-        if (userId == UserId(ctx)) {
+        if (string.Equals(userId, UserId(ctx), StringComparison.OrdinalIgnoreCase)) {
             ctx.Response.StatusCode = StatusCodes.Status400BadRequest;
             await JsonAsync(ctx, new { error = "cannot delete your own account" });
             return;

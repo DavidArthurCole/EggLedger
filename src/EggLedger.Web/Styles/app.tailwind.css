@@ -492,14 +492,7 @@ input[type=number] {
 }
 
 .filter-incomplete {
-  @apply max-w-full items-center justify-center text-red-700 text-xs border border-red-700 rounded-md bg-transparent py-2 px-4 mt-0_5rem;
-  white-space: normal;
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.filter-warning {
-  @apply max-w-full items-center justify-center text-yellow-700 text-xs border border-yellow-700 rounded-md bg-transparent py-2 px-4 mt-0_5rem;
+  @apply max-w-full text-red-400 italic mt-0_5rem mr-1rem;
   white-space: normal;
   flex: 1 1 auto;
   min-width: 0;
@@ -723,6 +716,84 @@ input[type=number] {
    of the chart dims. The JS tooltip (reportChartTooltip.js) reads data-tt off the same node. */
 .chart-hit {
   transition: opacity 0.12s, filter 0.12s;
+}
+
+.admin-grid {
+  @apply grid grid-cols-1 gap-3;
+}
+
+@media (min-width: 1024px) {
+  .admin-grid {
+    grid-template-columns: minmax(0, 640px) minmax(0, 1fr);
+  }
+}
+
+.admin-panel {
+  @apply bg-darkest border border-gray-700/50 rounded-md p-3 mb-3;
+}
+
+.admin-panel-head {
+  @apply flex items-center justify-between gap-2 mb-2 flex-wrap;
+}
+
+.admin-panel-title {
+  @apply font-bold text-gray-400;
+}
+
+.admin-table-wrap {
+  @apply overflow-auto rounded-md border border-gray-700/50 max-h-96;
+}
+
+.admin-table {
+  @apply w-full text-xs text-gray-400 tabular-nums;
+}
+
+.admin-table thead {
+  @apply sticky top-0 bg-darkest z-10 text-gray-500;
+}
+
+.admin-table th {
+  @apply text-left py-1 px-2 whitespace-nowrap;
+}
+
+.admin-table td {
+  @apply py-1 px-2 whitespace-nowrap;
+}
+
+.admin-table tbody tr {
+  @apply border-t border-gray-700/50;
+}
+
+.admin-table tbody tr:hover {
+  @apply bg-darker;
+}
+
+.admin-kpi {
+  @apply grid grid-cols-3 gap-2 mb-2;
+}
+
+.admin-kpi-tile {
+  @apply bg-darker border border-gray-700/50 rounded-md p-2 text-center;
+}
+
+.admin-kpi-label {
+  @apply text-xs text-gray-500;
+}
+
+.admin-kpi-value {
+  @apply text-lg font-bold text-gray-300 tabular-nums;
+}
+
+.admin-embed-row {
+  @apply flex gap-2 flex-wrap mb-2;
+}
+
+.admin-embed-field {
+  @apply flex-1 min-w-0 text-xs text-gray-400;
+}
+
+.admin-color-swatch {
+  @apply flex items-center gap-1;
 }
 
 .chart-rows:hover .chart-hit {

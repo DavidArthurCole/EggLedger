@@ -95,8 +95,8 @@ public static class Api {
         MapAuthed(app, ["GET"], "/api/v1/admin/me", store, admin.Me);
         MapAuthed(app, ["GET"], "/api/v1/admin/users", store, admin.Users);
         MapAuthed(app, ["GET"], "/api/v1/admin/metrics", store, admin.Metrics);
-        MapAuthed(app, ["DELETE"], "/api/v1/admin/users/{discordId}", store,
-            c => admin.DeleteUser(c, (string)c.Request.RouteValues["discordId"]!));
+        MapAuthed(app, ["DELETE"], "/api/v1/admin/users/{userId}", store,
+            c => admin.DeleteUser(c, (string)c.Request.RouteValues["userId"]!));
 
         // Ship 3D assets: authed + admin-allowlist gated. Bytes live in a server-local dir
         // (not wwwroot), served only here, until licensing is confirmed.

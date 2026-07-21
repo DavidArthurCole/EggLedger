@@ -61,7 +61,6 @@
     private LifetimeData? _data;
     private LifetimeSortMethod _sortMethod = LifetimeSortMethod.Default;
     private bool _hideFilter;
-    private bool _optionsOpen;
     private bool _applying;
     private string _resultText = "";
     private MissionFilterMatcher? _matcher;
@@ -180,24 +179,17 @@
     }
 
     private RenderFragment RenderOptionsPopover() => __builder => {
-        <div class="relative flex-shrink-0">
-            <button type="button" class="text-base toggle-link whitespace-nowrap" @onclick="@(() => _optionsOpen = !_optionsOpen)">
-                Options
-            </button>
-            @if (_optionsOpen) {
-                <div class="absolute right-0 top-full mt-1 z-40 w-72 max-w-[90vw] px-3 py-2 shadow-sm text-sm text-gray-400 bg-darkest border border-gray-700 rounded-md tabular-nums">
-                    <div>
-                        <span class="font-bold text-gray-400">Sort Method</span>
-                        <div class="tile-group mt-1">
-                            <button type="button" class="tile-group-item @(_sortMethod == LifetimeSortMethod.Default ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover")" @onclick="@(() => SetSortAsync(LifetimeSortMethod.Default))">Default</button>
-                            <button type="button" class="tile-group-item @(_sortMethod == LifetimeSortMethod.Iv ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover")" @onclick="@(() => SetSortAsync(LifetimeSortMethod.Iv))">Inventory Visualizer</button>
-                            <button type="button" class="tile-group-item @(_sortMethod == LifetimeSortMethod.Count ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover")" @onclick="@(() => SetSortAsync(LifetimeSortMethod.Count))">Total Count</button>
-                            <button type="button" class="tile-group-item @(_sortMethod == LifetimeSortMethod.Random ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover")" @onclick="@(() => SetSortAsync(LifetimeSortMethod.Random))">Random</button>
-                        </div>
-                    </div>
+        <OptionsPopover>
+            <div>
+                <span class="font-bold text-gray-400">Sort Method</span>
+                <div class="tile-group mt-1">
+                    <button type="button" class="tile-group-item @(_sortMethod == LifetimeSortMethod.Default ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover")" @onclick="@(() => SetSortAsync(LifetimeSortMethod.Default))">Default</button>
+                    <button type="button" class="tile-group-item @(_sortMethod == LifetimeSortMethod.Iv ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover")" @onclick="@(() => SetSortAsync(LifetimeSortMethod.Iv))">Inventory Visualizer</button>
+                    <button type="button" class="tile-group-item @(_sortMethod == LifetimeSortMethod.Count ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover")" @onclick="@(() => SetSortAsync(LifetimeSortMethod.Count))">Total Count</button>
+                    <button type="button" class="tile-group-item @(_sortMethod == LifetimeSortMethod.Random ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover")" @onclick="@(() => SetSortAsync(LifetimeSortMethod.Random))">Random</button>
                 </div>
-            }
-        </div>
+            </div>
+        </OptionsPopover>
     };
 
     private async Task SetSortAsync(LifetimeSortMethod method) {

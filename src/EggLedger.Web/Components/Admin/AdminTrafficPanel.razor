@@ -1,0 +1,98 @@
+@using EggLedger.Web.Services
+
+<div class="admin-panel">
+    <div class="admin-panel-head">
+        <span class="admin-panel-title">Traffic</span>
+    </div>
+
+    @if (Metrics is { Minutes.Count: > 0 }) {
+        <div class="admin-kpi">
+            <div class="admin-kpi-tile">
+                <div class="admin-kpi-value">@Metrics.Minutes.Sum(m => m.Total)</div>
+                <div class="admin-kpi-label">Requests (1h)</div>
+            </div>
+            <div class="admin-kpi-tile">
+                <div class="admin-kpi-value">@Metrics.Paths.Count</div>
+                <div class="admin-kpi-label">Distinct paths</div>
+            </div>
+            <div class="admin-kpi-tile">
+                <div class="admin-kpi-value">@Metrics.Spam.Count</div>
+                <div class="admin-kpi-label">Spam entries</div>
+            </div>
+        </div>
+
+        <svg viewBox="0 0 @Metrics.Minutes.Count 40" preserveAspectRatio="none" class="w-full h-24 bg-darker rounded-md p-1">
+            @{ var max = Math.Max(1, Metrics.Minutes.Max(m => m.Total)); }
+            @for (var i = 0; i < Metrics.Minutes.Count; i++) {
+                var m = Metrics.Minutes[i];
+                var h = m.Total * 40.0 / max;
+                <rect x="@i" y="@(40 - h)" width="0.8" height="@h" class="fill-blue-500">
+                    <title>@m.Total req</title>
+                </rect>
+            }
+        </svg>
+        <div class="text-xs text-gray-500 mt-1 mb-2">@Metrics.Minutes.Sum(m => m.Total) requests in the last 60 minutes</div>
+
+        <div class="tile-group mb-2">
+            <button type="button" class="tile-group-item @(_tab == "endpoint" ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover")" @onclick="@(() => _tab = "endpoint")">By endpoint</button>
+            <button type="button" class="tile-group-item @(_tab == "spam" ? "bg-darkest text-gray-200 border-gray-500" : "bg-darker text-gray-400 border-gray-700 hover:bg-dark_tab_hover")" @onclick="@(() => _tab = "spam")">Spam</button>
+        </div>
+
+        @if (_tab == "endpoint") {
+            <div class="admin-table-wrap">
+                <table class="admin-table">
+                    <thead>
+                    <tr>
+                        <th>Path</th>
+                        <th class="text-right">Count</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var p in Metrics.Paths) {
+                        <tr>
+                            <td class="font-mono">@p.Path</td>
+                            <td class="text-right">@p.Count</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        } else {
+            <div class="text-xs text-gray-500 mb-1">Invalid /api/v1 requests (no matching route). Likely scanners probing for other software.</div>
+            <div class="admin-table-wrap">
+                <table class="admin-table">
+                    <thead>
+                    <tr>
+                        <th>IP</th>
+                        <th>Request</th>
+                        <th>User-Agent</th>
+                        <th class="text-right">Hits</th>
+                        <th class="text-right">Last seen</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var s in Metrics.Spam) {
+                        <tr>
+                            <td class="font-mono">@s.Ip</td>
+                            <td class="font-mono">@s.Method @s.Path</td>
+                            <td class="truncate max-w-xs text-gray-600" title="@s.UserAgent">@s.UserAgent</td>
+                            <td class="text-right">@s.Hits</td>
+                            <td class="text-right text-gray-600">@FormatEpoch(s.LastSeen)</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+    } else {
+        <p class="text-gray-500 italic">No traffic recorded yet.</p>
+    }
+</div>
+
+@code {
+    [Parameter] public AdminMetrics? Metrics { get; set; }
+    private string _tab = "endpoint";
+
+    private static string FormatEpoch(long unixSeconds) =>
+        DateTimeOffset.FromUnixTimeSeconds(unixSeconds).ToLocalTime().ToString("yyyy-MM-dd HH:mm");
+}

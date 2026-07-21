@@ -23,8 +23,8 @@ public sealed class AdminService(HttpClient http) {
     public Task<AdminMetrics?> GetMetricsAsync(string token, CancellationToken ct = default) =>
         GetAsync<AdminMetrics>(token, "metrics", ct);
 
-    public async Task<bool> DeleteUserAsync(string token, string discordId, CancellationToken ct = default) {
-        using var req = new HttpRequestMessage(HttpMethod.Delete, $"{Prefix}/users/{Uri.EscapeDataString(discordId)}");
+    public async Task<bool> DeleteUserAsync(string token, Guid userId, CancellationToken ct = default) {
+        using var req = new HttpRequestMessage(HttpMethod.Delete, $"{Prefix}/users/{userId}");
         req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         using var resp = await http.SendAsync(req, ct).ConfigureAwait(false);
         return resp.IsSuccessStatusCode;
@@ -42,7 +42,7 @@ public sealed class AdminService(HttpClient http) {
 
 public sealed record AdminMe(bool IsAdmin);
 
-public sealed record AdminUser(string DiscordId, string Username, string AvatarUrl, long BlobCount, long StorageBytes, long? LastSession, bool IsAdmin);
+public sealed record AdminUser(Guid UserId, string? DiscordId, string Username, string AvatarUrl, long MissionCount, long StorageBytes, long? LastSession, bool IsAdmin);
 
 public sealed record AdminMetrics(IReadOnlyList<AdminMinute> Minutes, IReadOnlyList<AdminPath> Paths, IReadOnlyList<AdminSpam> Spam);
 

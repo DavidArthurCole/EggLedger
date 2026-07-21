@@ -12,7 +12,8 @@ namespace EggLedger.Web.Server.Tests.Auth;
 public class AuthentikAuthTests {
     private static AppConfig ConfigWith(string authority, string clientId = "", string clientSecret = "") => new(
         ListenAddr: "", DatabaseUrl: "", DiscordClientId: "", DiscordClientSecret: "", RedirectUrl: "",
-        BotToken: "", GuildId: "", SharedRoleId: "", DeployAgentUrl: "", DeployAgentSecret: "", MennoFunctionKey: "",
+        BotToken: "", GuildId: "", SharedRoleId: "", DeployAgentUrl: "", DeployAgentSecret: "",
+        DashboardChannelId: "", DeployNotifySecret: "", MennoFunctionKey: "",
         AuthentikAuthority: authority, AuthentikClientId: clientId, AuthentikClientSecret: clientSecret,
         IdentityApiUrl: "http://localhost:8090", IdentityApiSecret: "unused", IdentityWidgetUrl: "http://localhost:8090",
         TrustedProxyNetworks: [],

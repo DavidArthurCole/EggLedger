@@ -20,6 +20,7 @@ var builder = WebApplication.CreateBuilder(args);
 // host. When DATABASE_URL is unset (dev), sync wiring is skipped and only the UI boots.
 var cfg = AppConfig.FromEnv(Environment.GetEnvironmentVariable);
 var hasDb = !string.IsNullOrEmpty(cfg.DatabaseUrl);
+var build = new VerifyInfo { Name = "EggLedger", Sha256 = cfg.BuildSha, Version = EggLedger.Web.AppVersionInfo.Current, Date = cfg.BuildDate };
 
 // Registered so components (e.g. ConnectGate) can check cfg.AuthentikAuthority to decide
 // whether to show the Authentik login option, without threading it through as a parameter.
@@ -72,6 +73,7 @@ var authBuilder = builder.Services.AddAuthentication(EggLedger.Web.Server.Auth.A
     });
 builder.Services.AddAuthorization();
 builder.Services.AddCascadingAuthenticationState();
+builder.Services.AddScoped<EggLedger.Web.Components.Admin.IBotConfigSlot, EggLedger.Web.Server.Bot.BotConfigSlot>();
 
 if (hasDb) {
     var dataSource = NpgsqlDataSource.Create(cfg.DatabaseUrl);
@@ -113,6 +115,25 @@ if (hasDb) {
     builder.Services.AddSingleton<EggLedger.Web.Server.Sync.Auth.AuthEndpoints>();
 
     EggLedger.Web.Server.Auth.AuthentikAuth.AddIfConfigured(authBuilder, cfg, identityClient, dataSource);
+
+    if (!string.IsNullOrEmpty(cfg.BotToken)) {
+        builder.Services.AddSingleton(new BotConfig {
+            Name = "EggLedger",
+            Token = cfg.BotToken,
+            AppId = cfg.DiscordClientId,
+            GuildId = cfg.GuildId,
+            RepoUrl = "https://github.com/DavidArthurCole/EggLedger",
+            Build = build,
+            DeployAgentUrl = cfg.DeployAgentUrl,
+            DeployAgentSecret = cfg.DeployAgentSecret,
+            SharedRoleId = cfg.SharedRoleId,
+            DashboardChannelId = cfg.DashboardChannelId,
+            PostgresConnectionString = cfg.DatabaseUrl,
+        });
+        builder.Services.AddSingleton<EggLedger.Web.Server.Bot.EggLedgerBotHostedService>();
+        builder.Services.AddHostedService(sp => sp.GetRequiredService<EggLedger.Web.Server.Bot.EggLedgerBotHostedService>());
+        builder.Services.AddScoped(sp => sp.GetRequiredService<EggLedger.Web.Server.Bot.EggLedgerBotHostedService>().Bot?.ConfigService!);
+    }
 }
 
 // Self-origin base for the shared UI's HttpClient (in-process /api/v1 + /egg-api calls).
@@ -201,32 +222,23 @@ if (hasDb) {
     }
     DiscordOAuth.Init(cfg.DiscordClientId, cfg.DiscordClientSecret, cfg.RedirectUrl);
 
-    var build = new VerifyInfo { Name = "EggLedger", Sha256 = cfg.BuildSha, Version = EggLedger.Web.AppVersionInfo.Current, Date = cfg.BuildDate };
-
     app.Logger.LogInformation("eggledger: DB configured, running migrations. selfBase={SelfBase}", selfBase);
     var conn = await Database.InitAsync(cfg.DatabaseUrl);
     await Migrator.MigrateAsync(conn, Path.Combine(AppContext.BaseDirectory, "Migrations"));
     app.Logger.LogInformation("eggledger: migrations complete, /api/v1 + Postgres storage active");
 
-    if (!string.IsNullOrEmpty(cfg.BotToken)) {
-        try {
-            await SyncKitBot.StartAsync(new BotConfig {
-                Name = "EggLedger",
-                Token = cfg.BotToken,
-                AppId = cfg.DiscordClientId,
-                GuildId = cfg.GuildId,
-                RepoUrl = "https://github.com/DavidArthurCole/EggLedger",
-                Build = build,
-                DeployAgentUrl = cfg.DeployAgentUrl,
-                DeployAgentSecret = cfg.DeployAgentSecret,
-                SharedRoleId = cfg.SharedRoleId,
-            });
-        } catch (Exception ex) {
-            app.Logger.LogWarning(ex, "synckit: bot start failed, continuing");
-        }
-    }
-
     Api.Map(app, cfg, build);
+
+    if (!string.IsNullOrEmpty(cfg.BotToken) && !string.IsNullOrEmpty(cfg.DeployNotifySecret)) {
+        var deployConfigStore = new ChannelConfigStore(app.Services.GetRequiredService<NpgsqlDataSource>());
+        var botCfg = app.Services.GetRequiredService<BotConfig>();
+        var botHosted = app.Services.GetRequiredService<EggLedger.Web.Server.Bot.EggLedgerBotHostedService>();
+        app.MapPost("/internal/deploy-notify", DeployNotifyHandler.Build(cfg.DeployNotifySecret, async res => {
+            var client = botHosted.Bot?.Client;
+            if (client is null || !ulong.TryParse(cfg.GuildId, out var guildId)) return;
+            await new DeployNotifier(deployConfigStore, client, guildId, botCfg.Name).NotifyAsync(res, CancellationToken.None);
+        }));
+    }
 } else {
     app.Logger.LogWarning("eggledger: WARNING - DATABASE_URL not set. /api/v1 + Postgres storage DISABLED; auth/sync will not work. UI boots only.");
 }

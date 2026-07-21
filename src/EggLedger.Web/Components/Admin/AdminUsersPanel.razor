@@ -1,0 +1,58 @@
+@using EggLedger.Web.Services
+@using EggLedger.Web.State
+
+<div class="admin-panel">
+    <div class="admin-panel-head">
+        <span class="admin-panel-title">Users (@(Users?.Count ?? 0))</span>
+        @if (Users is { Count: > 0 }) {
+            <span class="text-xs text-gray-500 tabular-nums">@Users.Sum(u => u.MissionCount) missions - @LedgerFormatting.FormatBytes(Users.Sum(u => u.StorageBytes)) total</span>
+        }
+    </div>
+    <div class="admin-table-wrap">
+        <table class="admin-table">
+            <thead>
+            <tr>
+                <th>User</th>
+                <th>Discord ID</th>
+                <th class="text-right">Missions</th>
+                <th class="text-right">Storage</th>
+                <th class="text-right">Last Login</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            @foreach (var u in Users ?? []) {
+                <tr>
+                    <td class="font-medium text-gray-300">@u.Username @(u.IsAdmin ? "(admin)" : "")</td>
+                    <td class="font-mono text-gray-600" title="@u.DiscordId">@(u.DiscordId ?? "—")</td>
+                    <td class="text-right">@u.MissionCount</td>
+                    <td class="text-right">@LedgerFormatting.FormatBytes(u.StorageBytes)</td>
+                    <td class="text-right text-gray-600" title="@LastLoginTitle(u.LastSession)">@LastLoginLabel(u.LastSession)</td>
+                    <td class="text-right">
+                        @if (!u.IsAdmin) {
+                            <button type="button" class="text-red-400 hover:text-red-300" @onclick="() => OnDelete.InvokeAsync(u.UserId)">
+                                Delete
+                            </button>
+                        }
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+    @if (!string.IsNullOrEmpty(Error)) {
+        <p class="text-red-500 text-xs mt-0_5rem">@Error</p>
+    }
+</div>
+
+@code {
+    [Parameter] public IReadOnlyList<AdminUser>? Users { get; set; }
+    [Parameter] public EventCallback<Guid> OnDelete { get; set; }
+    [Parameter] public string? Error { get; set; }
+
+    private static string LastLoginLabel(long? lastSession) =>
+        lastSession is { } s ? LedgerFormatting.FormatTimeSince(s, DateTimeOffset.UtcNow.ToUnixTimeSeconds()) : "—";
+
+    private static string LastLoginTitle(long? lastSession) =>
+        lastSession is { } s ? DateTimeOffset.FromUnixTimeSeconds(s).ToLocalTime().ToString("yyyy-MM-dd HH:mm") : "";
+}
