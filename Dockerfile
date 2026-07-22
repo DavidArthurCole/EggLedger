@@ -4,6 +4,8 @@ ARG EGGLEDGER_VERSION
 COPY global.json nuget.config Directory.Build.props .editorconfig EggLedger.slnx ./
 COPY src/EggLedger.Domain/EggLedger.Domain.csproj src/EggLedger.Domain/
 COPY src/EggLedger.Web/EggLedger.Web.csproj src/EggLedger.Web/
+COPY src/EggLedger.Web/tailwind.config.js src/EggLedger.Web/
+COPY src/EggLedger.Web/Styles/ src/EggLedger.Web/Styles/
 COPY src/EggLedger.Desktop/EggLedger.Desktop.csproj src/EggLedger.Desktop/
 COPY src/EggLedger.Web.Server/EggLedger.Web.Server.csproj src/EggLedger.Web.Server/
 RUN --mount=type=secret,id=github_token \
@@ -13,7 +15,7 @@ RUN --mount=type=secret,id=github_token \
       --password "$(cat /run/secrets/github_token)" \
       --store-password-in-clear-text \
       --configfile nuget.config \
-    && dotnet restore src/EggLedger.Web.Server/EggLedger.Web.Server.csproj -p:BuildTailwindCss=false
+    && dotnet restore src/EggLedger.Web.Server/EggLedger.Web.Server.csproj
 
 COPY src/ src/
 RUN --mount=type=cache,target=/root/.nuget/packages \
