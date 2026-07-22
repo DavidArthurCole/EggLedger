@@ -14,6 +14,7 @@
 @* Owns the 2s/5min auth poll loop around CloudSyncService.PollOnceAsync with cancellation so navigating away cannot leak it. *@
 
 <div class="px-2 py-2 text-sm text-gray-400 bg-darker rounded-md tabular-nums overflow-auto">
+    <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-0_5rem">Settings Sync</div>
     @if (_reachableChecking) {
         <div class="mt-0_5rem text-gray-500 italic text-xs">Checking sync server connection...</div>
     } else if (!_reachable) {
@@ -35,14 +36,23 @@
                 @if (!string.IsNullOrEmpty(_username)) {
                     <span class="text-gray-400 text-xs">as <span class="text-gray-300">@_username</span></span>
                 }
-
-                <span class="text-gray-600">&middot;</span>
-                <span class="text-xs text-gray-500">Push <span class="@(_lastPushAt > 0 ? "text-gray-400" : "text-gray-600 italic")">@PushString</span></span>
-                <span class="text-xs text-gray-500">Pull <span class="@(_lastPullAt > 0 ? "text-gray-400" : "text-gray-600 italic")">@PullString</span></span>
             } else {
                 <span class="text-gray-500 italic text-xs">Not connected</span>
             }
         </div>
+
+        @if (_connected) {
+            <div class="mt-0_25rem inline-flex text-xs bg-darkest rounded-md overflow-hidden border border-gray-700">
+                <div class="px-2 py-1 border-r border-gray-700">
+                    <span class="text-gray-500">Push</span>
+                    <span class="ml-1 @(_lastPushAt > 0 ? "text-gray-400" : "text-gray-600 italic")">@PushString</span>
+                </div>
+                <div class="px-2 py-1">
+                    <span class="text-gray-500">Pull</span>
+                    <span class="ml-1 @(_lastPullAt > 0 ? "text-gray-400" : "text-gray-600 italic")">@PullString</span>
+                </div>
+            </div>
+        }
 
         @if (_authWaiting) {
             <div class="mt-0_5rem border border-blue-700 rounded-md px-3 py-2 text-blue-300 text-xs max-w-[50%]">
@@ -52,20 +62,30 @@
         }
 
         <div class="mt-0_5rem flex items-center gap-2 flex-wrap">
-            @if (Platform.IsDesktop && !_connected) {
+            @if (!_connected) {
                 <button type="button" class="ledger-btn apply-filter-button !mt-0 !mr-0 !ml-0 disabled:opacity-60"
-                        disabled="@_authWaiting" @onclick="ConnectAsync">
+                        disabled="@_authWaiting" @onclick="@(() => Platform.IsDesktop ? ConnectAsync() : ReconnectAsync())">
                     @(_authWaiting ? "Waiting for sign-in..." : "Connect account")
                 </button>
             } else {
                 <button type="button"
                         class="ledger-btn apply-filter-button !mt-0 !mr-0 !ml-0 !bg-blue-700 !text-white hover:!bg-blue-600 !border-blue-500 flex items-center gap-1.5"
                         disabled="@_syncInProgress" @onclick="SyncNowAsync">
+                    @if (!_syncInProgress) {
+                        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 16V4m0 0l-4 4m4-4l4 4M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2"/>
+                        </svg>
+                    }
                     @(_syncInProgress ? "Syncing..." : "Sync")
                 </button>
                 <button type="button"
                         class="ledger-btn apply-filter-button !mt-0 !mr-0 !ml-0 !bg-gray-700 !text-gray-200 hover:!bg-gray-600 !border-gray-500 flex items-center gap-1.5"
                         disabled="@_restoreInProgress" @onclick="RestoreNowAsync">
+                    @if (!_restoreInProgress) {
+                        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"/>
+                        </svg>
+                    }
                     @(_restoreInProgress ? "Restoring..." : "Restore")
                 </button>
                 @if (_confirmingDelete) {
@@ -216,6 +236,22 @@
         catch (Exception ex) {
             _authWaiting = false;
             _syncError = ex.Message;
+        }
+    }
+
+    private async Task ReconnectAsync() {
+        _authWaiting = true;
+        _syncError = "";
+        _restoreError = "";
+        try {
+            var session = await Cloud.ConnectViaLoginAsync();
+            await OnAuthCompleteAsync(session);
+        }
+        catch (CloudSyncException ex) {
+            _syncError = ex.Message;
+        }
+        finally {
+            _authWaiting = false;
         }
     }
 

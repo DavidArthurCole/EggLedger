@@ -9,17 +9,17 @@
             <button type="button" class="text-gray-500 hover:text-gray-300" @onclick="Close" aria-label="Close">&#10005;</button>
         </div>
 
-        <AccountDataPanel Accounts="Accounts" Changed="OnChangedAsync" Fetching="Fetching"/>
+        @if (Services.GetService<IProfilePanelSlot>() is { } profileSlot) {
+            @profileSlot.Render()
 
-        <hr class="mt-1rem mb-1rem w-full"/>
+            <hr class="mt-1rem mb-1rem w-full"/>
+        }
 
         <CloudSyncPanel/>
 
-        @if (Services.GetService<IProfilePanelSlot>() is { } profileSlot) {
-            <hr class="mt-1rem mb-1rem w-full"/>
+        <hr class="mt-1rem mb-1rem w-full"/>
 
-            @profileSlot.Render()
-        }
+        <AccountDataPanel Accounts="Accounts" Changed="OnChangedAsync" Fetching="Fetching"/>
     </div>
 </div>
 
