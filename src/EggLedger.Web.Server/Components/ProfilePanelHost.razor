@@ -1,0 +1,18 @@
+@using SyncKit.Auth
+@using SyncKit.Identity.AdminUi
+@inject IHttpContextAccessor HttpContextAccessor
+@inject NavigationManager Nav
+@inject SessionCookieOptions SyncKitSession
+
+@if (!string.IsNullOrEmpty(_sessionToken)) {
+    <ProfilePanel SessionToken="@_sessionToken" ReturnUrl="@Nav.Uri"/>
+}
+
+@code {
+    private string _sessionToken = "";
+
+    protected override void OnInitialized() {
+        _sessionToken = HttpContextAccessor.HttpContext?.Request.Cookies[SyncKitSession.CookieName] ?? "";
+    }
+
+}

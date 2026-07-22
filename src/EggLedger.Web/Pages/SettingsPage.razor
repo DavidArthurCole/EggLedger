@@ -3,6 +3,7 @@
 @using EggLedger.Web.Data
 @using EggLedger.Web.Services
 @using EggLedger.Web.Settings
+@using Microsoft.Extensions.DependencyInjection
 @implements IDisposable
 @inject IndexedDbSettings Settings
 @inject IPlatformCapabilities Platform
@@ -10,6 +11,7 @@
 @inject MissionQueryHandlers Queries
 @inject FetchOrchestrator Fetch
 @inject AccountLoader Loader
+@inject IServiceProvider Services
 
 <PageTitle>EggLedger - Settings</PageTitle>
 
@@ -41,6 +43,12 @@
             <hr class="mt-1rem mb-1rem w-full"/>
 
             <CloudSyncPanel @ref="_cloudPanel"/>
+
+            @if (Services.GetService<IProfilePanelSlot>() is { } profileSlot) {
+                <hr class="mt-1rem mb-1rem w-full"/>
+
+                @profileSlot.Render()
+            }
 
             <hr class="mt-1rem mb-1rem w-full"/>
 

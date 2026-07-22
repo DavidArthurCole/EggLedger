@@ -28,6 +28,7 @@ var startedAt = DateTimeOffset.UtcNow;
 
 
 builder.Services.AddSingleton(cfg);
+builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents(o => o.DetailedErrors = builder.Environment.IsDevelopment());
@@ -97,6 +98,7 @@ if (syncKitSession is not null) {
         return Task.CompletedTask;
     });
     builder.Services.AddSingleton(syncKitSession);
+    builder.Services.AddScoped<EggLedger.Web.Components.IProfilePanelSlot, EggLedger.Web.Server.Components.ProfilePanelSlot>();
 }
 
 builder.Services.AddAuthorization();

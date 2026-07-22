@@ -9,16 +9,12 @@ permissions:
   packages: write
 
 jobs:
-  # Create the release once up front so the per-RID matrix jobs below only ever attach
-  # assets to an existing release, instead of racing each other to create it (which hit
-  # "Validation Failed: already_exists" when multiple matrix jobs finished close together).
-  create-release:
+    create-release:
     runs-on: ubuntu-latest
     steps:
       - uses: softprops/action-gh-release@v3
 
-  # Desktop builds per RID. Asset names must match GithubReleaseClient.ExpectedAssetName().
-  desktop:
+    desktop:
     name: Desktop (${{ matrix.rid }})
     needs: create-release
     runs-on: ${{ matrix.os }}
@@ -49,9 +45,7 @@ jobs:
         with:
           dotnet-version: "10.0.x"
 
-      # Tag runs cannot share caches across tags; these restore the entries the CI
-      # workflow seeds on master (default-branch fallback). Tailwind CLI v3.4.17 keyed by OS.
-      - uses: actions/cache@v6
+            - uses: actions/cache@v6
         with:
           path: tools/tailwind
           key: tailwind-cli-v3.4.17-${{ runner.os }}
@@ -62,9 +56,7 @@ jobs:
           key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/Directory.Build.props') }}
           restore-keys: ${{ runner.os }}-nuget-
 
-      # Stamp the real release version from the tag (v3.0.0-beta.18 -> 3.0.0-beta.18) so the
-      # updater's SemVersion compare works; Directory.Build.props only holds the dev default.
-      - name: Publish
+            - name: Publish
         shell: bash
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
@@ -73,8 +65,7 @@ jobs:
             -p:EggLedgerVersion="$VERSION" \
             -o publish/${{ matrix.rid }}
 
-      # Skip signing when the Azure secret is absent, so unsigned dry-runs still build.
-      - name: Check signing prerequisites
+            - name: Check signing prerequisites
         id: signing
         if: matrix.kind == 'rawexe'
         shell: bash
@@ -83,10 +74,7 @@ jobs:
         run: |
           if [ -n "$AZURE_CLIENT_ID" ]; then echo "available=true" >> "$GITHUB_OUTPUT"; else echo "available=false" >> "$GITHUB_OUTPUT"; fi
 
-      # The root nuget.config's packageSourceMapping (pins SyncKit.* to GitHub Packages) makes
-      # the signing action's `sign` tool install fail: --add-source is rejected under source
-      # mapping. Restore already ran in Publish, so hide the config for the signing step only.
-      - name: Hide nuget.config for signing
+            - name: Hide nuget.config for signing
         if: matrix.kind == 'rawexe' && steps.signing.outputs.available == 'true'
         shell: bash
         run: mv nuget.config nuget.config.bak
@@ -107,8 +95,7 @@ jobs:
           timestamp-rfc3161: http://timestamp.acs.microsoft.com
           timestamp-digest: SHA256
 
-      # Windows ships the raw signed exe; others are archived.
-      - name: Package
+            - name: Package
         shell: bash
         run: |
           cd publish/${{ matrix.rid }}
@@ -118,8 +105,7 @@ jobs:
             rawexe) cp EggLedger.exe "../../${{ matrix.asset }}" ;;
           esac
 
-      # One "hash␠␠filename" line per asset; the checksums job concatenates them into SHA256SUMS.
-      - name: Hash
+            - name: Hash
         shell: bash
         run: sha256sum "${{ matrix.asset }}" > "${{ matrix.asset }}.sha256"
 
@@ -134,8 +120,7 @@ jobs:
           name: sha-${{ matrix.rid }}
           path: ${{ matrix.asset }}.sha256
 
-  # Gather the per-asset hash lines into one SHA256SUMS asset the self-updater verifies against.
-  checksums:
+    checksums:
     needs: desktop
     runs-on: ubuntu-latest
     steps:
@@ -149,8 +134,7 @@ jobs:
         with:
           files: SHA256SUMS
 
-  # Build the Blazor Server image and push to GHCR; frame pulls the prebuilt image.
-  docker:
+    docker:
     uses: DavidArthurCole/EggBasket/.github/workflows/docker-publish.yml@master
     with:
       needs-pat: true

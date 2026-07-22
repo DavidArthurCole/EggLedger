@@ -10,15 +10,16 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="SyncKit.Core" Version="0.8.0-preview.4" />
-    <PackageReference Include="SyncKit.Auth" Version="0.8.0-preview.4" />
-    <PackageReference Include="SyncKit.Bot" Version="0.8.0-preview.4" />
-    <PackageReference Include="SyncKit.Bot.AdminUi" Version="0.8.0-preview.4" />
-    <PackageReference Include="SyncKit.Contract" Version="0.8.0-preview.4" />
-    <PackageReference Include="SyncKit.Db" Version="0.8.0-preview.4" />
-    <PackageReference Include="SyncKit.Identity.Client" Version="0.8.0-preview.4" />
-    <PackageReference Include="SyncKit.Metrics" Version="0.8.0-preview.4" />
-    <PackageReference Include="SyncKit.Metrics.AdminUi" Version="0.8.0-preview.4" />
+    <PackageReference Include="SyncKit.Core" Version="0.8.0-preview.6" />
+    <PackageReference Include="SyncKit.Auth" Version="0.8.0-preview.6" />
+    <PackageReference Include="SyncKit.Bot" Version="0.8.0-preview.6" />
+    <PackageReference Include="SyncKit.Bot.AdminUi" Version="0.8.0-preview.6" />
+    <PackageReference Include="SyncKit.Contract" Version="0.8.0-preview.6" />
+    <PackageReference Include="SyncKit.Db" Version="0.8.0-preview.6" />
+    <PackageReference Include="SyncKit.Identity.AdminUi" Version="0.8.0-preview.6" />
+    <PackageReference Include="SyncKit.Identity.Client" Version="0.8.0-preview.6" />
+    <PackageReference Include="SyncKit.Metrics" Version="0.8.0-preview.6" />
+    <PackageReference Include="SyncKit.Metrics.AdminUi" Version="0.8.0-preview.6" />
     <PackageReference Include="Npgsql" Version="10.0.3" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="10.0.0" />
   </ItemGroup>
