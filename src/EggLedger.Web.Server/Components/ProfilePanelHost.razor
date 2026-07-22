@@ -33,47 +33,56 @@
                 </div>
             </AvatarTemplate>
             <ProvidersTemplate Context="ctx">
+                <hr class="mt-1rem mb-1rem w-full"/>
                 @if (ctx.Banner is not null) {
-                    <div class="mt-0_5rem text-xs text-gray-500">@ctx.Banner</div>
+                    <div class="mb-0_5rem text-xs text-gray-500">@ctx.Banner</div>
                 }
-                <ul class="mt-0_5rem space-y-1">
-                    @foreach (var item in ctx.Items) {
-                        <li class="flex items-center gap-2 px-2 py-1.5 bg-darkest rounded-md border border-gray-700">
-                            <span class="w-24 flex-shrink-0 flex items-center gap-1.5 font-medium text-gray-300">
-                                <img class="w-4 h-4 flex-shrink-0" src="@Abs(Identity.IconUrl(item.Provider))" alt=""/>
-                                @Cap(item.Provider)
-                            </span>
-                            @if (item.Identity is { } id) {
-                                <span class="flex items-center gap-2 min-w-0 flex-1">
-                                    @if (!string.IsNullOrEmpty(id.Avatar)) {
-                                        <button type="button" class="w-5 h-5 rounded-full flex-shrink-0 overflow-hidden border border-transparent hover:border-gray-500"
-                                                title="Use this picture" @onclick="item.OnSelectAvatar">
-                                            <img class="w-full h-full object-cover" src="@id.Avatar" alt=""/>
-                                        </button>
-                                    }
-                                    <span class="truncate text-gray-400">@(id.Username ?? id.Subject)</span>
-                                    <span class="text-xs text-gray-600 flex-shrink-0">@id.LinkedAt.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)</span>
-                                </span>
-                                <span class="flex-shrink-0">
-                                    @if (item.CanUnlink) {
-                                        <button type="button" class="text-xs px-2 py-1 rounded border border-red-900 bg-darker text-red-300 hover:bg-red-950"
-                                                @onclick="item.OnUnlink">
-                                            Unlink
-                                        </button>
-                                    } else {
-                                        <span class="text-xs text-gray-600 italic" title="Cannot unlink the last login">Linked</span>
-                                    }
-                                </span>
-                            } else {
-                                <span class="flex-1 text-gray-600 italic">Not linked</span>
-                                <a class="text-xs px-2 py-1 rounded border border-gray-700 bg-darker text-privacy_blue hover:bg-darkerthandark flex-shrink-0"
-                                   href="@item.LinkUrl">
-                                    Link
-                                </a>
-                            }
-                        </li>
-                    }
-                </ul>
+                <table class="w-full text-sm border-collapse">
+                    <tbody>
+                        @foreach (var item in ctx.Items) {
+                            <tr class="border-b border-gray-800 last:border-b-0">
+                                <td class="py-1.5 pr-2 w-28">
+                                    <span class="flex items-center gap-1.5 font-medium text-gray-300">
+                                        <img class="w-5 h-5 flex-shrink-0" style="filter: brightness(0) invert(1);" src="@Abs(Identity.IconUrl(item.Provider))" alt=""/>
+                                        @Cap(item.Provider)
+                                    </span>
+                                </td>
+                                @if (item.Identity is { } id) {
+                                    <td class="py-1.5 px-2 min-w-0">
+                                        <span class="flex items-center gap-2 min-w-0">
+                                            @if (!string.IsNullOrEmpty(id.Avatar)) {
+                                                <button type="button" class="w-5 h-5 rounded-full flex-shrink-0 overflow-hidden border border-transparent hover:border-gray-500"
+                                                        title="Use this picture" @onclick="item.OnSelectAvatar">
+                                                    <img class="w-full h-full object-cover" src="@id.Avatar" alt=""/>
+                                                </button>
+                                            }
+                                            <span class="truncate text-gray-400">@(id.Username ?? id.Subject)</span>
+                                            <span class="text-xs text-gray-600 flex-shrink-0">@id.LinkedAt.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)</span>
+                                        </span>
+                                    </td>
+                                    <td class="py-1.5 pl-2 w-20 text-right">
+                                        @if (item.CanUnlink) {
+                                            <button type="button" class="text-xs px-2 py-1 rounded border border-red-900 bg-darker text-red-300 hover:bg-red-950"
+                                                    @onclick="item.OnUnlink">
+                                                Unlink
+                                            </button>
+                                        } else {
+                                            <span class="text-xs text-gray-600 italic" title="Cannot unlink the last login">Linked</span>
+                                        }
+                                    </td>
+                                } else {
+                                    <td class="py-1.5 px-2 text-gray-600 italic">Not linked</td>
+                                    <td class="py-1.5 pl-2 w-20 text-right">
+                                        <a class="text-xs px-2 py-1 rounded border border-gray-700 bg-darker text-privacy_blue hover:bg-darkerthandark"
+                                           href="@item.LinkUrl">
+                                            Link
+                                        </a>
+                                    </td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
             </ProvidersTemplate>
         </ProfilePanel>
     </div>
