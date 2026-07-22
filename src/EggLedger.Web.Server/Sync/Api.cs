@@ -48,8 +48,7 @@ public static class Api {
 
 
 
-        app.MapPost("/api/v1/auth/session-from-login", (HttpContext c) => auth.SessionFromLogin(c))
-            .RequireAuthorization();
+        app.MapPost("/api/v1/auth/session-from-login", (HttpContext c) => auth.SessionFromLogin(c));
 
         VerifyEndpoint.Map(app, build);
         app.MapPost("/api/v1/menno/submit", (HttpContext c) => menno.Submit(c));

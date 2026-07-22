@@ -199,21 +199,22 @@ public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvid
 
 
     public async Task SessionFromLogin(HttpContext ctx) {
-        if (ctx.User.Identity?.IsAuthenticated != true) {
+        var token = syncKitSession is not null ? ctx.Request.Cookies[syncKitSession.CookieName] : null;
+        if (string.IsNullOrEmpty(token)) {
             ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
             return;
         }
 
-        var userIdClaim = ctx.User.FindFirst(EggLedger.Web.Server.Auth.AuthScheme.UserIdClaim)?.Value;
-        if (!Guid.TryParse(userIdClaim, out var userId)) {
-            await WriteTextAsync(ctx, StatusCodes.Status401Unauthorized, "no resolved user identity\n");
+        var profile = await identity.GetProfileAsync(token, ctx.RequestAborted);
+        if (profile is null) {
+            ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
             return;
         }
 
-        var username = ctx.User.Identity?.Name ?? "";
-        var discordIdClaim = ctx.User.FindFirst(EggLedger.Web.Server.Auth.AuthScheme.DiscordIdClaim)?.Value;
+        var discordId = profile.Identities.FirstOrDefault(i => i.Provider == "discord")?.Subject;
+        await UpsertLocalUserAsync(profile.UserId, discordId, profile.Username, profile.Avatar, ctx.RequestAborted);
 
-        var poll = await MintSessionAsync(userId, username, discordIdClaim, ctx.RequestAborted);
+        var poll = await MintSessionAsync(profile.UserId, profile.Username, discordId, ctx.RequestAborted);
         await WriteJsonAsync(ctx, poll);
     }
 
