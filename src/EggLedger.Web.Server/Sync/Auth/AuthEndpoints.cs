@@ -29,7 +29,7 @@ public sealed record PollResponse(
     [property: JsonPropertyName("avatarUrl")] string AvatarUrl,
     [property: JsonPropertyName("encryptionKey")] string EncryptionKey);
 
-public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvider dataProtection, IdentityApiClient identity, ILogger<AuthEndpoints> logger, AppConfig cfg) {
+public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvider dataProtection, IdentityApiClient identity, ILogger<AuthEndpoints> logger, AppConfig cfg, SessionCookieOptions? syncKitSession = null) {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
     private static readonly string[] ElUserTables = [
@@ -65,26 +65,36 @@ public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvid
 
         await UpsertLocalUserAsync(result.UserId, result.DiscordId, result.Username, result.Avatar, ct);
 
-        var claims = new List<Claim> {
-            new(ClaimTypes.Name, result.Username),
-            new(EggLedger.Web.Server.Auth.AuthScheme.UserIdClaim, result.UserId.ToString()),
-            new(EggLedger.Web.Server.Auth.AuthScheme.RoleClaim, result.Role),
-        };
-        if (!string.IsNullOrEmpty(result.DiscordId)) {
-            claims.Add(new Claim(EggLedger.Web.Server.Auth.AuthScheme.DiscordIdClaim, result.DiscordId));
+        if (syncKitSession is null) {
+            var claims = new List<Claim> {
+                new(ClaimTypes.Name, result.Username),
+                new(EggLedger.Web.Server.Auth.AuthScheme.UserIdClaim, result.UserId.ToString()),
+                new(EggLedger.Web.Server.Auth.AuthScheme.RoleClaim, result.Role),
+            };
+            if (!string.IsNullOrEmpty(result.DiscordId)) {
+                claims.Add(new Claim(EggLedger.Web.Server.Auth.AuthScheme.DiscordIdClaim, result.DiscordId));
+            }
+            var claimsIdentity = new ClaimsIdentity(claims, EggLedger.Web.Server.Auth.AuthScheme.Cookie);
+            await ctx.SignInAsync(
+                EggLedger.Web.Server.Auth.AuthScheme.Cookie,
+                new ClaimsPrincipal(claimsIdentity),
+                new AuthenticationProperties { IsPersistent = true });
         }
-        var claimsIdentity = new ClaimsIdentity(claims, EggLedger.Web.Server.Auth.AuthScheme.Cookie);
-        await ctx.SignInAsync(
-            EggLedger.Web.Server.Auth.AuthScheme.Cookie,
-            new ClaimsPrincipal(claimsIdentity),
-            new AuthenticationProperties { IsPersistent = true });
 
         return result;
     }
 
     public async Task Logout(HttpContext ctx) {
         await ctx.SignOutAsync(EggLedger.Web.Server.Auth.AuthScheme.Cookie);
-        ctx.Response.Redirect("/");
+
+        if (syncKitSession is null) {
+            ctx.Response.Redirect("/");
+            return;
+        }
+
+        var referer = ctx.Request.Headers.Referer.ToString();
+        var returnUrl = string.IsNullOrEmpty(referer) ? cfg.PublicBaseUrl : referer;
+        ctx.Response.Redirect($"{cfg.IdentityWidgetUrl.TrimEnd('/')}/login/logout?returnUrl={Uri.EscapeDataString(returnUrl)}");
     }
 
 

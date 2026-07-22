@@ -49,7 +49,20 @@ builder.Services.Configure<ForwardedHeadersOptions>(o => {
 
 
 
-var authBuilder = builder.Services.AddAuthentication(EggLedger.Web.Server.Auth.AuthScheme.Cookie)
+var syncKitSession = SessionCookieOptions.FromEnvironment();
+const string SmartAuthScheme = "smart";
+
+var authentication = syncKitSession is null
+    ? builder.Services.AddAuthentication(EggLedger.Web.Server.Auth.AuthScheme.Cookie)
+    : builder.Services.AddAuthentication(SmartAuthScheme)
+        .AddPolicyScheme(SmartAuthScheme, SmartAuthScheme, o => {
+            o.ForwardDefaultSelector = ctx =>
+                ctx.Request.Cookies.ContainsKey(syncKitSession.CookieName)
+                    ? SyncKitSessionDefaults.Scheme
+                    : EggLedger.Web.Server.Auth.AuthScheme.Cookie;
+        });
+
+var authBuilder = authentication
     .AddCookie(EggLedger.Web.Server.Auth.AuthScheme.Cookie, o => {
         o.Cookie.Name = "el_session";
         o.Cookie.HttpOnly = true;
@@ -74,6 +87,12 @@ var authBuilder = builder.Services.AddAuthentication(EggLedger.Web.Server.Auth.A
             }
         };
     });
+
+if (syncKitSession is not null) {
+    authBuilder.AddSyncKitSession(syncKitSession);
+    builder.Services.AddSingleton(syncKitSession);
+}
+
 builder.Services.AddAuthorization();
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddScoped<EggLedger.Web.Components.Admin.IBotConfigSlot, EggLedger.Web.Server.Bot.BotConfigSlot>();
