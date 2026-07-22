@@ -1,8 +1,8 @@
+# syntax=docker/dockerfile:1.7
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
-ARG EGGLEDGER_VERSION
 COPY global.json nuget.config Directory.Build.props .editorconfig EggLedger.slnx ./
-COPY src/ src/
+COPY --parents src/*/*.csproj ./
 RUN --mount=type=secret,id=github_token \
     --mount=type=cache,target=/root/.nuget/packages \
     dotnet nuget update source github \
@@ -10,7 +10,11 @@ RUN --mount=type=secret,id=github_token \
       --password "$(cat /run/secrets/github_token)" \
       --store-password-in-clear-text \
       --configfile nuget.config \
-    && dotnet publish src/EggLedger.Web.Server/EggLedger.Web.Server.csproj -c Release -o /app \
+    && dotnet restore src/EggLedger.Web.Server/EggLedger.Web.Server.csproj
+COPY src/ src/
+ARG EGGLEDGER_VERSION
+RUN --mount=type=cache,target=/root/.nuget/packages \
+    dotnet publish src/EggLedger.Web.Server/EggLedger.Web.Server.csproj -c Release -o /app \
       ${EGGLEDGER_VERSION:+-p:EggLedgerVersion=$EGGLEDGER_VERSION}
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
