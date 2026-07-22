@@ -250,6 +250,7 @@ public static class FilterOptions {
 
             foreach (var tierLevel in tierOrder) {
                 var rarities = tierMap[tierLevel];
+                var tierKey = groupKey + "_" + tierLevel;
                 if (advanced && rarities.Exists(a => a.Rarity > 0)) {
                     result.Add(new FilterOption {
                         Text = ArtifactDisplayText(rarities[0]) + " (Any Rarity)",
@@ -259,6 +260,7 @@ public static class FilterOptions {
                         Badge = "T" + tierLevel + " Any",
                         GroupKey = groupKey,
                         GroupLabel = familyDisplayName,
+                        TierKey = tierKey,
                     });
                 }
                 foreach (var a in rarities) {
@@ -271,6 +273,7 @@ public static class FilterOptions {
                         Badge = "T" + tierLevel,
                         GroupKey = groupKey,
                         GroupLabel = familyDisplayName,
+                        TierKey = tierKey,
                     });
                 }
             }

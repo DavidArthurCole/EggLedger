@@ -163,6 +163,7 @@ hr {
   position: fixed;
   top: 0;
   left: 0;
+  visibility: hidden;
   z-index: 1000;
   width: 200px;
   box-sizing: border-box;
@@ -246,6 +247,7 @@ hr {
 
 .filter-select {
   @apply block rounded-md text-sm bg-darkest tabular-nums appearance-none mr-1rem mt-0_5rem pl-0_5rem pt-0_5rem pb-0_5rem pr-select;
+  color-scheme: dark;
 }
 
 .filter-select:focus {
@@ -457,6 +459,12 @@ input[type=number] {
 .popup-opt {
   @apply text-sm text-gray-400 cursor-pointer select-none py-1 pl-3 tabular-nums flex relative text-center items-center rounded-md mr-0_5rem;
   outline: none;
+  width: 100%;
+}
+
+.popup-opt-inline {
+  width: auto;
+  flex: 0 0 auto;
 }
 
 .popup-opt:hover {
@@ -477,13 +485,17 @@ input[type=number] {
   @apply block text-xs font-bold text-gray-400 mb-1;
 }
 
+.popup-tier-group {
+  @apply flex flex-wrap items-center gap-1 bg-darkest border border-gray-700 rounded-md p-1;
+}
+
 .popup-opt-chip {
-  @apply inline-flex flex-col items-center justify-center gap-0.5 w-12 h-12 rounded-md cursor-pointer select-none bg-darkest border border-gray-700 py-0.5;
+  @apply inline-flex flex-col items-center justify-center gap-0.5 w-12 h-12 rounded-md cursor-pointer select-none py-0.5;
   outline: none;
 }
 
 .popup-opt-chip:hover {
-  @apply bg-darker border-gray-500;
+  @apply bg-darker;
 }
 
 .popup-opt-chip-badge {
@@ -491,11 +503,40 @@ input[type=number] {
   font-size: 0.6rem;
 }
 
-.filter-incomplete {
-  @apply max-w-full text-red-400 italic mt-0_5rem mr-1rem;
-  white-space: normal;
-  flex: 1 1 auto;
-  min-width: 0;
+.popup-search-row {
+  @apply relative flex items-center gap-2 w-9/10;
+}
+
+.popup-search-row .input-search {
+  @apply w-full;
+}
+
+.popup-settings-wrap {
+  @apply relative flex-shrink-0;
+}
+
+.popup-settings-btn {
+  @apply flex items-center justify-center h-6 w-6 rounded-md text-gray-400 border border-gray-600 bg-transparent;
+}
+
+.popup-settings-btn:hover {
+  @apply text-gray-200 bg-darker;
+}
+
+.popup-settings-popover {
+  @apply absolute right-0 top-full mt-1 bg-dark border border-gray-600 rounded-md shadow-lg p-2 whitespace-nowrap;
+  z-index: 10;
+}
+
+.field-incomplete {
+  border-color: #fa8072 !important;
+  box-shadow: 0 0 5px 1px rgba(250, 128, 114, 0.55);
+}
+
+.filter-incomplete-icon {
+  @apply inline-flex items-center;
+  color: #fa8072;
+  cursor: help;
 }
 
 .bg-r-0 {
@@ -601,10 +642,6 @@ input[type=number] {
 .about-list-2 {
   @apply pl-6;
   list-style-type: circle;
-}
-
-::-webkit-calendar-picker-indicator {
-  filter: invert(1);
 }
 
 ::-webkit-scrollbar {

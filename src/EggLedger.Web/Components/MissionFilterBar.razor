@@ -17,6 +17,8 @@
         <div class="filter-container">
             @RenderConditionControls(row.Cond, () => OnRowChanged(index))
 
+            @RenderWarning(row.Cond)
+
             @if (RowComplete(row.Cond)) {
                 <button type="button" title="Add alternate filter condition"
                         class="mr-1rem flex items-center h-6 w-6 justify-center text-sml border text-yellow-700 border-yellow-700 bg-darkest rounded-md bg-transparent py-2 px-4 mt-0_5rem ledger-btn"
@@ -33,8 +35,6 @@
                     &times;
                 </button>
             }
-
-            @RenderWarning(row.Cond)
         </div>
 
         @for (var oi = 0; oi < row.Or.Count; oi++) {
@@ -45,13 +45,13 @@
 
                 @RenderConditionControls(orRow, () => OnOrRowChanged(index))
 
+                @RenderWarning(orRow)
+
                 <button type="button" title="Remove alternate condition" aria-label="Remove"
                         class="mr-1rem flex items-center justify-center text-red-700 text-lg max-w-6 max-h-6 min-w-6 min-h-6 border border-red-700 rounded-md bg-transparent mt-0_5rem ledger-btn"
                         @onclick="() => RemoveOr(index, orIndex)">
                     &times;
                 </button>
-
-                @RenderWarning(orRow)
             </div>
         }
     }
@@ -138,13 +138,7 @@
 
     private bool RowComplete(FilterCondition c) {
         var def = FieldOf(c);
-        if (def is null || string.IsNullOrEmpty(c.Op))
-            return false;
-        if (def.ValueKind == FilterValueKind.Bool)
-            return true;
-        if (def.ValueKind == FilterValueKind.Date)
-            return c.Val.Length > 0;
-        return c.Val.Length > 0;
+        return def is not null && !string.IsNullOrEmpty(c.Op) && c.Val.Length > 0;
     }
 
     private bool RowIncomplete(FilterCondition c) {
@@ -164,6 +158,7 @@
 
     private RenderFragment RenderConditionControls(FilterCondition c, Action changed) => __builder => {
         var def = FieldOf(c);
+        var incomplete = RowIncomplete(c);
 
         <select class="filter-select border-gray-600 text-gray-400" value="@c.TopLevel"
                 @onchange="@(e => {
@@ -181,12 +176,16 @@
             @if (def.ValueKind == FilterValueKind.Bool) {
                 <span class="text-gray-400 mt-0_5rem mr-1rem">is</span>
             } else {
-                <select class="filter-select border-gray-600 text-gray-400 @(ops.Count <= 1 ? "opacity-60 cursor-not-allowed" : "")"
+                var opMissing = incomplete && string.IsNullOrEmpty(c.Op);
+                <select class="filter-select border-gray-600 text-gray-400 @(ops.Count <= 1 ? "opacity-60 cursor-not-allowed" : "") @(opMissing ? "field-incomplete" : "")"
                         value="@c.Op" disabled="@(ops.Count <= 1)"
                         @onchange="@(e => {
                                        c.Op = e.Value?.ToString() ?? "";
                                        changed();
                                    })">
+                    @if (ops.Count > 1) {
+                        <option value="" class="filter-select-option">Select...</option>
+                    }
                     @foreach (var op in ops) {
                         <option value="@op.Value" class="filter-select-option">@op.Label</option>
                     }
@@ -194,38 +193,41 @@
             }
 
             @if (!string.IsNullOrEmpty(c.Op) || def.ValueKind == FilterValueKind.Bool) {
+                var valMissing = incomplete && string.IsNullOrEmpty(c.Val);
                 @switch (def.ValueKind) {
                     case FilterValueKind.Select:
-                        <select class="filter-select border-gray-600 text-gray-400" value="@c.Val"
+                        <select class="filter-select border-gray-600 text-gray-400 @(valMissing ? "field-incomplete" : "")" value="@c.Val"
                                 @onchange="@(e => {
                                                c.Val = e.Value?.ToString() ?? "";
                                                changed();
                                            })">
+                            <option value="" class="filter-select-option">Select...</option>
                             @foreach (var opt in OptionsFor(def)) {
                                 <option value="@opt.Value" class="filter-select-option @opt.StyleClass">@opt.Text</option>
                             }
                         </select>
                         break;
                     case FilterValueKind.Bool:
-                        <select class="filter-select border-gray-600 text-gray-400" value="@c.Val"
+                        <select class="filter-select border-gray-600 text-gray-400 @(valMissing ? "field-incomplete" : "")" value="@c.Val"
                                 @onchange="@(e => {
                                                c.Val = e.Value?.ToString() ?? "";
                                                changed();
                                            })">
+                            <option value="" class="filter-select-option">Select...</option>
                             @foreach (var opt in FilterOptions.GetBoolFilterOptions()) {
                                 <option value="@opt.Value" class="filter-select-option">@opt.Text</option>
                             }
                         </select>
                         break;
                     case FilterValueKind.Date:
-                        <input type="date" class="filter-select border-gray-600 text-gray-400" value="@c.Val"
+                        <input type="date" class="filter-select border-gray-600 text-gray-400 @(valMissing ? "field-incomplete" : "")" value="@c.Val"
                                @onchange="@(e => {
                                               c.Val = e.Value?.ToString() ?? "";
                                               changed();
                                           })"/>
                         break;
                     case FilterValueKind.Number:
-                        <input type="number" class="filter-select border-gray-600 text-gray-400" value="@c.Val"
+                        <input type="number" class="filter-select border-gray-600 text-gray-400 @(valMissing ? "field-incomplete" : "")" value="@c.Val"
                                @onchange="@(e => {
                                               c.Val = e.Value?.ToString() ?? "";
                                               changed();
@@ -239,6 +241,7 @@
                                           ImageBasePath="@(isDrop ? "images/" : "images/targets/")"
                                           RarityRing="isDrop"
                                           OverlayKind="@(isDrop ? "drop" : "target")"
+                                          Incomplete="valMissing"
                                           OnSelect="opt => { c.Val = opt.Value; changed(); }"
                                           Footer="@(isDrop ? DropAdvancedFooter : null)"/>
                         break;
@@ -250,7 +253,13 @@
     private RenderFragment RenderWarning(FilterCondition c) => __builder => {
         var def = FieldOf(c);
         @if (def is not null && RowIncomplete(c)) {
-            <span class="filter-incomplete">(!) Incomplete</span>
+            <span class="filter-incomplete-icon mt-0_5rem mr-1rem" title="Fill in the missing field">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+                    <circle cx="12" cy="12" r="9"/>
+                    <line x1="12" y1="7.5" x2="12" y2="13"/>
+                    <line x1="12" y1="16" x2="12" y2="16.01"/>
+                </svg>
+            </span>
         }
     };
 
@@ -306,12 +315,15 @@
             return;
         }
 
-        c.Op = FilterFields.DefaultOpForField(def);
-        c.Val = def.ValueKind switch {
-            FilterValueKind.Bool => "true",
-            FilterValueKind.Select => OptionsFor(def) is { Count: > 0 } o ? o[0].Value : "",
-            _ => ""
-        };
+        if (def.ValueKind == FilterValueKind.Bool) {
+            c.Op = "eq";
+            c.Val = "";
+            return;
+        }
+
+        var ops = FilterFields.MissionBarOpsFor(def);
+        c.Op = ops.Count == 1 ? ops[0].Value : "";
+        c.Val = "";
     }
 
     private void OnRowChanged(int index) => EnsureTrailingRow();

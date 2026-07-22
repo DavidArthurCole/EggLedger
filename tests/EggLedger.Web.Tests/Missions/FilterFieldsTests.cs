@@ -21,16 +21,6 @@ public sealed class FilterFieldsTests {
     }
 
     [Fact]
-    public void DefaultOpForField_BoolIsTrue_DropsIsContains_DateIsDayEq_ElseFirst() {
-        Assert.Equal("true", FilterFields.DefaultOpForField(FilterFields.GetReportField("dubcap")!));
-        Assert.Equal("c", FilterFields.DefaultOpForField(FilterFields.GetReportField("drops")!));
-        Assert.Equal("=", FilterFields.DefaultOpForField(FilterFields.GetReportField("ship")!));
-
-        Assert.Equal("d=", FilterFields.DefaultOpForField(FilterFields.GetReportField("launchDT")!));
-        Assert.Equal("d=", FilterFields.DefaultOpForField(FilterFields.GetReportField("returnDT")!));
-    }
-
-    [Fact]
     public void MissionBarOpsFor_DateFields_UseDayEqOnOperator() {
         var ops = FilterFields.MissionBarOpsFor(FilterFields.GetReportField("launchDT")!);
         Assert.Equal(new[] { "d=", "<", ">" }, ops.Select(o => o.Value).ToArray());

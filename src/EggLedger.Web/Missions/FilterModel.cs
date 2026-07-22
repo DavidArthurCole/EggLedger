@@ -30,6 +30,7 @@ public sealed class FilterOption {
     public string? GroupKey { get; set; }
     public string? GroupLabel { get; set; }
     public string? Badge { get; set; }
+    public string? TierKey { get; set; }
 }
 
 public sealed record FilterOp(string Value, string Label);

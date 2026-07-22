@@ -7,21 +7,7 @@ namespace EggLedger.Domain.Ei;
 public static class ArtifactExtensions {
     private static LedgerDisplayData Config => LedgerData.LedgerData.Config;
 
-    public static string GameName(this ArtifactSpec.Name a) {
-        string name = EnumNames.ProtoName(a).Replace("_", " ");
-        switch (a) {
-            case ArtifactSpec.Name.VialMartianDust:
-                name = "VIAL OF MARTIAN DUST";
-                break;
-            case ArtifactSpec.Name.OrnateGusset:
-                name = "GUSSET";
-                break;
-            case ArtifactSpec.Name.MercurysLens:
-                name = "MERCURY'S LENS";
-                break;
-        }
-        return name;
-    }
+    public static string GameName(this ArtifactSpec.Name a) => a.FamilyBaseName();
 
     public static string CasedName(this ArtifactSpec.Name a) =>
         CapitalizeArtifactName(a.GameName().ToLowerInvariant());
@@ -124,103 +110,51 @@ public static class ArtifactExtensions {
         return includeSpace ? tierName + " " : tierName;
     }
 
+    private static readonly Dictionary<ArtifactSpec.Name, string> BaseNameOverrides = new() {
+        [ArtifactSpec.Name.VialMartianDust] = "VIAL OF MARTIAN DUST",
+        [ArtifactSpec.Name.TheChalice] = "CHALICE",
+        [ArtifactSpec.Name.MercurysLens] = "MERCURY'S LENS",
+    };
+
+    public static string FamilyBaseName(this ArtifactSpec.Name a) =>
+        BaseNameOverrides.TryGetValue(a, out var overrideName) ? overrideName : EnumNames.ProtoName(a).Replace("_", " ");
+
     public static string GameName(this ArtifactSpec a) {
         string baseName = "";
         switch (a.name) {
 
             case ArtifactSpec.Name.LunarTotem:
-                baseName = "LUNAR TOTEM";
-                break;
             case ArtifactSpec.Name.NeodymiumMedallion:
-                baseName = "NEODYMIUM MEDALLION";
-                break;
             case ArtifactSpec.Name.BeakOfMidas:
-                baseName = "BEAK OF MIDAS";
-                break;
             case ArtifactSpec.Name.LightOfEggendil:
-                baseName = "LIGHT OF EGGENDIL";
-                break;
             case ArtifactSpec.Name.DemetersNecklace:
-                baseName = "DEMETERS NECKLACE";
-                break;
             case ArtifactSpec.Name.VialMartianDust:
-                baseName = "VIAL OF MARTIAN DUST";
-                break;
             case ArtifactSpec.Name.OrnateGusset:
-                baseName = "ORNATE GUSSET";
-                break;
             case ArtifactSpec.Name.TheChalice:
-                baseName = "CHALICE";
-                break;
             case ArtifactSpec.Name.BookOfBasan:
-                baseName = "BOOK OF BASAN";
-                break;
             case ArtifactSpec.Name.PhoenixFeather:
-                baseName = "PHOENIX FEATHER";
-                break;
             case ArtifactSpec.Name.TungstenAnkh:
-                baseName = "TUNGSTEN ANKH";
-                break;
             case ArtifactSpec.Name.AurelianBrooch:
-                baseName = "AURELIAN BROOCH";
-                break;
             case ArtifactSpec.Name.CarvedRainstick:
-                baseName = "CARVED RAINSTICK";
-                break;
             case ArtifactSpec.Name.PuzzleCube:
-                baseName = "PUZZLE CUBE";
-                break;
             case ArtifactSpec.Name.QuantumMetronome:
-                baseName = "QUANTUM METRONOME";
-                break;
             case ArtifactSpec.Name.ShipInABottle:
-                baseName = "SHIP IN A BOTTLE";
-                break;
             case ArtifactSpec.Name.TachyonDeflector:
-                baseName = "TACHYON DEFLECTOR";
-                break;
             case ArtifactSpec.Name.InterstellarCompass:
-                baseName = "INTERSTELLAR COMPASS";
-                break;
             case ArtifactSpec.Name.DilithiumMonocle:
-                baseName = "DILITHIUM MONOCLE";
-                break;
             case ArtifactSpec.Name.TitaniumActuator:
-                baseName = "TITANIUM ACTUATOR";
-                break;
             case ArtifactSpec.Name.MercurysLens:
-                baseName = "MERCURY'S LENS";
-                break;
-
             case ArtifactSpec.Name.TachyonStone:
-                baseName = "TACHYON STONE";
-                break;
             case ArtifactSpec.Name.DilithiumStone:
-                baseName = "DILITHIUM STONE";
-                break;
             case ArtifactSpec.Name.ShellStone:
-                baseName = "SHELL STONE";
-                break;
             case ArtifactSpec.Name.LunarStone:
-                baseName = "LUNAR STONE";
-                break;
             case ArtifactSpec.Name.SoulStone:
-                baseName = "SOUL STONE";
-                break;
             case ArtifactSpec.Name.ProphecyStone:
-                baseName = "PROPHECY STONE";
-                break;
             case ArtifactSpec.Name.QuantumStone:
-                baseName = "QUANTUM STONE";
-                break;
             case ArtifactSpec.Name.TerraStone:
-                baseName = "TERRA STONE";
-                break;
             case ArtifactSpec.Name.LifeStone:
-                baseName = "LIFE STONE";
-                break;
             case ArtifactSpec.Name.ClarityStone:
-                baseName = "CLARITY STONE";
+                baseName = a.name.FamilyBaseName();
                 break;
 
             case ArtifactSpec.Name.TachyonStoneFragment:
@@ -285,7 +219,7 @@ public static class ArtifactExtensions {
         CapitalizeArtifactName(a.GameName().ToLowerInvariant());
 
     public static string CasedSmallName(this ArtifactSpec a) =>
-        CapitalizeArtifactName(EnumNames.ProtoName(a.name).Replace("_", " ").ToLowerInvariant());
+        CapitalizeArtifactName(a.name.GameName().ToLowerInvariant());
 
     public static ArtifactSpec.Type Type(this ArtifactSpec a) => a.name.ArtifactType();
 

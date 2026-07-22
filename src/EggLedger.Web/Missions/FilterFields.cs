@@ -156,17 +156,6 @@ public static class FilterFields {
         return null;
     }
 
-    public static string DefaultOpForField(FilterFieldDef def) {
-        if (def.ValueKind == FilterValueKind.Bool) {
-            return "true";
-        }
-        if (def.Key == "drops") {
-            return "c";
-        }
-        var ops = MissionBarOpsFor(def);
-        return ops.Count > 0 ? ops[0].Value : "";
-    }
-
     public static List<FilterFieldDef> ReportMissionFields() {
         var result = new List<FilterFieldDef>();
         foreach (var f in ReportFilterFields) {

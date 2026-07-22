@@ -5,7 +5,7 @@
    (insertBefore/parentNode-null crashes). Backdrop click closes. Drops show a rarity ring. *@
 
 <input type="text" readonly placeholder="@Placeholder"
-       class="filter-select w-auto border-gray-600 @(Selected?.StyleClass ?? "text-gray-400") cursor-pointer"
+       class="filter-select w-auto border-gray-600 @(Selected?.StyleClass ?? "text-gray-400") cursor-pointer @(Incomplete ? "field-incomplete" : "")"
        value="@(Selected?.Text ?? "")"
        @onclick="Open"/>
 
@@ -18,8 +18,24 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
             </button>
-            <input @ref="_searchInput" type="text" class="input-search" placeholder="Search..."
-                   value="@_query" @oninput="OnQueryInput"/>
+            <div class="popup-search-row">
+                <input @ref="_searchInput" type="text" class="input-search" placeholder="Search..."
+                       value="@_query" @oninput="OnQueryInput"/>
+                @if (Footer is not null) {
+                    <div class="popup-settings-wrap">
+                        <button type="button" class="popup-settings-btn" title="Options" aria-label="Options"
+                                @onclick="() => _settingsOpen = !_settingsOpen">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+                                <circle cx="12" cy="12" r="3"/>
+                                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                            </svg>
+                        </button>
+                        @if (_settingsOpen) {
+                            <div class="popup-settings-popover">@Footer</div>
+                        }
+                    </div>
+                }
+            </div>
             <div class="popup-opt-container">
                 @{
                     var filtered = Filtered();
@@ -30,41 +46,34 @@
                 } else {
                     @foreach (var segment in segments) {
                         @if (segment.GroupLabel is null) {
-                            var opt = segment.Items[0].Option;
-                            var idx = segment.Items[0].Index;
-                            <div class="popup-opt @(idx == _activeIndex ? "selected-popup-opt" : "")"
-                                 @onclick="() => Choose(opt)">
-                                @if (!string.IsNullOrEmpty(opt.ImagePath)) {
-                                    <img class="max-w-7 mr-1rem @RingClass(opt)" loading="lazy" decoding="async"
-                                         alt="@opt.Text" src="@ImageSrc(opt)"/>
+                            <div class="flex flex-wrap">
+                                @foreach (var (opt, idx) in segment.Items) {
+                                    <div class="popup-opt @(segment.Items.Count > 1 ? "popup-opt-inline" : "") @(idx == _activeIndex ? "selected-popup-opt" : "")"
+                                         @onclick="() => Choose(opt)">
+                                        @if (!string.IsNullOrEmpty(opt.ImagePath)) {
+                                            <img class="max-w-7 mr-1rem @RingClass(opt)" loading="lazy" decoding="async"
+                                                 alt="@opt.Text" src="@ImageSrc(opt)"/>
+                                        }
+                                        <span class="@(opt.StyleClass ?? "text-gray-400")">@opt.Text</span>
+                                    </div>
                                 }
-                                <span class="@(opt.StyleClass ?? "text-gray-400")">@opt.Text</span>
                             </div>
                         } else {
                             <div class="popup-opt-group">
                                 <span class="popup-opt-group-label">@segment.GroupLabel</span>
-                                <div class="flex flex-wrap gap-1">
-                                    @foreach (var (opt, idx) in segment.Items) {
-                                        <button type="button" class="popup-opt-chip relative @(idx == _activeIndex ? "selected-popup-opt" : "")"
-                                                @onclick="() => Choose(opt)"
-                                                @onmouseenter="@(() => _hoveredChip = opt)" @onmouseleave="@(() => _hoveredChip = null)">
-                                            @if (!string.IsNullOrEmpty(opt.ImagePath)) {
-                                                <img class="w-7 h-7 @RingClass(opt)" loading="lazy" decoding="async"
-                                                     alt="@opt.Text" src="@ImageSrc(opt)"/>
+                                <div class="flex flex-wrap items-start gap-1">
+                                    @foreach (var cluster in BuildTierClusters(segment.Items)) {
+                                        @if (cluster.TierKey is null) {
+                                            @foreach (var item in cluster.Items) {
+                                                @RenderChip(item.Option, item.Index)
                                             }
-                                            @if (!string.IsNullOrEmpty(opt.Badge)) {
-                                                <span class="popup-opt-chip-badge @(opt.StyleClass ?? "text-gray-400")">@opt.Badge</span>
-                                            }
-                                            @if (ReferenceEquals(_hoveredChip, opt)) {
-                                                <div class="tooltip-floating tooltip-anchored text-sm">
-                                                    @opt.Text
-                                                    @if (opt.Rarity is { } r) {
-                                                        <br/>
-                                                        <span class="@(opt.StyleClass ?? "text-gray-400")">@FilterOptions.RarityWord(r)</span>
-                                                    }
-                                                </div>
-                                            }
-                                        </button>
+                                        } else {
+                                            <div class="popup-tier-group">
+                                                @foreach (var item in cluster.Items) {
+                                                    @RenderChip(item.Option, item.Index)
+                                                }
+                                            </div>
+                                        }
                                     }
                                 </div>
                             </div>
@@ -72,9 +81,6 @@
                     }
                 }
             </div>
-            @if (Footer is not null) {
-                <div class="flex items-center gap-1.5 px-1 pt-1 pb-0.5 text-xs text-gray-400 border-t border-gray-600 mr-1rem">@Footer</div>
-            }
         </div>
     </dialog>
 }
@@ -88,13 +94,14 @@
     [Parameter] public string OverlayKind { get; set; } = "drop";
     [Parameter] public EventCallback<FilterOption> OnSelect { get; set; }
     [Parameter] public RenderFragment? Footer { get; set; }
+    [Parameter] public bool Incomplete { get; set; }
     private bool _open;
     private bool _focusPending;
     private bool _preventKey;
+    private bool _settingsOpen;
     private ElementReference _searchInput;
     private string _query = "";
     private int _activeIndex = -1;
-    private FilterOption? _hoveredChip;
 
     private FilterOption? Selected =>
         SelectedValue is null ? null : Options.FirstOrDefault(o => o.Value == SelectedValue);
@@ -107,12 +114,19 @@
 
     private sealed record PickerSegment(string? GroupLabel, List<(FilterOption Option, int Index)> Items);
 
+    private sealed record TierCluster(string? TierKey, List<(FilterOption Option, int Index)> Items);
+
     private static List<PickerSegment> BuildSegments(List<FilterOption> filtered) {
         var segments = new List<PickerSegment>();
         string? currentKey = null;
         for (var i = 0; i < filtered.Count; i++) {
             var opt = filtered[i];
             if (opt.GroupKey is not null && opt.GroupKey == currentKey) {
+                segments[^1].Items.Add((opt, i));
+            } else if (opt.GroupKey is null && opt.ImagePath == "icon_help.webp" &&
+                       segments.Count > 0 && segments[^1].GroupLabel is null &&
+                       segments[^1].Items[^1].Option.GroupKey is null &&
+                       segments[^1].Items[^1].Option.ImagePath == "icon_help.webp") {
                 segments[^1].Items.Add((opt, i));
             } else {
                 segments.Add(new PickerSegment(opt.GroupKey is null ? null : opt.GroupLabel, [(opt, i)]));
@@ -122,6 +136,39 @@
 
         return segments;
     }
+
+    private static List<TierCluster> BuildTierClusters(List<(FilterOption Option, int Index)> items) {
+        var clusters = new List<TierCluster>();
+        string? currentTier = null;
+        foreach (var item in items) {
+            var tierKey = item.Option.TierKey;
+            if (clusters.Count > 0 && tierKey is not null && tierKey == currentTier) {
+                clusters[^1].Items.Add(item);
+            } else {
+                clusters.Add(new TierCluster(tierKey, [item]));
+                currentTier = tierKey;
+            }
+        }
+
+        return clusters;
+    }
+
+    private RenderFragment RenderChip(FilterOption opt, int idx) => __builder => {
+        <button type="button" class="popup-opt-chip relative @(idx == _activeIndex ? "selected-popup-opt" : "")"
+                data-tt="@TooltipText(opt)"
+                @onclick="() => Choose(opt)">
+            @if (!string.IsNullOrEmpty(opt.ImagePath)) {
+                <img class="w-7 h-7 @RingClass(opt)" loading="lazy" decoding="async"
+                     alt="@opt.Text" src="@ImageSrc(opt)"/>
+            }
+            @if (!string.IsNullOrEmpty(opt.Badge)) {
+                <span class="popup-opt-chip-badge @(opt.StyleClass ?? "text-gray-400")">@opt.Badge</span>
+            }
+        </button>
+    };
+
+    private static string TooltipText(FilterOption opt) =>
+        opt.Rarity is { } r ? opt.Text + "\n" + FilterOptions.RarityWord(r) : opt.Text;
 
     private string ImageSrc(FilterOption o) {
         return ContentPaths.Asset(ImageBasePath + o.ImagePath);
@@ -140,6 +187,7 @@
         _activeIndex = -1;
         _open = true;
         _focusPending = true;
+        _settingsOpen = false;
     }
 
     private void Close() {

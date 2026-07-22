@@ -44,6 +44,7 @@ function place(button, menu, placement) {
   menu.style.position = "fixed";
   menu.style.top = `${Math.round(top)}px`;
   menu.style.left = `${Math.round(left)}px`;
+  menu.style.visibility = "visible";
 }
 
 export function open(button, menu, placement) {
