@@ -1,11 +1,15 @@
 using Npgsql;
+using SyncKit.Metrics;
 
 namespace EggLedger.Web.Server.Sync.Admin;
 
 
 
 
-public sealed class SpamLog(NpgsqlDataSource source) {
+public sealed class SpamLog(NpgsqlDataSource source) : IRequestAuditSink {
+    public Task RecordAsync(AuditEntry entry, CancellationToken ct) =>
+        RecordAsync(entry.Ip, entry.Method, entry.Path, "", entry.AtEpochSeconds);
+
     public async Task RecordAsync(string ip, string method, string path, string userAgent, long nowEpoch) {
         await using var cmd = source.CreateCommand(
             "INSERT INTO el_api_spam (ip, method, path, user_agent, first_seen, last_seen, hits) " +

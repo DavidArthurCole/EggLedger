@@ -13,6 +13,7 @@ using Microsoft.Extensions.Logging;
 using Npgsql;
 using SyncKit.Auth;
 using SyncKit.Contract;
+using SyncKit.Metrics;
 
 namespace EggLedger.Web.Server.Sync;
 
@@ -28,33 +29,9 @@ public static class Api {
         var blobs = new BlobEndpoints(source, loggerFactory.CreateLogger<BlobEndpoints>());
         var menno = new MennoEndpoint(new HttpClient(), cfg.MennoFunctionKey, AppConfig.MennoUpstreamUrl);
         var store = new SessionStore(source, identity);
-        var metrics = app.Services.GetRequiredService<Admin.ApiMetrics>();
-        var spam = app.Services.GetRequiredService<Admin.SpamLog>();
         var admin = new Admin.AdminEndpoints(app.Services.GetRequiredService<EggLedger.Web.Components.Admin.IAdminData>(), currentUser);
 
-
-
-        app.Use(async (ctx, next) => {
-            if (ctx.Request.Path.StartsWithSegments("/api/v1")) {
-                if (ctx.GetEndpoint() is not null) {
-                    metrics.Record(ctx.Request.Path.Value ?? "");
-                } else {
-                    var ip = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-                    var ua = ctx.Request.Headers.UserAgent.ToString();
-                    var now = TimeProvider.System.GetUtcNow().ToUnixTimeSeconds();
-
-                    var apiLogger = loggerFactory.CreateLogger("EggLedger.Web.Server.Sync.Api");
-                    _ = Task.Run(async () => {
-                        try {
-                            await spam.RecordAsync(ip, ctx.Request.Method, ctx.Request.Path.Value ?? "", ua, now);
-                        } catch (Exception ex) {
-                            apiLogger.LogWarning(ex, "spam log: failed to record probe from {Ip}", ip);
-                        }
-                    });
-                }
-            }
-            await next();
-        });
+        app.UseSyncKitRequestMetrics();
 
 
         app.MapGet("/api/v1/auth/pair/begin", (HttpContext c) => auth.PairBegin(c));
@@ -92,7 +69,6 @@ public static class Api {
 
         MapAuthed(app, ["GET"], "/api/v1/admin/me", store, admin.Me);
         MapAuthed(app, ["GET"], "/api/v1/admin/users", store, admin.Users);
-        MapAuthed(app, ["GET"], "/api/v1/admin/metrics", store, admin.Metrics);
         MapAuthed(app, ["DELETE"], "/api/v1/admin/users/{userId}", store,
             c => admin.DeleteUser(c, (string)c.Request.RouteValues["userId"]!));
 
@@ -100,7 +76,7 @@ public static class Api {
 
         var ships = app.Services.GetRequiredService<Ships.ShipAssetService>();
         MapAuthed(app, ["GET"], "/api/ships/manifest", store, async ctx => {
-            if (!await currentUser.IsAtLeastAsync(ctx, EggLedger.Web.Server.Sync.Auth.UserRole.Admin, ctx.RequestAborted)) {
+            if (!await currentUser.IsAtLeastAsync(ctx, SyncKit.Contract.UserRole.Admin, ctx.RequestAborted)) {
                 ctx.Response.StatusCode = StatusCodes.Status403Forbidden;
                 return;
             }
@@ -110,7 +86,7 @@ public static class Api {
                 ctx.RequestAborted);
         });
         MapAuthed(app, ["GET"], "/api/ships/{key}.glb", store, async ctx => {
-            bool isAdmin = await currentUser.IsAtLeastAsync(ctx, EggLedger.Web.Server.Sync.Auth.UserRole.Admin, ctx.RequestAborted);
+            bool isAdmin = await currentUser.IsAtLeastAsync(ctx, SyncKit.Contract.UserRole.Admin, ctx.RequestAborted);
             var key = (string)ctx.Request.RouteValues["key"]!;
             var r = await Ships.ShipEndpoints.HandleGlb(ships, isAdmin, key, ctx.RequestAborted);
             ctx.Response.StatusCode = r.Status;

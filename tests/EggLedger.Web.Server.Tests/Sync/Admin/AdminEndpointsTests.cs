@@ -5,6 +5,7 @@ using EggLedger.Web.Server.Sync.Auth;
 using EggLedger.Web.Server.Tests.Sync.Auth;
 using Microsoft.AspNetCore.Http;
 using Npgsql;
+using SyncKit.Contract;
 using SyncKit.Identity.Client;
 
 namespace EggLedger.Web.Server.Tests.Sync.Admin;
@@ -30,7 +31,7 @@ public sealed class AdminEndpointsTests {
     }
 
     private static AdminEndpoints Endpoints(NpgsqlDataSource src, bool isAdmin, Guid adminUserId) =>
-        new(new AdminDataService(src, new ApiMetrics(TimeProvider.System), new SpamLog(src), FakeIdentity(adminUserId)), new FakeCurrentUser(isAdmin));
+        new(new AdminDataService(src, FakeIdentity(adminUserId)), new FakeCurrentUser(isAdmin));
 
     private static DefaultHttpContext Ctx() {
         var ctx = new DefaultHttpContext();

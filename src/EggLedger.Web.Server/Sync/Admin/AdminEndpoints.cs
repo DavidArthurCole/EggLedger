@@ -1,6 +1,7 @@
 using System.Text.Json;
 using EggLedger.Web.Components.Admin;
 using EggLedger.Web.Server.Sync.Auth;
+using SyncKit.Contract;
 
 namespace EggLedger.Web.Server.Sync.Admin;
 
@@ -26,11 +27,6 @@ public sealed class AdminEndpoints(IAdminData data, ICurrentUser currentUser) {
     public async Task Users(HttpContext ctx) {
         if (!await IsAdminAsync(ctx)) { await ForbidAsync(ctx); return; }
         await JsonAsync(ctx, await data.GetUsersAsync(ctx.RequestAborted));
-    }
-
-    public async Task Metrics(HttpContext ctx) {
-        if (!await IsAdminAsync(ctx)) { await ForbidAsync(ctx); return; }
-        await JsonAsync(ctx, await data.GetMetricsAsync(ctx.RequestAborted));
     }
 
     public async Task DeleteUser(HttpContext ctx, string userId) {

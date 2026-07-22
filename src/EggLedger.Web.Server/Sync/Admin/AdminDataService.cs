@@ -5,7 +5,7 @@ using SyncKit.Identity.Client;
 
 namespace EggLedger.Web.Server.Sync.Admin;
 
-public sealed class AdminDataService(NpgsqlDataSource source, ApiMetrics metrics, SpamLog spam, IdentityApiClient identity) : IAdminData {
+public sealed class AdminDataService(NpgsqlDataSource source, IdentityApiClient identity) : IAdminData {
     private const string UsersSql =
         "WITH mission_agg AS (" +
         "  SELECT user_id, COUNT(*) AS cnt, SUM(pg_column_size(m.*)) AS bytes FROM el_mission m GROUP BY user_id" +
@@ -63,15 +63,6 @@ public sealed class AdminDataService(NpgsqlDataSource source, ApiMetrics metrics
                 roleByUserId.GetValueOrDefault(rowUserId) == "admin"));
         }
         return users;
-    }
-
-    public async Task<AdminMetrics> GetMetricsAsync(CancellationToken ct = default) {
-        var minutes = metrics.SnapshotMinutes().Select(m => new AdminMinute(m.MinuteEpochSeconds, m.Total)).ToList();
-        var paths = metrics.SnapshotPaths().Select(p => new AdminPath(p.Path, p.Count)).ToList();
-        var spamRows = (await spam.SnapshotAsync())
-            .Select(s => new AdminSpam(s.Ip, s.Method, s.Path, s.UserAgent, s.FirstSeen, s.LastSeen, s.Hits))
-            .ToList();
-        return new AdminMetrics(minutes, paths, spamRows);
     }
 
     public async Task<bool> DeleteUserAsync(Guid userId, CancellationToken ct = default) {

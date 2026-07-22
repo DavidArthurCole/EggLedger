@@ -17,7 +17,9 @@
                 @if (Services.GetService<IBotConfigSlot>() is { } botSlot) {
                     @botSlot.Render()
                 }
-                <AdminTrafficPanel Metrics="_metrics"/>
+                @if (Services.GetService<ITrafficPanelSlot>() is { } trafficSlot) {
+                    @trafficSlot.Render()
+                }
             </div>
             <div>
                 <AdminUsersPanel Users="_users" OnDelete="DeleteUser" Error="@_error"/>
@@ -32,7 +34,6 @@
     private bool _isAdmin;
     private Guid? _currentUserId;
     private IReadOnlyList<AdminUser>? _users;
-    private AdminMetrics? _metrics;
     private string _error = "";
 
     protected override async Task OnInitializedAsync() {
@@ -50,11 +51,7 @@
     private async Task RefreshAsync() {
         var data = Services.GetService<IAdminData>();
         if (data is null) return;
-        var usersTask = data.GetUsersAsync();
-        var metricsTask = data.GetMetricsAsync();
-        await Task.WhenAll(usersTask, metricsTask);
-        _users = usersTask.Result;
-        _metrics = metricsTask.Result;
+        _users = await data.GetUsersAsync();
         await InvokeAsync(StateHasChanged);
     }
 

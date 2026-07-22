@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http;
+using SyncKit.Contract;
 using SyncKit.Identity.Client;
 
 namespace EggLedger.Web.Server.Sync.Auth;
@@ -14,8 +15,6 @@ public interface ICurrentUser {
     Task<string?> RoleAsync(HttpContext ctx, CancellationToken ct);
     Task<bool> IsAtLeastAsync(HttpContext ctx, UserRole role, CancellationToken ct);
 }
-
-public enum UserRole { Viewer = 0, Contributor = 1, Admin = 2 }
 
 public sealed class CurrentUser(IdentityApiClient identity) : ICurrentUser {
     private const string RoleItemsKey = "SyncKit.Identity.Role";
@@ -36,12 +35,6 @@ public sealed class CurrentUser(IdentityApiClient identity) : ICurrentUser {
     public async Task<bool> IsAtLeastAsync(HttpContext ctx, UserRole role, CancellationToken ct) {
         var rawRole = await RoleAsync(ctx, ct);
         if (rawRole is null) return false;
-        return ParseRole(rawRole) >= role;
+        return UserRoles.IsAtLeast(UserRoles.Parse(rawRole), role);
     }
-
-    private static UserRole ParseRole(string? role) => role?.ToLowerInvariant() switch {
-        "admin" => UserRole.Admin,
-        "contributor" => UserRole.Contributor,
-        _ => UserRole.Viewer,
-    };
 }

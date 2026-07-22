@@ -13,6 +13,8 @@ using SyncKit.Auth;
 using SyncKit.Bot;
 using SyncKit.Contract;
 using SyncKit.Db;
+using SyncKit.Metrics;
+using SyncKit.Metrics.AdminUi;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -117,8 +119,11 @@ if (hasDb) {
     builder.Services.AddScoped<EggLedger.Web.Components.Auth.IPairCompletion, EggLedger.Web.Server.Auth.PairCompletion>();
     builder.Services.AddScoped<EggLedger.Web.Components.Admin.IAdminAccess, EggLedger.Web.Server.Auth.AdminAccess>();
 
-    builder.Services.AddSingleton(new EggLedger.Web.Server.Sync.Admin.ApiMetrics(TimeProvider.System));
+    builder.Services.AddSyncKitRequestMetrics(o => o.PathPrefix = "/api/v1");
     builder.Services.AddSingleton<EggLedger.Web.Server.Sync.Admin.SpamLog>();
+    builder.Services.AddSingleton<IRequestAuditSink>(sp => sp.GetRequiredService<EggLedger.Web.Server.Sync.Admin.SpamLog>());
+    builder.Services.AddSingleton<ITrafficSource, EggLedger.Web.Server.Sync.Admin.InProcessTrafficSource>();
+    builder.Services.AddScoped<EggLedger.Web.Components.Admin.ITrafficPanelSlot, EggLedger.Web.Server.Sync.Admin.TrafficPanelSlot>();
     builder.Services.AddSingleton<EggLedger.Web.Components.Admin.IAdminData, EggLedger.Web.Server.Sync.Admin.AdminDataService>();
 
     EggLedger.Web.Server.Auth.AuthentikAuth.AddIfConfigured(authBuilder, cfg, identityClient, dataSource);
