@@ -13,7 +13,7 @@ RUN --mount=type=secret,id=github_token \
       --password "$(cat /run/secrets/github_token)" \
       --store-password-in-clear-text \
       --configfile nuget.config \
-    && dotnet restore src/EggLedger.Web.Server/EggLedger.Web.Server.csproj
+    && dotnet restore src/EggLedger.Web.Server/EggLedger.Web.Server.csproj -p:BuildTailwindCss=false
 
 COPY src/ src/
 RUN --mount=type=cache,target=/root/.nuget/packages \
