@@ -5,7 +5,7 @@
 <div class="@(_open ? "fixed inset-0 z-40 flex items-center justify-center bg-black/60" : "hidden")" @onclick="Close">
     <div class="account-settings-dialog p-4 border border-gray-600 rounded-lg bg-darker text-gray-300 shadow-2xl max-w-2xl w-full mx-4 max-h-[85vh] overflow-y-auto" @onclick:stopPropagation="true">
         <div class="flex items-center justify-between mb-3">
-            <h2 class="text-sm font-bold text-gray-300">Settings</h2>
+            <h2 class="text-sm font-bold text-gray-300">Account Settings</h2>
             <button type="button" class="text-gray-500 hover:text-gray-300" @onclick="Close" aria-label="Close">&#10005;</button>
         </div>
 

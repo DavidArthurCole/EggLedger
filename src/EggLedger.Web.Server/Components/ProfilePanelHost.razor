@@ -1,15 +1,17 @@
 @using System.Globalization
+@using EggLedger.Web.Server.Sync
 @using Microsoft.AspNetCore.Components.Forms
 @using SyncKit.Auth
 @using SyncKit.Identity.AdminUi
+@using SyncKit.Identity.Client
 @inject IHttpContextAccessor HttpContextAccessor
 @inject NavigationManager Nav
 @inject SessionCookieOptions SyncKitSession
+@inject AppConfig Cfg
+@inject IdentityApiClient Identity
 
 @if (!string.IsNullOrEmpty(_sessionToken)) {
     <div class="px-2 py-2 text-sm text-gray-400 bg-darker rounded-md tabular-nums overflow-auto">
-        <span class="mr-0_5rem font-bold text-lg text-gray-400 ledger-underline">Linked Logins</span>
-
         <ProfilePanel SessionToken="@_sessionToken" ReturnUrl="@Nav.Uri">
             <AvatarTemplate Context="ctx">
                 <div class="mt-0_5rem flex items-center gap-3">
@@ -37,7 +39,10 @@
                 <ul class="mt-0_5rem space-y-1">
                     @foreach (var item in ctx.Items) {
                         <li class="flex items-center gap-2 px-2 py-1.5 bg-darkest rounded-md border border-gray-700">
-                            <span class="w-20 flex-shrink-0 font-medium text-gray-300">@Cap(item.Provider)</span>
+                            <span class="w-24 flex-shrink-0 flex items-center gap-1.5 font-medium text-gray-300">
+                                <img class="w-4 h-4 flex-shrink-0" src="@Abs(Identity.IconUrl(item.Provider))" alt=""/>
+                                @Cap(item.Provider)
+                            </span>
                             @if (item.Identity is { } id) {
                                 <span class="flex items-center gap-2 min-w-0 flex-1">
                                     @if (!string.IsNullOrEmpty(id.Avatar)) {
@@ -83,6 +88,12 @@
 
     private static string Cap(string s) {
         return string.IsNullOrEmpty(s) ? s : char.ToUpperInvariant(s[0]) + s[1..];
+    }
+
+    private string Abs(string url) {
+        return url.StartsWith("http", StringComparison.Ordinal)
+            ? url
+            : $"{Cfg.IdentityWidgetUrl.TrimEnd('/')}/{url.TrimStart('/')}";
     }
 
 }

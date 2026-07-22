@@ -14,12 +14,6 @@
 @* Owns the 2s/5min auth poll loop around CloudSyncService.PollOnceAsync with cancellation so navigating away cannot leak it. *@
 
 <div class="px-2 py-2 text-sm text-gray-400 bg-darker rounded-md tabular-nums overflow-auto">
-    <span class="mr-0_5rem font-bold text-lg text-gray-400 ledger-underline">Settings Sync</span>
-    @if (Platform.IsDesktop) {
-        <span class="text-gray-500 text-xs italic">(optional)</span>
-    }
-    <br/>
-
     @if (_reachableChecking) {
         <div class="mt-0_5rem text-gray-500 italic text-xs">Checking sync server connection...</div>
     } else if (!_reachable) {
@@ -31,34 +25,22 @@
             <button type="button" class="ledger-btn apply-filter-button mt-0_5rem" @onclick="RecheckReachableAsync">Retry</button>
         </div>
     } else {
-        <div class="mt-0_5rem">
+        <div class="flex items-center gap-2 flex-wrap">
             @if (_connected) {
-                <div class="flex items-center gap-2">
-                    @if (!string.IsNullOrEmpty(_avatarUrl)) {
-                        <img class="w-7 h-7 rounded-full border border-gray-600" src="@_avatarUrl" alt="Account avatar"/>
-                    }
-                    <div>
-                        <span class="text-green-400 font-semibold">Connected</span>
-                        @if (!string.IsNullOrEmpty(_username)) {
-                            <span class="text-gray-400 ml-1">as <span class="text-gray-300">@_username</span></span>
-                            @if (!Platform.IsDesktop) {
-                                <span class="text-gray-500 ml-1">(from your login)</span>
-                            }
-                        }
-                    </div>
-                </div>
-                <div class="mt-0_25rem inline-flex text-xs bg-darkest rounded-md overflow-hidden border border-gray-700">
-                    <div class="px-2 py-1 border-r border-gray-700">
-                        <span class="text-gray-500">Push</span>
-                        <span class="ml-1 @(_lastPushAt > 0 ? "text-gray-400" : "text-gray-600 italic")">@PushString</span>
-                    </div>
-                    <div class="px-2 py-1">
-                        <span class="text-gray-500">Pull</span>
-                        <span class="ml-1 @(_lastPullAt > 0 ? "text-gray-400" : "text-gray-600 italic")">@PullString</span>
-                    </div>
-                </div>
+                @if (!string.IsNullOrEmpty(_avatarUrl)) {
+                    <img class="w-5 h-5 rounded-full border border-gray-600" src="@_avatarUrl" alt="Account avatar"/>
+                }
+
+                <span class="text-green-400 font-semibold text-xs">Connected</span>
+                @if (!string.IsNullOrEmpty(_username)) {
+                    <span class="text-gray-400 text-xs">as <span class="text-gray-300">@_username</span></span>
+                }
+
+                <span class="text-gray-600">&middot;</span>
+                <span class="text-xs text-gray-500">Push <span class="@(_lastPushAt > 0 ? "text-gray-400" : "text-gray-600 italic")">@PushString</span></span>
+                <span class="text-xs text-gray-500">Pull <span class="@(_lastPullAt > 0 ? "text-gray-400" : "text-gray-600 italic")">@PullString</span></span>
             } else {
-                <span class="text-gray-500 italic">Not connected</span>
+                <span class="text-gray-500 italic text-xs">Not connected</span>
             }
         </div>
 
@@ -69,67 +51,54 @@
             </div>
         }
 
-        <div class="mt-0_5rem flex flex-col gap-2">
+        <div class="mt-0_5rem flex items-center gap-2 flex-wrap">
             @if (Platform.IsDesktop && !_connected) {
-                <button type="button" class="ledger-btn apply-filter-button self-start !mt-0 !mr-0 !ml-0 disabled:opacity-60"
+                <button type="button" class="ledger-btn apply-filter-button !mt-0 !mr-0 !ml-0 disabled:opacity-60"
                         disabled="@_authWaiting" @onclick="ConnectAsync">
                     @(_authWaiting ? "Waiting for sign-in..." : "Connect account")
                 </button>
             } else {
-                <div class="flex flex-row flex-wrap gap-2">
+                <button type="button"
+                        class="ledger-btn apply-filter-button !mt-0 !mr-0 !ml-0 !bg-blue-700 !text-white hover:!bg-blue-600 !border-blue-500 flex items-center gap-1.5"
+                        disabled="@_syncInProgress" @onclick="SyncNowAsync">
+                    @(_syncInProgress ? "Syncing..." : "Sync")
+                </button>
+                <button type="button"
+                        class="ledger-btn apply-filter-button !mt-0 !mr-0 !ml-0 !bg-gray-700 !text-gray-200 hover:!bg-gray-600 !border-gray-500 flex items-center gap-1.5"
+                        disabled="@_restoreInProgress" @onclick="RestoreNowAsync">
+                    @(_restoreInProgress ? "Restoring..." : "Restore")
+                </button>
+                @if (_confirmingDelete) {
+                    <span class="text-xs text-red-400">Delete all remote data?</span>
                     <button type="button"
-                            class="ledger-btn apply-filter-button !mt-0 !mr-0 !ml-0 !bg-blue-700 !text-white hover:!bg-blue-600 !border-blue-500 flex items-center gap-1.5"
-                            disabled="@_syncInProgress" @onclick="SyncNowAsync">
-                        @if (!_syncInProgress) {
-                            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 16V4m0 0l-4 4m4-4l4 4M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2"/>
-                            </svg>
-                        }
-                        @(_syncInProgress ? "Syncing..." : "Sync")
+                            class="ledger-btn apply-filter-button !mt-0 !mr-0 !ml-0 !text-gray-300 !bg-gray-700 hover:!bg-gray-600 !border-gray-500"
+                            @onclick="() => _confirmingDelete = false">
+                        Cancel
                     </button>
                     <button type="button"
-                            class="ledger-btn apply-filter-button !mt-0 !mr-0 !ml-0 !bg-gray-700 !text-gray-200 hover:!bg-gray-600 !border-gray-500 flex items-center gap-1.5"
-                            disabled="@_restoreInProgress" @onclick="RestoreNowAsync">
-                        @if (!_restoreInProgress) {
-                            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"/>
-                            </svg>
-                        }
-                        @(_restoreInProgress ? "Restoring..." : "Restore")
+                            class="ledger-btn apply-filter-button !mt-0 !mr-0 !ml-0 !bg-red-900 !text-red-200 hover:!bg-red-800 !border-red-700"
+                            disabled="@_deleteInProgress" @onclick="DeleteRemoteAsync">
+                        @(_deleteInProgress ? "Deleting..." : "Yes, delete")
                     </button>
-                </div>
-                <div class="flex flex-row flex-wrap gap-2">
-                    @if (_confirmingDelete) {
-                        <span class="text-xs text-red-400 self-center">Delete all remote data?</span>
+                } else {
+                    <button type="button"
+                            class="ledger-btn apply-filter-button !mt-0 !mr-0 !ml-0 !bg-red-900 !text-red-200 hover:!bg-red-800 !border-red-700"
+                            @onclick="DisconnectAsync">
+                        Disconnect
+                    </button>
+                    @if (Platform.IsDesktop) {
                         <button type="button"
-                                class="ledger-btn apply-filter-button !mt-0 !mr-0 !ml-0 !text-gray-300 !bg-gray-700 hover:!bg-gray-600 !border-gray-500"
-                                @onclick="() => _confirmingDelete = false">
-                            Cancel
+                                class="ledger-btn apply-filter-button !mt-0 !mr-0 !ml-0 !bg-red-900/60 !text-red-300 hover:!bg-red-900 !border-red-800"
+                                @onclick="() => _confirmingDelete = true">
+                            Delete Remote Data
                         </button>
-                        <button type="button"
-                                class="ledger-btn apply-filter-button !mt-0 !mr-0 !ml-0 !bg-red-900 !text-red-200 hover:!bg-red-800 !border-red-700"
-                                disabled="@_deleteInProgress" @onclick="DeleteRemoteAsync">
-                            @(_deleteInProgress ? "Deleting..." : "Yes, delete")
-                        </button>
-                    } else {
-                        <button type="button"
-                                class="ledger-btn apply-filter-button !mt-0 !mr-0 !ml-0 !bg-red-900 !text-red-200 hover:!bg-red-800 !border-red-700"
-                                @onclick="DisconnectAsync">
-                            Disconnect
-                        </button>
-                        @if (Platform.IsDesktop) {
-                            <button type="button"
-                                    class="ledger-btn apply-filter-button !mt-0 !mr-0 !ml-0 !bg-red-900/60 !text-red-300 hover:!bg-red-900 !border-red-800"
-                                    @onclick="() => _confirmingDelete = true">
-                                Delete Remote Data
-                            </button>
-                        }
                     }
-                </div>
-                <div class="flex items-center gap-2">
-                    <input id="cloudAutoSyncCheckbox" type="checkbox" class="ext-opt-check" checked="@_autoSync" @onchange="OnAutoSyncChangeAsync"/>
-                    <label for="cloudAutoSyncCheckbox" class="ext-opt-label">Auto-sync settings on change</label>
-                </div>
+                }
+
+                <label class="flex items-center gap-1.5 text-xs text-gray-500 ml-1">
+                    <input type="checkbox" class="ext-opt-check" checked="@_autoSync" @onchange="OnAutoSyncChangeAsync"/>
+                    Auto-sync on change
+                </label>
             }
         </div>
 
