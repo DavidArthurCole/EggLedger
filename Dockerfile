@@ -14,6 +14,8 @@ RUN --mount=type=secret,id=github_token \
       ${EGGLEDGER_VERSION:+-p:EggLedgerVersion=$EGGLEDGER_VERSION}
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+ARG GIT_SHA
+ENV GIT_SHA=$GIT_SHA
 RUN apt-get update \
     && apt-get install -y --no-install-recommends libgssapi-krb5-2 \
     && rm -rf /var/lib/apt/lists/*

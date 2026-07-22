@@ -30,6 +30,9 @@ public sealed class FetchOrchestrator : IDisposable {
     public AppState? TerminalState { get; private set; }
     public string? FetchingAccountId { get; private set; }
 
+    public bool HasFetchContent { get; private set; }
+    public bool PopoverDismissed { get; private set; }
+
     public bool IsIdle => TerminalState is not null
                            || Progress is null
                            || Progress.State is AppState.AwaitingInput
@@ -40,8 +43,20 @@ public sealed class FetchOrchestrator : IDisposable {
 
     public event Action? Changed;
 
+    public void DismissPopover() {
+        PopoverDismissed = true;
+        Changed?.Invoke();
+    }
+
+    public void ReopenPopover() {
+        PopoverDismissed = false;
+        Changed?.Invoke();
+    }
+
     public async Task StartFetchAsync(string accountId) {
         TerminalState = null;
+        HasFetchContent = false;
+        PopoverDismissed = false;
         FetchingAccountId = accountId;
         _cts?.Cancel();
         _cts?.Dispose();
@@ -66,6 +81,10 @@ public sealed class FetchOrchestrator : IDisposable {
                 };
             } else {
                 Progress = p;
+            }
+
+            if (Progress is { Total: > 0 }) {
+                HasFetchContent = true;
             }
 
             _appState.PipelineState = p.State;

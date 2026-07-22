@@ -5,7 +5,9 @@
 @inject SessionCookieOptions SyncKitSession
 
 @if (!string.IsNullOrEmpty(_sessionToken)) {
-    <ProfilePanel SessionToken="@_sessionToken" ReturnUrl="@Nav.Uri"/>
+    <div class="profile-panel-wrap">
+        <ProfilePanel SessionToken="@_sessionToken" ReturnUrl="@Nav.Uri"/>
+    </div>
 }
 
 @code {

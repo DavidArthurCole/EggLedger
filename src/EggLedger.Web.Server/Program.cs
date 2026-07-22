@@ -270,14 +270,22 @@ if (hasDb) {
 
     Api.Map(app, cfg, build);
 
-    if (!string.IsNullOrEmpty(cfg.BotToken) && !string.IsNullOrEmpty(cfg.DeployNotifySecret)) {
-        var deployConfigStore = new ChannelConfigStore(app.Services.GetRequiredService<NpgsqlDataSource>());
+    if (!string.IsNullOrEmpty(cfg.BotToken)) {
+        var deployDataSource = app.Services.GetRequiredService<NpgsqlDataSource>();
+        var deployConfigStore = new ChannelConfigStore(deployDataSource);
         var botCfg = app.Services.GetRequiredService<BotConfig>();
         var botHosted = app.Services.GetRequiredService<EggLedger.Web.Server.Bot.EggLedgerBotHostedService>();
-        app.MapPost("/internal/deploy-notify", DeployNotifyHandler.Build(cfg.DeployNotifySecret, async res => {
+        app.Lifetime.ApplicationStarted.Register(() => _ = Task.Run(async () => {
             var client = botHosted.Bot?.Client;
             if (client is null || !ulong.TryParse(cfg.GuildId, out var guildId)) return;
-            await new DeployNotifier(deployConfigStore, client, guildId, botCfg.Name).NotifyAsync(res, CancellationToken.None);
+            var notifier = new DeployNotifier(deployConfigStore, client, guildId, botCfg.Name);
+            var tracker = new DeployVersionTracker(new DeployStateStore(deployDataSource), notifier);
+            try {
+                await tracker.CheckAndNotifyAsync(
+                    botCfg.Name, Environment.GetEnvironmentVariable("GIT_SHA") ?? "", botCfg.Build.Version, CancellationToken.None);
+            } catch (Exception ex) {
+                app.Logger.LogWarning(ex, "eggledger: deploy self-report failed, continuing");
+            }
         }));
     }
 } else {
