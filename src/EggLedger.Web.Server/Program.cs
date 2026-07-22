@@ -89,7 +89,13 @@ var authBuilder = authentication
     });
 
 if (syncKitSession is not null) {
-    authBuilder.AddSyncKitSession(syncKitSession);
+    authBuilder.AddSyncKitSession(syncKitSession, onValidated: (principal, _, _) => {
+        var userId = principal.SyncKitUserId();
+        if (userId is not null && principal.Identity is System.Security.Claims.ClaimsIdentity id) {
+            id.AddClaim(new System.Security.Claims.Claim(EggLedger.Web.Server.Auth.AuthScheme.UserIdClaim, userId.Value.ToString()));
+        }
+        return Task.CompletedTask;
+    });
     builder.Services.AddSingleton(syncKitSession);
 }
 
