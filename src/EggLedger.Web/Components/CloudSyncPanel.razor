@@ -5,6 +5,7 @@
 @implements IAsyncDisposable
 @inject CloudSyncService Cloud
 @inject CloudSessionStore SessionStore
+@inject CloudAutoSyncCoordinator AutoSync
 @inject IndexedDbSettings Settings
 @inject IndexedDbAccountStore Accounts
 @inject IndexedDbReportStore Reports
@@ -14,7 +15,10 @@
 
 <div class="px-2 py-2 text-sm text-gray-400 bg-darker rounded-md tabular-nums overflow-auto">
     <span class="mr-0_5rem font-bold text-lg text-gray-400 ledger-underline">Settings Sync</span>
-    <span class="text-gray-500 text-xs italic ml-1">(optional)</span><br/>
+    @if (Platform.IsDesktop) {
+        <span class="text-gray-500 text-xs italic">(optional)</span>
+    }
+    <br/>
 
     @if (_reachableChecking) {
         <div class="mt-0_5rem text-gray-500 italic text-xs">Checking sync server connection...</div>
@@ -179,6 +183,8 @@
         : "Never";
 
     protected override async Task OnInitializedAsync() {
+        AutoSync.Triggered += AutoSyncIfEnabledAsync;
+
         _session = await SessionStore.GetSessionAsync();
         _connected = _session is not null && !string.IsNullOrEmpty(_session.Token);
         if (_session is not null) {
@@ -493,6 +499,7 @@
     }
 
     public ValueTask DisposeAsync() {
+        AutoSync.Triggered -= AutoSyncIfEnabledAsync;
         _disposed = true;
         _pollCts?.Cancel();
         _pollCts?.Dispose();

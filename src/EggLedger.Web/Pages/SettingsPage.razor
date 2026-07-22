@@ -3,7 +3,6 @@
 @using EggLedger.Web.Data
 @using EggLedger.Web.Services
 @using EggLedger.Web.Settings
-@using Microsoft.Extensions.DependencyInjection
 @implements IDisposable
 @inject IndexedDbSettings Settings
 @inject IPlatformCapabilities Platform
@@ -11,7 +10,7 @@
 @inject MissionQueryHandlers Queries
 @inject FetchOrchestrator Fetch
 @inject AccountLoader Loader
-@inject IServiceProvider Services
+@inject CloudAutoSyncCoordinator AutoSync
 
 <PageTitle>EggLedger - Settings</PageTitle>
 
@@ -40,19 +39,15 @@
 
             <OptionsPanel Model="_model" OnSetting="OnSettingAsync"/>
 
-            <hr class="mt-1rem mb-1rem w-full"/>
-
-            <CloudSyncPanel @ref="_cloudPanel"/>
-
-            @if (Services.GetService<IProfilePanelSlot>() is { } profileSlot) {
+            @if (Platform.IsDesktop) {
                 <hr class="mt-1rem mb-1rem w-full"/>
 
-                @profileSlot.Render()
+                <CloudSyncPanel/>
+
+                <hr class="mt-1rem mb-1rem w-full"/>
+
+                <AccountDataPanel Accounts="_existing" Changed="ReloadAccountsAsync" Fetching="FetchingCardInfo"/>
             }
-
-            <hr class="mt-1rem mb-1rem w-full"/>
-
-            <AccountDataPanel Accounts="_existing" Changed="ReloadAccountsAsync" Fetching="FetchingCardInfo"/>
         </div>
     }
 </div>
@@ -60,7 +55,6 @@
 @code {
     private bool _loaded;
     private readonly SettingsModel _model = new();
-    private CloudSyncPanel? _cloudPanel;
     private IReadOnlyList<DatabaseAccount> _existing = [];
 
 
@@ -100,8 +94,8 @@
         }
 
 
-        if (_cloudPanel is not null && IsCloudSyncableKey(change.Key)) {
-            await _cloudPanel.AutoSyncIfEnabledAsync();
+        if (IsCloudSyncableKey(change.Key)) {
+            await AutoSync.NotifySettingsChangedAsync();
         }
 
         StateHasChanged();

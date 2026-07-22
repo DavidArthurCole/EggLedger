@@ -1,0 +1,46 @@
+@using EggLedger.Domain.MissionQuery
+@using Microsoft.Extensions.DependencyInjection
+@inject IServiceProvider Services
+
+<div class="@(_open ? "fixed inset-0 z-40 flex items-center justify-center bg-black/60" : "hidden")" @onclick="Close">
+    <div class="account-settings-dialog p-4 border border-gray-600 rounded-lg bg-darker text-gray-300 shadow-2xl max-w-2xl w-full mx-4 max-h-[85vh] overflow-y-auto" @onclick:stopPropagation="true">
+        <div class="flex items-center justify-between mb-3">
+            <h2 class="text-sm font-bold text-gray-300">Settings</h2>
+            <button type="button" class="text-gray-500 hover:text-gray-300" @onclick="Close" aria-label="Close">&#10005;</button>
+        </div>
+
+        <AccountDataPanel Accounts="Accounts" Changed="OnChangedAsync" Fetching="Fetching"/>
+
+        <hr class="mt-1rem mb-1rem w-full"/>
+
+        <CloudSyncPanel/>
+
+        @if (Services.GetService<IProfilePanelSlot>() is { } profileSlot) {
+            <hr class="mt-1rem mb-1rem w-full"/>
+
+            @profileSlot.Render()
+        }
+    </div>
+</div>
+
+@code {
+    private bool _open;
+
+    [Parameter] public IReadOnlyList<DatabaseAccount> Accounts { get; set; } = [];
+    [Parameter] public AccountDataPanel.FetchingCard? Fetching { get; set; }
+    [Parameter] public EventCallback Changed { get; set; }
+
+    public void Open() {
+        _open = true;
+        StateHasChanged();
+    }
+
+    private void Close() {
+        _open = false;
+    }
+
+    private async Task OnChangedAsync() {
+        await Changed.InvokeAsync();
+    }
+
+}

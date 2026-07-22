@@ -101,15 +101,22 @@
                     </span>
                 </li>
             }
-            <li class="px-3 py-2 text-center text-privacy_blue hover:bg-darker transition-colors cursor-pointer"
-                @onclick="OpenAddDialog">
-                + Add Account
+            <li class="flex border-t border-gray-800">
+                <button type="button" class="flex-1 px-3 py-2 text-center text-gray-400 hover:bg-darker transition-colors cursor-pointer border-r border-gray-800"
+                        @onclick="OpenSettings">
+                    Settings
+                </button>
+                <button type="button" class="flex-1 px-3 py-2 text-center text-privacy_blue hover:bg-darker transition-colors cursor-pointer"
+                        @onclick="OpenAddDialog">
+                    + Add Account
+                </button>
             </li>
         </ul>
     }
 </div>
 
 <AddAccountDialog @ref="_addDialog" Added="OnAccountAdded"/>
+<AccountSettingsModal @ref="_settingsModal" Accounts="_existing" Fetching="FetchingCardInfo" Changed="OnModalAccountsChangedAsync"/>
 
 @code {
 
@@ -119,6 +126,7 @@
     private bool _open;
     private KnownAccount? _active;
     private AddAccountDialog? _addDialog;
+    private AccountSettingsModal? _settingsModal;
     private ElementReference _rootRef;
     private DotNetObjectReference<GlobalAccountHeader>? _selfRef;
     private IReadOnlyList<DatabaseAccount> _existing = [];
@@ -138,6 +146,11 @@
     private DatabaseAccount? StatsFor(string id) {
         return _existing.FirstOrDefault(a => a.Id == id);
     }
+
+    private AccountDataPanel.FetchingCard? FetchingCardInfo =>
+        !Fetch.IsIdle && Fetch.FetchingAccountId is { } id && Loader.Accounts.FirstOrDefault(a => a.Id == id) is { } info
+            ? new AccountDataPanel.FetchingCard(id, info.Nickname, info.AccountColor, Fetch.Progress?.Finished ?? 0, Fetch.Progress?.Total ?? 0)
+            : null;
 
     protected override async Task OnInitializedAsync() {
         Active.Changed += OnStateChanged;
@@ -227,6 +240,18 @@
         _open = false;
         await UnregisterOutsideClickAsync();
         _addDialog?.Open();
+    }
+
+    private async Task OpenSettings() {
+        _open = false;
+        await UnregisterOutsideClickAsync();
+        _settingsModal?.Open();
+    }
+
+    private async Task OnModalAccountsChangedAsync() {
+        await RefreshExistingAsync();
+        await Loader.RefreshAsync();
+        await InvokeAsync(StateHasChanged);
     }
 
     private async Task OnAccountAdded(AccountInfo account) {

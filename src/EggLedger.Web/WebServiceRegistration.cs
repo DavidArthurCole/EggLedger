@@ -55,6 +55,7 @@ public static class WebServiceRegistration {
         services.AddScoped<INavigation, BlazorNavigation>();
         services.AddScoped<IBlobCipher, LocalBlobCipher>();
         services.AddScoped<CloudSyncService>();
+        services.AddScoped<CloudAutoSyncCoordinator>();
         services.AddScoped<AdminState>();
         services.AddScoped<EggLedger.Web.Settings.CloudSessionStore>();
 
