@@ -3,6 +3,8 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 COPY global.json nuget.config Directory.Build.props .editorconfig EggLedger.slnx ./
 COPY --parents src/*/*.csproj ./
+COPY src/EggLedger.Web/Styles/ src/EggLedger.Web/Styles/
+COPY src/EggLedger.Web/tailwind.config.js src/EggLedger.Web/tailwind.config.js
 RUN --mount=type=secret,id=github_token \
     --mount=type=cache,target=/root/.nuget/packages \
     dotnet nuget update source github \
