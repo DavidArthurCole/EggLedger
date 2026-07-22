@@ -11,49 +11,14 @@ permissions:
 
 jobs:
   build-test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
+    uses: DavidArthurCole/EggBasket/.github/workflows/dotnet-ci.yml@master
+    with:
+      solution: EggLedger.slnx
+      packages-auth: true
+      format-gate: true
+    secrets:
+      PACKAGES_PAT: ${{ secrets.PACKAGES_PAT }}
 
-      - uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: "10.0.x"
-
-      - uses: actions/cache@v6
-        with:
-          path: ~/.nuget/packages
-          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
-          restore-keys: ${{ runner.os }}-nuget-
-
-      # SyncKit.* lives on GitHub Packages. The GitHub NuGet feed requires auth even for
-      # public packages, and the per-run GITHUB_TOKEN only reads THIS repo's packages, so
-      # use an account-level PAT (read:packages) stored as the PACKAGES_PAT secret.
-      - name: Authenticate GitHub Packages
-        run: |
-          dotnet nuget update source github \
-            --username DavidArthurCole \
-            --password ${{ secrets.PACKAGES_PAT }} \
-            --store-password-in-clear-text \
-            --configfile nuget.config
-
-      - run: dotnet test EggLedger.slnx -c Release
-
-      - run: dotnet format EggLedger.slnx --verify-no-changes
-
-      # dotnet format does not process .razor files; jb cleanupcode (ReSharper CLI,
-      # free/headless) is the only tool that enforces K&R brace style there too.
-      - name: Install ReSharper CLI
-        run: dotnet tool install -g JetBrains.ReSharper.GlobalTools
-
-      - name: Verify Razor formatting
-        run: |
-          jb cleanupcode EggLedger.slnx --include="src/**/*.razor"
-          git diff --exit-code -- '*.razor' || (echo "::error::Razor files are not formatted. Run 'jb cleanupcode EggLedger.slnx --include=\"src/**/*.razor\"' locally." && exit 1)
-
-  # Seed the per-OS NuGet + Tailwind-CLI caches on master so the tag-triggered release
-  # workflow restores them via default-branch fallback (tag runs cannot share caches
-  # across tags). Keys here MUST match release.yml exactly. Desktop publish only, since
-  # that is the graph release builds; no SyncKit/GitHub Packages auth needed for it.
   warm-release-cache:
     if: github.event_name == 'push'
     strategy:

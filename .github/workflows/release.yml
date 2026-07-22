@@ -151,36 +151,9 @@ jobs:
 
   # Build the Blazor Server image and push to GHCR; frame pulls the prebuilt image.
   docker:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      # GHCR image names must be lowercase; the repo name has capitals. Also derive the
-      # release version (tag minus the leading v) to stamp into the app.
-      - name: Image name and version
-        id: img
-        run: |
-          echo "name=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
-          echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
-
-      - name: Build and push image
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          push: true
-          build-args: |
-            EGGLEDGER_VERSION=${{ steps.img.outputs.version }}
-          secrets: |
-            github_token=${{ secrets.PACKAGES_PAT }}
-          tags: |
-            ${{ steps.img.outputs.name }}:${{ github.ref_name }}
-            ${{ steps.img.outputs.name }}:latest
-          labels: |
-            org.opencontainers.image.revision=${{ github.sha }}
-            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+    uses: DavidArthurCole/EggBasket/.github/workflows/docker-publish.yml@master
+    with:
+      needs-pat: true
+      version-build-arg: EGGLEDGER_VERSION
+    secrets:
+      PACKAGES_PAT: ${{ secrets.PACKAGES_PAT }}
