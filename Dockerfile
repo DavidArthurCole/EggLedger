@@ -2,14 +2,22 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 ARG EGGLEDGER_VERSION
 COPY global.json nuget.config Directory.Build.props .editorconfig EggLedger.slnx ./
-COPY src/ src/
+COPY src/EggLedger.Domain/EggLedger.Domain.csproj src/EggLedger.Domain/
+COPY src/EggLedger.Web/EggLedger.Web.csproj src/EggLedger.Web/
+COPY src/EggLedger.Desktop/EggLedger.Desktop.csproj src/EggLedger.Desktop/
+COPY src/EggLedger.Web.Server/EggLedger.Web.Server.csproj src/EggLedger.Web.Server/
 RUN --mount=type=secret,id=github_token \
+    --mount=type=cache,target=/root/.nuget/packages \
     dotnet nuget update source github \
       --username DavidArthurCole \
       --password "$(cat /run/secrets/github_token)" \
       --store-password-in-clear-text \
       --configfile nuget.config \
-    && dotnet publish src/EggLedger.Web.Server/EggLedger.Web.Server.csproj -c Release -o /app \
+    && dotnet restore src/EggLedger.Web.Server/EggLedger.Web.Server.csproj
+
+COPY src/ src/
+RUN --mount=type=cache,target=/root/.nuget/packages \
+    dotnet publish src/EggLedger.Web.Server/EggLedger.Web.Server.csproj -c Release -o /app --no-restore \
       ${EGGLEDGER_VERSION:+-p:EggLedgerVersion=$EGGLEDGER_VERSION}
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
