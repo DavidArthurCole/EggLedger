@@ -94,7 +94,7 @@ public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvid
 
         var referer = ctx.Request.Headers.Referer.ToString();
         var returnUrl = string.IsNullOrEmpty(referer) ? cfg.PublicBaseUrl : referer;
-        ctx.Response.Redirect($"{cfg.IdentityWidgetUrl.TrimEnd('/')}/login/logout?returnUrl={Uri.EscapeDataString(returnUrl)}");
+        ctx.Response.Redirect($"{cfg.IdentityWidgetUrl.TrimEnd('/')}/auth/logout?returnUrl={Uri.EscapeDataString(returnUrl)}");
     }
 
 
