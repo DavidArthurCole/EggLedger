@@ -1,22 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
-    <!-- WinExe: GUI subsystem on Windows so no console window opens beside the WebView.
-         Treated as Exe on linux/mac. Photino stdout logging is discarded without a console;
-         debug mode still writes to EggLedger.fatal.log. -->
-    <OutputType>WinExe</OutputType>
+        <OutputType>WinExe</OutputType>
     <Description>EggLedger Photino desktop host. Boots the shared EggLedger.Web Blazor UI in a native OS window via a system WebView (the .NET-native replacement for the Go/lorca shell).</Description>
     <AssemblyName>EggLedger</AssemblyName>
     <Product>EggLedger</Product>
 
-    <!-- Cross-platform publish targets, mirroring the Go CI matrix
-         (linux / mac / mac-arm64 / windows). See publish commands in README. -->
-    <RuntimeIdentifiers>win-x64;osx-x64;osx-arm64;linux-x64</RuntimeIdentifiers>
+        <RuntimeIdentifiers>win-x64;osx-x64;osx-arm64;linux-x64</RuntimeIdentifiers>
 
-    <!-- Self-contained, single-file publish defaults (override per command if
-         needed). The Photino native runtime libs and the RCL static web assets are
-         carried into the publish output tree. -->
-    <SelfContained>true</SelfContained>
+        <SelfContained>true</SelfContained>
     <PublishSingleFile>true</PublishSingleFile>
     <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
@@ -34,32 +26,28 @@
     <ProjectReference Include="..\EggLedger.Domain\EggLedger.Domain.csproj" />
   </ItemGroup>
 
-  <!-- Schema migrations embedded so the SQLite runner applies them in order at
-       startup (mission 1..9, report 1..12). Source of truth is the Go .sql under
-       EggLedger/db/migrations and EggLedger/reportdb/migrations; copied verbatim. -->
-  <ItemGroup>
+    <ItemGroup>
     <EmbeddedResource Include="Storage\Migrations\**\*.sql" />
   </ItemGroup>
 
-  <!-- Native window icon (read from the filesystem by Photino's SetIconFile, not
-       served through the WebView's wwwroot virtual scheme). -->
-  <ItemGroup>
+    <ItemGroup>
     <Content Include="icon-64.png" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
-  <!-- Single-file packaging of the WebView's static assets. RCL static web assets
-       (_content/**, scoped css, desktop.html) are NOT folded into a single-file exe and
-       never reach the bundler's file list, so they cannot ship inside the lone exe via
-       the publish pipeline. Instead we embed them: a build-time inner publish composes the
-       full wwwroot tree, we zip it (raw files only, no .br/.gz), and embed the zip as an
-       assembly resource. Program.cs extracts it to BaseDir/wwwroot on first run. -->
+  
+    <ItemGroup>
+    <_WwwrootZipInput Include="wwwroot\**\*" />
+    <_WwwrootZipInput Include="..\EggLedger.Web\wwwroot\**\*" />
+    <_WwwrootZipInput Include="..\EggLedger.Web\**\*.razor;..\EggLedger.Web\**\*.razor.css"
+                      Exclude="..\EggLedger.Web\bin\**;..\EggLedger.Web\obj\**" />
+    <_WwwrootZipInput Include="$(MSBuildProjectFullPath)" />
+  </ItemGroup>
 
-  <!-- _EggLedgerEmbedWwwroot guards the inner publish from recursing into this target.
-       The inner publish composes the publish-time wwwroot tree that the SWA pipeline only
-       produces during a real publish, not a plain build. -->
   <Target Name="ComposeWwwrootZip"
           BeforeTargets="PrepareResourceNames;CoreCompile"
-          Condition="'$(_EggLedgerEmbedWwwroot)' != 'false' And '$(DesignTimeBuild)' != 'true'">
+          Condition="'$(_EggLedgerEmbedWwwroot)' != 'false' And '$(DesignTimeBuild)' != 'true'"
+          Inputs="@(_WwwrootZipInput)"
+          Outputs="$(IntermediateOutputPath)wwwroot.zip">
     <PropertyGroup>
       <_WwwrootStageRoot>$(IntermediateOutputPath)wwwroot-compose\</_WwwrootStageRoot>
       <_WwwrootZip>$(IntermediateOutputPath)wwwroot.zip</_WwwrootZip>
@@ -80,19 +68,14 @@
                   Overwrite="true" />
   </Target>
 
-  <!-- Statically declared so the resource pipeline assigns it a manifest name; the file is
-       produced by ComposeWwwrootZip before GenerateResource reads it. Skip in the inner
-       publish, which sets _EggLedgerEmbedWwwroot=false. -->
-  <ItemGroup Condition="'$(_EggLedgerEmbedWwwroot)' != 'false'">
+    <ItemGroup Condition="'$(_EggLedgerEmbedWwwroot)' != 'false'">
     <EmbeddedResource Include="$(IntermediateOutputPath)wwwroot.zip">
       <LogicalName>EggLedger.Desktop.wwwroot.zip</LogicalName>
       <Visible>false</Visible>
     </EmbeddedResource>
   </ItemGroup>
 
-  <!-- The SWA pipeline still copies the loose wwwroot tree into PublishDir; it is now
-       embedded, so drop it to keep the single-file output a lone exe with no sidecars. -->
-  <Target Name="RemoveLooseWwwrootFromPublish"
+    <Target Name="RemoveLooseWwwrootFromPublish"
           AfterTargets="Publish"
           Condition="'$(PublishSingleFile)' == 'true' And Exists('$(PublishDir)wwwroot')">
     <RemoveDir Directories="$(PublishDir)wwwroot" />

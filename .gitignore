@@ -8,3 +8,4 @@ dist/
 
 tools/tailwind/
 src/EggLedger.Web/wwwroot/tailwind.css
+*.trx

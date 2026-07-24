@@ -11,9 +11,7 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
-  <!-- Release CI passes the git tag; dev default omits the prerelease. AssemblyVersion needs
-       the numeric core; InformationalVersion keeps the full string the updater compares. -->
-  <PropertyGroup>
+    <PropertyGroup>
     <EggLedgerVersion>3.0.0</EggLedgerVersion>
     <EggLedgerVersionCore>$(EggLedgerVersion.Split('-')[0])</EggLedgerVersionCore>
     <Version>$(EggLedgerVersion)</Version>
