@@ -1,16 +1,26 @@
 @inject ScreenshotSafetyState ScreenshotSafety
 @implements IDisposable
 
-@* When screenshot-safety is on, keep the "EI" prefix but replace the 16 digits with a solid bar so screenshots leak nothing. *@
 @if (ScreenshotSafety.Enabled && IsEid(Value)) {
-    <span>EI</span>
-    <span class="inline-block rounded-sm bg-current select-none align-[-0.05em]" style="width: 16ch; height: 0.8em;"></span>
+    if (GrayBar) {
+        <span>EI</span>
+        <span class="inline-block rounded-sm bg-current select-none align-[-0.05em]" style="width: 16ch; height: 0.8em;"></span>
+    } else {
+        <span class="masked-eid @(_revealed ? "masked-eid-revealed" : "")"
+              @onclick="Toggle" @onclick:stopPropagation="true"
+              title="@(_revealed ? "Click to hide" : "Hover or click to reveal")">
+            @Value
+        </span>
+    }
 } else {
     @Value
 }
 
 @code {
     [Parameter] public string Value { get; set; } = "";
+    [Parameter] public bool GrayBar { get; set; }
+
+    private bool _revealed;
 
     protected override void OnInitialized() {
         ScreenshotSafety.Changed += OnChanged;
@@ -22,6 +32,10 @@
 
     private void OnChanged() {
         InvokeAsync(StateHasChanged);
+    }
+
+    private void Toggle() {
+        _revealed = !_revealed;
     }
 
     private static bool IsEid(string s) {
