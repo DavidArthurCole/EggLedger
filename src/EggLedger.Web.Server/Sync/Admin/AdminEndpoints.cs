@@ -1,7 +1,7 @@
 using System.Text.Json;
+using EggIdentity.Contract;
 using EggLedger.Web.Components.Admin;
 using EggLedger.Web.Server.Sync.Auth;
-using EggIdentity.Contract;
 
 namespace EggLedger.Web.Server.Sync.Admin;
 

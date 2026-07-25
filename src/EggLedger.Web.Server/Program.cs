@@ -1,3 +1,9 @@
+using EggIdentity.Auth;
+using EggIdentity.Bot;
+using EggIdentity.Contract;
+using EggIdentity.Db;
+using EggIdentity.Metrics;
+using EggIdentity.Metrics.AdminUi;
 using EggLedger.Web;
 using EggLedger.Web.Data;
 using EggLedger.Web.Server;
@@ -10,12 +16,6 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Npgsql;
-using EggIdentity.Auth;
-using EggIdentity.Bot;
-using EggIdentity.Contract;
-using EggIdentity.Db;
-using EggIdentity.Metrics;
-using EggIdentity.Metrics.AdminUi;
 
 var builder = WebApplication.CreateBuilder(args);
 

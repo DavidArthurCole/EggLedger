@@ -1,7 +1,7 @@
 using System.Security.Claims;
-using EggLedger.Web.Components.Admin;
 using EggIdentity.Auth;
 using EggIdentity.Contract;
+using EggLedger.Web.Components.Admin;
 
 namespace EggLedger.Web.Server.Auth;
 

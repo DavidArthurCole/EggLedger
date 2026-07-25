@@ -1,5 +1,5 @@
-using Npgsql;
 using EggIdentity.Metrics;
+using Npgsql;
 
 namespace EggLedger.Web.Server.Sync.Admin;
 

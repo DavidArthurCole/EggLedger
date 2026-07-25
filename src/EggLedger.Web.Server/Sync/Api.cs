@@ -1,3 +1,6 @@
+using EggIdentity.Auth;
+using EggIdentity.Contract;
+using EggIdentity.Metrics;
 using EggLedger.Web.Server.Sync.Auth;
 using EggLedger.Web.Server.Sync.Blobs;
 using EggLedger.Web.Server.Sync.Db;
@@ -11,9 +14,6 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Npgsql;
-using EggIdentity.Auth;
-using EggIdentity.Contract;
-using EggIdentity.Metrics;
 
 namespace EggLedger.Web.Server.Sync;
 

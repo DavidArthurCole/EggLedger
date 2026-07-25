@@ -1,8 +1,8 @@
+using EggIdentity.Auth;
+using EggIdentity.Client;
 using EggLedger.Web.Server.Sync;
 using Microsoft.AspNetCore.Authentication;
 using Npgsql;
-using EggIdentity.Auth;
-using EggIdentity.Client;
 
 namespace EggLedger.Web.Server.Auth;
 

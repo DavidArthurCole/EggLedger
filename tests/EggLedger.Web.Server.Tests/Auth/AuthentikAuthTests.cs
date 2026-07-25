@@ -1,10 +1,10 @@
+using EggIdentity.Client;
 using EggLedger.Web.Server.Auth;
 using EggLedger.Web.Server.Sync;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
-using EggIdentity.Client;
 using Xunit;
 
 namespace EggLedger.Web.Server.Tests.Auth;

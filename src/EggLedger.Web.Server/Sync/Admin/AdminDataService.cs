@@ -1,7 +1,7 @@
+using EggIdentity.Client;
 using EggLedger.Web.Components.Admin;
 using EggLedger.Web.Services;
 using Npgsql;
-using EggIdentity.Client;
 
 namespace EggLedger.Web.Server.Sync.Admin;
 

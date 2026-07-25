@@ -1,6 +1,6 @@
+using EggIdentity.Metrics.AdminUi;
 using EggLedger.Web.Components.Admin;
 using Microsoft.AspNetCore.Components;
-using EggIdentity.Metrics.AdminUi;
 
 namespace EggLedger.Web.Server.Sync.Admin;
 

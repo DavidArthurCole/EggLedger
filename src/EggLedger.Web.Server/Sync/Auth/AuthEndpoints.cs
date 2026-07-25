@@ -3,6 +3,9 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using EggIdentity.Auth;
+using EggIdentity.Client;
+using EggIdentity.Contract;
 using EggLedger.Web.Server.Sync;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -10,9 +13,6 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Npgsql;
-using EggIdentity.Auth;
-using EggIdentity.Contract;
-using EggIdentity.Client;
 
 namespace EggLedger.Web.Server.Sync.Auth;
 

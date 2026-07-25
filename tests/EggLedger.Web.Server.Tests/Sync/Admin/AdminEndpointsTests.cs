@@ -1,12 +1,12 @@
 using System.Net;
 using System.Text.Json;
+using EggIdentity.Client;
+using EggIdentity.Contract;
 using EggLedger.Web.Server.Sync.Admin;
 using EggLedger.Web.Server.Sync.Auth;
 using EggLedger.Web.Server.Tests.Sync.Auth;
 using Microsoft.AspNetCore.Http;
 using Npgsql;
-using EggIdentity.Contract;
-using EggIdentity.Client;
 
 namespace EggLedger.Web.Server.Tests.Sync.Admin;
 

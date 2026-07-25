@@ -2,14 +2,14 @@ using System.Net;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
+using EggIdentity.Auth;
+using EggIdentity.Client;
 using EggLedger.Web.Server.Sync;
 using EggLedger.Web.Server.Sync.Auth;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql;
-using EggIdentity.Auth;
-using EggIdentity.Client;
 
 namespace EggLedger.Web.Server.Tests.Sync.Auth;
 

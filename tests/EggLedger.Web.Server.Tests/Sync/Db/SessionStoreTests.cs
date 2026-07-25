@@ -1,8 +1,8 @@
 using System.Net;
+using EggIdentity.Client;
 using EggLedger.Web.Server.Sync.Db;
 using EggLedger.Web.Server.Tests.Sync.Auth;
 using Npgsql;
-using EggIdentity.Client;
 
 namespace EggLedger.Web.Server.Tests.Sync.Db;
 
