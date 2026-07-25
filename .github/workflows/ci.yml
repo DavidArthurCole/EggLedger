@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   build-test:
-    uses: DavidArthurCole/EggIdentity/.github/workflows/dotnet-ci.yml@master
+    uses: DavidArthurCole/EggIdentity/.github/workflows/dotnet-ci.yml@main
     with:
       solution: EggLedger.slnx
       packages-auth: true

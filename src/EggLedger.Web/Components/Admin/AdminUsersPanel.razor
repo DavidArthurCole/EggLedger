@@ -1,4 +1,3 @@
-@using EggLedger.Web.Services
 <div class="admin-panel">
     <div class="admin-panel-head">
         <span class="admin-panel-title">Users (@(Users?.Count ?? 0))</span>
@@ -87,13 +86,16 @@
         return ordered.ToList();
     }
 
-    private IOrderedEnumerable<AdminUser> Order<TKey>(Func<AdminUser, TKey> selector) =>
-        _sortAsc ? Users!.OrderBy(selector) : Users!.OrderByDescending(selector);
+    private IOrderedEnumerable<AdminUser> Order<TKey>(Func<AdminUser, TKey> selector) {
+        return _sortAsc ? Users!.OrderBy(selector) : Users!.OrderByDescending(selector);
+    }
 
-    private static string LastLoginLabel(long? lastSession) =>
-        lastSession is { } s ? LedgerFormatting.FormatTimeSince(s, DateTimeOffset.UtcNow.ToUnixTimeSeconds()) : "—";
+    private static string LastLoginLabel(long? lastSession) {
+        return lastSession is { } s ? LedgerFormatting.FormatTimeSince(s, DateTimeOffset.UtcNow.ToUnixTimeSeconds()) : "—";
+    }
 
-    private static string LastLoginTitle(long? lastSession) =>
-        lastSession is { } s ? DateTimeOffset.FromUnixTimeSeconds(s).ToLocalTime().ToString("yyyy-MM-dd HH:mm") : "";
+    private static string LastLoginTitle(long? lastSession) {
+        return lastSession is { } s ? DateTimeOffset.FromUnixTimeSeconds(s).ToLocalTime().ToString("yyyy-MM-dd HH:mm") : "";
+    }
 
 }

@@ -1,4 +1,3 @@
-@using EggLedger.Web.Missions
 @* Searchable modal picker (port of the Vue SearchOverSelector). A readonly trigger field
    opens a Blazor-controlled overlay (full-screen fixed backdrop + centered panel). NOT a
    native <dialog>.showModal(): top-layer promotion desyncs the Blazor Server render tree
@@ -167,8 +166,9 @@
         </button>
     };
 
-    private static string TooltipText(FilterOption opt) =>
-        opt.Rarity is { } r ? opt.Text + "\n" + FilterOptions.RarityWord(r) : opt.Text;
+    private static string TooltipText(FilterOption opt) {
+        return opt.Rarity is { } r ? opt.Text + "\n" + FilterOptions.RarityWord(r) : opt.Text;
+    }
 
     private string ImageSrc(FilterOption o) {
         return ContentPaths.Asset(ImageBasePath + o.ImagePath);

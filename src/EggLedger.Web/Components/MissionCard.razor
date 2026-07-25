@@ -1,7 +1,4 @@
 @using System.Globalization
-@using EggLedger.Domain.MissionPacking
-@using EggLedger.Web.Missions
-@using EggLedger.Web.Missions.Model
 @if (Config.Layout == CardLayout.Grid) {
     <div @key="Mission.MissiondId" class="panel-muted rounded-md px-4 py-2 flex flex-col items-center gap-1 text-center @CustomClass" style="@InlineStyle()" data-missionid="@Mission.MissiondId">
         @if (MultiViewMode == MultiViewMode.Free) {
@@ -68,11 +65,13 @@
     private IEnumerable<CardFieldSlot> EnabledFieldsInOrder =>
         Config.Fields.Where(f => f.Enabled).OrderBy(f => f.Order);
 
-    private string FieldSpanClass(CardFieldSlot slot) => slot.Field switch {
-        CardField.LaunchDate => RowColorClass(false),
-        CardField.LaunchTime => RowColorClass(true),
-        _ => "text-gray-400 ml-0_5rem"
-    };
+    private string FieldSpanClass(CardFieldSlot slot) {
+        return slot.Field switch {
+            CardField.LaunchDate => RowColorClass(false),
+            CardField.LaunchTime => RowColorClass(true),
+            _ => "text-gray-400 ml-0_5rem"
+        };
+    }
 
     private RenderFragment RenderField(CardFieldSlot slot) => __builder => {
         <span class="@FieldSpanClass(slot)">
@@ -116,10 +115,11 @@
         return altMode ? "text-gray-500" : "text-gray-400";
     }
 
-    private string DurationClass() =>
-        Config.ColorizeByDuration
+    private string DurationClass() {
+        return Config.ColorizeByDuration
             ? (Mission.DurationType is { } d ? "text-duration-" + Convert.ToInt32(d, CultureInfo.InvariantCulture) : "text-duration-3")
             : "";
+    }
 
     private string DateLabel() {
         var y = MissionFilterMatcher.LedgerDate(Mission.LaunchDT);

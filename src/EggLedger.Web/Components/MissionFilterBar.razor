@@ -1,4 +1,3 @@
-@using EggLedger.Web.Missions
 @* Faithful port of the Vue FullFilter. Each AND row builds progressively: field
    first, operator after a field is chosen, value after the operator. A complete
    row gets a yellow OR button that adds an indented "⮡ OR" sibling under it
@@ -133,8 +132,9 @@
 
     private List<FilterFieldDef> TopLevelFields { get; set; } = [];
 
-    private FilterFieldDef? FieldOf(FilterCondition c) =>
-        string.IsNullOrEmpty(c.TopLevel) ? null : FilterFields.GetReportField(c.TopLevel);
+    private FilterFieldDef? FieldOf(FilterCondition c) {
+        return string.IsNullOrEmpty(c.TopLevel) ? null : FilterFields.GetReportField(c.TopLevel);
+    }
 
     private bool RowComplete(FilterCondition c) {
         var def = FieldOf(c);
@@ -280,8 +280,9 @@
         </span>
     };
 
-    private static string? ModalSelectedValue(FilterFieldDef def, string val) =>
-        string.IsNullOrEmpty(val) ? null : val;
+    private static string? ModalSelectedValue(FilterFieldDef def, string val) {
+        return string.IsNullOrEmpty(val) ? null : val;
+    }
 
     private RenderFragment DropAdvancedFooter => @<label class="flex items-center gap-1.5 text-xs text-gray-400 cursor-pointer select-none">
                                                      <input type="checkbox" class="ext-opt-check" checked="@_advancedDrops" @onchange="OnAdvancedDropsToggled"/>
@@ -326,7 +327,9 @@
         c.Val = "";
     }
 
-    private void OnRowChanged(int index) => EnsureTrailingRow();
+    private void OnRowChanged(int index) {
+        EnsureTrailingRow();
+    }
 
     private void OnOrRowChanged(int index) {
     }
@@ -349,7 +352,9 @@
             _rows.Add(new Row());
     }
 
-    private void RemoveOr(int index, int orIndex) => _rows[index].Or.RemoveAt(orIndex);
+    private void RemoveOr(int index, int orIndex) {
+        _rows[index].Or.RemoveAt(orIndex);
+    }
 
     public LegacyFilter BuildFilter() {
         var and = new List<FilterCondition>();
@@ -366,6 +371,12 @@
         return new LegacyFilter(and, or);
     }
 
-    private async Task ApplyAsync() => await OnApply.InvokeAsync(BuildFilter());
-    private static FilterCondition Clone(FilterCondition c) => new(c.TopLevel, c.Op, c.Val);
+    private async Task ApplyAsync() {
+        await OnApply.InvokeAsync(BuildFilter());
+    }
+
+    private static FilterCondition Clone(FilterCondition c) {
+        return new(c.TopLevel, c.Op, c.Val);
+    }
+
 }
