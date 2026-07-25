@@ -1,5 +1,6 @@
 using EggLedger.Web;
 using EggLedger.Web.Data;
+using EggLedger.Web.Server;
 using EggLedger.Web.Server.Components;
 using EggLedger.Web.Server.Sync;
 using EggLedger.Web.Services;
@@ -187,6 +188,12 @@ if (hasDb) {
 
 var selfBase = new Uri(builder.Configuration["SelfBaseAddress"] ?? SelfBaseFromUrls());
 builder.Services.AddEggLedgerWeb(selfBase);
+
+builder.Services.AddScoped(sp => {
+    var accessor = sp.GetRequiredService<IHttpContextAccessor>();
+    var handler = new CookieForwardingHandler(accessor) { InnerHandler = new HttpClientHandler() };
+    return new HttpClient(handler) { BaseAddress = selfBase };
+});
 
 static string SelfBaseFromUrls() {
     var urls = Environment.GetEnvironmentVariable("ASPNETCORE_URLS");

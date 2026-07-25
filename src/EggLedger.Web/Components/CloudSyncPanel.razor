@@ -27,17 +27,15 @@
         </div>
     } else {
         <div class="flex items-center gap-2 flex-wrap">
+            <span class="@BadgeClass px-2 py-0.5 rounded-full text-xs font-semibold">@BadgeText</span>
             @if (_connected) {
                 @if (!string.IsNullOrEmpty(_avatarUrl)) {
                     <img class="w-5 h-5 rounded-full border border-gray-600" src="@_avatarUrl" alt="Account avatar"/>
                 }
 
-                <span class="text-green-400 font-semibold text-xs">Connected</span>
                 @if (!string.IsNullOrEmpty(_username)) {
                     <span class="text-gray-400 text-xs">as <span class="text-gray-300">@_username</span></span>
                 }
-            } else {
-                <span class="text-gray-500 italic text-xs">Not connected</span>
             }
         </div>
 
@@ -162,6 +160,14 @@
     private CloudSession? _session;
     private CancellationTokenSource? _pollCts;
     private bool _disposed;
+
+    private string BadgeText => _connected ? "Connected" : _authWaiting ? "Connecting" : "Disconnected";
+
+    private string BadgeClass => _connected
+        ? "bg-green-900/60 text-green-400 border border-green-700"
+        : _authWaiting
+            ? "bg-yellow-900/60 text-yellow-400 border border-yellow-700"
+            : "bg-red-900/60 text-red-400 border border-red-700";
 
     private string PushString => _lastPushAt > 0
         ? DateTimeOffset.FromUnixTimeSeconds(_lastPushAt).LocalDateTime.ToString("g")
