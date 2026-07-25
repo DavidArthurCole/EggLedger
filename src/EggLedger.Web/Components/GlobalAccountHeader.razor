@@ -8,6 +8,7 @@
 @inject IndexedDbSettings SettingsStore
 @inject IJSRuntime Js
 @inject IPlatformCapabilities Platform
+@inject NavigationManager Nav
 
 <div class="relative" @ref="_rootRef">
     <div class="flex items-center">
@@ -152,6 +153,8 @@
             ? new AccountDataPanel.FetchingCard(id, info.Nickname, info.AccountColor, Fetch.Progress?.Finished ?? 0, Fetch.Progress?.Total ?? 0)
             : null;
 
+    private static readonly string[] LinkResultQueryKeys = ["linked=", "linkConflict=", "linkRejected=", "linkError="];
+
     protected override async Task OnInitializedAsync() {
         Active.Changed += OnStateChanged;
         AppStateSvc.Changed += OnStateChanged;
@@ -161,6 +164,29 @@
         await ResumeIncompleteFetchAsync();
     }
 
+    protected override Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender && IsLoggedIn) {
+            ReopenSettingsAfterLinkReturn();
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private void ReopenSettingsAfterLinkReturn() {
+        var query = new Uri(Nav.Uri).Query;
+        if (query.Length == 0 || !LinkResultQueryKeys.Any(query.Contains)) {
+            return;
+        }
+
+        _settingsModal?.Open();
+        var cleanUri = Nav.GetUriWithQueryParameters(new Dictionary<string, object?> {
+            ["linked"] = null,
+            ["linkConflict"] = null,
+            ["linkRejected"] = null,
+            ["linkError"] = null,
+        });
+        Nav.NavigateTo(cleanUri, replace: true);
+    }
 
     private async Task ResumeIncompleteFetchAsync() {
         if (!Fetch.IsIdle) {
