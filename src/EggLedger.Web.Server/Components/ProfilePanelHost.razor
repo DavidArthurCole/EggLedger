@@ -12,7 +12,7 @@
 
 @if (!string.IsNullOrEmpty(_sessionToken)) {
     <div class="px-2 py-2 text-sm text-gray-400 bg-darker rounded-md tabular-nums overflow-auto">
-        <ProfilePanel SessionToken="@_sessionToken" ReturnUrl="@Nav.Uri">
+        <ProfilePanel SessionToken="@_sessionToken" ReturnUrl="@CleanReturnUrl">
             <AvatarTemplate Context="ctx">
                 <div class="mt-0_5rem flex items-center gap-3">
                     @if (!string.IsNullOrEmpty(ctx.AvatarUrl)) {
@@ -104,5 +104,12 @@
             ? url
             : $"{Cfg.IdentityWidgetUrl.TrimEnd('/')}/{url.TrimStart('/')}";
     }
+
+    private string CleanReturnUrl => Nav.GetUriWithQueryParameters(new Dictionary<string, object?> {
+        ["linked"] = null,
+        ["linkConflict"] = null,
+        ["linkRejected"] = null,
+        ["linkError"] = null
+    });
 
 }
