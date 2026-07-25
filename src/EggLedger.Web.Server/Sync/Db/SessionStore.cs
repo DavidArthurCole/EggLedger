@@ -1,6 +1,6 @@
 using Npgsql;
-using SyncKit.Auth;
-using SyncKit.Identity.Client;
+using EggIdentity.Auth;
+using EggIdentity.Client;
 
 namespace EggLedger.Web.Server.Sync.Db;
 

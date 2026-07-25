@@ -1,6 +1,6 @@
-using SyncKit.Contract;
-using SyncKit.Metrics;
-using SyncKit.Metrics.AdminUi;
+using EggIdentity.Contract;
+using EggIdentity.Metrics;
+using EggIdentity.Metrics.AdminUi;
 
 namespace EggLedger.Web.Server.Sync.Admin;
 

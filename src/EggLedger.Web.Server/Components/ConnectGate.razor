@@ -1,6 +1,6 @@
 @* Unauthenticated prompt. "Login" reveals a dropdown of federated providers fetched from
-   SyncKit's /login/sources (Discord, Google, Microsoft, GitHub, etc.); each is a plain
-   top-level <a> into SyncKit's /login/go/{provider} (mode=redirect), which returns the browser
+   EggIdentity's /login/sources (Discord, Google, Microsoft, GitHub, etc.); each is a plain
+   top-level <a> into EggIdentity's /login/go/{provider} (mode=redirect), which returns the browser
    to this exact page with ?code appended, caught by LoginCallbackMiddleware. The dropdown is
    fixed-positioned by loginMenu.js so it escapes any overflow-clipped container. *@
 @inject AppConfig Cfg
@@ -9,8 +9,8 @@
 @inject IJSRuntime JS
 @using EggLedger.Web.Server.Sync
 @using Microsoft.JSInterop
-@using SyncKit.Contract
-@using SyncKit.Identity.Client
+@using EggIdentity.Contract
+@using EggIdentity.Client
 @implements IAsyncDisposable
 <div class="flex flex-col items-center justify-center gap-4 py-16 text-center">
     <h1 class="text-xl font-semibold text-gray-200">Connect your account</h1>

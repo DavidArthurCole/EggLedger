@@ -11,9 +11,9 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Npgsql;
-using SyncKit.Auth;
-using SyncKit.Contract;
-using SyncKit.Metrics;
+using EggIdentity.Auth;
+using EggIdentity.Contract;
+using EggIdentity.Metrics;
 
 namespace EggLedger.Web.Server.Sync;
 
@@ -23,7 +23,7 @@ public static class Api {
                      ?? NpgsqlDataSource.Create(cfg.DatabaseUrl);
         var loggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
 
-        var identity = app.Services.GetRequiredService<SyncKit.Identity.Client.IdentityApiClient>();
+        var identity = app.Services.GetRequiredService<EggIdentity.Client.IdentityApiClient>();
         var currentUser = app.Services.GetRequiredService<EggLedger.Web.Server.Sync.Auth.ICurrentUser>();
         var auth = app.Services.GetRequiredService<AuthEndpoints>();
         var blobs = new BlobEndpoints(source, loggerFactory.CreateLogger<BlobEndpoints>());
@@ -31,7 +31,7 @@ public static class Api {
         var store = new SessionStore(source, identity);
         var admin = new Admin.AdminEndpoints(app.Services.GetRequiredService<EggLedger.Web.Components.Admin.IAdminData>(), currentUser);
 
-        app.UseSyncKitRequestMetrics();
+        app.UseEggIdentityRequestMetrics();
 
 
         app.MapGet("/api/v1/auth/pair/begin", (HttpContext c) => auth.PairBegin(c));
@@ -75,7 +75,7 @@ public static class Api {
 
         var ships = app.Services.GetRequiredService<Ships.ShipAssetService>();
         MapAuthed(app, ["GET"], "/api/ships/manifest", store, async ctx => {
-            if (!await currentUser.IsAtLeastAsync(ctx, SyncKit.Contract.UserRole.Admin, ctx.RequestAborted)) {
+            if (!await currentUser.IsAtLeastAsync(ctx, EggIdentity.Contract.UserRole.Admin, ctx.RequestAborted)) {
                 ctx.Response.StatusCode = StatusCodes.Status403Forbidden;
                 return;
             }
@@ -85,7 +85,7 @@ public static class Api {
                 ctx.RequestAborted);
         });
         MapAuthed(app, ["GET"], "/api/ships/{key}.glb", store, async ctx => {
-            bool isAdmin = await currentUser.IsAtLeastAsync(ctx, SyncKit.Contract.UserRole.Admin, ctx.RequestAborted);
+            bool isAdmin = await currentUser.IsAtLeastAsync(ctx, EggIdentity.Contract.UserRole.Admin, ctx.RequestAborted);
             var key = (string)ctx.Request.RouteValues["key"]!;
             var r = await Ships.ShipEndpoints.HandleGlb(ships, isAdmin, key, ctx.RequestAborted);
             ctx.Response.StatusCode = r.Status;

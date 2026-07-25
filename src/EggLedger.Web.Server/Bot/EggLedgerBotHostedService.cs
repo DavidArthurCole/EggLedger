@@ -1,15 +1,15 @@
-using SyncKit.Bot;
+using EggIdentity.Bot;
 
 namespace EggLedger.Web.Server.Bot;
 
 public sealed class EggLedgerBotHostedService(BotConfig config, ILogger<EggLedgerBotHostedService> logger) : IHostedService {
-    public SyncKitBot? Bot { get; private set; }
+    public EggIdentityBot? Bot { get; private set; }
 
     public async Task StartAsync(CancellationToken cancellationToken) {
         try {
-            Bot = await SyncKitBot.StartAsync(config);
+            Bot = await EggIdentityBot.StartAsync(config);
         } catch (Exception ex) {
-            logger.LogWarning(ex, "synckit: bot start failed, continuing");
+            logger.LogWarning(ex, "eggidentity: bot start failed, continuing");
         }
     }
 

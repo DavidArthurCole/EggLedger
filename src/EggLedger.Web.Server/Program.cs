@@ -10,12 +10,12 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Npgsql;
-using SyncKit.Auth;
-using SyncKit.Bot;
-using SyncKit.Contract;
-using SyncKit.Db;
-using SyncKit.Metrics;
-using SyncKit.Metrics.AdminUi;
+using EggIdentity.Auth;
+using EggIdentity.Bot;
+using EggIdentity.Contract;
+using EggIdentity.Db;
+using EggIdentity.Metrics;
+using EggIdentity.Metrics.AdminUi;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -51,16 +51,16 @@ builder.Services.Configure<ForwardedHeadersOptions>(o => {
 
 
 
-var syncKitSession = SessionCookieOptions.FromEnvironment();
+var eggIdentitySession = SessionCookieOptions.FromEnvironment();
 const string SmartAuthScheme = "smart";
 
-var authentication = syncKitSession is null
+var authentication = eggIdentitySession is null
     ? builder.Services.AddAuthentication(EggLedger.Web.Server.Auth.AuthScheme.Cookie)
     : builder.Services.AddAuthentication(SmartAuthScheme)
         .AddPolicyScheme(SmartAuthScheme, SmartAuthScheme, o => {
             o.ForwardDefaultSelector = ctx =>
-                ctx.Request.Cookies.ContainsKey(syncKitSession.CookieName)
-                    ? SyncKitSessionDefaults.Scheme
+                ctx.Request.Cookies.ContainsKey(eggIdentitySession.CookieName)
+                    ? EggIdentitySessionDefaults.Scheme
                     : EggLedger.Web.Server.Auth.AuthScheme.Cookie;
         });
 
@@ -83,22 +83,22 @@ var authBuilder = authentication
                 await ctx.HttpContext.SignOutAsync(EggLedger.Web.Server.Auth.AuthScheme.Cookie);
                 return;
             }
-            var identity = ctx.HttpContext.RequestServices.GetService<SyncKit.Identity.Client.IdentityApiClient>();
+            var identity = ctx.HttpContext.RequestServices.GetService<EggIdentity.Client.IdentityApiClient>();
             if (identity is not null) {
-                await SyncKit.Auth.AuthentikAspNetAuth.OnValidatePrincipalCheckRevoked(ctx, identity, EggLedger.Web.Server.Auth.AuthScheme.UserIdClaim, EggLedger.Web.Server.Auth.AuthScheme.RoleClaim);
+                await EggIdentity.Auth.AuthentikAspNetAuth.OnValidatePrincipalCheckRevoked(ctx, identity, EggLedger.Web.Server.Auth.AuthScheme.UserIdClaim, EggLedger.Web.Server.Auth.AuthScheme.RoleClaim);
             }
         };
     });
 
-if (syncKitSession is not null) {
-    authBuilder.AddSyncKitSession(syncKitSession, onValidated: (principal, _, _) => {
-        var userId = principal.SyncKitUserId();
+if (eggIdentitySession is not null) {
+    authBuilder.AddEggIdentitySession(eggIdentitySession, onValidated: (principal, _, _) => {
+        var userId = principal.EggIdentityUserId();
         if (userId is not null && principal.Identity is System.Security.Claims.ClaimsIdentity id) {
             id.AddClaim(new System.Security.Claims.Claim(EggLedger.Web.Server.Auth.AuthScheme.UserIdClaim, userId.Value.ToString()));
         }
         return Task.CompletedTask;
     });
-    builder.Services.AddSingleton(syncKitSession);
+    builder.Services.AddSingleton(eggIdentitySession);
     builder.Services.AddScoped<EggLedger.Web.Components.IProfilePanelSlot, EggLedger.Web.Server.Components.ProfilePanelSlot>();
 }
 
@@ -138,7 +138,7 @@ if (hasDb) {
 
     var identityHttp = new HttpClient { BaseAddress = new Uri(cfg.IdentityApiUrl) };
     identityHttp.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", cfg.IdentityApiSecret);
-    var identityClient = new SyncKit.Identity.Client.IdentityApiClient(identityHttp);
+    var identityClient = new EggIdentity.Client.IdentityApiClient(identityHttp);
     builder.Services.AddSingleton(identityClient);
     builder.Services.AddSingleton<EggLedger.Web.Server.Sync.Auth.ICurrentUser, EggLedger.Web.Server.Sync.Auth.CurrentUser>();
 
@@ -147,7 +147,7 @@ if (hasDb) {
     builder.Services.AddScoped<EggLedger.Web.Components.Auth.IPairCompletion, EggLedger.Web.Server.Auth.PairCompletion>();
     builder.Services.AddScoped<EggLedger.Web.Components.Admin.IAdminAccess, EggLedger.Web.Server.Auth.AdminAccess>();
 
-    builder.Services.AddSyncKitRequestMetrics(o => o.PathPrefix = "/api/v1");
+    builder.Services.AddEggIdentityRequestMetrics(o => o.PathPrefix = "/api/v1");
     builder.Services.AddSingleton<EggLedger.Web.Server.Sync.Admin.SpamLog>();
     builder.Services.AddSingleton<IRequestAuditSink>(sp => sp.GetRequiredService<EggLedger.Web.Server.Sync.Admin.SpamLog>());
     builder.Services.AddSingleton<ITrafficSource, EggLedger.Web.Server.Sync.Admin.InProcessTrafficSource>();
@@ -169,7 +169,7 @@ if (hasDb) {
             SharedRoleId = cfg.SharedRoleId,
             DashboardChannelId = cfg.DashboardChannelId,
             PostgresConnectionString = cfg.DatabaseUrl,
-            DashboardProvider = _ => Task.FromResult(new SyncKit.Contract.DashboardSnapshot {
+            DashboardProvider = _ => Task.FromResult(new EggIdentity.Contract.DashboardSnapshot {
                 AppName = "EggLedger",
                 Version = build.Version,
                 BuildHash = build.Sha256,
@@ -211,7 +211,7 @@ if (hasDb) {
     builder.Services.AddScoped<ISessionStore>(sp =>
         new EggLedger.Web.Server.Sync.Db.SessionStore(
             sp.GetRequiredService<NpgsqlDataSource>(),
-            sp.GetRequiredService<SyncKit.Identity.Client.IdentityApiClient>()));
+            sp.GetRequiredService<EggIdentity.Client.IdentityApiClient>()));
     builder.Services.RemoveAll<IIndexedDb>();
     builder.Services.AddScoped<IIndexedDb>(sp => new EggLedger.Web.Server.Storage.PostgresIndexedDb(
         sp.GetRequiredService<NpgsqlDataSource>(),

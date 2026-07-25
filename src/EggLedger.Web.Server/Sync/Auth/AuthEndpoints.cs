@@ -10,9 +10,9 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Npgsql;
-using SyncKit.Auth;
-using SyncKit.Contract;
-using SyncKit.Identity.Client;
+using EggIdentity.Auth;
+using EggIdentity.Contract;
+using EggIdentity.Client;
 
 namespace EggLedger.Web.Server.Sync.Auth;
 
@@ -29,7 +29,7 @@ public sealed record PollResponse(
     [property: JsonPropertyName("avatarUrl")] string AvatarUrl,
     [property: JsonPropertyName("encryptionKey")] string EncryptionKey);
 
-public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvider dataProtection, IdentityApiClient identity, ILogger<AuthEndpoints> logger, AppConfig cfg, SessionCookieOptions? syncKitSession = null) {
+public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvider dataProtection, IdentityApiClient identity, ILogger<AuthEndpoints> logger, AppConfig cfg, SessionCookieOptions? eggIdentitySession = null) {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
     private static readonly string[] ElUserTables = [
@@ -65,7 +65,7 @@ public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvid
 
         await UpsertLocalUserAsync(result.UserId, result.DiscordId, result.Username, result.Avatar, ct);
 
-        if (syncKitSession is null) {
+        if (eggIdentitySession is null) {
             var claims = new List<Claim> {
                 new(ClaimTypes.Name, result.Username),
                 new(EggLedger.Web.Server.Auth.AuthScheme.UserIdClaim, result.UserId.ToString()),
@@ -87,7 +87,7 @@ public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvid
     public async Task Logout(HttpContext ctx) {
         await ctx.SignOutAsync(EggLedger.Web.Server.Auth.AuthScheme.Cookie);
 
-        if (syncKitSession is null) {
+        if (eggIdentitySession is null) {
             ctx.Response.Redirect("/");
             return;
         }
@@ -199,7 +199,7 @@ public sealed class AuthEndpoints(NpgsqlDataSource source, IDataProtectionProvid
 
 
     public async Task SessionFromLogin(HttpContext ctx) {
-        var token = syncKitSession is not null ? ctx.Request.Cookies[syncKitSession.CookieName] : null;
+        var token = eggIdentitySession is not null ? ctx.Request.Cookies[eggIdentitySession.CookieName] : null;
         if (string.IsNullOrEmpty(token)) {
             ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
             return;

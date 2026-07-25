@@ -8,8 +8,8 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql;
-using SyncKit.Auth;
-using SyncKit.Identity.Client;
+using EggIdentity.Auth;
+using EggIdentity.Client;
 
 namespace EggLedger.Web.Server.Tests.Sync.Auth;
 

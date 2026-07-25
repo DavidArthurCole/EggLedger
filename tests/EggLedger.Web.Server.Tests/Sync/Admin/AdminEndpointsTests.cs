@@ -5,8 +5,8 @@ using EggLedger.Web.Server.Sync.Auth;
 using EggLedger.Web.Server.Tests.Sync.Auth;
 using Microsoft.AspNetCore.Http;
 using Npgsql;
-using SyncKit.Contract;
-using SyncKit.Identity.Client;
+using EggIdentity.Contract;
+using EggIdentity.Client;
 
 namespace EggLedger.Web.Server.Tests.Sync.Admin;
 

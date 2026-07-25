@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
-using SyncKit.Identity.Client;
+using EggIdentity.Client;
 using Xunit;
 
 namespace EggLedger.Web.Server.Tests.Auth;

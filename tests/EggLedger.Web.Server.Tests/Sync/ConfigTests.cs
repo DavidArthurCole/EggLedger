@@ -46,7 +46,7 @@ public class ConfigTests {
     [Fact]
     public void FromEnv_reads_identity_widget_url_when_set() {
         var env = new Dictionary<string, string?> {
-            ["IDENTITY_API_URL"] = "http://synckit-identity:8090",
+            ["IDENTITY_API_URL"] = "http://eggidentity:8090",
             ["IDENTITY_WIDGET_URL"] = "https://identity.davidarthurcole.me",
         };
         var cfg = AppConfig.FromEnv(k => env.GetValueOrDefault(k));
@@ -56,9 +56,9 @@ public class ConfigTests {
     [Fact]
     public void FromEnv_defaults_identity_widget_url_to_identity_api_url() {
         var env = new Dictionary<string, string?> {
-            ["IDENTITY_API_URL"] = "http://synckit-identity:8090",
+            ["IDENTITY_API_URL"] = "http://eggidentity:8090",
         };
         var cfg = AppConfig.FromEnv(k => env.GetValueOrDefault(k));
-        Assert.Equal("http://synckit-identity:8090", cfg.IdentityWidgetUrl);
+        Assert.Equal("http://eggidentity:8090", cfg.IdentityWidgetUrl);
     }
 }

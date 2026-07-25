@@ -1,12 +1,12 @@
 @using System.Globalization
 @using EggLedger.Web.Server.Sync
 @using Microsoft.AspNetCore.Components.Forms
-@using SyncKit.Auth
-@using SyncKit.Identity.AdminUi
-@using SyncKit.Identity.Client
+@using EggIdentity.Auth
+@using EggIdentity.AdminUi
+@using EggIdentity.Client
 @inject IHttpContextAccessor HttpContextAccessor
 @inject NavigationManager Nav
-@inject SessionCookieOptions SyncKitSession
+@inject SessionCookieOptions EggIdentitySession
 @inject AppConfig Cfg
 @inject IdentityApiClient Identity
 
@@ -92,7 +92,7 @@
     private string _sessionToken = "";
 
     protected override void OnInitialized() {
-        _sessionToken = HttpContextAccessor.HttpContext?.Request.Cookies[SyncKitSession.CookieName] ?? "";
+        _sessionToken = HttpContextAccessor.HttpContext?.Request.Cookies[EggIdentitySession.CookieName] ?? "";
     }
 
     private static string Cap(string s) {

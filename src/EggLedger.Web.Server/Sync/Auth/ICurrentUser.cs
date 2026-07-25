@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Http;
-using SyncKit.Contract;
-using SyncKit.Identity.Client;
+using EggIdentity.Contract;
+using EggIdentity.Client;
 
 namespace EggLedger.Web.Server.Sync.Auth;
 
@@ -17,7 +17,7 @@ public interface ICurrentUser {
 }
 
 public sealed class CurrentUser(IdentityApiClient identity) : ICurrentUser {
-    private const string RoleItemsKey = "SyncKit.Identity.Role";
+    private const string RoleItemsKey = "EggIdentity.Role";
 
     public Guid? UserId(HttpContext ctx) =>
         Guid.TryParse(ctx.Request.Headers["X-Discord-ID"].ToString(), out var id) ? id : null;

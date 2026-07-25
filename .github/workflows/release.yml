@@ -136,7 +136,7 @@ jobs:
           files: SHA256SUMS
 
   docker:
-    uses: DavidArthurCole/EggBasket/.github/workflows/docker-publish.yml@master
+    uses: DavidArthurCole/EggIdentity/.github/workflows/docker-publish.yml@master
     with:
       needs-pat: true
       version-build-arg: EGGLEDGER_VERSION

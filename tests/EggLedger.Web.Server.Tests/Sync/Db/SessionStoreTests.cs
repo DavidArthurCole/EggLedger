@@ -2,7 +2,7 @@ using System.Net;
 using EggLedger.Web.Server.Sync.Db;
 using EggLedger.Web.Server.Tests.Sync.Auth;
 using Npgsql;
-using SyncKit.Identity.Client;
+using EggIdentity.Client;
 
 namespace EggLedger.Web.Server.Tests.Sync.Db;
 
