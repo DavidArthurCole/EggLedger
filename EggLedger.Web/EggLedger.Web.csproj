@@ -24,7 +24,7 @@
   </ItemGroup>
 
   <Target Name="BuildStyles"
-          Condition="'$(BuildStylesCss)' != 'false'"
+          Condition="'$(BuildStylesCss)' != 'false' And '$(BuildingProject)' == 'true'"
           Inputs="@(_StylesInput)"
           Outputs="$(MSBuildProjectDirectory)\wwwroot\styles.css"
           Returns="">
