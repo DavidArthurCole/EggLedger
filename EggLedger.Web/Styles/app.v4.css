@@ -314,7 +314,7 @@
 }
 
 .filter-select:focus {
-  @apply ring-blue-500 border-blue-500;
+  @apply outline-none ring-1 ring-blue-500 border-blue-500;
 }
 
 .filter-select:hover {
@@ -664,7 +664,7 @@
 }
 
 .report-tooltip {
-  z-index: 10000;
+  z-index: 999999;
 }
 
 .fetch-status-popover {
@@ -980,7 +980,7 @@ input[type=number] {
 }
 
 .toggle-link {
-  @apply text-duration-0 mr-5 font-bold bg-transparent;
+  @apply text-duration-0 mr-5 font-bold bg-transparent cursor-pointer;
 }
 
 .toggle-link:hover {

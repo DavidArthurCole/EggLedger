@@ -62,11 +62,11 @@
 
     <button type="button" class="ledger-btn apply-filter-button" disabled="@Applying" @onclick="ApplyAsync">Apply Filter</button>
     @if (Applying) {
-        <span class="text-green-700 mt-0_5rem">
+        <span class="text-green-700 mt-0_5rem block">
             <i>Applying filter, please wait...</i>
         </span>
     } else if (LastResultText is { Length: > 0 }) {
-        <span class="text-green-700 mt-0_5rem">
+        <span class="text-green-700 mt-0_5rem block">
             <i>@RenderResultText(LastResultText)</i>
         </span>
     }

@@ -13,7 +13,7 @@
 <div class="relative" @ref="_rootRef">
     <div class="flex items-center">
         <button type="button"
-                class="relative -bottom-px flex items-center gap-1.5 px-4 pt-2 pb-1.5 text-sm font-medium text-gray-400 border border-darker_tab rounded-t-md bg-darker_tab hover:bg-dark_tab_hover transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                class="relative -bottom-px flex items-center gap-1.5 px-4 pt-2 pb-1.5 text-sm font-medium text-gray-400 border border-gray-600 rounded-t-md bg-darker_tab hover:bg-dark_tab_hover transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled="@(!IsLoggedIn)" @onclick="Toggle">
             @if (_active is not null) {
                 <span class="font-medium" style="color: #@_active.AccountColor">@_active.Nickname</span>
@@ -28,13 +28,13 @@
 
         @if (Fetch.IsIdle) {
             <button type="button"
-                    class="relative -bottom-px ml-1.5 px-3 pt-2 pb-1.5 text-xs font-medium text-gray-400 border border-darker_tab rounded-t-md bg-darker_tab hover:bg-dark_tab_hover transition-colors disabled:opacity-50 disabled:cursor-default whitespace-nowrap"
+                    class="relative -bottom-px ml-1.5 px-3 pt-2 pb-1.5 text-xs font-medium text-gray-400 border border-gray-600 rounded-t-md bg-darker_tab hover:bg-dark_tab_hover transition-colors disabled:opacity-50 disabled:cursor-default whitespace-nowrap"
                     disabled="@(Active.ActiveAccountId is null)" @onclick="StartFetch">
                 Fetch
             </button>
         } else {
             <button type="button"
-                    class="relative -bottom-px ml-1.5 px-3 pt-2 pb-1.5 text-xs font-medium text-gray-400 border border-darker_tab rounded-t-md bg-darker_tab hover:bg-dark_tab_hover transition-colors whitespace-nowrap"
+                    class="relative -bottom-px ml-1.5 px-3 pt-2 pb-1.5 text-xs font-medium text-gray-400 border border-gray-600 rounded-t-md bg-darker_tab hover:bg-dark_tab_hover transition-colors whitespace-nowrap"
                     @onclick="StopFetch">
                 Stop
             </button>
@@ -42,7 +42,7 @@
 
         @if (Fetch.HasFetchContent && Fetch.PopoverDismissed) {
             <button type="button" @onclick="Fetch.ReopenPopover" title="Show fetch status"
-                    class="relative -bottom-px ml-1.5 flex items-center gap-1 px-2 pt-2 pb-1.5 text-xs font-medium text-yellow-400 border border-darker_tab rounded-t-md bg-darker_tab hover:bg-dark_tab_hover transition-colors whitespace-nowrap tabular-nums">
+                    class="relative -bottom-px ml-1.5 flex items-center gap-1 px-2 pt-2 pb-1.5 text-xs font-medium text-yellow-400 border border-gray-600 rounded-t-md bg-darker_tab hover:bg-dark_tab_hover transition-colors whitespace-nowrap tabular-nums">
                 <div class="w-8 h-1.5 rounded-sm overflow-hidden bg-dark">
                     <div class="h-full bg-green-500 transition-all duration-300 rounded-sm" style="width: @(Fetch.Percent)%"></div>
                 </div>
