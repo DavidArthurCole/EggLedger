@@ -41,7 +41,7 @@
   <Target Name="BuildTailwind"
           DependsOnTargets="FetchTailwindCli"
           Condition="'$(BuildTailwindCss)' != 'false'">
-    <Exec Command="&quot;$(TailwindExe)&quot; -c &quot;$(MSBuildProjectDirectory)/tailwind.config.js&quot; -i &quot;$(MSBuildProjectDirectory)/Styles/app.tailwind.css&quot; -o &quot;$(MSBuildProjectDirectory)/wwwroot/tailwind.css&quot; --minify" />
+    <Exec Command="dotnet run --project &quot;$(MSBuildProjectDirectory)/../../tools/EggLedger.CssBuild&quot; --configuration Release -- &quot;$(MSBuildProjectDirectory)&quot;" />
   </Target>
 
 </Project>
