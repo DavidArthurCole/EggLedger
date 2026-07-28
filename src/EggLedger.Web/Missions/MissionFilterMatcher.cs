@@ -150,6 +150,19 @@ public sealed class MissionFilterMatcher {
         _ => false,
     };
 
+    private static bool DropSatisfies(DropMatch m, MissionDrop drop) {
+        if (m.Name is { } name && name != drop.Id) {
+            return false;
+        }
+        if (m.Level is { } level && level != drop.Level) {
+            return false;
+        }
+        if (m.Rarity is { } rarity && rarity != drop.Rarity) {
+            return false;
+        }
+        return true;
+    }
+
     private async Task<bool> MatchesDropAsync(DatabaseMission mission, FilterOperator op, DropMatch m) {
         var shipConfig = mission.Ship is { } shipEnum
             ? FindShipConfig(Convert.ToInt32(shipEnum, CultureInfo.InvariantCulture))
@@ -179,20 +192,48 @@ public sealed class MissionFilterMatcher {
 
         bool anySatisfies = false;
         foreach (var drop in allDrops) {
-            if (m.Name is { } name && name != drop.Id) {
-                continue;
+            if (DropSatisfies(m, drop)) {
+                anySatisfies = true;
+                break;
             }
-            if (m.Level is { } level && level != drop.Level) {
-                continue;
-            }
-            if (m.Rarity is { } rarity && rarity != drop.Rarity) {
-                continue;
-            }
-            anySatisfies = true;
-            break;
         }
 
         return op == FilterOperator.NotContains ? !anySatisfies : anySatisfies;
+    }
+
+    public async Task<int> CountMatchingDropsAsync(DatabaseMission mission, DropMatch m) {
+        var shipConfig = mission.Ship is { } shipEnum
+            ? FindShipConfig(Convert.ToInt32(shipEnum, CultureInfo.InvariantCulture))
+            : null;
+        if (shipConfig is null) {
+            return 0;
+        }
+        var durConfig = mission.DurationType is { } durEnum
+            ? FindDurConfig(shipConfig, Convert.ToInt32(durEnum, CultureInfo.InvariantCulture))
+            : null;
+        if (durConfig is null) {
+            return 0;
+        }
+
+        if (m.Quality is { } q) {
+            double maxQual = durConfig.MaxQuality + durConfig.LevelQualityBump * mission.Level;
+            if (q > maxQual || durConfig.MinQuality > q) {
+                return 0;
+            }
+        }
+
+        var allDrops = await _fetchDrops(_accountId, mission.MissiondId).ConfigureAwait(false);
+        if (allDrops is null) {
+            return 0;
+        }
+
+        int count = 0;
+        foreach (var drop in allDrops) {
+            if (DropSatisfies(m, drop)) {
+                count++;
+            }
+        }
+        return count;
     }
 
     private PossibleMission? FindShipConfig(int ship) =>

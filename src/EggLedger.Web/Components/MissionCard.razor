@@ -10,6 +10,9 @@
             @foreach (var slot in EnabledFieldsInOrder) {
                 @RenderField(slot)
             }
+            @if (DropCount is > 0) {
+                <span class="drop-count-badge">@(DropCount)x</span>
+            }
         </button>
     </div>
 } else {
@@ -22,6 +25,9 @@
         <button type="button" class="text-sm mr-5 font-bold btn btn-outline-dark bg-transparent" @onclick="@(() => OnView.InvokeAsync(Mission.MissiondId))">
             @foreach (var slot in EnabledFieldsInOrder) {
                 @RenderField(slot)
+            }
+            @if (DropCount is > 0) {
+                <span class="drop-count-badge">@(DropCount)x</span>
             }
         </button>
     </div>
@@ -41,6 +47,7 @@
     [Parameter] public MultiViewMode MultiViewMode { get; set; }
     [Parameter] public EventCallback<string> OnView { get; set; }
     [Parameter] public EventCallback<(string MissionId, bool Shift)> OnToggleSelected { get; set; }
+    [Parameter] public int? DropCount { get; set; }
 
     private string CustomClass =>
         string.IsNullOrEmpty(Config.CustomCss) ? "" : "mission-card-custom-" + CustomCssSanitizer.SlugFor(Config.Name);

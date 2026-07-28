@@ -38,6 +38,23 @@
             <hr class="mt-0_5rem mb-0_5rem w-full"/>
         </div>
 
+        @if (FlatMissions is not null) {
+            <div class="mt-1rem mission-grid mission-items-full">
+                @foreach (var mission in FlatMissions) {
+                    var m = mission;
+                    <MissionCard Mission="m"
+                                 Config="Config"
+                                 IsSelected="@SelectedIds.Contains(m.MissiondId)"
+                                 IsBeingViewed="@(MissionBeingViewed == m.MissiondId)"
+                                 ViewByDate="@false"
+                                 ViewMissionTimes="ViewMissionTimes"
+                                 MultiViewMode="@(MultiViewMode == MultiViewMode.Row ? MultiViewMode.Off : MultiViewMode)"
+                                 DropCount="@GetDropCount(m.MissiondId)"
+                                 OnView="OnView"
+                                 OnToggleSelected="ToggleSelected"/>
+                }
+            </div>
+        } else {
         @for (var yi = 0; yi < Grouping.Missions.Count; yi++) {
             var yearIndex = yi;
             var year = Grouping.Arrays.Year[yearIndex];
@@ -93,6 +110,7 @@
                                                                              ViewByDate="ViewByDate"
                                                                              ViewMissionTimes="ViewMissionTimes"
                                                                              MultiViewMode="MultiViewMode"
+                                                                             DropCount="@GetDropCount(m.MissiondId)"
                                                                              OnView="OnView"
                                                                              OnToggleSelected="ToggleSelected"/>
                                                             }
@@ -114,6 +132,7 @@
                 }
             </div>
         }
+        }
     </div>
 }
 
@@ -133,6 +152,10 @@
     [Parameter] public IReadOnlyList<DatabaseMission> TabFiltered { get; set; } = Array.Empty<DatabaseMission>();
 
     [Parameter] public string? MissionBeingViewed { get; set; }
+
+    [Parameter] public IReadOnlyList<DatabaseMission>? FlatMissions { get; set; }
+
+    [Parameter] public Dictionary<string, int>? DropCounts { get; set; }
 
     [Parameter] public EventCallback<string> OnViewMission { get; set; }
 
@@ -291,6 +314,13 @@
         var d = Grouping!.Arrays.Day[yi][mi][di];
         d.Enabled = !d.Enabled;
         await NotifyAsync();
+    }
+
+    private int? GetDropCount(string missionId) {
+        if (DropCounts is not null && DropCounts.TryGetValue(missionId, out var count)) {
+            return count;
+        }
+        return null;
     }
 
     private async Task NotifyAsync() {

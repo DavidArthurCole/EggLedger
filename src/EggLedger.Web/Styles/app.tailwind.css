@@ -233,6 +233,10 @@ hr {
   @apply text-xs absolute leading-1rem bottom-0 -right-1 h-1rem ring-white ring-1 rounded-full bg-darkerer text-gray-400;
 }
 
+.drop-count-badge {
+  @apply text-xs leading-1rem h-1rem rounded-full bg-darkerer text-yellow-500 ring-yellow-700 ring-1 px-1.5 ml-0_5rem inline-flex items-center;
+}
+
 .fetch-button {
   @apply relative w-20 text-center space-x-2 px-4 py-2 border border-gray-600 text-sm font-medium rounded-md text-gray-400;
 }
