@@ -36,11 +36,6 @@ jobs:
 
       - uses: actions/cache@v6
         with:
-          path: tools/tailwind
-          key: tailwind-cli-v3.4.17-${{ runner.os }}
-
-      - uses: actions/cache@v6
-        with:
           path: ~/.nuget/packages
           key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/Directory.Build.props') }}
           restore-keys: ${{ runner.os }}-nuget-
@@ -48,6 +43,6 @@ jobs:
       - name: Warm caches via desktop publish
         shell: bash
         run: |
-          dotnet publish src/EggLedger.Desktop/EggLedger.Desktop.csproj \
+          dotnet publish EggLedger.Desktop/EggLedger.Desktop.csproj \
             -c Release -r ${{ matrix.os == 'windows-latest' && 'win-x64' || startsWith(matrix.os, 'macos') && 'osx-arm64' || 'linux-x64' }} \
             --self-contained true -o publish/warm

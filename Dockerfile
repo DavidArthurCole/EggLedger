@@ -2,9 +2,8 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 COPY global.json nuget.config Directory.Build.props .editorconfig EggLedger.slnx ./
-COPY --parents src/*/*.csproj ./
-COPY src/EggLedger.Web/Styles/ src/EggLedger.Web/Styles/
-COPY src/EggLedger.Web/tailwind.config.js src/EggLedger.Web/tailwind.config.js
+COPY --parents EggLedger.Domain/*.csproj EggLedger.Web/*.csproj EggLedger.Web.Server/*.csproj EggLedger.Desktop/*.csproj EggLedger.CssBuild/*.csproj ./
+COPY EggLedger.Web/Styles/ EggLedger.Web/Styles/
 RUN --mount=type=secret,id=github_token \
     --mount=type=cache,target=/root/.nuget/packages \
     dotnet nuget update source github \
@@ -12,11 +11,15 @@ RUN --mount=type=secret,id=github_token \
       --password "$(cat /run/secrets/github_token)" \
       --store-password-in-clear-text \
       --configfile nuget.config \
-    && dotnet restore src/EggLedger.Web.Server/EggLedger.Web.Server.csproj
-COPY src/ src/
+    && dotnet restore EggLedger.Web.Server/EggLedger.Web.Server.csproj
+COPY EggLedger.Domain/ EggLedger.Domain/
+COPY EggLedger.Web/ EggLedger.Web/
+COPY EggLedger.Web.Server/ EggLedger.Web.Server/
+COPY EggLedger.Desktop/ EggLedger.Desktop/
+COPY EggLedger.CssBuild/ EggLedger.CssBuild/
 ARG EGGLEDGER_VERSION
 RUN --mount=type=cache,target=/root/.nuget/packages \
-    dotnet publish src/EggLedger.Web.Server/EggLedger.Web.Server.csproj -c Release -o /app \
+    dotnet publish EggLedger.Web.Server/EggLedger.Web.Server.csproj -c Release -o /app \
       ${EGGLEDGER_VERSION:+-p:EggLedgerVersion=$EGGLEDGER_VERSION}
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime

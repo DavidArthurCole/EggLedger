@@ -6,6 +6,5 @@ obj/
 .vscode/
 dist/
 
-tools/tailwind/
-src/EggLedger.Web/wwwroot/tailwind.css
+EggLedger.Web/wwwroot/styles.css
 *.trx

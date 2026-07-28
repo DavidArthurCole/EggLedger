@@ -1,14 +1,11 @@
 <Solution>
-  <Folder Name="/src/">
-    <Project Path="src/EggLedger.Domain/EggLedger.Domain.csproj" />
-    <Project Path="src/EggLedger.Web/EggLedger.Web.csproj" />
-    <Project Path="src/EggLedger.Web.Server/EggLedger.Web.Server.csproj" />
-    <Project Path="src/EggLedger.Desktop/EggLedger.Desktop.csproj" />
-  </Folder>
-  <Folder Name="/tests/">
-    <Project Path="tests/EggLedger.Domain.Tests/EggLedger.Domain.Tests.csproj" />
-    <Project Path="tests/EggLedger.Web.Server.Tests/EggLedger.Web.Server.Tests.csproj" />
-    <Project Path="tests/EggLedger.Web.Tests/EggLedger.Web.Tests.csproj" />
-    <Project Path="tests/EggLedger.Desktop.Tests/EggLedger.Desktop.Tests.csproj" />
-  </Folder>
+  <Project Path="EggLedger.Domain/EggLedger.Domain.csproj" />
+  <Project Path="EggLedger.Web/EggLedger.Web.csproj" />
+  <Project Path="EggLedger.Web.Server/EggLedger.Web.Server.csproj" />
+  <Project Path="EggLedger.Desktop/EggLedger.Desktop.csproj" />
+  <Project Path="EggLedger.CssBuild/EggLedger.CssBuild.csproj" />
+  <Project Path="EggLedger.Domain/Tests/EggLedger.Domain.Tests.csproj" />
+  <Project Path="EggLedger.Web/Tests/EggLedger.Web.Tests.csproj" />
+  <Project Path="EggLedger.Web.Server/Tests/EggLedger.Web.Server.Tests.csproj" />
+  <Project Path="EggLedger.Desktop/Tests/EggLedger.Desktop.Tests.csproj" />
 </Solution>
