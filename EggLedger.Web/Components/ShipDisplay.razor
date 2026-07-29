@@ -2,7 +2,7 @@
 @* Single-mode ship display: identity + details + capacity badge, then drops, then the footer tip. *@
 
 <div class="@MultiClass text-gray-300 text-center">
-    <div class="flex flex-row gap-2 mb-3 mx-auto items-center" style="width: fit-content;">
+    <div class="flex flex-row flex-wrap md:flex-nowrap justify-center gap-2 mb-3 mx-auto items-center w-full md:w-fit">
         <div class="@(Mission.IsBuggedCap ? "bugged-cap-span" : Mission.IsDubCap ? "double-cap-span" : "") flex items-center py-1 px-1.5 self-center"
              style="visibility: @(Mission.IsBuggedCap || Mission.IsDubCap ? "visible" : "hidden");">
             <img class="w-5 mr-0_5rem"
