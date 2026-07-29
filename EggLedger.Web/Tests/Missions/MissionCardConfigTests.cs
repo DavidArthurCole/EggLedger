@@ -21,7 +21,7 @@ public class MissionCardConfigTests {
             .ToArray();
 
         Assert.Equal(
-            [CardField.LaunchDate, CardField.LaunchTime, CardField.ShipName, CardField.LevelStars, CardField.Target],
+            [CardField.LaunchDate, CardField.LaunchTime, CardField.ShipName, CardField.LevelStars, CardField.Target, CardField.DropCount],
             enabledInOrder);
     }
 
@@ -31,6 +31,11 @@ public class MissionCardConfigTests {
         Assert.False(classic.Fields.Single(f => f.Field == CardField.Capacity).Enabled);
         Assert.False(classic.Fields.Single(f => f.Field == CardField.CapacityModifierBadge).Enabled);
         Assert.False(classic.Fields.Single(f => f.Field == CardField.Duration).Enabled);
+    }
+
+    [Fact]
+    public void Classic_HasDropCountEnabledByDefault() {
+        Assert.True(MissionCardConfig.Classic.Fields.Single(f => f.Field == CardField.DropCount).Enabled);
     }
 
     [Fact]

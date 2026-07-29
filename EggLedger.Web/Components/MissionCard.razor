@@ -41,6 +41,7 @@
     [Parameter] public MultiViewMode MultiViewMode { get; set; }
     [Parameter] public EventCallback<string> OnView { get; set; }
     [Parameter] public EventCallback<(string MissionId, bool Shift)> OnToggleSelected { get; set; }
+    [Parameter] public int? DropCount { get; set; }
 
     private string CustomClass =>
         string.IsNullOrEmpty(Config.CustomCss) ? "" : "mission-card-custom-" + CustomCssSanitizer.SlugFor(Config.Name);
@@ -69,6 +70,7 @@
         return slot.Field switch {
             CardField.LaunchDate => RowColorClass(false),
             CardField.LaunchTime => RowColorClass(true),
+            CardField.DropCount => "",
             _ => "text-gray-400 ml-0_5rem"
         };
     }
@@ -102,6 +104,12 @@
                     break;
                 case CardField.CapacityModifierBadge:
                     @(Mission.IsBuggedCap ? "0.6x" : Mission.IsDubCap ? "2x" : "")
+                    break;
+                case CardField.DropCount:
+                    @if (DropCount is > 0) {
+                        <span class="drop-count-badge">@(DropCount)x</span>
+                    }
+
                     break;
             }
         </span>
