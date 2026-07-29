@@ -14,7 +14,7 @@
     @if (!_loaded) {
         <p class="text-gray-500 italic mt-0_5rem">Loading settings...</p>
     } else {
-        <div class="flex-1 min-h-0 px-3 py-2 overflow-auto shadow-sm block text-sm font-mono text-gray-400 bg-darkest rounded-md">
+        <div class="flex-1 min-h-0 px-3 pt-2 pb-20 overflow-auto shadow-sm block text-sm font-mono text-gray-400 bg-darkest rounded-md">
             @if (Platform.IsDesktop) {
                 @* Desktop-only: window sizing and storage management need OS access. *@
                 <WindowSettingsPanel Model="_model" OnSetting="OnSettingAsync"/>
