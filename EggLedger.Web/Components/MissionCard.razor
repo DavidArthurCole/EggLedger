@@ -10,9 +10,6 @@
             @foreach (var slot in EnabledFieldsInOrder) {
                 @RenderField(slot)
             }
-            @if (DropCount is > 0) {
-                <span class="drop-count-badge">@(DropCount)x</span>
-            }
         </button>
     </div>
 } else {
@@ -25,9 +22,6 @@
         <button type="button" class="text-sm mr-5 font-bold btn btn-outline-dark bg-transparent" @onclick="@(() => OnView.InvokeAsync(Mission.MissiondId))">
             @foreach (var slot in EnabledFieldsInOrder) {
                 @RenderField(slot)
-            }
-            @if (DropCount is > 0) {
-                <span class="drop-count-badge">@(DropCount)x</span>
             }
         </button>
     </div>
@@ -76,6 +70,7 @@
         return slot.Field switch {
             CardField.LaunchDate => RowColorClass(false),
             CardField.LaunchTime => RowColorClass(true),
+            CardField.DropCount => "",
             _ => "text-gray-400 ml-0_5rem"
         };
     }
@@ -109,6 +104,12 @@
                     break;
                 case CardField.CapacityModifierBadge:
                     @(Mission.IsBuggedCap ? "0.6x" : Mission.IsDubCap ? "2x" : "")
+                    break;
+                case CardField.DropCount:
+                    @if (DropCount is > 0) {
+                        <span class="drop-count-badge">@(DropCount)x</span>
+                    }
+
                     break;
             }
         </span>

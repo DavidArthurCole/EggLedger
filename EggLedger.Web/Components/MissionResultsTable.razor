@@ -48,90 +48,90 @@
                                  IsBeingViewed="@(MissionBeingViewed == m.MissiondId)"
                                  ViewByDate="@false"
                                  ViewMissionTimes="ViewMissionTimes"
-                                 MultiViewMode="@(MultiViewMode == MultiViewMode.Row ? MultiViewMode.Off : MultiViewMode)"
+                                 MultiViewMode="MultiViewMode"
                                  DropCount="@GetDropCount(m.MissiondId)"
                                  OnView="OnView"
                                  OnToggleSelected="ToggleSelected"/>
                 }
             </div>
         } else {
-        @for (var yi = 0; yi < Grouping.Missions.Count; yi++) {
-            var yearIndex = yi;
-            var year = Grouping.Arrays.Year[yearIndex];
-            <div>
-                <span class="text-lg font-bold mr-0_5rem ledger-underline">@year.Year</span>
-                <button type="button" class="text-lg toggle-link" @onclick="@(() => ToggleYear(yearIndex))">
-                    @(year.Enabled ? "Collapse" : "Expand")
-                </button>
+            @for (var yi = 0; yi < Grouping.Missions.Count; yi++) {
+                var yearIndex = yi;
+                var year = Grouping.Arrays.Year[yearIndex];
+                <div>
+                    <span class="text-lg font-bold mr-0_5rem ledger-underline">@year.Year</span>
+                    <button type="button" class="text-lg toggle-link" @onclick="@(() => ToggleYear(yearIndex))">
+                        @(year.Enabled ? "Collapse" : "Expand")
+                    </button>
 
-                @if (year.Enabled) {
-                    @for (var mi = 0; mi < Grouping.Missions[yearIndex].Count; mi++) {
-                        var monthIndex = mi;
-                        var month = Grouping.Arrays.Month[yearIndex][monthIndex];
-                        <div>
-                            <div class="mt-1rem ml-2rem">
-                                <span class="text-base font-bold mr-0_5rem ledger-underline">
-                                    @year.Year-@month.Month.ToString("00", CultureInfo.InvariantCulture)
-                                </span>
-                                <button type="button" class="text-base toggle-link" @onclick="@(() => ToggleMonth(yearIndex, monthIndex))">
-                                    @(month.Enabled ? "Collapse" : "Expand")
-                                </button>
+                    @if (year.Enabled) {
+                        @for (var mi = 0; mi < Grouping.Missions[yearIndex].Count; mi++) {
+                            var monthIndex = mi;
+                            var month = Grouping.Arrays.Month[yearIndex][monthIndex];
+                            <div>
+                                <div class="mt-1rem ml-2rem">
+                                    <span class="text-base font-bold mr-0_5rem ledger-underline">
+                                        @year.Year-@month.Month.ToString("00", CultureInfo.InvariantCulture)
+                                    </span>
+                                    <button type="button" class="text-base toggle-link" @onclick="@(() => ToggleMonth(yearIndex, monthIndex))">
+                                        @(month.Enabled ? "Collapse" : "Expand")
+                                    </button>
 
-                                @if (month.Enabled) {
-                                    @for (var di = 0; di < Grouping.Missions[yearIndex][monthIndex].Count; di++) {
-                                        var dayIndex = di;
-                                        var day = Grouping.Arrays.Day[yearIndex][monthIndex][dayIndex];
-                                        <div>
-                                            <div class="mt-1rem ml-2rem">
-                                                @if (ViewByDate) {
-                                                    <span class="text-sm font-bold mr-0_5rem ledger-underline">
-                                                        @year.Year-@month.Month.ToString("00", CultureInfo.InvariantCulture)-@day.Day.ToString("00", CultureInfo.InvariantCulture)
-                                                    </span>
-                                                    <button type="button" class="text-sm mr-0_5rem toggle-link"
-                                                            @onclick="@(() => ToggleDay(yearIndex, monthIndex, dayIndex))">
-                                                        @(day.Enabled ? "Collapse" : "Expand")
-                                                    </button>
-                                                }
-                                                <div class="mt-1rem flex items-start gap-2">
-                                                    @if (MultiViewMode == MultiViewMode.Row) {
-                                                        <button type="button" class="text-sm toggle-link flex-shrink-0 self-center"
-                                                                @onclick="@(() => ViewRow(yearIndex, monthIndex, dayIndex))">
-                                                            View row
+                                    @if (month.Enabled) {
+                                        @for (var di = 0; di < Grouping.Missions[yearIndex][monthIndex].Count; di++) {
+                                            var dayIndex = di;
+                                            var day = Grouping.Arrays.Day[yearIndex][monthIndex][dayIndex];
+                                            <div>
+                                                <div class="mt-1rem ml-2rem">
+                                                    @if (ViewByDate) {
+                                                        <span class="text-sm font-bold mr-0_5rem ledger-underline">
+                                                            @year.Year-@month.Month.ToString("00", CultureInfo.InvariantCulture)-@day.Day.ToString("00", CultureInfo.InvariantCulture)
+                                                        </span>
+                                                        <button type="button" class="text-sm mr-0_5rem toggle-link"
+                                                                @onclick="@(() => ToggleDay(yearIndex, monthIndex, dayIndex))">
+                                                            @(day.Enabled ? "Collapse" : "Expand")
                                                         </button>
                                                     }
-                                                    <div class="mission-grid mission-items-full flex-1">
-                                                        @if (DayVisible(yearIndex, monthIndex, dayIndex)) {
-                                                            @foreach (var mission in Grouping.Missions[yearIndex][monthIndex][dayIndex]) {
-                                                                var m = mission;
-                                                                <MissionCard Mission="m"
-                                                                             Config="Config"
-                                                                             IsSelected="@SelectedIds.Contains(m.MissiondId)"
-                                                                             IsBeingViewed="@(MissionBeingViewed == m.MissiondId)"
-                                                                             ViewByDate="ViewByDate"
-                                                                             ViewMissionTimes="ViewMissionTimes"
-                                                                             MultiViewMode="MultiViewMode"
-                                                                             DropCount="@GetDropCount(m.MissiondId)"
-                                                                             OnView="OnView"
-                                                                             OnToggleSelected="ToggleSelected"/>
-                                                            }
+                                                    <div class="mt-1rem flex items-start gap-2">
+                                                        @if (MultiViewMode == MultiViewMode.Row) {
+                                                            <button type="button" class="text-sm toggle-link flex-shrink-0 self-center"
+                                                                    @onclick="@(() => ViewRow(yearIndex, monthIndex, dayIndex))">
+                                                                View row
+                                                            </button>
                                                         }
+                                                        <div class="mission-grid mission-items-full flex-1">
+                                                            @if (DayVisible(yearIndex, monthIndex, dayIndex)) {
+                                                                @foreach (var mission in Grouping.Missions[yearIndex][monthIndex][dayIndex]) {
+                                                                    var m = mission;
+                                                                    <MissionCard Mission="m"
+                                                                                 Config="Config"
+                                                                                 IsSelected="@SelectedIds.Contains(m.MissiondId)"
+                                                                                 IsBeingViewed="@(MissionBeingViewed == m.MissiondId)"
+                                                                                 ViewByDate="ViewByDate"
+                                                                                 ViewMissionTimes="ViewMissionTimes"
+                                                                                 MultiViewMode="MultiViewMode"
+                                                                                 DropCount="@GetDropCount(m.MissiondId)"
+                                                                                 OnView="OnView"
+                                                                                 OnToggleSelected="ToggleSelected"/>
+                                                                }
+                                                            }
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
+                                        }
                                     }
-                                }
+                                </div>
                             </div>
-                        </div>
-                    }
+                        }
 
-                    <br/>
-                    @if (yearIndex != Grouping.Missions.Count - 1) {
-                        <hr class="pt-3rem pb-3rem invisible mt-1"/>
+                        <br/>
+                        @if (yearIndex != Grouping.Missions.Count - 1) {
+                            <hr class="pt-3rem pb-3rem invisible mt-1"/>
+                        }
                     }
-                }
-            </div>
-        }
+                </div>
+            }
         }
     </div>
 }
@@ -320,6 +320,7 @@
         if (DropCounts is not null && DropCounts.TryGetValue(missionId, out var count)) {
             return count;
         }
+
         return null;
     }
 

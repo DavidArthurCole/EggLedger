@@ -31,6 +31,7 @@ public class MissionCardConfigTests {
         Assert.False(classic.Fields.Single(f => f.Field == CardField.Capacity).Enabled);
         Assert.False(classic.Fields.Single(f => f.Field == CardField.CapacityModifierBadge).Enabled);
         Assert.False(classic.Fields.Single(f => f.Field == CardField.Duration).Enabled);
+        Assert.False(classic.Fields.Single(f => f.Field == CardField.DropCount).Enabled);
     }
 
     [Fact]

@@ -164,55 +164,30 @@ public sealed class MissionFilterMatcher {
     }
 
     private async Task<bool> MatchesDropAsync(DatabaseMission mission, FilterOperator op, DropMatch m) {
-        var shipConfig = mission.Ship is { } shipEnum
-            ? FindShipConfig(Convert.ToInt32(shipEnum, CultureInfo.InvariantCulture))
-            : null;
-        if (shipConfig is null) {
-            return false;
-        }
-        var durConfig = mission.DurationType is { } durEnum
-            ? FindDurConfig(shipConfig, Convert.ToInt32(durEnum, CultureInfo.InvariantCulture))
-            : null;
-        if (durConfig is null) {
+        var count = await MatchingDropCountOrNullAsync(mission, m).ConfigureAwait(false);
+        if (count is null) {
             return false;
         }
 
-
-        if (m.Quality is { } q) {
-            double maxQual = durConfig.MaxQuality + durConfig.LevelQualityBump * mission.Level;
-            if (q > maxQual || durConfig.MinQuality > q) {
-                return op == FilterOperator.NotContains;
-            }
-        }
-
-        var allDrops = await _fetchDrops(_accountId, mission.MissiondId).ConfigureAwait(false);
-        if (allDrops is null) {
-            return false;
-        }
-
-        bool anySatisfies = false;
-        foreach (var drop in allDrops) {
-            if (DropSatisfies(m, drop)) {
-                anySatisfies = true;
-                break;
-            }
-        }
-
+        bool anySatisfies = count > 0;
         return op == FilterOperator.NotContains ? !anySatisfies : anySatisfies;
     }
 
-    public async Task<int> CountMatchingDropsAsync(DatabaseMission mission, DropMatch m) {
+    public async Task<int> CountMatchingDropsAsync(DatabaseMission mission, DropMatch m) =>
+        await MatchingDropCountOrNullAsync(mission, m).ConfigureAwait(false) ?? 0;
+
+    private async Task<int?> MatchingDropCountOrNullAsync(DatabaseMission mission, DropMatch m) {
         var shipConfig = mission.Ship is { } shipEnum
             ? FindShipConfig(Convert.ToInt32(shipEnum, CultureInfo.InvariantCulture))
             : null;
         if (shipConfig is null) {
-            return 0;
+            return null;
         }
         var durConfig = mission.DurationType is { } durEnum
             ? FindDurConfig(shipConfig, Convert.ToInt32(durEnum, CultureInfo.InvariantCulture))
             : null;
         if (durConfig is null) {
-            return 0;
+            return null;
         }
 
         if (m.Quality is { } q) {
@@ -224,7 +199,7 @@ public sealed class MissionFilterMatcher {
 
         var allDrops = await _fetchDrops(_accountId, mission.MissiondId).ConfigureAwait(false);
         if (allDrops is null) {
-            return 0;
+            return null;
         }
 
         int count = 0;
