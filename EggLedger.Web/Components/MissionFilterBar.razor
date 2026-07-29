@@ -377,7 +377,7 @@
     }
 
     private static FilterCondition Clone(FilterCondition c) {
-        return new(c.TopLevel, c.Op, c.Val);
+        return new FilterCondition(c.TopLevel, c.Op, c.Val);
     }
 
 }
