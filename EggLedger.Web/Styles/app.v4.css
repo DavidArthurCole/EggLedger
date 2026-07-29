@@ -1003,7 +1003,7 @@ input[type=number] {
 }
 
 .ledger-af-repeat {
-  @apply flex flex-wrap justify-center mx-auto max-w-42vw;
+  @apply flex flex-wrap justify-center mx-auto w-full md:max-w-42vw;
 }
 
 .toggle-link {
