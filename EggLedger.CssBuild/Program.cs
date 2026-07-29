@@ -1,4 +1,6 @@
+using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using EggIdentity.Styles;
 using EggLedger.CssBuild;
 using MonorailCss;
@@ -59,7 +61,7 @@ var compiledCss = framework.Process(candidates);
 
 var strippedRawCss = StripApplyDirectives(sourceResult.RawCss);
 
-var finalCss = compiledCss + "\n" + strippedRawCss;
+var finalCss = UnwrapLayersAndSpliceRaw(compiledCss, strippedRawCss);
 
 Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
 File.WriteAllText(outputPath, finalCss);
@@ -100,6 +102,80 @@ static (int Line, string Snippet)? FindSemicolonInsideApplyBracket(string text) 
         }
         searchStart = applyIndex + "@apply".Length;
     }
+}
+
+static string UnwrapLayersAndSpliceRaw(string compiledCss, string rawCss) {
+    var withoutLayerStatement = Regex.Replace(compiledCss, @"^@layer\s+[^;{]+;\s*\n?", "", RegexOptions.Multiline);
+
+    var layers = new List<(string Name, string Content)>();
+    var remainder = new StringBuilder();
+    var i = 0;
+    while (true) {
+        var atIndex = withoutLayerStatement.IndexOf("@layer", i, StringComparison.Ordinal);
+        if (atIndex < 0) {
+            remainder.Append(withoutLayerStatement, i, withoutLayerStatement.Length - i);
+            break;
+        }
+        remainder.Append(withoutLayerStatement, i, atIndex - i);
+        var braceIndex = withoutLayerStatement.IndexOf('{', atIndex);
+        var name = withoutLayerStatement.Substring(atIndex + "@layer".Length, braceIndex - atIndex - "@layer".Length).Trim();
+        var closeIndex = FindMatchingBrace(withoutLayerStatement, braceIndex);
+        layers.Add((name, withoutLayerStatement.Substring(braceIndex + 1, closeIndex - braceIndex - 1)));
+        i = closeIndex + 1;
+    }
+
+    var unwrappedRaw = UnwrapLayerWrappers(rawCss);
+
+    var insertIndex = layers.FindIndex(l => l.Name == "components");
+    insertIndex = insertIndex >= 0 ? insertIndex + 1 : layers.FindIndex(l => l.Name == "utilities");
+    if (insertIndex < 0) {
+        insertIndex = layers.Count;
+    }
+
+    var orderedContents = layers.Select(l => l.Content).ToList();
+    orderedContents.Insert(insertIndex, unwrappedRaw);
+
+    var result = new StringBuilder(remainder.ToString());
+    foreach (var content in orderedContents) {
+        result.Append(content).Append('\n');
+    }
+    return result.ToString();
+}
+
+static string UnwrapLayerWrappers(string css) {
+    var result = new StringBuilder();
+    var i = 0;
+    while (true) {
+        var atIndex = css.IndexOf("@layer", i, StringComparison.Ordinal);
+        if (atIndex < 0) {
+            result.Append(css, i, css.Length - i);
+            return result.ToString();
+        }
+        result.Append(css, i, atIndex - i);
+        var braceIndex = css.IndexOf('{', atIndex);
+        if (braceIndex < 0) {
+            result.Append(css, atIndex, css.Length - atIndex);
+            return result.ToString();
+        }
+        var closeIndex = FindMatchingBrace(css, braceIndex);
+        result.Append(css, braceIndex + 1, closeIndex - braceIndex - 1);
+        i = closeIndex + 1;
+    }
+}
+
+static int FindMatchingBrace(string text, int openBraceIndex) {
+    var depth = 0;
+    for (var idx = openBraceIndex; idx < text.Length; idx++) {
+        if (text[idx] == '{') {
+            depth++;
+        } else if (text[idx] == '}') {
+            depth--;
+            if (depth == 0) {
+                return idx;
+            }
+        }
+    }
+    throw new InvalidOperationException("Unbalanced braces in CSS while unwrapping @layer.");
 }
 
 static string StripApplyDirectives(string css) {
