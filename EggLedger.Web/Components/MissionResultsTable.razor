@@ -209,15 +209,18 @@
         await OnSelectionChanged.InvokeAsync();
     }
 
+    private IReadOnlyList<DatabaseMission> DisplayOrder => FlatMissions ?? TabFiltered;
+
     private bool SelectRange(string fromId, string toId) {
+        var order = DisplayOrder;
         var fromIndex = -1;
         var toIndex = -1;
-        for (var i = 0; i < TabFiltered.Count; i++) {
-            if (TabFiltered[i].MissiondId == fromId) {
+        for (var i = 0; i < order.Count; i++) {
+            if (order[i].MissiondId == fromId) {
                 fromIndex = i;
             }
 
-            if (TabFiltered[i].MissiondId == toId) {
+            if (order[i].MissiondId == toId) {
                 toIndex = i;
             }
         }
@@ -229,7 +232,7 @@
         var start = Math.Min(fromIndex, toIndex);
         var end = Math.Max(fromIndex, toIndex);
         for (var i = start; i <= end; i++) {
-            SelectedIds.Add(TabFiltered[i].MissiondId);
+            SelectedIds.Add(order[i].MissiondId);
         }
 
         return true;
