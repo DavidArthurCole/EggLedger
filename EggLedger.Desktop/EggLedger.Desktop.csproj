@@ -1,0 +1,73 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+        <OutputType>WinExe</OutputType>
+    <Description>EggLedger Photino desktop host. Boots the shared EggLedger.Web Blazor UI in a native OS window via a system WebView (the .NET-native replacement for the Go/lorca shell).</Description>
+    <DefaultItemExcludes>$(DefaultItemExcludes);Tests\**</DefaultItemExcludes>
+    <AssemblyName>EggLedger</AssemblyName>
+    <Product>EggLedger</Product>
+
+        <RuntimeIdentifiers>win-x64;osx-x64;osx-arm64;linux-x64</RuntimeIdentifiers>
+
+        <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <ApplicationIcon>icon.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Photino.Blazor" Version="4.0.13" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.0" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\EggLedger.Web\EggLedger.Web.csproj" />
+    <ProjectReference Include="..\EggLedger.Domain\EggLedger.Domain.csproj" />
+  </ItemGroup>
+
+    <ItemGroup>
+    <EmbeddedResource Include="Storage\Migrations\**\*.sql" />
+  </ItemGroup>
+
+    <ItemGroup>
+    <Content Include="icon-64.png" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  
+    <ItemGroup>
+    <_WwwrootZipInput Include="wwwroot\**\*" />
+    <_WwwrootZipInput Include="..\EggLedger.Web\wwwroot\**\*" />
+    <_WwwrootZipInput Include="..\EggLedger.Web\**\*.razor;..\EggLedger.Web\**\*.razor.css" Exclude="..\EggLedger.Web\bin\**;..\EggLedger.Web\obj\**" />
+    <_WwwrootZipInput Include="$(MSBuildProjectFullPath)" />
+  </ItemGroup>
+
+  <Target Name="ComposeWwwrootZip" BeforeTargets="PrepareResourceNames;CoreCompile" Condition="'$(_EggLedgerEmbedWwwroot)' != 'false' And '$(DesignTimeBuild)' != 'true'" Inputs="@(_WwwrootZipInput)" Outputs="$(IntermediateOutputPath)wwwroot.zip">
+    <PropertyGroup>
+      <_WwwrootStageRoot>$(IntermediateOutputPath)wwwroot-compose\</_WwwrootStageRoot>
+      <_WwwrootZip>$(IntermediateOutputPath)wwwroot.zip</_WwwrootZip>
+      <_InnerRid Condition="'$(RuntimeIdentifier)' != ''">$(RuntimeIdentifier)</_InnerRid>
+      <_InnerRid Condition="'$(_InnerRid)' == ''">$(NETCoreSdkRuntimeIdentifier)</_InnerRid>
+    </PropertyGroup>
+    <RemoveDir Directories="$(_WwwrootStageRoot)" />
+    <Exec Command="dotnet publish &quot;$(MSBuildProjectFullPath)&quot; -c $(Configuration) -r $(_InnerRid) --self-contained --no-restore -p:PublishSingleFile=false -p:_EggLedgerEmbedWwwroot=false -p:BuildStylesCss=false -o &quot;$(_WwwrootStageRoot)&quot;" />
+    <ItemGroup>
+      <_WwwrootRawFile Include="$(_WwwrootStageRoot)wwwroot\**\*" Exclude="$(_WwwrootStageRoot)wwwroot\**\*.br;$(_WwwrootStageRoot)wwwroot\**\*.gz" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_WwwrootRawFile)" DestinationFiles="@(_WwwrootRawFile->'$(_WwwrootStageRoot)wwwroot-raw\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="false" />
+    <ZipDirectory SourceDirectory="$(_WwwrootStageRoot)wwwroot-raw" DestinationFile="$(_WwwrootZip)" Overwrite="true" />
+  </Target>
+
+    <ItemGroup Condition="'$(_EggLedgerEmbedWwwroot)' != 'false'">
+    <EmbeddedResource Include="$(IntermediateOutputPath)wwwroot.zip">
+      <LogicalName>EggLedger.Desktop.wwwroot.zip</LogicalName>
+      <Visible>false</Visible>
+    </EmbeddedResource>
+  </ItemGroup>
+
+    <Target Name="RemoveLooseWwwrootFromPublish" AfterTargets="Publish" Condition="'$(PublishSingleFile)' == 'true' And Exists('$(PublishDir)wwwroot')">
+    <RemoveDir Directories="$(PublishDir)wwwroot" />
+  </Target>
+
+</Project>

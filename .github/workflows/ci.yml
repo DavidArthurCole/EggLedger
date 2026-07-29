@@ -17,6 +17,7 @@ jobs:
       solution: EggLedger.slnx
       packages-auth: true
       format-gate: true
+      razor-include: "**/*.razor"
     secrets:
       PACKAGES_PAT: ${{ secrets.PACKAGES_PAT }}
 
@@ -36,18 +37,22 @@ jobs:
 
       - uses: actions/cache@v6
         with:
-          path: tools/tailwind
-          key: tailwind-cli-v3.4.17-${{ runner.os }}
-
-      - uses: actions/cache@v6
-        with:
           path: ~/.nuget/packages
           key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/Directory.Build.props') }}
           restore-keys: ${{ runner.os }}-nuget-
 
+      - name: Authenticate GitHub Packages
+        shell: bash
+        run: |
+          dotnet nuget update source github \
+            --username ${{ github.repository_owner }} \
+            --password ${{ github.token }} \
+            --store-password-in-clear-text \
+            --configfile nuget.config
+
       - name: Warm caches via desktop publish
         shell: bash
         run: |
-          dotnet publish src/EggLedger.Desktop/EggLedger.Desktop.csproj \
+          dotnet publish EggLedger.Desktop/EggLedger.Desktop.csproj \
             -c Release -r ${{ matrix.os == 'windows-latest' && 'win-x64' || startsWith(matrix.os, 'macos') && 'osx-arm64' || 'linux-x64' }} \
             --self-contained true -o publish/warm
