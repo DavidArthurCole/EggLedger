@@ -41,6 +41,15 @@ jobs:
           key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/Directory.Build.props') }}
           restore-keys: ${{ runner.os }}-nuget-
 
+      - name: Authenticate GitHub Packages
+        shell: bash
+        run: |
+          dotnet nuget update source github \
+            --username ${{ github.repository_owner }} \
+            --password ${{ github.token }} \
+            --store-password-in-clear-text \
+            --configfile nuget.config
+
       - name: Warm caches via desktop publish
         shell: bash
         run: |
