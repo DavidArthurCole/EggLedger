@@ -150,49 +150,65 @@ public sealed class MissionFilterMatcher {
         _ => false,
     };
 
+    private static bool DropSatisfies(DropMatch m, MissionDrop drop) {
+        if (m.Name is { } name && name != drop.Id) {
+            return false;
+        }
+        if (m.Level is { } level && level != drop.Level) {
+            return false;
+        }
+        if (m.Rarity is { } rarity && rarity != drop.Rarity) {
+            return false;
+        }
+        return true;
+    }
+
     private async Task<bool> MatchesDropAsync(DatabaseMission mission, FilterOperator op, DropMatch m) {
+        var count = await MatchingDropCountOrNullAsync(mission, m).ConfigureAwait(false);
+        if (count is null) {
+            return false;
+        }
+
+        bool anySatisfies = count > 0;
+        return op == FilterOperator.NotContains ? !anySatisfies : anySatisfies;
+    }
+
+    public async Task<int> CountMatchingDropsAsync(DatabaseMission mission, DropMatch m) =>
+        await MatchingDropCountOrNullAsync(mission, m).ConfigureAwait(false) ?? 0;
+
+    private async Task<int?> MatchingDropCountOrNullAsync(DatabaseMission mission, DropMatch m) {
         var shipConfig = mission.Ship is { } shipEnum
             ? FindShipConfig(Convert.ToInt32(shipEnum, CultureInfo.InvariantCulture))
             : null;
         if (shipConfig is null) {
-            return false;
+            return null;
         }
         var durConfig = mission.DurationType is { } durEnum
             ? FindDurConfig(shipConfig, Convert.ToInt32(durEnum, CultureInfo.InvariantCulture))
             : null;
         if (durConfig is null) {
-            return false;
+            return null;
         }
-
 
         if (m.Quality is { } q) {
             double maxQual = durConfig.MaxQuality + durConfig.LevelQualityBump * mission.Level;
             if (q > maxQual || durConfig.MinQuality > q) {
-                return op == FilterOperator.NotContains;
+                return 0;
             }
         }
 
         var allDrops = await _fetchDrops(_accountId, mission.MissiondId).ConfigureAwait(false);
         if (allDrops is null) {
-            return false;
+            return null;
         }
 
-        bool anySatisfies = false;
+        int count = 0;
         foreach (var drop in allDrops) {
-            if (m.Name is { } name && name != drop.Id) {
-                continue;
+            if (DropSatisfies(m, drop)) {
+                count++;
             }
-            if (m.Level is { } level && level != drop.Level) {
-                continue;
-            }
-            if (m.Rarity is { } rarity && rarity != drop.Rarity) {
-                continue;
-            }
-            anySatisfies = true;
-            break;
         }
-
-        return op == FilterOperator.NotContains ? !anySatisfies : anySatisfies;
+        return count;
     }
 
     private PossibleMission? FindShipConfig(int ship) =>

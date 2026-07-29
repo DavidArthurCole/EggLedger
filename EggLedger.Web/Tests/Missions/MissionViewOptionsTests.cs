@@ -13,6 +13,7 @@ public sealed class MissionViewOptionsTests {
         Assert.True(o.ViewMissionTimes);
         Assert.Equal(MultiViewMode.Off, o.MultiViewMode);
         Assert.Equal(MissionSortMethod.Default, o.SortMethod);
+        Assert.False(o.SortByDropCount);
         Assert.Null(o.MissionTypeTab);
     }
 
@@ -77,11 +78,13 @@ public sealed class MissionViewOptionsTests {
             [MissionViewOptions.KeyViewTimes] = "false",
             [MissionViewOptions.KeyMultiViewMode] = "free",
             [MissionViewOptions.KeySortMethod] = "iv",
+            [MissionViewOptions.KeySortByDropCount] = "true",
         });
         Assert.True(o.ViewByDate);
         Assert.False(o.ViewMissionTimes);
         Assert.Equal(MultiViewMode.Free, o.MultiViewMode);
         Assert.Equal(MissionSortMethod.Iv, o.SortMethod);
+        Assert.True(o.SortByDropCount);
     }
 
     [Fact]

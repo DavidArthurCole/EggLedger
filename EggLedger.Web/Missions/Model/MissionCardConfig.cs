@@ -21,7 +21,8 @@ public sealed record MissionCardConfig(
             new CardFieldSlot(CardField.Target, true, 4),
             new CardFieldSlot(CardField.Duration, false, 5),
             new CardFieldSlot(CardField.Capacity, false, 6),
-            new CardFieldSlot(CardField.CapacityModifierBadge, false, 7)
+            new CardFieldSlot(CardField.CapacityModifierBadge, false, 7),
+            new CardFieldSlot(CardField.DropCount, true, 8)
         ],
         true,
         true,
@@ -60,7 +61,8 @@ public enum CardField {
     Duration,
     Target,
     Capacity,
-    CapacityModifierBadge
+    CapacityModifierBadge,
+    DropCount
 }
 
 public sealed record CardPresetSet(IReadOnlyList<MissionCardConfig> Presets, string ActivePresetName) {
