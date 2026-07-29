@@ -48,20 +48,24 @@ jobs:
 
       - uses: actions/cache@v6
         with:
-          path: tools/tailwind
-          key: tailwind-cli-v3.4.17-${{ runner.os }}
-
-      - uses: actions/cache@v6
-        with:
           path: ~/.nuget/packages
           key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/Directory.Build.props') }}
           restore-keys: ${{ runner.os }}-nuget-
+
+      - name: Authenticate GitHub Packages
+        shell: bash
+        run: |
+          dotnet nuget update source github \
+            --username ${{ github.repository_owner }} \
+            --password ${{ github.token }} \
+            --store-password-in-clear-text \
+            --configfile nuget.config
 
       - name: Publish
         shell: bash
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          dotnet publish src/EggLedger.Desktop/EggLedger.Desktop.csproj \
+          dotnet publish EggLedger.Desktop/EggLedger.Desktop.csproj \
             -c Release -r ${{ matrix.rid }} --self-contained true \
             -p:EggLedgerVersion="$VERSION" \
             -o publish/${{ matrix.rid }}

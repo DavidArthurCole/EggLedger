@@ -1,0 +1,124 @@
+@* Unauthenticated prompt. "Login" reveals a dropdown of federated providers fetched from
+   EggIdentity's /login/sources (Discord, Google, Microsoft, GitHub, etc.); each is a plain
+   top-level <a> into EggIdentity's /login/go/{provider} (mode=redirect), which returns the browser
+   to this exact page with ?code appended, caught by LoginCallbackMiddleware. The dropdown is
+   fixed-positioned by loginMenu.js so it escapes any overflow-clipped container. *@
+@inject AppConfig Cfg
+@inject NavigationManager Nav
+@inject IdentityApiClient Identity
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+<div class="flex flex-col items-center justify-center gap-4 py-16 text-center">
+    <h1 class="text-xl font-semibold text-gray-200">Connect your account</h1>
+    <p class="max-w-md text-sm text-gray-400">
+        EggLedger stores your mission history on the server, scoped to your account.
+        Log in to get started. Your data is private to you.
+    </p>
+    <div class="flex flex-row items-center justify-center gap-3">
+        @if (!string.IsNullOrEmpty(Cfg.IdentityWidgetUrl)) {
+            <div class="auth-source-anchor">
+                <button type="button" class="discord-btn disabled:opacity-60" disabled="@_loading" @onclick="Toggle" @ref="_button">
+                    @(_loading ? "Loading..." : "Login")
+                </button>
+                @if (_sources is not null) {
+                    <div class="auth-source-menu" @ref="_menu">
+                        @foreach (var source in _sources) {
+                            <a class="auth-source-btn" href="@Abs(source.Url)">
+                                @if (!string.IsNullOrEmpty(source.IconUrl)) {
+                                    <img class="auth-source-logo" src="@Abs(source.IconUrl)" alt=""/>
+                                }
+                                <span>@source.Name</span>
+                            </a>
+                        }
+                    </div>
+                } else if (_error is not null) {
+                    <div class="auth-source-menu" @ref="_menu">
+                        <p class="text-red-500 text-sm" style="margin:0;padding:0.3rem 0.5rem;">@_error</p>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private ElementReference _button;
+    private ElementReference _menu;
+    private IJSObjectReference? _mod;
+    private bool _positioned;
+    private List<LoginSourceResponse>? _sources;
+    private bool _loading;
+    private string? _error;
+
+    private async Task Toggle() {
+        if (_sources is not null || _error is not null) {
+            await CloseMenuAsync();
+            _sources = null;
+            _error = null;
+            return;
+        }
+
+        _error = null;
+        _loading = true;
+        try {
+            var response = await Identity.GetLoginSourcesAsync(Nav.Uri, "redirect", CancellationToken.None);
+            if (response.Sources.Count == 0) {
+                _error = "No login providers configured.";
+            } else {
+                _sources = response.Sources;
+            }
+        }
+        catch (HttpRequestException) {
+            _error = "Login temporarily unavailable.";
+        }
+        finally {
+            _loading = false;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        var menuOpen = _sources is not null || _error is not null;
+        if (menuOpen && !_positioned) {
+            _mod ??= await JS.InvokeAsync<IJSObjectReference>("import", "./interop/loginMenu.js");
+            await _mod.InvokeVoidAsync("open", _button, _menu, LoginMenuPlacement.BottomRight.ToString());
+            _positioned = true;
+        } else if (!menuOpen && _positioned) {
+            _positioned = false;
+        }
+    }
+
+    private string Abs(string url) {
+        return url.StartsWith("http", StringComparison.Ordinal)
+            ? url
+            : $"{Cfg.IdentityWidgetUrl.TrimEnd('/')}/{url.TrimStart('/')}";
+    }
+
+    private async Task CloseMenuAsync() {
+        if (_mod is not null) {
+            try {
+                await _mod.InvokeVoidAsync("close");
+            }
+            catch (JSDisconnectedException) {
+            }
+        }
+
+        _positioned = false;
+    }
+
+    public async ValueTask DisposeAsync() {
+        if (_mod is not null) {
+            try {
+                await _mod.InvokeVoidAsync("close");
+            }
+            catch (JSDisconnectedException) {
+            }
+
+            try {
+                await _mod.DisposeAsync();
+            }
+            catch (JSDisconnectedException) {
+            }
+        }
+    }
+
+}

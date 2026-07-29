@@ -89,7 +89,7 @@ dotnet_diagnostic.IDE0005.severity = none
 
 resharper_razor_always_use_end_of_line_brace_style = true
 
-[tests/**/*.cs]
+[**/Tests/**.cs]
 dotnet_diagnostic.CA1707.severity = none
 dotnet_diagnostic.CA1822.severity = none
 dotnet_diagnostic.CA1859.severity = none

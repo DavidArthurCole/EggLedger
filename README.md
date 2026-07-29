@@ -1,10 +1,10 @@
 <h1 align="center">
-  <img width="384" src="src/EggLedger.Desktop/assets/icon-1024.png" alt="EggLedger">
+  <img width="384" src="EggLedger.Desktop/assets/icon-1024.png" alt="EggLedger">
 </h1>
 
 <p align="center">
-  <a href="https://eggledger.davidarthurcole.me/"><img src="src/EggLedger.Desktop/assets/open-web-app.svg" alt="open web app"></a>
-  <a href="https://github.com/DavidArthurCole/EggLedger/releases"><img src="src/EggLedger.Desktop/assets/download.svg" alt="download desktop"></a>
+  <a href="https://eggledger.davidarthurcole.me/"><img src="EggLedger.Desktop/assets/open-web-app.svg" alt="open web app"></a>
+  <a href="https://github.com/DavidArthurCole/EggLedger/releases"><img src="EggLedger.Desktop/assets/download.svg" alt="download desktop"></a>
   <a href="https://discord.davidarthurcole.me"><img src="https://img.shields.io/badge/discord-join%20server-5865F2?logo=discord&logoColor=white" alt="Discord"></a>
 </p>
 
@@ -60,5 +60,5 @@ EggLedger is a .NET 10 solution. Two hosts share one Razor Class Library (`EggLe
 ```bash
 dotnet build EggLedger.slnx
 dotnet test EggLedger.slnx
-dotnet publish src/EggLedger.Web.Server -c Release -o out
+dotnet publish EggLedger.Web.Server -c Release -o out
 ```
