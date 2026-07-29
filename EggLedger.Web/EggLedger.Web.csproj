@@ -24,7 +24,7 @@
   </ItemGroup>
 
   <Target Name="BuildStyles"
-          Condition="'$(BuildStylesCss)' != 'false' And '$(BuildingProject)' == 'true'"
+          Condition="'$(BuildStylesCss)' != 'false' And Exists('$(MSBuildProjectDirectory)/../EggLedger.CssBuild/Program.cs')"
           Inputs="@(_StylesInput)"
           Outputs="$(MSBuildProjectDirectory)\wwwroot\styles.css"
           Returns="">

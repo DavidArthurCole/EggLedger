@@ -17,6 +17,7 @@ jobs:
       solution: EggLedger.slnx
       packages-auth: true
       format-gate: true
+      razor-include: "**/*.razor"
     secrets:
       PACKAGES_PAT: ${{ secrets.PACKAGES_PAT }}
 
