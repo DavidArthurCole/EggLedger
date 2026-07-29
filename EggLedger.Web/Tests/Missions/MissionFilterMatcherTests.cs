@@ -1,6 +1,7 @@
 using EggLedger.Domain.MissionPacking;
 using EggLedger.Domain.MissionQuery;
 using EggLedger.Web.Missions;
+using EggLedger.Web.Missions.Model;
 using Ei;
 
 namespace EggLedger.Web.Tests.Missions;
@@ -221,6 +222,45 @@ public sealed class MissionFilterMatcherTests {
 
         var matcher = Matcher((_, _) => Task.FromResult<IReadOnlyList<MissionDrop>?>(drops), DropConfigs());
         Assert.False(await matcher.TestMissionAgainstFilterAsync(Mission(), C("drops", "c", "40_2_1_9")));
+    }
+
+    [Fact]
+    public async Task CountMatchingDrops_CountsAllMatches() {
+        var drops = new List<MissionDrop> { Drop(40, 2, 1), Drop(40, 2, 1), Drop(40, 3, 1) };
+        var matcher = Matcher((_, _) => Task.FromResult<IReadOnlyList<MissionDrop>?>(drops), DropConfigs());
+        var count = await matcher.CountMatchingDropsAsync(Mission(), FilterCodec.DecodeDropGlob("40_2_1_3"));
+        Assert.Equal(2, count);
+    }
+
+    [Fact]
+    public async Task CountMatchingDrops_NoMatches_ReturnsZero() {
+        var drops = new List<MissionDrop> { Drop(41, 2, 1) };
+        var matcher = Matcher((_, _) => Task.FromResult<IReadOnlyList<MissionDrop>?>(drops), DropConfigs());
+        var count = await matcher.CountMatchingDropsAsync(Mission(), FilterCodec.DecodeDropGlob("40_2_1_3"));
+        Assert.Equal(0, count);
+    }
+
+    [Fact]
+    public async Task CountMatchingDrops_QualityOutOfRange_ReturnsZero() {
+        var drops = new List<MissionDrop> { Drop(40, 2, 1) };
+        var matcher = Matcher((_, _) => Task.FromResult<IReadOnlyList<MissionDrop>?>(drops), DropConfigs());
+        var count = await matcher.CountMatchingDropsAsync(Mission(), FilterCodec.DecodeDropGlob("40_2_1_9"));
+        Assert.Equal(0, count);
+    }
+
+    [Fact]
+    public async Task CountMatchingDrops_MissingShipConfig_ReturnsZero() {
+        var matcher = Matcher((_, _) => Task.FromResult<IReadOnlyList<MissionDrop>?>(new List<MissionDrop>()),
+            Array.Empty<PossibleMission>());
+        var count = await matcher.CountMatchingDropsAsync(Mission(), FilterCodec.DecodeDropGlob("40_2_1_3"));
+        Assert.Equal(0, count);
+    }
+
+    [Fact]
+    public async Task CountMatchingDrops_NullFetch_ReturnsZero() {
+        var matcher = Matcher((_, _) => Task.FromResult<IReadOnlyList<MissionDrop>?>(null), DropConfigs());
+        var count = await matcher.CountMatchingDropsAsync(Mission(), FilterCodec.DecodeDropGlob("40_2_1_3"));
+        Assert.Equal(0, count);
     }
 
     [Fact]

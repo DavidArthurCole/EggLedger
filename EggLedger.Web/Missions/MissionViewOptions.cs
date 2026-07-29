@@ -19,7 +19,6 @@ public sealed class MissionViewOptions {
     public const string KeyViewTimes = "mission_view_times";
     public const string KeyMultiViewMode = "mission_multi_view_mode";
     public const string KeySortMethod = "mission_sort_method";
-
     public const string KeyCardPresets = "mission_card_presets";
     public const string KeySortByDropCount = "mission_sort_by_drop_count";
 
