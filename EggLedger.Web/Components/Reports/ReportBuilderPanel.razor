@@ -20,10 +20,10 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                     </svg>
                 </button>
-                <div class="flex items-center px-5 py-3 border-b border-gray-700 flex-shrink-0 gap-3">
+                <div class="flex items-center px-5 py-3 border-b border-gray-700 shrink-0 gap-3">
                     <span class="text-sm font-semibold text-gray-200">@(_editingId is null ? "Add Report" : "Edit Report")</span>
                     @if (_editingId is null && _builderMode == "basic") {
-                        <div class="flex rounded-md overflow-hidden border border-gray-700 flex-shrink-0 text-xs">
+                        <div class="flex rounded-md overflow-hidden border border-gray-700 shrink-0 text-xs">
                             <button type="button" class="px-3 py-1.5 transition-colors bg-indigo-700 text-white">Basic</button>
                             <button type="button" class="px-3 py-1.5 transition-colors bg-darker text-gray-400 hover:text-gray-200" @onclick="SwitchToAdvanced">Advanced</button>
                         </div>
@@ -36,7 +36,7 @@
                     } else {
                         @if (_editingId is null) {
                             <div class="flex items-center gap-2">
-                                <div class="flex rounded-md overflow-hidden border border-gray-700 flex-shrink-0 text-xs">
+                                <div class="flex rounded-md overflow-hidden border border-gray-700 shrink-0 text-xs">
                                     <button type="button" class="px-3 py-1.5 transition-colors bg-darker text-gray-400 hover:text-gray-200" @onclick="SwitchToBasic">Basic</button>
                                     <button type="button" class="px-3 py-1.5 transition-colors bg-indigo-700 text-white">Advanced</button>
                                 </div>
@@ -247,7 +247,7 @@
                                 <div class="grid grid-cols-2 gap-1.5">
                                     @foreach (var label in ChartLabels) {
                                         <div class="flex items-center gap-2 min-w-0">
-                                            <input type="color" class="bg-darker border border-gray-700 rounded p-px h-6 w-8 flex-shrink-0"
+                                            <input type="color" class="bg-darker border border-gray-700 rounded p-px h-6 w-8 shrink-0"
                                                    value="@LabelColor(label)" @onchange="e => SetLabelColor(label, e)"/>
                                             <span class="text-xs text-gray-400 truncate">@label</span>
                                         </div>
@@ -291,7 +291,7 @@
                     }
                 </div>
 
-                <div class="flex gap-2 px-5 py-3 border-t border-gray-700 flex-shrink-0">
+                <div class="flex gap-2 px-5 py-3 border-t border-gray-700 shrink-0">
                     <button type="button" class="flex-1 px-3 py-1.5 rounded border text-xs focus:outline-none border-gray-600 text-gray-400 hover:text-gray-200 hover:border-gray-400" @onclick="Close">Cancel</button>
                     <button type="submit" class="flex-1 px-3 py-1.5 rounded border border-indigo-600 bg-indigo-700 text-xs text-white hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none" disabled="@(_builderMode == "basic" || string.IsNullOrWhiteSpace(_form.Name))">Save</button>
                 </div>
