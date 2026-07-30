@@ -8,7 +8,7 @@
    is a simple index swap (drop onto a card swaps its position with the dragged one);
    the Vue zone-insertion drag math is not replicated. *@
 
-<div @ref="_gridRef" class="flex-1 min-h-0 overflow-y-auto pt-0 pb-2 px-3 flex flex-col gap-3">
+<div @ref="_gridRef" class="flex-1 min-h-0 overflow-y-auto pt-0 pb-20 px-3 flex flex-col gap-3">
     @if (!string.IsNullOrEmpty(_actionMessage)) {
         <span class="text-xs text-gray-400 self-end">@_actionMessage</span>
     }
@@ -16,7 +16,7 @@
         <div class="text-xs text-gray-500 text-center mt-8">No reports yet. Click "New Report" to create one.</div>
     } else {
         var (positions, _) = ReportGridLayout.BuildOccupancyFromLayout(_defs);
-        <div class="grid gap-3 relative" style="grid-template-columns: repeat(8, 1fr); grid-auto-rows: @(_rowHeightPx)px;">
+        <div class="report-grid grid gap-3 relative" style="grid-template-columns: repeat(8, 1fr); grid-auto-rows: @(_rowHeightPx)px;">
             @for (var i = 0; i < _defs.Count; i++) {
                 var index = i;
                 var def = _defs[i];
