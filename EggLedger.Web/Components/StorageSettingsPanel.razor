@@ -14,12 +14,12 @@
                 <input type="text" readonly value="@(_storagePath.Length > 0 ? _storagePath : "Loading...")"
                        class="block rounded-md text-sm bg-darkest font-mono text-gray-300 cursor-default border border-gray-600 px-2 py-1 focus:outline-none focus:ring-0 shrink min-w-0"/>
                 <button type="button"
-                        class="apply-filter-button !mt-0 !mr-0 !ml-0 !bg-blue-700 !text-white hover:!bg-blue-600 !border-blue-500 flex-shrink-0"
+                        class="apply-filter-button !mt-0 !mr-0 !ml-0 !bg-blue-700 !text-white hover:!bg-blue-600 !border-blue-500 shrink-0"
                         @onclick="OpenStorageFolderAsync">
                     Open folder
                 </button>
                 <button type="button"
-                        class="apply-filter-button !mt-0 !mr-0 !ml-0 flex-shrink-0 @(Model.StorageFolderHidden ? "!bg-green-700 !text-white hover:!bg-green-600 !border-green-500" : "!bg-orange-700 !text-white hover:!bg-orange-600 !border-orange-500")"
+                        class="apply-filter-button !mt-0 !mr-0 !ml-0 shrink-0 @(Model.StorageFolderHidden ? "!bg-green-700 !text-white hover:!bg-green-600 !border-green-500" : "!bg-orange-700 !text-white hover:!bg-orange-600 !border-orange-500")"
                         @onclick="ToggleStorageVisibleAsync">
                     @(Model.StorageFolderHidden ? "Show folder" : "Hide folder")
                 </button>
@@ -37,12 +37,12 @@
                 <input type="text" class="drop-select-full text-sm bg-darkest" placeholder="Destination path..."
                        value="@_backupDestPath" @onchange="OnBackupDestChangeAsync"/>
                 <button type="button"
-                        class="apply-filter-button !mt-0 !mr-0 !ml-0 !bg-gray-700 !text-gray-200 hover:!bg-gray-600 !border-gray-500 flex-shrink-0"
+                        class="apply-filter-button !mt-0 !mr-0 !ml-0 !bg-gray-700 !text-gray-200 hover:!bg-gray-600 !border-gray-500 shrink-0"
                         @onclick="ChooseBackupDestAsync">
                     Choose...
                 </button>
                 <button type="button"
-                        class="apply-filter-button !mt-0 !mr-0 !ml-0 !bg-blue-700 !text-white hover:!bg-blue-600 !border-blue-500 flex-shrink-0"
+                        class="apply-filter-button !mt-0 !mr-0 !ml-0 !bg-blue-700 !text-white hover:!bg-blue-600 !border-blue-500 shrink-0"
                         disabled="@BackupDisabled" @onclick="RunBackupAsync">
                     @(_backupInProgress ? "Backing up..." : "Backup storage")
                 </button>
@@ -82,17 +82,17 @@
                 <input type="text" class="drop-select-full text-sm bg-darkest" placeholder="Destination path..."
                        value="@_moveDestPath" @onchange="OnMoveDestChangeAsync"/>
                 <button type="button"
-                        class="apply-filter-button !mt-0 !mr-0 !ml-0 !bg-gray-700 !text-gray-200 hover:!bg-gray-600 !border-gray-500 flex-shrink-0"
+                        class="apply-filter-button !mt-0 !mr-0 !ml-0 !bg-gray-700 !text-gray-200 hover:!bg-gray-600 !border-gray-500 shrink-0"
                         @onclick="ChooseMoveDestAsync">
                     Choose...
                 </button>
                 <button type="button"
-                        class="apply-filter-button !mt-0 !mr-0 !ml-0 !bg-orange-700 !text-white hover:!bg-orange-600 !border-orange-500 flex-shrink-0"
+                        class="apply-filter-button !mt-0 !mr-0 !ml-0 !bg-orange-700 !text-white hover:!bg-orange-600 !border-orange-500 shrink-0"
                         disabled="@MoveDisabled" @onclick="RunMoveAsync">
                     @(_moveInProgress ? "Moving..." : "Move storage")
                 </button>
                 @if (_moveError.Length > 0) {
-                    <span class="text-red-400 text-xs flex-shrink-0">@_moveError</span>
+                    <span class="text-red-400 text-xs shrink-0">@_moveError</span>
                 }
             </div>
         </div>

@@ -1,7 +1,7 @@
 @implements IDisposable
 @inject NavigationManager Nav
 
-<div class="h-11 flex-shrink-0 bg-dark">
+<div class="h-11 shrink-0 bg-dark">
     <div class="h-full flex items-end w-full mx-auto px-4 gap-x-1.5 bg-dark border-b border-gray-600">
         <div class="h-full flex items-end flex-1 min-w-0 gap-x-1.5 overflow-x-auto no-scrollbar">
             @foreach (var tab in Tabs) {
@@ -19,7 +19,7 @@
             }
         </div>
         @if (Right is not null) {
-            <div class="flex-shrink-0 ml-1.5">
+            <div class="shrink-0 ml-1.5">
                 @Right
             </div>
         }

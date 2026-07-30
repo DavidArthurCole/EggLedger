@@ -15,7 +15,7 @@
 } else {
     <div @key="Mission.MissiondId" class="text-sm mission-item-3 flex items-center @CustomClass" style="@InlineStyle()" data-missionid="@Mission.MissiondId">
         @if (MultiViewMode == MultiViewMode.Free) {
-            <input type="checkbox" class="mr-0_5rem flex-shrink-0"
+            <input type="checkbox" class="mr-0_5rem shrink-0"
                    checked="@IsSelected"
                    @onclick="@(e => OnToggleSelected.InvokeAsync((Mission.MissiondId, e.ShiftKey)))"/>
         }
