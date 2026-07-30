@@ -20,6 +20,9 @@ public static class DesktopPlatformRegistration {
         services.AddSingleton<IPlatformCapabilities>(
             new DesktopPlatformCapabilities(processRunner, window));
 
+        services.RemoveAll<IUserTimeZoneProvider>();
+        services.AddSingleton<IUserTimeZoneProvider, DesktopTimeZoneProvider>();
+
         services.RemoveAll<ApiClient>();
         services.AddScoped(sp => new ApiClient(sp.GetRequiredService<HttpClient>()));
 

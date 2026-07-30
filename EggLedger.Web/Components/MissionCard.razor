@@ -1,4 +1,5 @@
 @using System.Globalization
+@inject IUserTimeZoneProvider TzProvider
 @if (Config.Layout == CardLayout.Grid) {
     <div @key="Mission.MissiondId" class="panel-muted rounded-md px-4 py-2 flex flex-col items-center gap-1 text-center @CustomClass" style="@InlineStyle()" data-missionid="@Mission.MissiondId">
         @if (MultiViewMode == MultiViewMode.Free) {
@@ -130,12 +131,12 @@
     }
 
     private string DateLabel() {
-        var y = MissionFilterMatcher.LedgerDate(Mission.LaunchDT);
+        var y = MissionFilterMatcher.LedgerDate(Mission.LaunchDT, TzProvider.TimeZone);
         return y.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
     }
 
     private string TimeLabel() {
-        var d = MissionFilterMatcher.LedgerDate(Mission.LaunchDT);
+        var d = MissionFilterMatcher.LedgerDate(Mission.LaunchDT, TzProvider.TimeZone);
         return d.ToString("HH:mm:ss", CultureInfo.InvariantCulture);
     }
 

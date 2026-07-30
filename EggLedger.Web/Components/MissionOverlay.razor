@@ -1,6 +1,7 @@
 @using System.Globalization
 @inject MissionQueryHandlers Queries
 @inject MennoService Menno
+@inject IUserTimeZoneProvider TzProvider
 
 @* Mission overlay: single mode (prev/next nav) or multi mode (a grid of ship cards).
    Blazor-controlled overlay (full-screen fixed backdrop + centered panel). NOT a native
@@ -310,7 +311,8 @@
             mission,
             drops ?? new List<MissionDrop>(),
             FilteredMissions,
-            true);
+            true,
+            TzProvider.TimeZone);
         MissionDetailBuilder.ApplySortMethod(data, SortMethod);
         return data;
     }

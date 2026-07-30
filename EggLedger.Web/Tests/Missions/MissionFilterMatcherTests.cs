@@ -33,7 +33,7 @@ public sealed class MissionFilterMatcherTests {
     private static MissionFilterMatcher Matcher(
         ShipDropsFetcher? fetcher = null,
         IReadOnlyList<PossibleMission>? configs = null) =>
-        new(configs ?? Array.Empty<PossibleMission>(), "acct", fetcher ?? ((_, _) => Task.FromResult<IReadOnlyList<MissionDrop>?>(null)));
+        new(configs ?? Array.Empty<PossibleMission>(), "acct", fetcher ?? ((_, _) => Task.FromResult<IReadOnlyList<MissionDrop>?>(null)), TimeZoneInfo.Local);
 
     private static FilterCondition C(string top, string op, string val) => new(top, op, val);
 

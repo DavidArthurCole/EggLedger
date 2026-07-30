@@ -10,6 +10,7 @@ public delegate Task<IReadOnlyList<MissionDrop>?> ShipDropsFetcher(string accoun
 public sealed class MissionFilterMatcher {
     private readonly string _accountId;
     private readonly ShipDropsFetcher _fetchDrops;
+    private readonly TimeZoneInfo _timeZone;
 
 
     private readonly Dictionary<int, PossibleMission> _shipConfigs;
@@ -18,9 +19,11 @@ public sealed class MissionFilterMatcher {
     public MissionFilterMatcher(
         IReadOnlyList<PossibleMission> durationConfigs,
         string? accountId,
-        ShipDropsFetcher fetchDrops) {
+        ShipDropsFetcher fetchDrops,
+        TimeZoneInfo timeZone) {
         _accountId = accountId ?? "";
         _fetchDrops = fetchDrops;
+        _timeZone = timeZone;
 
         _shipConfigs = [];
         _durByShip = [];
@@ -35,8 +38,8 @@ public sealed class MissionFilterMatcher {
         }
     }
 
-    public static DateTime LedgerDate(long timestampSeconds) =>
-        DateTimeOffset.FromUnixTimeSeconds(timestampSeconds).LocalDateTime;
+    public static DateTime LedgerDate(long timestampSeconds, TimeZoneInfo timeZone) =>
+        TimeZoneInfo.ConvertTimeFromUtc(DateTimeOffset.FromUnixTimeSeconds(timestampSeconds).UtcDateTime, timeZone);
 
 
     public async Task<bool> MatchesAsync(DatabaseMission mission, MissionFilter filter) {
@@ -87,8 +90,8 @@ public sealed class MissionFilterMatcher {
             FilterField.Target => EnumMatch(mission.TargetInt, c),
             FilterField.Level => NumberMatch(mission.Level, c),
             FilterField.Capacity => NumberMatch(mission.Capacity, c),
-            FilterField.LaunchDate => DateMatch(DateOnly.FromDateTime(LedgerDate(mission.LaunchDT)), c),
-            FilterField.ReturnDate => DateMatch(DateOnly.FromDateTime(LedgerDate(mission.ReturnDT)), c),
+            FilterField.LaunchDate => DateMatch(DateOnly.FromDateTime(LedgerDate(mission.LaunchDT, _timeZone)), c),
+            FilterField.ReturnDate => DateMatch(DateOnly.FromDateTime(LedgerDate(mission.ReturnDT, _timeZone)), c),
             FilterField.DubCap => BoolMatch(mission.IsDubCap, c.Operator),
             FilterField.BuggedCap => BoolMatch(mission.IsBuggedCap, c.Operator),
             _ => true,
