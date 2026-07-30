@@ -9,7 +9,7 @@
 
 @if (_open) {
     <div class="fixed inset-0 z-40 flex items-center justify-center bg-black/60" @onclick="Close">
-        <div @ref="_rootRef" tabindex="-1" class="mission-overlay focus:outline-none @(_multi is null ? "w-60vw" : _isLoading ? "min-w-40vw max-w-40vw" : "min-w-60vw max-w-85vw") max-h-95vh bg-dark rounded-lg relative flex flex-col" @onclick:stopPropagation="true" @onkeydown="OnKeyDown" @onkeydown:preventDefault="_preventKey">
+        <div @ref="_rootRef" tabindex="-1" class="mission-overlay focus:outline-none @(_multi is null ? "w-[92vw] md:w-60vw" : _isLoading ? "min-w-[92vw] max-w-[92vw] md:min-w-40vw md:max-w-40vw" : "min-w-[92vw] max-w-[92vw] md:min-w-60vw md:max-w-85vw") max-h-95vh bg-dark rounded-lg relative flex flex-col" @onclick:stopPropagation="true" @onkeydown="OnKeyDown" @onkeydown:preventDefault="_preventKey">
             <button class="absolute top-2 right-2 z-10 rounded-md text-gray-400 hover:text-gray-200 focus:outline-none" type="button" @onclick="Close" aria-label="Close">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -34,7 +34,7 @@
             }
 
             @if (_multi is null) {
-                <div class="overflow-auto flex-1 min-h-0 pt-8 px-10 pb-2">
+                <div class="overflow-auto flex-1 min-h-0 pt-8 px-4 md:px-10 pb-2">
                     <div class="bg-darkerer rounded-lg py-2">
                         @if (_data is not null) {
                             <ShipDisplay Data="_data" ShowExpectedDrops="ShowExpectedDrops"/>
@@ -64,7 +64,7 @@
                     </div>
                 </div>
             } else {
-                <div class="flex flex-col flex-1 min-h-0 pt-8 px-10 pb-2">
+                <div class="flex flex-col flex-1 min-h-0 pt-8 px-4 md:px-10 pb-2">
                     <div class="flex justify-center mb-3 flex-shrink-0">
                         <div class="flex bg-darkerer border border-gray-700 rounded-md p-0.5 text-sm gap-0.5">
                             <button type="button"
