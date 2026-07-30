@@ -427,7 +427,7 @@
 }
 
 .popup-settings-wrap {
-  @apply relative flex-shrink-0;
+  @apply relative shrink-0;
 }
 
 .popup-settings-btn {
