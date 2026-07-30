@@ -188,6 +188,7 @@ if (hasDb) {
 
 var selfBase = new Uri(builder.Configuration["SelfBaseAddress"] ?? SelfBaseFromUrls());
 builder.Services.AddEggLedgerWeb(selfBase);
+builder.Services.AddScoped<EggLedger.Web.Platform.IUserTimeZoneProvider, EggLedger.Web.Server.Platform.BrowserTimeZoneProvider>();
 
 builder.Services.AddScoped(sp => {
     var accessor = sp.GetRequiredService<IHttpContextAccessor>();

@@ -42,7 +42,8 @@ public static class MissionDetailBuilder {
         DatabaseMission missionInfo,
         IReadOnlyList<MissionDrop> allDrops,
         IReadOnlyList<DatabaseMission> filteredMissions,
-        bool extendedInfo) {
+        bool extendedInfo,
+        TimeZoneInfo timeZone) {
         var artifacts = new List<DropLike>();
         var stones = new List<DropLike>();
         var stoneFragments = new List<DropLike>();
@@ -74,8 +75,8 @@ public static class MissionDetailBuilder {
             Stones = DropSorter.SortedGroupedSpecType(stones),
             StoneFragments = DropSorter.SortedGroupedSpecType(stoneFragments),
             Ingredients = DropSorter.SortedGroupedSpecType(ingredients),
-            LaunchDT = MissionFilterMatcher.LedgerDate(missionInfo.LaunchDT),
-            ReturnDT = MissionFilterMatcher.LedgerDate(missionInfo.ReturnDT),
+            LaunchDT = MissionFilterMatcher.LedgerDate(missionInfo.LaunchDT, timeZone),
+            ReturnDT = MissionFilterMatcher.LedgerDate(missionInfo.ReturnDT, timeZone),
             DurationStr = missionInfo.DurationString,
             CapacityModifier = Math.Min(2, missionInfo.Capacity / nominal),
             PrevMission = extendedInfo && shipIndex > 0 ? filteredMissions[shipIndex - 1].MissiondId : null,

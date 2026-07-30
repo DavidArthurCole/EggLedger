@@ -7,6 +7,7 @@
 @inject AppStateService AppState
 @inject IndexedDbSettings Settings
 @inject MissionDataCache DataCache
+@inject IUserTimeZoneProvider TzProvider
 
 <PageTitle>EggLedger - Lifetime Data</PageTitle>
 
@@ -124,7 +125,7 @@
         }
 
         _allDropsCache = dropsByMission;
-        _matcher = new MissionFilterMatcher(Config.DurationConfigs, id, DropsFetcher);
+        _matcher = new MissionFilterMatcher(Config.DurationConfigs, id, DropsFetcher, TzProvider.TimeZone);
 
         var now = DateTime.UtcNow;
         var data = DataCache.GetLifetimeAggregate(id, now);

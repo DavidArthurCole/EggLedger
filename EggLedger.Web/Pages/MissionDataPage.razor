@@ -8,6 +8,7 @@
 @inject AppStateService AppState
 @inject IndexedDbSettings Settings
 @inject MissionDataCache DataCache
+@inject IUserTimeZoneProvider TzProvider
 
 <PageTitle>EggLedger - Mission Data</PageTitle>
 
@@ -151,7 +152,8 @@
         _matcher = new MissionFilterMatcher(
             Config.DurationConfigs,
             id,
-            DropsFetcher);
+            DropsFetcher,
+            TzProvider.TimeZone);
         Regroup();
         _loading = false;
         StateHasChanged();
@@ -165,7 +167,7 @@
 
     private void Regroup() {
         _tabFiltered = MissionViewOptions.TabFilteredMissions(_filtered, _opts.MissionTypeTab);
-        _grouping = MissionGrouper.Group(_tabFiltered, MissionFilterMatcher.LedgerDate, true);
+        _grouping = MissionGrouper.Group(_tabFiltered, ts => MissionFilterMatcher.LedgerDate(ts, TzProvider.TimeZone), true);
 
         if (_opts.SortByDropCount && _dropCounts.Count > 0 && _tabFiltered is { Count: > 0 }) {
             var sorted = new List<DatabaseMission>(_tabFiltered);
