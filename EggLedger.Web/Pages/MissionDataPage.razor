@@ -55,7 +55,7 @@
 
         <MissionOverlay @ref="_overlay"
                         AccountId="@Active.ActiveAccountId"
-                        FilteredMissions="_tabFiltered ?? Array.Empty<DatabaseMission>()"
+                        FilteredMissions="_flatSorted ?? _tabFiltered ?? Array.Empty<DatabaseMission>()"
                         SortMethod="_opts.SortMethod"
                         ShowExpectedDrops="_cardPresets.ActivePreset().ShowExpectedDropsPerShip"/>
 

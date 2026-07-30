@@ -39,7 +39,7 @@
                         <tr class="border-b border-gray-800 last:border-b-0">
                             <td class="py-1.5 pr-2 w-28">
                                 <span class="flex items-center gap-1.5 font-medium text-gray-300">
-                                    <img class="w-5 h-5 flex-shrink-0 object-contain" style="filter: brightness(0) invert(1);" src="@Abs(Identity.IconUrl(item.Provider))" alt=""/>
+                                    <img class="w-5 h-5 shrink-0 object-contain" style="filter: brightness(0) invert(1);" src="@Abs(Identity.IconUrl(item.Provider))" alt=""/>
                                     @Cap(item.Provider)
                                 </span>
                             </td>
@@ -47,13 +47,13 @@
                                 <td class="py-1.5 px-2 min-w-0">
                                     <span class="flex items-center gap-2 min-w-0">
                                         @if (!string.IsNullOrEmpty(id.Avatar)) {
-                                            <button type="button" class="w-5 h-5 rounded-full flex-shrink-0 overflow-hidden border border-transparent hover:border-gray-500"
+                                            <button type="button" class="w-5 h-5 rounded-full shrink-0 overflow-hidden border border-transparent hover:border-gray-500"
                                                     title="Use this picture" @onclick="item.OnSelectAvatar">
                                                 <img class="w-full h-full object-cover" src="@id.Avatar" alt=""/>
                                             </button>
                                         }
                                         <span class="truncate text-gray-400">@(id.Username ?? id.Subject)</span>
-                                        <span class="text-xs text-gray-600 flex-shrink-0">@id.LinkedAt.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)</span>
+                                        <span class="text-xs text-gray-600 shrink-0">@id.LinkedAt.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)</span>
                                     </span>
                                 </td>
                                 <td class="py-1.5 pl-2 w-20 text-right">
