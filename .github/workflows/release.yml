@@ -41,6 +41,8 @@ jobs:
             kind: rawexe
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-dotnet@v5
         with:
@@ -64,10 +66,8 @@ jobs:
       - name: Publish
         shell: bash
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
           dotnet publish EggLedger.Desktop/EggLedger.Desktop.csproj \
             -c Release -r ${{ matrix.rid }} --self-contained true \
-            -p:EggLedgerVersion="$VERSION" \
             -o publish/${{ matrix.rid }}
 
       - name: Check signing prerequisites

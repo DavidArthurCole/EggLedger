@@ -11,12 +11,11 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
-    <PropertyGroup>
-    <EggLedgerVersion>3.4.0-beta.8</EggLedgerVersion>
-    <EggLedgerVersionCore>$(EggLedgerVersion.Split('-')[0])</EggLedgerVersionCore>
-    <Version>$(EggLedgerVersion)</Version>
-    <AssemblyVersion>$(EggLedgerVersionCore).0</AssemblyVersion>
-    <FileVersion>$(EggLedgerVersionCore).0</FileVersion>
-    <InformationalVersion>$(EggLedgerVersion)</InformationalVersion>
+  <ItemGroup>
+    <PackageReference Include="MinVer" Version="7.0.0" PrivateAssets="All" />
+    <PackageReference Include="EggIdentity.CodeStyle" Version="2.0.0" PrivateAssets="all" />
+  </ItemGroup>
+  <PropertyGroup>
+    <MinVerTagPrefix>v</MinVerTagPrefix>
   </PropertyGroup>
 </Project>

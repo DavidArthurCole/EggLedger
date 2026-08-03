@@ -20,7 +20,7 @@ COPY EggLedger.CssBuild/ EggLedger.CssBuild/
 ARG EGGLEDGER_VERSION
 RUN --mount=type=cache,target=/root/.nuget/packages \
     dotnet publish EggLedger.Web.Server/EggLedger.Web.Server.csproj -c Release -o /app \
-      ${EGGLEDGER_VERSION:+-p:EggLedgerVersion=$EGGLEDGER_VERSION}
+      ${EGGLEDGER_VERSION:+-p:MinVerVersionOverride=$EGGLEDGER_VERSION}
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 ARG GIT_SHA

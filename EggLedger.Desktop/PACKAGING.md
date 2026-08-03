@@ -5,10 +5,12 @@ Photino desktop host. Cross-platform publish mirrors the Go CI matrix
 
 ## Version
 
-`<EggLedgerVersion>` in `Directory.Build.props` (repo root) drives `<Version>`,
-`<AssemblyVersion>`, `<FileVersion>`, and `<InformationalVersion>` across every
-project. The self-updater reads `InformationalVersion` at runtime to compare
-against the latest GitHub release. Bump it there on release.
+MinVer (wired in the repo-root `Directory.Build.props`) derives `<Version>`,
+`<AssemblyVersion>`, `<FileVersion>`, and `<InformationalVersion>` from the
+nearest `git describe` tag (prefix `v`) across every project. The self-updater
+reads `InformationalVersion` at runtime to compare against the latest GitHub
+release. Bump the version by pushing a new `vX.Y.Z` tag, not by editing a
+project file.
 
 ## Publish commands (self-contained, single-file, per RID)
 
