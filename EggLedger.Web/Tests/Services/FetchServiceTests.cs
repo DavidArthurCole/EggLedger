@@ -15,10 +15,11 @@ public sealed class FetchServiceTests {
         FakeIndexedDb db,
         HttpMessageHandler handler,
         int workerCount = 4,
-        bool retry = false) {
+        bool retry = false,
+        IndexedDbSettings? settings = null) {
         var http = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
         var api = new ApiClient(http);
-        var settings = new IndexedDbSettings(db);
+        settings ??= new IndexedDbSettings(db);
         if (workerCount != 1) {
             settings.SetSettingAsync("worker_count", workerCount.ToString()).GetAwaiter().GetResult();
         }
@@ -216,7 +217,7 @@ public sealed class FetchServiceTests {
         });
 
         var handler = new RoutingHandler(FirstContactBody(Array.Empty<string>(), soulEggs: 10_800_000_000_000), CompleteMissionBody);
-        var service = Make(db, handler);
+        var service = Make(db, handler, settings: settings);
 
         await service.FetchPlayerDataAsync(Eid, null, CancellationToken.None);
 
