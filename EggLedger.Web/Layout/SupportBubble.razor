@@ -1,6 +1,5 @@
 @* Floating support bubble (mirrors the GitHub bubble). Hover reveals a card with the support
    rails + a link to the About page. Pure CSS hover; no circuit round-trip. *@
-@implements IDisposable
 @implements IAsyncDisposable
 @inject IJSRuntime Js
 
@@ -26,32 +25,26 @@
 
     private bool _open;
     private ElementReference _rootRef;
-    private DotNetObjectReference<SupportBubble>? _selfRef;
+    private OutsideClickRegistration? _outsideClick;
 
     private async Task Toggle() {
         _open = !_open;
         if (_open) {
-            _selfRef ??= DotNetObjectReference.Create(this);
-            await Js.InvokeVoidAsync("outsideClickRegister", RegistrationId, _rootRef, _selfRef);
-        } else {
-            await Js.InvokeVoidAsync("outsideClickUnregister", RegistrationId);
+            _outsideClick ??= new OutsideClickRegistration(Js, HandleOutsideClickAsync, RegistrationId);
+            await _outsideClick.RegisterAsync(_rootRef);
+        } else if (_outsideClick is not null) {
+            await _outsideClick.UnregisterAsync();
         }
     }
 
-    [JSInvokable]
-    public async Task OnOutsideClick() {
+    private async Task HandleOutsideClickAsync() {
         _open = false;
-        await Js.InvokeVoidAsync("outsideClickUnregister", RegistrationId);
         await InvokeAsync(StateHasChanged);
     }
 
-    public void Dispose() {
-        _selfRef?.Dispose();
-    }
-
     public async ValueTask DisposeAsync() {
-        if (_open) {
-            await Js.InvokeVoidAsync("outsideClickUnregister", RegistrationId);
+        if (_outsideClick is not null) {
+            await _outsideClick.DisposeAsync();
         }
     }
 

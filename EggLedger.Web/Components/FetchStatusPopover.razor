@@ -5,7 +5,7 @@
     <div class="fetch-status-popover" role="dialog" aria-label="Fetch status">
         <div class="flex items-center justify-between mb-1.5">
             <span class="text-xs font-semibold text-gray-300">@Title</span>
-            <button type="button" class="text-gray-500 hover:text-gray-300 text-sm leading-none px-1" @onclick="Fetch.DismissPopover" title="Minimize">&#10005;</button>
+            <CloseButton OnClick="Fetch.DismissPopover" Class="text-gray-500 hover:text-gray-300 leading-none px-1" IconClass="w-3.5 h-3.5" Title="Minimize"/>
         </div>
 
         @switch (DisplayState) {

@@ -9,6 +9,7 @@
     <AnalysisLevel>latest-recommended</AnalysisLevel>
     <Authors>DavidArthurCole</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <DefaultItemExcludes>$(DefaultItemExcludes);Tests\**</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>

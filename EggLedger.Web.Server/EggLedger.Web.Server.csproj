@@ -2,7 +2,6 @@
 
   <PropertyGroup>
     <Description>EggLedger Blazor Server host. Runs the EggLedger.Web RCL UI server-side over a SignalR circuit, so decode and crypto use native APIs (no /decode wire). Folds in the sync server in later migration phases.</Description>
-    <DefaultItemExcludes>$(DefaultItemExcludes);Tests\**</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>

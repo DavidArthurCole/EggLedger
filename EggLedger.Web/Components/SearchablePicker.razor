@@ -12,11 +12,7 @@
     <dialog open class="popup-selector-main overlay-@OverlayKind" @onclick="Close">
         <div class="popup-selector-inner" @onclick:stopPropagation="true"
              @onkeydown="OnKeyDown" @onkeydown:preventDefault="_preventKey">
-            <button type="button" class="close-button" @onclick="Close" aria-label="Close">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                </svg>
-            </button>
+            <CloseButton OnClick="Close"/>
             <div class="popup-search-row">
                 <input @ref="_searchInput" type="text" class="input-search" placeholder="Search..."
                        value="@_query" @oninput="OnQueryInput"/>

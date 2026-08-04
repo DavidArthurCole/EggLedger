@@ -5,7 +5,6 @@
     <IsPackable>true</IsPackable>
     <PackageId>EggLedger.Domain</PackageId>
     <Version>0.1.0-local.1</Version>
-    <DefaultItemExcludes>$(DefaultItemExcludes);Tests\**</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>

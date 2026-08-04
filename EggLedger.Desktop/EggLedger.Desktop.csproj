@@ -3,7 +3,6 @@
   <PropertyGroup>
         <OutputType>WinExe</OutputType>
     <Description>EggLedger Photino desktop host. Boots the shared EggLedger.Web Blazor UI in a native OS window via a system WebView (the .NET-native replacement for the Go/lorca shell).</Description>
-    <DefaultItemExcludes>$(DefaultItemExcludes);Tests\**</DefaultItemExcludes>
     <AssemblyName>EggLedger</AssemblyName>
     <Product>EggLedger</Product>
 

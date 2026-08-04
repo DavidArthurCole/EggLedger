@@ -60,9 +60,7 @@
     private string _lastSynced = "";
     private string CurrentHex => ColorPickerMath.NormalizeToHex(Value);
     private ElementReference _rootRef;
-    private DotNetObjectReference<ColorPicker>? _selfRef;
-    private static int _nextId;
-    private readonly string _registrationId = $"color-picker-{Interlocked.Increment(ref _nextId)}";
+    private OutsideClickRegistration? _outsideClick;
 
     protected override void OnParametersSet() {
         if (CurrentHex != _lastSynced) {
@@ -74,25 +72,15 @@
     private async Task Toggle() {
         _open = !_open;
         if (_open) {
-            await RegisterOutsideClickAsync();
-        } else {
-            await UnregisterOutsideClickAsync();
+            _outsideClick ??= new OutsideClickRegistration(Js, HandleOutsideClickAsync);
+            await _outsideClick.RegisterAsync(_rootRef);
+        } else if (_outsideClick is not null) {
+            await _outsideClick.UnregisterAsync();
         }
     }
 
-    private async Task RegisterOutsideClickAsync() {
-        _selfRef ??= DotNetObjectReference.Create(this);
-        await Js.InvokeVoidAsync("outsideClickRegister", _registrationId, _rootRef, _selfRef);
-    }
-
-    private async Task UnregisterOutsideClickAsync() {
-        await Js.InvokeVoidAsync("outsideClickUnregister", _registrationId);
-    }
-
-    [JSInvokable]
-    public async Task OnOutsideClick() {
+    private async Task HandleOutsideClickAsync() {
         _open = false;
-        await UnregisterOutsideClickAsync();
         await InvokeAsync(StateHasChanged);
     }
 
@@ -144,15 +132,15 @@
         SyncFromHex(color);
         await EmitAsync(color);
         _open = false;
-        await UnregisterOutsideClickAsync();
+        if (_outsideClick is not null) {
+            await _outsideClick.UnregisterAsync();
+        }
     }
 
     public async ValueTask DisposeAsync() {
-        if (_open) {
-            await UnregisterOutsideClickAsync();
+        if (_outsideClick is not null) {
+            await _outsideClick.DisposeAsync();
         }
-
-        _selfRef?.Dispose();
     }
 
 }

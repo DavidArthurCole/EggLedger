@@ -47,8 +47,7 @@
     private int? _draggingIndex;
     private string? _actionMessage;
     private ElementReference _gridRef;
-    private IJSObjectReference? _module;
-    private IJSObjectReference? _observerHandle;
+    private JsResizeObserver? _resizeObserver;
     private DotNetObjectReference<ReportGrid>? _selfRef;
     private int _rowHeightPx = 144;
 
@@ -65,13 +64,13 @@
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
             _selfRef = DotNetObjectReference.Create(this);
-            _module = await Js.InvokeAsync<IJSObjectReference>("import", "./_content/EggLedger.Web/js/reportGrid.js");
-            _observerHandle = await _module.InvokeAsync<IJSObjectReference>("observe", _gridRef, _selfRef);
+            _resizeObserver = new JsResizeObserver(Js);
+            await _resizeObserver.ObserveAsync(_gridRef, _selfRef, nameof(OnGridResized));
         }
     }
 
     [JSInvokable]
-    public void OnGridResized(double width) {
+    public void OnGridResized(double width, double height) {
         var next = ReportGridLayout.ComputeRowHeightPx(width);
         if (next != _rowHeightPx) {
             _rowHeightPx = next;
@@ -179,13 +178,8 @@
     }
 
     public async ValueTask DisposeAsync() {
-        if (_observerHandle is not null && _module is not null) {
-            await _module.InvokeVoidAsync("unobserve", _observerHandle);
-            await _observerHandle.DisposeAsync();
-        }
-
-        if (_module is not null) {
-            await _module.DisposeAsync();
+        if (_resizeObserver is not null) {
+            await _resizeObserver.DisposeAsync();
         }
 
         _selfRef?.Dispose();

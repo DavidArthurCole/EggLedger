@@ -2,15 +2,13 @@ using System.Security.Claims;
 using EggLedger.Web.Data;
 using EggLedger.Web.Server.Auth;
 using EggLedger.Web.Server.Storage;
+using EggLedger.Web.Server.Tests.Sync.Auth;
 using Microsoft.AspNetCore.Components.Authorization;
 using Npgsql;
 
 namespace EggLedger.Web.Server.Tests;
 
 public sealed class PostgresIsolationTests {
-    private static string? TestDbUrl => Environment.GetEnvironmentVariable("EGGLEDGER_TEST_DB_URL");
-
-
     private sealed class FakeAuth(Guid? userId) : AuthenticationStateProvider {
         public override Task<AuthenticationState> GetAuthenticationStateAsync() {
             var identity = userId is null
@@ -33,9 +31,9 @@ public sealed class PostgresIsolationTests {
 
     [SkippableFact]
     public async Task UserA_NeverReadsUserB_Rows() {
-        Skip.If(string.IsNullOrEmpty(TestDbUrl), "EGGLEDGER_TEST_DB_URL not set; live Postgres isolation test skipped.");
+        TestDbUrl.SkipIfNotConfigured("isolation");
 
-        await using var src = NpgsqlDataSource.Create(TestDbUrl!);
+        await using var src = NpgsqlDataSource.Create(TestDbUrl.Value!);
         await CreateSchemaAsync(src);
         try {
             var a = StoreFor(src, Guid.NewGuid());
@@ -72,9 +70,9 @@ public sealed class PostgresIsolationTests {
 
     [SkippableFact]
     public async Task Unauthenticated_StorageThrows() {
-        Skip.If(string.IsNullOrEmpty(TestDbUrl), "EGGLEDGER_TEST_DB_URL not set; live Postgres isolation test skipped.");
+        TestDbUrl.SkipIfNotConfigured("isolation");
 
-        await using var src = NpgsqlDataSource.Create(TestDbUrl!);
+        await using var src = NpgsqlDataSource.Create(TestDbUrl.Value!);
         await CreateSchemaAsync(src);
         try {
             var anon = StoreFor(src, null);

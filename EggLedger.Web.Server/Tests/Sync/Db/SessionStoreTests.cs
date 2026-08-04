@@ -7,8 +7,6 @@ using Npgsql;
 namespace EggLedger.Web.Server.Tests.Sync.Db;
 
 public sealed class SessionStoreTests {
-    private static string? TestDbUrl => Environment.GetEnvironmentVariable("EGGLEDGER_TEST_DB_URL");
-
     private const string Schema = "eltest_sessionstore";
 
     private static IdentityApiClient StubIdentity(bool revoked) =>
@@ -19,12 +17,12 @@ public sealed class SessionStoreTests {
 
     [SkippableFact]
     public async Task LookupAsync_returns_user_id_not_discord_id() {
-        Skip.If(string.IsNullOrEmpty(TestDbUrl), "EGGLEDGER_TEST_DB_URL not set; live Postgres session test skipped.");
+        TestDbUrl.SkipIfNotConfigured("session");
 
-        await using var setupSrc = NpgsqlDataSource.Create(TestDbUrl!);
+        await using var setupSrc = NpgsqlDataSource.Create(TestDbUrl.Value!);
         await CreateSchemaAsync(setupSrc);
 
-        var scopedBuilder = new NpgsqlConnectionStringBuilder(TestDbUrl!) { SearchPath = Schema };
+        var scopedBuilder = new NpgsqlConnectionStringBuilder(TestDbUrl.Value!) { SearchPath = Schema };
         await using var src = NpgsqlDataSource.Create(scopedBuilder.ConnectionString);
         try {
             var userId = Guid.NewGuid();
@@ -52,12 +50,12 @@ public sealed class SessionStoreTests {
 
     [SkippableFact]
     public async Task LookupAsync_returns_not_found_when_identity_reports_session_revoked() {
-        Skip.If(string.IsNullOrEmpty(TestDbUrl), "EGGLEDGER_TEST_DB_URL not set; live Postgres session test skipped.");
+        TestDbUrl.SkipIfNotConfigured("session");
 
-        await using var setupSrc = NpgsqlDataSource.Create(TestDbUrl!);
+        await using var setupSrc = NpgsqlDataSource.Create(TestDbUrl.Value!);
         await CreateSchemaAsync(setupSrc);
 
-        var scopedBuilder = new NpgsqlConnectionStringBuilder(TestDbUrl!) { SearchPath = Schema };
+        var scopedBuilder = new NpgsqlConnectionStringBuilder(TestDbUrl.Value!) { SearchPath = Schema };
         await using var src = NpgsqlDataSource.Create(scopedBuilder.ConnectionString);
         try {
             var userId = Guid.NewGuid();

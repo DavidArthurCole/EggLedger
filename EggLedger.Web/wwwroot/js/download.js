@@ -1,5 +1,4 @@
-export function downloadText(filename, text, mime) {
-  const blob = new Blob([text], { type: mime });
+function triggerDownload(blob, filename) {
   const url = globalThis.URL.createObjectURL(blob);
   const a = globalThis.document.createElement("a");
   a.href = url;
@@ -8,6 +7,11 @@ export function downloadText(filename, text, mime) {
   a.click();
   a.remove();
   globalThis.URL.revokeObjectURL(url);
+}
+
+export function downloadText(filename, text, mime) {
+  const blob = new Blob([text], { type: mime });
+  triggerDownload(blob, filename);
 }
 
 
@@ -38,12 +42,5 @@ export function download(filename, base64, mime) {
     bytes[i] = binary.charCodeAt(i);
   }
   const blob = new Blob([bytes], { type: mime });
-  const url = globalThis.URL.createObjectURL(blob);
-  const a = globalThis.document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  globalThis.document.body.appendChild(a);
-  a.click();
-  a.remove();
-  globalThis.URL.revokeObjectURL(url);
+  triggerDownload(blob, filename);
 }

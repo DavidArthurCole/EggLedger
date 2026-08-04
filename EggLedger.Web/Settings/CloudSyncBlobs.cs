@@ -92,24 +92,24 @@ public static class CloudSyncBlobs {
     public const string ReportsBlob = "reports";
 
     public static CloudSyncableSettings PackSettings(IReadOnlyDictionary<string, string> settings) => new() {
-        AutoRefreshMennoPref = Bool(settings, SettingsModel.KeyAutoRefreshMenno, false),
-        RetryFailedMissions = Bool(settings, SettingsModel.KeyRetryFailedMissions, true),
-        HideTimeoutErrors = Bool(settings, SettingsModel.KeyHideTimeoutErrors, false),
-        WorkerCount = SettingsModel.ClampWorkerCount(Int(settings, SettingsModel.KeyWorkerCount, SettingsModel.MinWorkerCount)),
-        ScreenshotSafety = Bool(settings, SettingsModel.KeyScreenshotSafety, false),
-        ShowMissionProgress = Bool(settings, SettingsModel.KeyShowMissionProgress, true),
-        CollapseOlderSections = Bool(settings, SettingsModel.KeyCollapseOlderSections, true),
-        AdvancedDropFilter = Bool(settings, SettingsModel.KeyAdvancedDropFilter, false),
-        MissionViewByDate = Bool(settings, "mission_view_by_date", false),
-        MissionViewTimes = Bool(settings, "mission_view_times", true),
-        MissionRecolorDC = Bool(settings, "mission_recolor_dc", false),
-        MissionRecolorBC = Bool(settings, "mission_recolor_bc", false),
-        MissionShowExpectedDrops = Bool(settings, "mission_show_expected_drops", true),
-        MissionMultiViewMode = Str(settings, "mission_multi_view_mode", "off"),
-        MissionSortMethod = Str(settings, "mission_sort_method", "default"),
-        LifetimeSortMethod = Str(settings, "lifetime_sort_method", ""),
-        LifetimeShowDropsPerShip = Bool(settings, "lifetime_show_drops_per_ship", false),
-        LifetimeShowExpectedTotals = Bool(settings, "lifetime_show_expected_totals", false),
+        AutoRefreshMennoPref = SettingsDictionaryParsing.Bool(settings, SettingsModel.KeyAutoRefreshMenno, false),
+        RetryFailedMissions = SettingsDictionaryParsing.Bool(settings, SettingsModel.KeyRetryFailedMissions, true),
+        HideTimeoutErrors = SettingsDictionaryParsing.Bool(settings, SettingsModel.KeyHideTimeoutErrors, false),
+        WorkerCount = SettingsModel.ClampWorkerCount(SettingsDictionaryParsing.Int(settings, SettingsModel.KeyWorkerCount, SettingsModel.MinWorkerCount)),
+        ScreenshotSafety = SettingsDictionaryParsing.Bool(settings, SettingsModel.KeyScreenshotSafety, false),
+        ShowMissionProgress = SettingsDictionaryParsing.Bool(settings, SettingsModel.KeyShowMissionProgress, true),
+        CollapseOlderSections = SettingsDictionaryParsing.Bool(settings, SettingsModel.KeyCollapseOlderSections, true),
+        AdvancedDropFilter = SettingsDictionaryParsing.Bool(settings, SettingsModel.KeyAdvancedDropFilter, false),
+        MissionViewByDate = SettingsDictionaryParsing.Bool(settings, "mission_view_by_date", false),
+        MissionViewTimes = SettingsDictionaryParsing.Bool(settings, "mission_view_times", true),
+        MissionRecolorDC = SettingsDictionaryParsing.Bool(settings, "mission_recolor_dc", false),
+        MissionRecolorBC = SettingsDictionaryParsing.Bool(settings, "mission_recolor_bc", false),
+        MissionShowExpectedDrops = SettingsDictionaryParsing.Bool(settings, "mission_show_expected_drops", true),
+        MissionMultiViewMode = SettingsDictionaryParsing.Str(settings, "mission_multi_view_mode", "off"),
+        MissionSortMethod = SettingsDictionaryParsing.Str(settings, "mission_sort_method", "default"),
+        LifetimeSortMethod = SettingsDictionaryParsing.Str(settings, "lifetime_sort_method", ""),
+        LifetimeShowDropsPerShip = SettingsDictionaryParsing.Bool(settings, "lifetime_show_drops_per_ship", false),
+        LifetimeShowExpectedTotals = SettingsDictionaryParsing.Bool(settings, "lifetime_show_expected_totals", false),
     };
 
     public static IReadOnlyDictionary<string, string> UnpackSettings(CloudSyncableSettings s) => new Dictionary<string, string> {
@@ -157,13 +157,4 @@ public static class CloudSyncBlobs {
 
         return (groups, reports);
     }
-
-    private static bool Bool(IReadOnlyDictionary<string, string> s, string key, bool fallback) =>
-        s.TryGetValue(key, out var raw) && bool.TryParse(raw, out var v) ? v : fallback;
-
-    private static int Int(IReadOnlyDictionary<string, string> s, string key, int fallback) =>
-        s.TryGetValue(key, out var raw) && int.TryParse(raw, out var v) ? v : fallback;
-
-    private static string Str(IReadOnlyDictionary<string, string> s, string key, string fallback) =>
-        s.TryGetValue(key, out var raw) && !string.IsNullOrEmpty(raw) ? raw : fallback;
 }

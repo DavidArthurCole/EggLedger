@@ -11,7 +11,6 @@ using Npgsql;
 namespace EggLedger.Web.Server.Tests.Sync.Admin;
 
 public sealed class AdminEndpointsTests {
-    private static string? TestDbUrl => Environment.GetEnvironmentVariable("EGGLEDGER_TEST_DB_URL");
     private const string Schema = "eltest_admin";
 
     private sealed class FakeCurrentUser(bool isAdmin) : ICurrentUser {
@@ -47,9 +46,9 @@ public sealed class AdminEndpointsTests {
 
     [SkippableFact]
     public async Task Users_SumsStorageAcrossAllTables_AndCountsMissions() {
-        Skip.If(string.IsNullOrEmpty(TestDbUrl), "EGGLEDGER_TEST_DB_URL not set; live Postgres admin test skipped.");
+        TestDbUrl.SkipIfNotConfigured("admin");
 
-        await using var src = NpgsqlDataSource.Create(TestDbUrl!);
+        await using var src = NpgsqlDataSource.Create(TestDbUrl.Value!);
         await CreateSchemaAsync(src);
         try {
             var userId = Guid.NewGuid();
@@ -73,9 +72,9 @@ public sealed class AdminEndpointsTests {
 
     [SkippableFact]
     public async Task DeleteUser_ByUserId_CascadesAndSucceeds() {
-        Skip.If(string.IsNullOrEmpty(TestDbUrl), "EGGLEDGER_TEST_DB_URL not set; live Postgres admin test skipped.");
+        TestDbUrl.SkipIfNotConfigured("admin");
 
-        await using var src = NpgsqlDataSource.Create(TestDbUrl!);
+        await using var src = NpgsqlDataSource.Create(TestDbUrl.Value!);
         await CreateSchemaAsync(src);
         try {
             var adminId = Guid.NewGuid();
@@ -99,9 +98,9 @@ public sealed class AdminEndpointsTests {
 
     [SkippableFact]
     public async Task Users_NonAdmin_Returns403() {
-        Skip.If(string.IsNullOrEmpty(TestDbUrl), "EGGLEDGER_TEST_DB_URL not set; live Postgres admin test skipped.");
+        TestDbUrl.SkipIfNotConfigured("admin");
 
-        await using var src = NpgsqlDataSource.Create(TestDbUrl!);
+        await using var src = NpgsqlDataSource.Create(TestDbUrl.Value!);
         await CreateSchemaAsync(src);
         try {
             var endpoints = Endpoints(src, isAdmin: false, adminUserId: Guid.NewGuid());

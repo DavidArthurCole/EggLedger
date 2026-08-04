@@ -3,7 +3,7 @@
 @inject IJSRuntime Js
 @* Multi-series line chart over a 2D result (rows = buckets, cols = series); geometry
    from ChartGeometry. viewBox tracks the container's actual rendered size via
-   ResizeObserver (reportChart.js), same as ReportLineChart.
+   ResizeObserver (resizeObserver.js), same as ReportLineChart.
    SVG <text> via MarkupString (Razor reserves the bare <text> tag). *@
 
 <div class="h-full w-full flex flex-col gap-1">
@@ -73,8 +73,7 @@
     private double _h = 150;
     private bool _measured;
     private ElementReference _containerRef;
-    private IJSObjectReference? _module;
-    private IJSObjectReference? _observerHandle;
+    private JsResizeObserver? _resizeObserver;
     private DotNetObjectReference<ReportMultiLineChart>? _selfRef;
     [Parameter] [EditorRequired] public ReportResult Result { get; set; } = new();
     [Parameter] [EditorRequired] public string Color { get; set; } = "#6366f1";
@@ -95,8 +94,8 @@
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
             _selfRef = DotNetObjectReference.Create(this);
-            _module = await Js.InvokeAsync<IJSObjectReference>("import", "./_content/EggLedger.Web/js/reportChart.js");
-            _observerHandle = await _module.InvokeAsync<IJSObjectReference>("observe", _containerRef, _selfRef);
+            _resizeObserver = new JsResizeObserver(Js);
+            await _resizeObserver.ObserveAsync(_containerRef, _selfRef, nameof(OnChartResized));
         }
     }
 
@@ -204,13 +203,8 @@
     }
 
     public async ValueTask DisposeAsync() {
-        if (_observerHandle is not null && _module is not null) {
-            await _module.InvokeVoidAsync("unobserve", _observerHandle);
-            await _observerHandle.DisposeAsync();
-        }
-
-        if (_module is not null) {
-            await _module.DisposeAsync();
+        if (_resizeObserver is not null) {
+            await _resizeObserver.DisposeAsync();
         }
 
         _selfRef?.Dispose();

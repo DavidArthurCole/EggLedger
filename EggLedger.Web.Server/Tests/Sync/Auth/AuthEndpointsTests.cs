@@ -14,20 +14,18 @@ using Npgsql;
 namespace EggLedger.Web.Server.Tests.Sync.Auth;
 
 public sealed class AuthEndpointsTests {
-    private static string? TestDbUrl => Environment.GetEnvironmentVariable("EGGLEDGER_TEST_DB_URL");
-
     private const string Schema = "eltest_authendpoints";
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     [SkippableFact]
     public async Task EnsureEncryptionKeyAsync_returns_existing_key_for_discord_linked_user() {
-        Skip.If(string.IsNullOrEmpty(TestDbUrl), "EGGLEDGER_TEST_DB_URL not set; live Postgres auth test skipped.");
+        TestDbUrl.SkipIfNotConfigured("auth");
 
-        await using var setupSrc = NpgsqlDataSource.Create(TestDbUrl!);
+        await using var setupSrc = NpgsqlDataSource.Create(TestDbUrl.Value!);
         await CreateSchemaAsync(setupSrc);
 
-        var scopedBuilder = new NpgsqlConnectionStringBuilder(TestDbUrl!) { SearchPath = Schema };
+        var scopedBuilder = new NpgsqlConnectionStringBuilder(TestDbUrl.Value!) { SearchPath = Schema };
         await using var src = NpgsqlDataSource.Create(scopedBuilder.ConnectionString);
         try {
             var protector = new EphemeralDataProtectionProvider();
@@ -60,12 +58,12 @@ public sealed class AuthEndpointsTests {
 
     [SkippableFact]
     public async Task EnsureEncryptionKeyAsync_generates_and_persists_key_for_non_discord_user() {
-        Skip.If(string.IsNullOrEmpty(TestDbUrl), "EGGLEDGER_TEST_DB_URL not set; live Postgres auth test skipped.");
+        TestDbUrl.SkipIfNotConfigured("auth");
 
-        await using var setupSrc = NpgsqlDataSource.Create(TestDbUrl!);
+        await using var setupSrc = NpgsqlDataSource.Create(TestDbUrl.Value!);
         await CreateSchemaAsync(setupSrc);
 
-        var scopedBuilder = new NpgsqlConnectionStringBuilder(TestDbUrl!) { SearchPath = Schema };
+        var scopedBuilder = new NpgsqlConnectionStringBuilder(TestDbUrl.Value!) { SearchPath = Schema };
         await using var src = NpgsqlDataSource.Create(scopedBuilder.ConnectionString);
         try {
             var identity = new IdentityApiClient(new HttpClient(new StubHttpMessageHandler(_ =>
@@ -95,12 +93,12 @@ public sealed class AuthEndpointsTests {
 
     [SkippableFact]
     public async Task SessionFromLogin_Unauthenticated_Returns401() {
-        Skip.If(string.IsNullOrEmpty(TestDbUrl), "EGGLEDGER_TEST_DB_URL not set; live Postgres auth test skipped.");
+        TestDbUrl.SkipIfNotConfigured("auth");
 
-        await using var setupSrc = NpgsqlDataSource.Create(TestDbUrl!);
+        await using var setupSrc = NpgsqlDataSource.Create(TestDbUrl.Value!);
         await CreateSchemaAsync(setupSrc);
 
-        var scopedBuilder = new NpgsqlConnectionStringBuilder(TestDbUrl!) { SearchPath = Schema };
+        var scopedBuilder = new NpgsqlConnectionStringBuilder(TestDbUrl.Value!) { SearchPath = Schema };
         await using var src = NpgsqlDataSource.Create(scopedBuilder.ConnectionString);
         try {
             var identity = new IdentityApiClient(new HttpClient(new StubHttpMessageHandler(_ =>
@@ -122,12 +120,12 @@ public sealed class AuthEndpointsTests {
 
     [SkippableFact]
     public async Task SessionFromLogin_AuthenticatedNoDiscordId_CreatesSessionWithNullDiscordId() {
-        Skip.If(string.IsNullOrEmpty(TestDbUrl), "EGGLEDGER_TEST_DB_URL not set; live Postgres auth test skipped.");
+        TestDbUrl.SkipIfNotConfigured("auth");
 
-        await using var setupSrc = NpgsqlDataSource.Create(TestDbUrl!);
+        await using var setupSrc = NpgsqlDataSource.Create(TestDbUrl.Value!);
         await CreateSchemaAsync(setupSrc);
 
-        var scopedBuilder = new NpgsqlConnectionStringBuilder(TestDbUrl!) { SearchPath = Schema };
+        var scopedBuilder = new NpgsqlConnectionStringBuilder(TestDbUrl.Value!) { SearchPath = Schema };
         await using var src = NpgsqlDataSource.Create(scopedBuilder.ConnectionString);
         try {
             var identity = new IdentityApiClient(new HttpClient(new StubHttpMessageHandler(_ =>
@@ -175,12 +173,12 @@ public sealed class AuthEndpointsTests {
 
     [SkippableFact]
     public async Task SessionFromLogin_AuthenticatedWithDiscordId_CreatesSessionWithDiscordId() {
-        Skip.If(string.IsNullOrEmpty(TestDbUrl), "EGGLEDGER_TEST_DB_URL not set; live Postgres auth test skipped.");
+        TestDbUrl.SkipIfNotConfigured("auth");
 
-        await using var setupSrc = NpgsqlDataSource.Create(TestDbUrl!);
+        await using var setupSrc = NpgsqlDataSource.Create(TestDbUrl.Value!);
         await CreateSchemaAsync(setupSrc);
 
-        var scopedBuilder = new NpgsqlConnectionStringBuilder(TestDbUrl!) { SearchPath = Schema };
+        var scopedBuilder = new NpgsqlConnectionStringBuilder(TestDbUrl.Value!) { SearchPath = Schema };
         await using var src = NpgsqlDataSource.Create(scopedBuilder.ConnectionString);
         try {
             var identity = new IdentityApiClient(new HttpClient(new StubHttpMessageHandler(_ =>
@@ -229,12 +227,12 @@ public sealed class AuthEndpointsTests {
 
     [SkippableFact]
     public async Task DeleteSession_calls_identity_revoke() {
-        Skip.If(string.IsNullOrEmpty(TestDbUrl), "EGGLEDGER_TEST_DB_URL not set; live Postgres auth test skipped.");
+        TestDbUrl.SkipIfNotConfigured("auth");
 
-        await using var setupSrc = NpgsqlDataSource.Create(TestDbUrl!);
+        await using var setupSrc = NpgsqlDataSource.Create(TestDbUrl.Value!);
         await CreateSchemaAsync(setupSrc);
 
-        var scopedBuilder = new NpgsqlConnectionStringBuilder(TestDbUrl!) { SearchPath = Schema };
+        var scopedBuilder = new NpgsqlConnectionStringBuilder(TestDbUrl.Value!) { SearchPath = Schema };
         await using var src = NpgsqlDataSource.Create(scopedBuilder.ConnectionString);
         try {
             const string token = "tok-to-revoke";

@@ -2,7 +2,6 @@
 
   <PropertyGroup>
     <Description>EggLedger shared Blazor UI (Razor class library): all 6 tabs, components, services, and the platform capability seam. Referenced by the Blazor Server host (EggLedger.Web.Server) and the Photino desktop host (EggLedger.Desktop). Host-agnostic over HttpClient / JSInterop.</Description>
-    <DefaultItemExcludes>$(DefaultItemExcludes);Tests\**</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>

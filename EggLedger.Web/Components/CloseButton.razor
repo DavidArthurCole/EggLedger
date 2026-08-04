@@ -1,0 +1,13 @@
+<button type="button" class="@Class" @onclick="OnClick" aria-label="@Title" title="@Title">
+    <svg class="@IconClass" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+    </svg>
+</button>
+
+@code {
+    [Parameter] public EventCallback OnClick { get; set; }
+    [Parameter] public string Class { get; set; } = "close-button";
+    [Parameter] public string IconClass { get; set; } = "w-5 h-5";
+    [Parameter] public string Title { get; set; } = "Close";
+
+}

@@ -73,39 +73,27 @@ public sealed class SettingsModel {
         : n;
 
     public void LoadFrom(IReadOnlyDictionary<string, string> settings) {
-        AutoRefreshMenno = Bool(settings, KeyAutoRefreshMenno, AutoRefreshMenno);
-        AutoRetry = Bool(settings, KeyRetryFailedMissions, AutoRetry);
-        HideTimeoutErrors = Bool(settings, KeyHideTimeoutErrors, HideTimeoutErrors);
-        WorkerCount = ClampWorkerCount(Int(settings, KeyWorkerCount, WorkerCount));
-        ScreenshotSafety = Bool(settings, KeyScreenshotSafety, ScreenshotSafety);
-        ShowMissionProgress = Bool(settings, KeyShowMissionProgress, ShowMissionProgress);
-        CollapseOlderSections = Bool(settings, KeyCollapseOlderSections, CollapseOlderSections);
-        AdvancedDropFilter = Bool(settings, KeyAdvancedDropFilter, AdvancedDropFilter);
-        AutoExportCsv = Bool(settings, KeyAutoExportCsv, AutoExportCsv);
-        AutoExportXlsx = Bool(settings, KeyAutoExportXlsx, AutoExportXlsx);
-        WorkerCountWarningRead = Bool(settings, KeyWorkerCountWarningRead, WorkerCountWarningRead);
-        WindowWidth = Int(settings, KeyWindowWidth, WindowWidth);
-        WindowHeight = Int(settings, KeyWindowHeight, WindowHeight);
-        StartInFullscreen = Bool(settings, KeyStartInFullscreen, StartInFullscreen);
-        ExportKeepCount = Int(settings, KeyExportKeepCount, ExportKeepCount);
-        StorageFolderHidden = Bool(settings, KeyStorageFolderHidden, StorageFolderHidden);
-        BackupDestPath = Str(settings, KeyBackupDestPath, BackupDestPath);
-        MoveDestPath = Str(settings, KeyMoveDestPath, MoveDestPath);
+        AutoRefreshMenno = SettingsDictionaryParsing.Bool(settings, KeyAutoRefreshMenno, AutoRefreshMenno);
+        AutoRetry = SettingsDictionaryParsing.Bool(settings, KeyRetryFailedMissions, AutoRetry);
+        HideTimeoutErrors = SettingsDictionaryParsing.Bool(settings, KeyHideTimeoutErrors, HideTimeoutErrors);
+        WorkerCount = ClampWorkerCount(SettingsDictionaryParsing.Int(settings, KeyWorkerCount, WorkerCount));
+        ScreenshotSafety = SettingsDictionaryParsing.Bool(settings, KeyScreenshotSafety, ScreenshotSafety);
+        ShowMissionProgress = SettingsDictionaryParsing.Bool(settings, KeyShowMissionProgress, ShowMissionProgress);
+        CollapseOlderSections = SettingsDictionaryParsing.Bool(settings, KeyCollapseOlderSections, CollapseOlderSections);
+        AdvancedDropFilter = SettingsDictionaryParsing.Bool(settings, KeyAdvancedDropFilter, AdvancedDropFilter);
+        AutoExportCsv = SettingsDictionaryParsing.Bool(settings, KeyAutoExportCsv, AutoExportCsv);
+        AutoExportXlsx = SettingsDictionaryParsing.Bool(settings, KeyAutoExportXlsx, AutoExportXlsx);
+        WorkerCountWarningRead = SettingsDictionaryParsing.Bool(settings, KeyWorkerCountWarningRead, WorkerCountWarningRead);
+        WindowWidth = SettingsDictionaryParsing.Int(settings, KeyWindowWidth, WindowWidth);
+        WindowHeight = SettingsDictionaryParsing.Int(settings, KeyWindowHeight, WindowHeight);
+        StartInFullscreen = SettingsDictionaryParsing.Bool(settings, KeyStartInFullscreen, StartInFullscreen);
+        ExportKeepCount = SettingsDictionaryParsing.Int(settings, KeyExportKeepCount, ExportKeepCount);
+        StorageFolderHidden = SettingsDictionaryParsing.Bool(settings, KeyStorageFolderHidden, StorageFolderHidden);
+        BackupDestPath = SettingsDictionaryParsing.Str(settings, KeyBackupDestPath, BackupDestPath);
+        MoveDestPath = SettingsDictionaryParsing.Str(settings, KeyMoveDestPath, MoveDestPath);
     }
 
     public static string FormatBool(bool v) => v ? "true" : "false";
 
     public static string FormatInt(int v) => v.ToString(CultureInfo.InvariantCulture);
-
-    private static bool Bool(IReadOnlyDictionary<string, string> s, string key, bool fallback) =>
-        s.TryGetValue(key, out var raw) && bool.TryParse(raw, out var v) ? v : fallback;
-
-    private static int Int(IReadOnlyDictionary<string, string> s, string key, int fallback) =>
-        s.TryGetValue(key, out var raw)
-            && int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var v)
-            ? v
-            : fallback;
-
-    private static string Str(IReadOnlyDictionary<string, string> s, string key, string fallback) =>
-        s.TryGetValue(key, out var raw) ? raw : fallback;
 }

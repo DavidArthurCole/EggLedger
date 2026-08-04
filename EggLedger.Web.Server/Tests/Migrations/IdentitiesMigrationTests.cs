@@ -1,17 +1,16 @@
+using EggLedger.Web.Server.Tests.Sync.Auth;
 using Npgsql;
 
 namespace EggLedger.Web.Server.Tests.Migrations;
 
 public sealed class IdentitiesMigrationTests {
-    private static string? TestDbUrl => Environment.GetEnvironmentVariable("EGGLEDGER_TEST_DB_URL");
-
     private const string Schema = "eltest_identities";
 
     [SkippableFact]
     public async Task Migration7_BackfillsUserIdAndRepointsPrimaryKey() {
-        Skip.If(string.IsNullOrEmpty(TestDbUrl), "EGGLEDGER_TEST_DB_URL not set; live Postgres migration test skipped.");
+        TestDbUrl.SkipIfNotConfigured("migration");
 
-        await using var src = NpgsqlDataSource.Create(TestDbUrl!);
+        await using var src = NpgsqlDataSource.Create(TestDbUrl.Value!);
         await Exec(src, $"DROP SCHEMA IF EXISTS {Schema} CASCADE; CREATE SCHEMA {Schema}; SET search_path TO {Schema};");
         try {
             await ApplyMigrationAsync(src, "1_initial_schema.up.sql");

@@ -1,4 +1,3 @@
-@implements IDisposable
 @implements IAsyncDisposable
 @inject ActiveAccount Active
 @inject AppStateService AppStateSvc
@@ -129,11 +128,9 @@
     private AddAccountDialog? _addDialog;
     private AccountSettingsModal? _settingsModal;
     private ElementReference _rootRef;
-    private DotNetObjectReference<GlobalAccountHeader>? _selfRef;
+    private OutsideClickRegistration? _outsideClick;
     private IReadOnlyList<DatabaseAccount> _existing = [];
     private bool _lastWarnedFetchActive;
-    private static int _nextId;
-    private readonly string _registrationId = $"account-header-{Interlocked.Increment(ref _nextId)}";
 
     private static double NowUnix => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
@@ -250,27 +247,36 @@
     private async Task Toggle() {
         _open = !_open;
         if (_open) {
-            await RegisterOutsideClickAsync();
-        } else {
-            await UnregisterOutsideClickAsync();
+            _outsideClick ??= new OutsideClickRegistration(Js, HandleOutsideClickAsync);
+            await _outsideClick.RegisterAsync(_rootRef);
+        } else if (_outsideClick is not null) {
+            await _outsideClick.UnregisterAsync();
         }
     }
 
     private async Task Select(string id) {
         Active.SetActive(id);
         _open = false;
-        await UnregisterOutsideClickAsync();
+        if (_outsideClick is not null) {
+            await _outsideClick.UnregisterAsync();
+        }
     }
 
     private async Task OpenAddDialog() {
         _open = false;
-        await UnregisterOutsideClickAsync();
+        if (_outsideClick is not null) {
+            await _outsideClick.UnregisterAsync();
+        }
+
         _addDialog?.Open();
     }
 
     private async Task OpenSettings() {
         _open = false;
-        await UnregisterOutsideClickAsync();
+        if (_outsideClick is not null) {
+            await _outsideClick.UnregisterAsync();
+        }
+
         _settingsModal?.Open();
     }
 
@@ -286,34 +292,18 @@
         await StartFetch();
     }
 
-    private async Task RegisterOutsideClickAsync() {
-        _selfRef ??= DotNetObjectReference.Create(this);
-        await Js.InvokeVoidAsync("outsideClickRegister", _registrationId, _rootRef, _selfRef);
-    }
-
-    private async Task UnregisterOutsideClickAsync() {
-        await Js.InvokeVoidAsync("outsideClickUnregister", _registrationId);
-    }
-
-    [JSInvokable]
-    public async Task OnOutsideClick() {
+    private async Task HandleOutsideClickAsync() {
         _open = false;
-        await UnregisterOutsideClickAsync();
         await InvokeAsync(StateHasChanged);
     }
 
-    public void Dispose() {
+    public async ValueTask DisposeAsync() {
         Active.Changed -= OnStateChanged;
         AppStateSvc.Changed -= OnStateChanged;
         Fetch.Changed -= OnStateChanged;
-    }
-
-    public async ValueTask DisposeAsync() {
-        if (_open) {
-            await UnregisterOutsideClickAsync();
+        if (_outsideClick is not null) {
+            await _outsideClick.DisposeAsync();
         }
-
-        _selfRef?.Dispose();
     }
 
 }
