@@ -6,12 +6,14 @@ namespace EggLedger.Web.Services;
 
 public sealed class FetchOrchestrator : IDisposable {
     private const string InProgressKeyPrefix = "fetch_in_progress:";
+    private static readonly TimeSpan AutoHideGracePeriod = TimeSpan.FromSeconds(12);
 
     private readonly FetchService _fetch;
     private readonly AppStateService _appState;
     private readonly IndexedDbSettings _settings;
     private readonly ILogger<FetchOrchestrator> _logger;
     private CancellationTokenSource? _cts;
+    private Timer? _autoHideTimer;
 
     public FetchOrchestrator(FetchService fetch, AppStateService appState, IndexedDbSettings settings, ILogger<FetchOrchestrator> logger) {
         _fetch = fetch;
@@ -45,15 +47,37 @@ public sealed class FetchOrchestrator : IDisposable {
 
     public void DismissPopover() {
         PopoverDismissed = true;
+        ScheduleAutoHide();
         Changed?.Invoke();
     }
 
     public void ReopenPopover() {
         PopoverDismissed = false;
+        _autoHideTimer?.Dispose();
+        _autoHideTimer = null;
+        Changed?.Invoke();
+    }
+
+    private void ScheduleAutoHide() {
+        if (TerminalState is null) {
+            return;
+        }
+
+        _autoHideTimer?.Dispose();
+        _autoHideTimer = new Timer(_ => ClearFetchContent(), null, AutoHideGracePeriod, Timeout.InfiniteTimeSpan);
+    }
+
+    private void ClearFetchContent() {
+        HasFetchContent = false;
+        PopoverDismissed = false;
+        TerminalState = null;
+        Progress = null;
         Changed?.Invoke();
     }
 
     public async Task StartFetchAsync(string accountId) {
+        _autoHideTimer?.Dispose();
+        _autoHideTimer = null;
         TerminalState = null;
         HasFetchContent = false;
         PopoverDismissed = false;
@@ -112,6 +136,9 @@ public sealed class FetchOrchestrator : IDisposable {
 
         TerminalState = result;
         _appState.PipelineState = TerminalState;
+        if (PopoverDismissed) {
+            ScheduleAutoHide();
+        }
         Changed?.Invoke();
     }
 
@@ -122,5 +149,6 @@ public sealed class FetchOrchestrator : IDisposable {
     public void Dispose() {
         _cts?.Cancel();
         _cts?.Dispose();
+        _autoHideTimer?.Dispose();
     }
 }
