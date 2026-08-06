@@ -21,8 +21,11 @@ public sealed class OutsideClickRegistration : IAsyncDisposable {
 
     public async Task RegisterAsync(ElementReference element) {
         _selfRef ??= DotNetObjectReference.Create(this);
-        await _js.InvokeVoidAsync("outsideClickRegister", _id, element, _selfRef);
-        _registered = true;
+        try {
+            await _js.InvokeVoidAsync("outsideClickRegister", _id, element, _selfRef);
+            _registered = true;
+        } catch (Exception ex) when (ex is JSDisconnectedException or ObjectDisposedException or TaskCanceledException) {
+        }
     }
 
     public async Task UnregisterAsync() {
@@ -31,7 +34,10 @@ public sealed class OutsideClickRegistration : IAsyncDisposable {
         }
 
         _registered = false;
-        await _js.InvokeVoidAsync("outsideClickUnregister", _id);
+        try {
+            await _js.InvokeVoidAsync("outsideClickUnregister", _id);
+        } catch (Exception ex) when (ex is JSDisconnectedException or ObjectDisposedException or TaskCanceledException) {
+        }
     }
 
     [JSInvokable]

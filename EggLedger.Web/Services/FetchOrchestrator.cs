@@ -118,6 +118,8 @@ public sealed class FetchOrchestrator : IDisposable {
         AppState result;
         try {
             result = await _fetch.FetchPlayerDataAsync(accountId, progress, token);
+        } catch (OperationCanceledException) when (token.IsCancellationRequested) {
+            result = AppState.Failed;
         } catch (Exception ex) {
             _logger.LogError(ex, "Fetch failed for account {AccountId}", accountId);
             result = AppState.Failed;

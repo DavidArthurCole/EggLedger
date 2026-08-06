@@ -14,18 +14,24 @@ public sealed class JsResizeObserver : IAsyncDisposable {
     }
 
     public async Task ObserveAsync<T>(ElementReference element, DotNetObjectReference<T> dotNetRef, string methodName) where T : class {
-        _module = await _js.InvokeAsync<IJSObjectReference>("import", ModulePath);
-        _handle = await _module.InvokeAsync<IJSObjectReference>("observe", element, dotNetRef, methodName);
+        try {
+            _module = await _js.InvokeAsync<IJSObjectReference>("import", ModulePath);
+            _handle = await _module.InvokeAsync<IJSObjectReference>("observe", element, dotNetRef, methodName);
+        } catch (Exception ex) when (ex is JSDisconnectedException or ObjectDisposedException or TaskCanceledException) {
+        }
     }
 
     public async ValueTask DisposeAsync() {
-        if (_handle is not null && _module is not null) {
-            await _module.InvokeVoidAsync("unobserve", _handle);
-            await _handle.DisposeAsync();
-        }
+        try {
+            if (_handle is not null && _module is not null) {
+                await _module.InvokeVoidAsync("unobserve", _handle);
+                await _handle.DisposeAsync();
+            }
 
-        if (_module is not null) {
-            await _module.DisposeAsync();
+            if (_module is not null) {
+                await _module.DisposeAsync();
+            }
+        } catch (Exception ex) when (ex is JSDisconnectedException or ObjectDisposedException or TaskCanceledException) {
         }
     }
 }
